@@ -1,11 +1,68 @@
 /**
  * File Validator Middleware
- * Validation stricte des fichiers uploadés
+ * Validation stricte des fichiers uploadés.
  */
 
+import { openSync, readSync, closeSync } from 'fs';
+
 const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx'];
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB en bytes
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10); // 200MB par défaut
 const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f]/g;
+
+// Signatures (magic numbers) des formats acceptés. `.txt` et `.docx` ne
+// sont pas vérifiés ici : le txt n'a pas de signature, le docx est un
+// ZIP générique (signature PK) déjà couverte par les autres outils.
+const MAGIC_SIGNATURES = {
+  '.mp4': [
+    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // 'ftyp' à l'offset 4
+  ],
+  '.mov': [
+    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // mov = QuickTime, même boîte ftyp
+    { offset: 4, bytes: [0x6d, 0x6f, 0x6f, 0x76] }, // 'moov'
+  ],
+  '.mp3': [
+    { offset: 0, bytes: [0x49, 0x44, 0x33] },       // 'ID3'
+    { offset: 0, bytes: [0xff, 0xfb] },             // frame MPEG
+    { offset: 0, bytes: [0xff, 0xf3] },
+    { offset: 0, bytes: [0xff, 0xf2] },
+  ],
+  '.wav': [
+    { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // 'RIFF'
+  ],
+  '.docx': [
+    { offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }, // ZIP local header
+    { offset: 0, bytes: [0x50, 0x4b, 0x05, 0x06] }, // empty archive
+  ],
+};
+
+function matchesSignature(buf, signature) {
+  return signature.bytes.every((b, i) => buf[signature.offset + i] === b);
+}
+
+export function validateMagicNumber(filePath, ext) {
+  const signatures = MAGIC_SIGNATURES[ext.toLowerCase()];
+  if (!signatures) return { valid: true }; // ex: .txt — pas de check
+  let fd;
+  try {
+    fd = openSync(filePath, 'r');
+    const buf = Buffer.alloc(16);
+    readSync(fd, buf, 0, 16, 0);
+    const ok = signatures.some((sig) => matchesSignature(buf, sig));
+    if (!ok) {
+      return {
+        valid: false,
+        error: `Contenu du fichier ne correspond pas à l'extension ${ext}`,
+      };
+    }
+    return { valid: true };
+  } catch (err) {
+    return { valid: false, error: `Lecture du fichier échouée: ${err.message}` };
+  } finally {
+    if (fd !== undefined) {
+      try { closeSync(fd); } catch { /* ignore */ }
+    }
+  }
+}
 
 /**
  * Valide un fichier uploadé

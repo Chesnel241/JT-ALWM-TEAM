@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import Nav from './components/Nav.jsx';
 import ToastContainer from './components/Toast.jsx';
-import { ToastProvider } from './hooks/useToast.js';
+import { ToastProvider } from './hooks/useToast.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api } from './api/index.js';
 import SkeletonCard from './components/SkeletonCard.jsx';

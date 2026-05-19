@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { AlertCircle, CheckCircle, InfoIcon, X } from 'lucide-react';
-import { useToast } from '../hooks/useToast.js';
+import { useToast } from '../hooks/useToast.jsx';
 
 function ToastItem({ id, message, type, onRemove }) {
   useEffect(() => {

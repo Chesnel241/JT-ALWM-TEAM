@@ -1,5 +1,10 @@
 node_modules/
 dist/
 uploads/
+logs/
+*.log
 .env
 *.local
+coverage/
+.DS_Store
+backend/src/data/store.json

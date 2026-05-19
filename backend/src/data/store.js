@@ -1,10 +1,10 @@
-import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync, renameSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dirname, 'store.json');
+const DB_PATH = process.env.JT_STORE_PATH || join(__dirname, 'store.json');
 
 // Store local persistant (remplacer par une DB en production)
 const seed = {
@@ -44,8 +44,13 @@ function loadDb() {
   }
 }
 
+// Écriture atomique : tmp file + rename. Évite la corruption du JSON
+// si le process meurt en plein write. Suffisant en mono-instance ; pour
+// multi-instance il faudrait migrer vers une vraie DB.
 function persistDb() {
-  writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+  const tmpPath = `${DB_PATH}.${process.pid}.tmp`;
+  writeFileSync(tmpPath, JSON.stringify(db, null, 2));
+  renameSync(tmpPath, DB_PATH);
 }
 
 const db = loadDb();

@@ -1,41 +1,106 @@
 # JT ALWM — Web Hub
 
 Plateforme de centralisation des reportages pour l'équipe JT ALWM.
+Les correspondants déposent vidéos / audios / scripts par semaine et
+par pays ; les éditeurs téléchargent les packs ZIP.
 
 ## Structure
 
 ```
-├── backend/    Node.js + Express + Multer
-└── frontend/   React + Vite + Tailwind CSS
+├── backend/    Node.js 20 + Express + Multer + Archiver
+├── frontend/   React 18 + Vite + Tailwind
+├── docs/       Rapports de phases, checklists, guides historiques
+└── docker-compose.yml   Stack dev locale
 ```
 
-## Démarrage
+## Démarrage local
 
-### Backend
+### Sans Docker
+
 ```bash
+# Backend
 cd backend
 npm install
-npm run dev
-# Démarre sur http://localhost:3010
-```
+npm run dev      # http://localhost:3010
 
-### Frontend
-```bash
+# Frontend (autre terminal)
 cd frontend
 npm install
-npm run dev
-# Démarre sur http://localhost:5173
+npm run dev      # http://localhost:5173 — proxy /api → :3010
+```
+
+### Avec Docker
+
+```bash
+docker compose up --build
+# Frontend → http://localhost
+# Backend  → http://localhost:3010
+```
+
+## Tests
+
+```bash
+cd backend  && npm test    # vitest + supertest (38 tests)
+cd frontend && npm test    # vitest + RTL (8 tests)
 ```
 
 ## API
 
 | Méthode | Route | Description |
 |---------|-------|-------------|
+| GET | `/health` | Health check (uptime, métriques) |
+| GET | `/metrics` | Métriques détaillées (mémoire, disque, alertes) |
 | GET | `/api/countries` | Liste des pays |
 | GET | `/api/weeks` | Liste des semaines |
-| GET | `/api/uploads/:weekId` | Tous les uploads d'une semaine |
+| GET | `/api/uploads/:weekId` | Uploads d'une semaine, regroupés par pays |
 | GET | `/api/uploads/:weekId/:countryId` | Uploads d'un pays |
-| GET | `/api/uploads/:weekId/:countryId/archive` | Telecharger un zip des fichiers |
-| POST | `/api/uploads/:weekId/:countryId` | Upload fichier (multipart) |
-| POST | `/api/uploads/:weekId/:countryId/script` | Saisie manuelle de script |
-| DELETE | `/api/uploads/:weekId/:countryId/:fileId` | Supprimer un fichier |
+| GET | `/api/uploads/:weekId/:countryId/archive` | ZIP de tous les fichiers du pays |
+| POST | `/api/uploads/:weekId/:countryId` | Upload multipart |
+| POST | `/api/uploads/:weekId/:countryId/script` | Saisie manuelle d'un script |
+| DELETE | `/api/uploads/:weekId/:countryId/:fileId` | Suppression |
+
+## Variables d'environnement
+
+### Backend
+- `PORT` (3010)
+- `CORS_ORIGIN` — séparé par virgules. Ex: `https://jt-alwm.vercel.app,https://staging.example.com`
+- `MAX_FILE_SIZE` — bytes. Défaut **200 MB** (compatible plan Render Starter)
+- `JT_STORE_PATH` — chemin du store JSON (overridable, utile en tests)
+- `LOG_DIR` — dossier des logs Winston. En prod : `/app/uploads/logs` (disque persistant)
+- `SENTRY_DSN` — error tracking (no-op si absent)
+
+### Frontend
+- `VITE_API_URL` — URL absolue du backend en prod (ex: `https://jt-alwm-backend.onrender.com`). Vide en dev (proxy Vite).
+- `VITE_SENTRY_DSN` — error tracking côté navigateur
+
+## Production
+
+- **Backend** : Render.com (Frankfurt, plan Starter $7/mois)
+- **Frontend** : Vercel (région `fra1`)
+- **Branche déployée** : `master`
+- **CI/CD** : GitHub Actions (`.github/workflows/deploy.yml`)
+
+### ⚠️ Avertissements
+
+- **Aucune authentification.** Toutes les routes API sont publiques.
+  Choix produit assumé pour un hub interne, mais ne diffuser l'URL
+  qu'aux personnes concernées et envisager un mot de passe partagé
+  côté Vercel (Vercel Password Protection) si l'URL devient connue.
+- **Scaling forcé à 1 instance.** Le store JSON et les uploads vivent
+  sur un disque local non partagé. Toute mise à l'échelle horizontale
+  exige une migration préalable vers Postgres + stockage objet
+  (Cloudflare R2, AWS S3…).
+- **Limite upload : 200 MB.** Au-dessus, risque d'OOM sur Render
+  Starter (512 MB RAM) et de timeout requête.
+- **Plan de migration** quand le volume disque dépasse ~1.5 GB :
+  migrer vers Postgres (métadonnées) + R2/S3 (binaires), retirer le
+  disque Render, lever `scaling.maxInstances`.
+
+### Smoke tests post-déploiement
+
+1. `curl https://<render>/health` → 200
+2. `curl https://<render>/api/weeks` → JSON semaines
+3. Ouvrir Vercel, naviguer Home → Uploader → Dashboard
+4. Upload d'un fichier 50 MB, vérifier liste + download ZIP + suppression
+5. Vérifier que Sentry reçoit un event de test
+6. Redéployer Render, vérifier que les fichiers + JSON sont toujours là

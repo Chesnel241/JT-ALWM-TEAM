@@ -41,8 +41,8 @@ jobs:
       - name: 🔍 Lint code
         run: npm run lint --if-present || echo "No lint script found"
 
-      - name: ✅ Verify build
-        run: node -c src/index.js
+      - name: 🧪 Run tests
+        run: npm test
 
   # ============================================================================
   # Frontend: Lint, Build & Test
@@ -71,11 +71,14 @@ jobs:
       - name: 🔍 Lint code
         run: npm run lint --if-present || echo "No lint script found"
 
+      - name: 🧪 Run tests
+        run: npm test
+
       - name: 🏗️ Build application
         run: npm run build
 
       - name: 📤 Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
           path: frontend/dist
