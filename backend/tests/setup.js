@@ -14,6 +14,7 @@ process.env.LOG_DIR = join(tmpRoot, 'logs');
 process.env.NODE_ENV = 'test';
 process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS = '10000';
 process.env.RATE_LIMIT_MAX_REQUESTS = '10000';
+process.env.CREATE_RATE_LIMIT_MAX = '10000';
 process.chdir(tmpRoot);
 
 export const TEST_UPLOADS_DIR = join(tmpRoot, 'uploads');

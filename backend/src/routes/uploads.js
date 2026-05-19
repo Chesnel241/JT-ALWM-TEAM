@@ -11,6 +11,7 @@ import { getWeekUploads, getCountryUploads, addUpload, deleteUpload } from '../d
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
+import { audit } from '../logger/audit.js';
 
 const router = Router();
 
@@ -242,6 +243,12 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
       const uploadDurationMs = Date.now() - uploadStartTime;
       recordUpload(uploadDurationMs, true); // Record successful upload
       logger.uploadReceived(weekId, countryId, file.originalname, fileData.size);
+      audit('upload.create', req, {
+        weekId, countryId,
+        fileId: fileData.id,
+        filename: file.originalname,
+        size: file.size,
+      });
       
       logger.info('Upload completed and persisted', {
         context: {
@@ -419,13 +426,17 @@ router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next)
     }
 
     logger.info('Upload deleted from database', {
-      context: { 
-        weekId, 
-        countryId, 
-        fileId, 
+      context: {
+        weekId,
+        countryId,
+        fileId,
         filename: deleted.filename,
         deletedAt: new Date().toISOString(),
       },
+    });
+    audit('upload.delete', req, {
+      weekId, countryId, fileId,
+      filename: deleted.filename,
     });
 
     return res.status(204).end();

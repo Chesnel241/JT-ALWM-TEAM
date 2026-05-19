@@ -60,7 +60,11 @@ export default function App() {
             ) : (
               <Suspense fallback={<LoadingFallback />}>
                 {currentView === 'home' && (
-                  <HomeView countries={countries} onSelectCountry={handleSelectCountry} />
+                  <HomeView
+                    countries={countries}
+                    onSelectCountry={handleSelectCountry}
+                    onCountryAdded={(c) => setCountries((prev) => [...prev, c])}
+                  />
                 )}
                 {currentView === 'uploader' && selectedCountry && (
                   <UploaderView

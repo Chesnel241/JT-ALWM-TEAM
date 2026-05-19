@@ -63,6 +63,17 @@ export function getCountryUploads(weekId, countryId) {
   return db[weekId]?.[countryId] || [];
 }
 
+export function getCustomCountries() {
+  return Array.isArray(db._countries) ? db._countries.slice() : [];
+}
+
+export function addCustomCountry(country) {
+  if (!db._countries) db._countries = [];
+  db._countries.push(country);
+  persistDb();
+  return country;
+}
+
 export function addUpload(weekId, countryId, fileData) {
   if (!db[weekId]) db[weekId] = {};
   if (!db[weekId][countryId]) db[weekId][countryId] = [];

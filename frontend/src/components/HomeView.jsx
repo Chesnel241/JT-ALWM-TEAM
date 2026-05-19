@@ -1,4 +1,20 @@
-export default function HomeView({ countries, onSelectCountry }) {
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { api } from '../api/index.js';
+import { useToast } from '../hooks/useToast.jsx';
+import AddCountryDialog from './AddCountryDialog.jsx';
+
+export default function HomeView({ countries, onSelectCountry, onCountryAdded }) {
+  const { addToast } = useToast();
+  const [addOpen, setAddOpen] = useState(false);
+
+  const handleConfirmAdd = async (payload) => {
+    const created = await api.createCountry(payload);
+    onCountryAdded?.(created);
+    setAddOpen(false);
+    addToast(`Pays "${created.name}" ajouté`, 'success', 3000);
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-10 items-start">
@@ -51,9 +67,25 @@ export default function HomeView({ countries, onSelectCountry }) {
                 <span className="text-sm text-[color:var(--muted)]">Entrer</span>
               </button>
             ))}
+
+            <button
+              onClick={() => setAddOpen(true)}
+              type="button"
+              aria-label="Ajouter un nouveau pays"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-dashed border-[var(--border)] text-[color:var(--muted)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/5 transition-all font-medium"
+            >
+              <Plus size={18} />
+              Ajouter un pays
+            </button>
           </div>
         </div>
       </div>
+
+      <AddCountryDialog
+        isOpen={addOpen}
+        onCancel={() => setAddOpen(false)}
+        onConfirm={handleConfirmAdd}
+      />
     </div>
   );
 }

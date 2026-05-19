@@ -12,6 +12,12 @@ async function request(url, options = {}) {
 
 export const api = {
   getCountries: () => request('/countries'),
+  createCountry: (country) =>
+    request('/countries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(country),
+    }),
   getWeeks: () => request('/weeks'),
 
   getUploads: (weekId, countryId) =>
