@@ -4,6 +4,9 @@ import {
   CheckCircle, Clock, ChevronRight, Trash2, AlertCircle,
 } from 'lucide-react';
 import { api } from '../api/index.js';
+import { useToast } from '../hooks/useToast.js';
+import ConfirmDialog from './ConfirmDialog.jsx';
+import SkeletonCard from './SkeletonCard.jsx';
 
 const FILE_ICONS = {
   video: { Icon: Video, color: 'text-blue-500', bg: 'bg-blue-100' },
@@ -11,16 +14,25 @@ const FILE_ICONS = {
 };
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
+  const { addToast } = useToast();
   const [uploads, setUploads] = useState([]);
   const [uploading, setUploading] = useState([]); // { id, name, progress, status, error }
   const [scriptText, setScriptText] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoadingUploads, setIsLoadingUploads] = useState(true);
   const intervalsRef = useRef({});
 
   // Charger les fichiers existants
   useEffect(() => {
     if (!selectedWeek) return;
-    api.getUploads(selectedWeek, country.id).then(setUploads).catch(console.error);
+    setIsLoadingUploads(true);
+    api.getUploads(selectedWeek, country.id)
+      .then(setUploads)
+      .catch(console.error)
+      .finally(() => setIsLoadingUploads(false));
   }, [selectedWeek, country.id]);
 
   // Cleanup des intervals au démontage
@@ -46,6 +58,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       setUploading((prev) =>
         prev.map((f) => (f.id === tempId ? { ...f, progress: 0, status: 'error', error } : f))
       );
+      addToast(`Erreur : ${error}`, 'error', 4000);
       return;
     }
 
@@ -53,6 +66,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       prev.map((f) => (f.id === tempId ? { ...f, progress: 100, status: 'completed' } : f))
     );
     setUploads((prev) => [...prev, result]);
+    addToast(`${result.name} uploadé avec succès`, 'success', 3000);
   };
 
   const handleFiles = (filesList) => {
@@ -87,17 +101,30 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       const result = await api.submitScript(selectedWeek, country.id, scriptText);
       setUploads((prev) => [...prev, result]);
       setScriptText('');
+      addToast('Script ajouté avec succès', 'success', 3000);
     } catch (err) {
-      alert(err.message);
+      addToast(`Erreur : ${err.message}`, 'error', 4000);
     }
   };
 
-  const handleDelete = async (fileId) => {
+  const openDeleteDialog = (file) => {
+    setFileToDelete(file);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.deleteFile(selectedWeek, country.id, fileId);
-      setUploads((prev) => prev.filter((f) => f.id !== fileId));
+      await api.deleteFile(selectedWeek, country.id, fileToDelete.id);
+      setUploads((prev) => prev.filter((f) => f.id !== fileToDelete.id));
+      addToast(`${fileToDelete.name} supprimé`, 'success', 3000);
+      setDeleteDialogOpen(false);
+      setFileToDelete(null);
     } catch (err) {
-      alert(err.message);
+      addToast(`Erreur : ${err.message}`, 'error', 4000);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -251,7 +278,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             </h3>
           </div>
 
-          {uploads.length === 0 ? (
+          {isLoadingUploads ? (
+            <SkeletonCard count={2} />
+          ) : uploads.length === 0 ? (
             <div className="text-center text-[color:var(--muted)] py-8 flex flex-col items-center">
               <Clock size={32} className="text-[color:var(--muted)] mb-2" />
               <p className="text-sm">Aucun fichier uploadé pour l'instant.</p>
@@ -273,7 +302,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                       <p className="text-xs text-[color:var(--muted)]">{file.size}</p>
                     </div>
                     <button
-                      onClick={() => handleDelete(file.id)}
+                      onClick={() => openDeleteDialog(file)}
                       type="button"
                       className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded transition-colors"
                       title="Supprimer"
@@ -287,6 +316,21 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        title="Supprimer ce fichier ?"
+        message={`Êtes-vous sûr de vouloir supprimer "${fileToDelete?.name}" ? Cette action est irréversible.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setFileToDelete(null);
+        }}
+      />
     </div>
   );
 }

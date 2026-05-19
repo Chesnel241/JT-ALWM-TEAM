@@ -1,0 +1,66 @@
+/**
+ * Rate Limiter Middleware
+ * Protection contre les abus d'API
+ */
+
+import rateLimit from 'express-rate-limit';
+
+/**
+ * Rate limiter pour les uploads
+ * Limite: 10 uploads par IP / 1 heure
+ */
+export const uploadLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || 3600000), // 1 heure
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || 10), // 10 requêtes par IP
+  message: 'Trop d\'uploads depuis cette IP. Veuillez réessayer plus tard.',
+  standardHeaders: true,
+  legacyHeaders: false, validate: { xForwardedForHeader: false, default: false },
+  keyGenerator: (req) => {
+    // Utiliser X-Forwarded-For si disponible (proxy/load balancer)
+    return req.headers['x-forwarded-for'] || req.ip || 'unknown';
+  },
+  skip: (req) => {
+    // Optionnel: ignorer certaines routes ou IPs
+    return false;
+  },
+  handler: (req, res, options) => {
+    res.status(options.statusCode).json({
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: options.message,
+      details: {
+        retryAfter: req.rateLimit ? req.rateLimit.resetTime : null
+      }
+    });
+  }
+});
+
+/**
+ * Global rate limiter
+ * Limite: 100 requests/min par IP
+ */
+export const globalLimiter = rateLimit({
+  windowMs: parseInt(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || 60000), // 1 minute
+  max: parseInt(process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS || 100), // 100 requêtes par IP
+  message: 'Trop de requêtes depuis cette IP. Veuillez réessayer plus tard.',
+  standardHeaders: true,
+  legacyHeaders: false, validate: { xForwardedForHeader: false, default: false },
+  keyGenerator: (req) => {
+    return req.headers['x-forwarded-for'] || req.ip || 'unknown';
+  },
+  skip: (req) => {
+    // Optionnel: exclure les requêtes GET sur /uploads (fichiers statiques)
+    return req.method === 'GET' && req.path.startsWith('/uploads');
+  },
+  handler: (req, res, options) => {
+    res.status(options.statusCode).json({
+      code: 'GLOBAL_RATE_LIMIT_EXCEEDED',
+      message: options.message,
+      details: {
+        retryAfter: req.rateLimit ? req.rateLimit.resetTime : null
+      }
+    });
+  }
+});
+
+export default { uploadLimiter, globalLimiter };
+

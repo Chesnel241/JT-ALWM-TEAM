@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import logger from '../logger/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = join(__dirname, 'store.json');
@@ -103,39 +104,139 @@ function parseWeekEndDate(week) {
 }
 
 function deleteUploadFile(upload, uploadsDir) {
-  if (!upload?.filename || !uploadsDir) return;
+  if (!upload?.filename || !uploadsDir) return false;
   const filePath = join(uploadsDir, upload.filename);
   try {
-    if (existsSync(filePath)) unlinkSync(filePath);
-  } catch {
-    // Best-effort cleanup
+    if (existsSync(filePath)) {
+      unlinkSync(filePath);
+      logger.info(`File deleted: ${upload.filename}`, {
+        context: { filename: upload.filename, uploadId: upload.id },
+      });
+      return true;
+    }
+  } catch (err) {
+    logger.error(`Failed to delete file: ${upload.filename}`, {
+      error: err.message,
+      context: { filename: upload.filename },
+    });
   }
+  return false;
 }
 
 export function cleanupExpiredUploads(weeks, uploadsDir) {
   const now = new Date();
   let removedCount = 0;
+  let removedFromDb = 0;
+  const removedFiles = [];
+  const details = {
+    startTime: now.toISOString(),
+    errors: [],
+  };
 
+  logger.info('Starting cleanup of expired uploads', { context: { uploadsDir } });
+
+  // Nettoyer les fichiers liés aux semaines archivées expirées
   for (const week of weeks) {
     if (week.status !== 'archived') continue;
     const endDate = parseWeekEndDate(week);
-    if (!endDate) continue;
+    if (!endDate) {
+      logger.warn(`Could not parse end date for week ${week.id}`, {
+        context: { weekId: week.id, weekDates: week.dates },
+      });
+      continue;
+    }
+
     const expiry = new Date(endDate.getTime() + 48 * 60 * 60 * 1000);
-    if (now <= expiry) continue;
+    if (now <= expiry) {
+      logger.debug(`Week ${week.id} not yet expired`, {
+        context: { weekId: week.id, expiryDate: expiry.toISOString() },
+      });
+      continue;
+    }
+
+    logger.info(`Cleanup: Week ${week.id} expired, removing uploads`, {
+      context: { weekId: week.id, endDate: endDate.toISOString() },
+    });
 
     const weekUploads = db[week.id];
     if (!weekUploads) continue;
 
     for (const countryId of Object.keys(weekUploads)) {
       for (const upload of weekUploads[countryId]) {
-        deleteUploadFile(upload, uploadsDir);
-        removedCount += 1;
+        if (deleteUploadFile(upload, uploadsDir)) {
+          removedCount++;
+          removedFiles.push({ weekId: week.id, countryId, filename: upload.filename });
+        }
       }
     }
 
     delete db[week.id];
+    removedFromDb++;
   }
 
-  if (removedCount > 0) persistDb();
+  // Nettoyer les fichiers orphelins (dans le dossier mais pas dans la DB)
+  if (existsSync(uploadsDir)) {
+    try {
+      const physicalFiles = readdirSync(uploadsDir);
+      for (const file of physicalFiles) {
+        // Vérifier si ce fichier est référencé dans la DB
+        let found = false;
+        for (const weekId of Object.keys(db)) {
+          for (const countryId of Object.keys(db[weekId])) {
+            if (db[weekId][countryId].some((u) => u.filename === file)) {
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+
+        // Si pas trouvé, c'est un orphelin - le supprimer
+        if (!found) {
+          const filePath = join(uploadsDir, file);
+          try {
+            unlinkSync(filePath);
+            removedCount++;
+            logger.info(`Orphan file deleted: ${file}`, {
+              context: { filename: file, reason: 'orphaned' },
+            });
+            removedFiles.push({ filename: file, reason: 'orphaned' });
+          } catch (err) {
+            logger.error(`Failed to delete orphan file: ${file}`, {
+              error: err.message,
+              context: { filename: file },
+            });
+            details.errors.push({ filename: file, error: err.message });
+          }
+        }
+      }
+    } catch (err) {
+      logger.error('Error during orphan file cleanup', {
+        error: err.message,
+        context: { uploadsDir },
+      });
+      details.errors.push({ phase: 'orphan_cleanup', error: err.message });
+    }
+  }
+
+  if (removedCount > 0 || removedFromDb > 0) {
+    try {
+      persistDb();
+    } catch (err) {
+      logger.error('Failed to persist database after cleanup', {
+        error: err.message,
+      });
+      details.errors.push({ phase: 'persist_db', error: err.message });
+    }
+  }
+
+  details.endTime = new Date().toISOString();
+  logger.cleanupExecuted(removedCount, {
+    removedCount,
+    removedFromDb,
+    filesRemoved: removedFiles,
+    errors: details.errors,
+  });
+
   return removedCount;
-}
+};

@@ -1,25 +1,55 @@
 import { useState, useEffect } from 'react';
 import { Folder, FileText, Video, Download, Trash2 } from 'lucide-react';
 import { api } from '../api/index.js';
+import { useToast } from '../hooks/useToast.js';
+import ConfirmDialog from './ConfirmDialog.jsx';
+import SkeletonCard from './SkeletonCard.jsx';
 
 export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries }) {
+  const { addToast } = useToast();
   const [dashboard, setDashboard] = useState({});
+  const [loading, setLoading] = useState(true);
   const [viewingScript, setViewingScript] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!selectedWeek) return;
-    api.getDashboard(selectedWeek).then(setDashboard).catch(console.error);
-  }, [selectedWeek]);
+    setLoading(true);
+    api.getDashboard(selectedWeek)
+      .then(setDashboard)
+      .catch((err) => {
+        console.error(err);
+        addToast('Erreur lors du chargement', 'error', 3000);
+      })
+      .finally(() => setLoading(false));
+  }, [selectedWeek, addToast]);
 
-  const handleDelete = async (countryId, fileId) => {
+  const openDeleteDialog = (countryId, fileId) => {
+    const file = dashboard[countryId]?.find(f => f.id === fileId);
+    if (file) {
+      setFileToDelete({ countryId, fileId, fileName: file.name });
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.deleteFile(selectedWeek, countryId, fileId);
+      await api.deleteFile(selectedWeek, fileToDelete.countryId, fileToDelete.fileId);
       setDashboard((prev) => ({
         ...prev,
-        [countryId]: prev[countryId].filter((f) => f.id !== fileId),
+        [fileToDelete.countryId]: prev[fileToDelete.countryId].filter((f) => f.id !== fileToDelete.fileId),
       }));
+      addToast(`${fileToDelete.fileName} supprimé`, 'success', 3000);
+      setDeleteDialogOpen(false);
+      setFileToDelete(null);
     } catch (err) {
-      alert(err.message);
+      addToast(`Erreur : ${err.message}`, 'error', 4000);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -55,7 +85,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         </div>
       </div>
 
-      {countriesWithUploads.length === 0 ? (
+      {loading ? (
+        <div className="space-y-4">
+          <SkeletonCard count={3} />
+        </div>
+      ) : countriesWithUploads.length === 0 ? (
         <div className="panel border-2 border-dashed p-12 text-center">
           <Folder className="mx-auto h-16 w-16 text-[color:var(--muted)] mb-4" />
           <h3 className="text-xl font-medium text-[color:var(--ink)]">Aucun element recu pour cette semaine</h3>
@@ -113,7 +147,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                 <Download size={16} />
                               </a>
                               <button
-                                onClick={() => handleDelete(countryId, file.id)}
+                                onClick={() => openDeleteDialog(countryId, file.id)}
                                 className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
                                 title="Supprimer"
                               >
@@ -147,7 +181,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                 Lire
                               </button>
                               <button
-                                onClick={() => handleDelete(countryId, file.id)}
+                                onClick={() => openDeleteDialog(countryId, file.id)}
                                 type="button"
                                 className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
                                 title="Supprimer"
@@ -224,6 +258,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        title="Supprimer ce fichier ?"
+        message={`Êtes-vous sûr de vouloir supprimer "${fileToDelete?.fileName}" ? Cette action est irréversible.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setFileToDelete(null);
+        }}
+      />
     </div>
   );
 }

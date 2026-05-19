@@ -1,0 +1,26 @@
+[2026-05-19 20:20:54] [INFO] Initializing cleanup scheduler | context: {"interval":"1 hour","uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads"}
+[2026-05-19 20:20:54] [INFO] Starting cleanup of expired uploads | context: {"uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads"}
+[2026-05-19 20:20:54] [INFO] Cleanup executed: 0 files removed | context: {"removedCount":0,"removedFromDb":0,"filesRemoved":[],"errors":[]}
+[2026-05-19 20:20:54] [INFO] ✅ Backend JT ALWM démarré | context: {"port":3010,"environment":"development","uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads","timestamp":"2026-05-19T18:20:54.142Z"}
+[2026-05-19 20:21:41] [INFO] Initializing cleanup scheduler | context: {"interval":"1 hour","uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads"}
+[2026-05-19 20:21:41] [INFO] Starting cleanup of expired uploads | context: {"uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads"}
+[2026-05-19 20:21:41] [INFO] Cleanup executed: 0 files removed | context: {"removedCount":0,"removedFromDb":0,"filesRemoved":[],"errors":[]}
+[2026-05-19 20:21:41] [INFO] ✅ Backend JT ALWM démarré | context: {"port":3010,"environment":"development","uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads","timestamp":"2026-05-19T18:21:41.799Z"}
+[2026-05-19 20:39:08] [INFO] ✅ Alert monitoring started | context: {"check_interval_seconds":30,"error_rate_threshold":"5%","disk_threshold":"80%","memory_threshold":"90%"}
+[2026-05-19 20:39:08] [INFO] Initializing cleanup scheduler | context: {"interval":"1 hour","uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads"}
+[2026-05-19 20:39:08] [INFO] Starting cleanup of expired uploads | context: {"uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads"}
+[2026-05-19 20:39:08] [INFO] Cleanup executed: 0 files removed | context: {"removedCount":0,"removedFromDb":0,"filesRemoved":[],"errors":[]}
+[2026-05-19 20:39:08] [INFO] ✅ Backend JT ALWM démarré | context: {"port":3010,"environment":"development","uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads","timestamp":"2026-05-19T18:39:08.449Z"}
+[2026-05-19 20:39:38] [ERROR] 🚨 ALERT: HIGH_MEMORY_USAGE | context: {"message":"Memory usage: 90.41% (threshold: 90.00%)","timestamp":"2026-05-19T18:39:38.449Z","heap_used_mb":"24.56","heap_total_mb":"27.17","usage_percent":"90.41"}
+[2026-05-19 20:40:04] [INFO] Client error (404): Route GET /health not found | context: {"method":"GET","path":"/health","error":"Route GET /health not found","statusCode":404}
+[2026-05-19 20:40:08] [ERROR] 🚨 ALERT: HIGH_ERROR_RATE | context: {"message":"Error rate: 100.00% (threshold: 5.00%)","timestamp":"2026-05-19T18:40:08.459Z","error_rate":"100.00","total_errors":1,"total_requests":1}
+[2026-05-19 20:40:42] [INFO] ✅ Alert monitoring started | context: {"check_interval_seconds":30,"error_rate_threshold":"5%","disk_threshold":"80%","memory_threshold":"90%"}
+[2026-05-19 20:40:42] [INFO] Initializing cleanup scheduler | context: {"interval":"1 hour","uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads"}
+[2026-05-19 20:40:42] [INFO] Starting cleanup of expired uploads | context: {"uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads"}
+[2026-05-19 20:40:42] [INFO] Cleanup executed: 0 files removed | context: {"removedCount":0,"removedFromDb":0,"filesRemoved":[],"errors":[]}
+[2026-05-19 20:40:42] [INFO] ✅ Backend JT ALWM démarré | context: {"port":3010,"environment":"development","uploadsDir":"C:\\Users\\ekogh\\Downloads\\JT ALWM TEAM app\\backend\\uploads","timestamp":"2026-05-19T18:40:42.322Z"}
+[2026-05-19 20:41:00] [INFO] Client error (404): Route GET /health not found | context: {"method":"GET","path":"/health","error":"Route GET /health not found","statusCode":404}
+[2026-05-19 20:41:12] [ERROR] 🚨 ALERT: HIGH_ERROR_RATE | context: {"message":"Error rate: 25.00% (threshold: 5.00%)","timestamp":"2026-05-19T18:41:12.325Z","error_rate":"25.00","total_errors":1,"total_requests":4}
+[2026-05-19 20:41:12] [ERROR] 🚨 ALERT: HIGH_MEMORY_USAGE | context: {"message":"Memory usage: 90.10% (threshold: 90.00%)","timestamp":"2026-05-19T18:41:12.326Z","heap_used_mb":"25.16","heap_total_mb":"27.92","usage_percent":"90.10"}
+[2026-05-19 20:41:17] [INFO] Client error (404): Route GET /health not found | context: {"method":"GET","path":"/health","error":"Route GET /health not found","statusCode":404}
+[2026-05-19 20:41:20] [INFO] Client error (404): Route GET /health not found | context: {"method":"GET","path":"/health","error":"Route GET /health not found","statusCode":404}

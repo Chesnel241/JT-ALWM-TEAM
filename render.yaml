@@ -1,0 +1,42 @@
+version: 2024-07
+
+services:
+  - type: web
+    name: jt-alwm-backend
+    env: node
+    plan: starter
+    region: frankfurt
+
+    # Build configuration
+    buildCommand: npm install
+    startCommand: npm start
+
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3010
+      - key: CORS_ORIGIN
+        value: https://jt-alwm-frontend.vercel.app
+        sync: false
+
+    # Mount uploads directory for persistence
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 2
+
+    # Healthcheck
+    healthCheckPath: /api/weeks
+    healthCheckInterval: 30
+
+    # Docker configuration
+    dockerCommand: npm start
+
+    # Scaling
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 75
+      targetCPUPercent: 75
