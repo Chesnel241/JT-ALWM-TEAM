@@ -19,6 +19,11 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
 
   const app = express();
 
+  // Render (et la plupart des PaaS) placent un load balancer devant
+  // l'app. Sans `trust proxy`, req.ip vaut l'IP du LB et le rate
+  // limiter bloque tout le monde sous une seule clé.
+  app.set('trust proxy', 1);
+
   if (enableMonitoring) {
     initSentry(app);
     initMetrics(app);
