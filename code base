@@ -1,0 +1,543 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  UploadCloud, 
+  Folder, 
+  FileText, 
+  Video, 
+  CheckCircle, 
+  AlertCircle, 
+  Clock, 
+  Download,
+  ChevronRight,
+  Globe,
+  LayoutDashboard,
+  Trash2
+} from 'lucide-react';
+
+
+// --- DONNÉES SIMULÉES ---
+const COUNTRIES = [
+  { id: 'cm', name: 'Cameroun', code: 'CM' },
+  { id: 'sn', name: 'Sénégal', code: 'SN' },
+  { id: 'ci', name: 'Côte d\'Ivoire', code: 'CI' },
+  { id: 'cd', name: 'Rép. Dém. du Congo', code: 'CD' },
+  { id: 'cg', name: 'Congo Brazzaville', code: 'CG' },
+  { id: 'ma', name: 'Maroc', code: 'MA' },
+  { id: 'tg', name: 'Togo', code: 'TG' },
+];
+
+const WEEKS = [
+  { id: 'w-42', name: 'Semaine 42', dates: '14 Oct - 20 Oct', status: 'archived' },
+  { id: 'w-43', name: 'Semaine 43', dates: '21 Oct - 27 Oct', status: 'active' },
+  { id: 'w-44', name: 'Semaine 44', dates: '28 Oct - 03 Nov', status: 'upcoming' },
+];
+
+// Types de fichiers supportés
+const FILE_TYPES = {
+  video: { icon: Video, color: 'text-blue-500', bg: 'bg-blue-100' },
+  script: { icon: FileText, color: 'text-amber-500', bg: 'bg-amber-100' },
+};
+
+
+export default function JTWebPlatform() {
+  // --- ÉTATS GLOBAUX ---
+  const [currentView, setCurrentView] = useState('home'); // 'home', 'uploader', 'dashboard'
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [selectedWeek, setSelectedWeek] = useState(WEEKS.find(w => w.status === 'active').id);
+  
+  // Base de données simulée des uploads : { weekId: { countryId: [ { id, name, type, size, status, scriptContent } ] } }
+  const [uploadsDB, setUploadsDB] = useState({
+    'w-43': {
+      'sn': [
+        { id: '1', name: 'rush_manifestation_dakar.mp4', type: 'video', size: '450 MB', status: 'completed' },
+        { id: '2', name: 'script_manifestation.txt', type: 'script', size: '12 KB', status: 'completed', content: 'Le rassemblement a commencé à 10h...' }
+      ]
+    }
+  });
+
+
+  const getUploadsForWeek = (weekId) => uploadsDB[weekId] || {};
+  
+  const getUploadsForCountry = (weekId, countryId) => {
+    return (uploadsDB[weekId] && uploadsDB[weekId][countryId]) || [];
+  };
+
+  const addUpload = (weekId, countryId, fileData) => {
+    setUploadsDB(prev => {
+      const newDB = { ...prev };
+      if (!newDB[weekId]) newDB[weekId] = {};
+      if (!newDB[weekId][countryId]) newDB[weekId][countryId] = [];
+      newDB[weekId][countryId] = [...newDB[weekId][countryId], fileData];
+      return newDB;
+    });
+  };
+
+
+  const renderNav = () => (
+    <nav className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
+      <div className="flex items-center gap-3">
+        <Globe className="text-blue-400" size={28} />
+        <h1 className="text-xl font-bold tracking-wider">JT WEB HUB</h1>
+      </div>
+      <div className="flex gap-4">
+        <button 
+          onClick={() => setCurrentView('home')}
+          className={`px-4 py-2 rounded-md transition-colors ${currentView === 'home' || currentView === 'uploader' ? 'bg-blue-600' : 'hover:bg-slate-700'}`}
+        >
+          Espace Correspondants
+        </button>
+        <button 
+          onClick={() => setCurrentView('dashboard')}
+          className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${currentView === 'dashboard' ? 'bg-emerald-600' : 'hover:bg-slate-700'}`}
+        >
+          <LayoutDashboard size={18} />
+          Espace Montage
+        </button>
+      </div>
+    </nav>
+  );
+
+
+  const renderHomeView = () => (
+    <div className="max-w-4xl mx-auto p-8">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl font-bold text-slate-800 mb-4">Portail des Correspondants</h2>
+        <p className="text-slate-600">Sélectionnez votre pays pour uploader vos reportages, rushs et scripts de la semaine.</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {COUNTRIES.map(country => (
+          <button
+            key={country.id}
+            onClick={() => {
+              setSelectedCountry(country);
+              setCurrentView('uploader');
+            }}
+            className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all flex flex-col items-center gap-4 group"
+          >
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl font-bold text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+              {country.code}
+            </div>
+            <span className="font-medium text-slate-700">{country.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+
+  const UploaderView = () => {
+    const [dragActive, setDragActive] = useState(false);
+    const [uploadingFiles, setUploadingFiles] = useState([]); // { file, progress, status, id }
+    const [scriptText, setScriptText] = useState('');
+
+    const countryUploads = getUploadsForCountry(selectedWeek, selectedCountry.id);
+
+    const handleDrag = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.type === "dragenter" || e.type === "dragover") {
+        setDragActive(true);
+      } else if (e.type === "dragleave") {
+        setDragActive(false);
+      }
+    };
+
+    const simulateUpload = (fileObj) => {
+      // Simulation d'un upload "chunked" avec progression
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 15 + 5; // Avance aléatoire
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          
+          setUploadingFiles(prev => prev.map(f => 
+            f.id === fileObj.id ? { ...f, progress: 100, status: 'completed' } : f
+          ));
+
+          // Ajouter à la "DB"
+          addUpload(selectedWeek, selectedCountry.id, {
+            id: fileObj.id,
+            name: fileObj.file.name,
+            type: fileObj.file.name.endsWith('.txt') ? 'script' : 'video',
+            size: (fileObj.file.size / (1024 * 1024)).toFixed(1) + ' MB',
+            status: 'completed'
+          });
+
+          // Si c'est un txt, on simule une lecture
+          if (fileObj.file.name.endsWith('.txt')) {
+             const reader = new FileReader();
+             reader.onload = (e) => {
+                 setUploadsDB(prev => {
+                     const newDB = {...prev};
+                     const fileIndex = newDB[selectedWeek][selectedCountry.id].findIndex(f => f.id === fileObj.id);
+                     if(fileIndex > -1) {
+                         newDB[selectedWeek][selectedCountry.id][fileIndex].content = e.target.result;
+                     }
+                     return newDB;
+                 });
+             };
+             reader.readAsText(fileObj.file);
+          }
+
+        } else {
+          setUploadingFiles(prev => prev.map(f => 
+            f.id === fileObj.id ? { ...f, progress } : f
+          ));
+        }
+      }, 500); // Mise à jour toutes les 500ms pour simuler le réseau
+    };
+
+    const handleDrop = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFiles(e.dataTransfer.files);
+      }
+    };
+
+    const handleFiles = (filesList) => {
+      const newFiles = Array.from(filesList).map(file => ({
+        file,
+        id: Math.random().toString(36).substr(2, 9),
+        progress: 0,
+        status: 'uploading'
+      }));
+      
+      setUploadingFiles(prev => [...prev, ...newFiles]);
+      newFiles.forEach(f => simulateUpload(f));
+    };
+
+    const handleScriptSubmit = () => {
+      if (!scriptText.trim()) return;
+      const scriptId = Math.random().toString(36).substr(2, 9);
+      addUpload(selectedWeek, selectedCountry.id, {
+        id: scriptId,
+        name: `Script_Manuel_${new Date().getTime()}.txt`,
+        type: 'script',
+        size: '1 KB',
+        status: 'completed',
+        content: scriptText
+      });
+      setScriptText('');
+    };
+
+    return (
+      <div className="max-w-5xl mx-auto p-6">
+        {/* En-tête Uploader */}
+        <div className="flex items-center gap-4 mb-8 border-b pb-4">
+          <button onClick={() => setCurrentView('home')} className="text-slate-500 hover:text-slate-800">
+            Pays
+          </button>
+          <ChevronRight size={16} className="text-slate-400" />
+          <span className="font-bold text-xl flex items-center gap-2">
+            {selectedCountry.name}
+            <span className="text-sm font-normal bg-slate-100 px-2 py-1 rounded text-slate-600 border">
+              {selectedCountry.code}
+            </span>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Colonne Principale: Upload */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Sélecteur de Semaine */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-800">Semaine de diffusion</h3>
+                <p className="text-sm text-slate-500">Assurez-vous d'uploader dans le bon dossier.</p>
+              </div>
+              <select 
+                value={selectedWeek} 
+                onChange={(e) => setSelectedWeek(e.target.value)}
+                className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 font-medium"
+              >
+                {WEEKS.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.dates}) {w.status === 'active' ? ' - EN COURS' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Zone de Drag & Drop */}
+            <div 
+              className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
+                dragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <UploadCloud className="mx-auto h-16 w-16 text-slate-400 mb-4" />
+              <h3 className="text-lg font-semibold text-slate-700 mb-2">
+                Glissez-déposez vos fichiers ici
+              </h3>
+              <p className="text-slate-500 text-sm mb-6">
+                Vidéos (MP4, MOV), Audios (MP3, WAV), ou Scripts (TXT, DOCX).<br/>
+                <span className="text-emerald-600 font-medium">Reprise automatique en cas de coupure supportée.</span>
+              </p>
+              <label className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium cursor-pointer hover:bg-blue-700 transition-colors">
+                Parcourir les fichiers
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  multiple 
+                  onChange={(e) => {
+                    if (e.target.files) handleFiles(e.target.files);
+                  }}
+                />
+              </label>
+            </div>
+
+            {/* Zone de saisie rapide de script */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+               <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                  <FileText size={18} className="text-amber-500" />
+                  Saisir un script rapidement
+               </h3>
+               <textarea 
+                  className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none mb-3"
+                  rows="4"
+                  placeholder="Collez ici le texte de la voix off ou vos notes pour le monteur..."
+                  value={scriptText}
+                  onChange={(e) => setScriptText(e.target.value)}
+               ></textarea>
+               <div className="flex justify-end">
+                  <button 
+                    onClick={handleScriptSubmit}
+                    disabled={!scriptText.trim()}
+                    className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                  >
+                    Ajouter le script
+                  </button>
+               </div>
+            </div>
+
+            {/* Fichiers en cours d'upload */}
+            {uploadingFiles.length > 0 && (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 className="font-semibold text-slate-800 mb-4">Transferts en cours</h3>
+                <div className="space-y-4">
+                  {uploadingFiles.map(file => (
+                    <div key={file.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="font-medium text-slate-700 truncate pr-4">{file.file.name}</span>
+                        {file.status === 'completed' ? (
+                          <span className="text-emerald-600 flex items-center gap-1"><CheckCircle size={14}/> Terminé</span>
+                        ) : (
+                          <span className="text-blue-600">{Math.round(file.progress)}%</span>
+                        )}
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ${file.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-600'}`}
+                          style={{ width: `${file.progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Colonne Latérale: Fichiers déjà sur le serveur */}
+          <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 h-fit">
+            <div className="flex items-center gap-2 mb-6">
+              <Folder className="text-slate-400" />
+              <h3 className="font-semibold text-slate-800">Dossier: {WEEKS.find(w=>w.id===selectedWeek)?.name}</h3>
+            </div>
+
+            {countryUploads.length === 0 ? (
+              <div className="text-center text-slate-500 py-8 flex flex-col items-center">
+                <Clock size={32} className="text-slate-300 mb-2" />
+                <p className="text-sm">Aucun fichier uploadé pour l'instant.</p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {countryUploads.map(file => {
+                  const TypeIcon = FILE_TYPES[file.type]?.icon || FileText;
+                  const typeColor = FILE_TYPES[file.type]?.color || 'text-slate-500';
+                  const typeBg = FILE_TYPES[file.type]?.bg || 'bg-slate-100';
+
+                  return (
+                    <li key={file.id} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-start gap-3">
+                      <div className={`p-2 rounded-md ${typeBg}`}>
+                        <TypeIcon size={18} className={typeColor} />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
+                        <p className="text-xs text-slate-500">{file.size} • Uploadé</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+        </div>
+      </div>
+    );
+  };
+
+
+  const DashboardView = () => {
+    const activeWeekUploads = getUploadsForWeek(selectedWeek);
+    const countriesWithUploads = Object.keys(activeWeekUploads);
+    const [viewingScript, setViewingScript] = useState(null);
+
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="flex justify-between items-end mb-8">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-800 mb-2">Tableau de bord Montage</h2>
+            <p className="text-slate-600">Vue centralisée des éléments reçus.</p>
+          </div>
+          
+          <div className="flex items-center gap-4 bg-white p-2 rounded-lg shadow-sm border">
+            <span className="text-sm text-slate-500 font-medium">Semaine en cours :</span>
+            <select 
+              value={selectedWeek} 
+              onChange={(e) => setSelectedWeek(e.target.value)}
+              className="bg-slate-50 border-none text-slate-900 text-sm font-bold focus:ring-0 cursor-pointer"
+            >
+              {WEEKS.map(w => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {countriesWithUploads.length === 0 ? (
+          <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-12 text-center">
+            <Folder className="mx-auto h-16 w-16 text-slate-300 mb-4" />
+            <h3 className="text-xl font-medium text-slate-600">Aucun élément reçu pour cette semaine</h3>
+            <p className="text-slate-400 mt-2">Les fichiers apparaîtront ici dès que les correspondants les uploaderont.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {countriesWithUploads.map(countryId => {
+              const country = COUNTRIES.find(c => c.id === countryId);
+              const files = activeWeekUploads[countryId];
+              const videos = files.filter(f => f.type === 'video');
+              const scripts = files.filter(f => f.type === 'script');
+
+              return (
+                <div key={countryId} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                  {/* En-tête Pays */}
+                  <div className="bg-slate-800 text-white p-4 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center font-bold text-sm">
+                        {country?.code}
+                      </div>
+                      <span className="font-semibold">{country?.name}</span>
+                    </div>
+                    <span className="bg-blue-500 text-xs px-2 py-1 rounded-full font-medium">
+                      {files.length} fichiers
+                    </span>
+                  </div>
+
+                  {/* Liste des fichiers */}
+                  <div className="p-4 flex-1">
+                    {/* Vidéos */}
+                    {videos.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Video size={12}/> Vidéos / Rushs</h4>
+                        <ul className="space-y-2">
+                          {videos.map(file => (
+                            <li key={file.id} className="flex justify-between items-center text-sm bg-slate-50 p-2 rounded border border-slate-100">
+                              <span className="truncate pr-2 font-medium text-slate-700">{file.name}</span>
+                              <button className="text-blue-600 hover:bg-blue-100 p-1 rounded" title="Télécharger">
+                                <Download size={16} />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Scripts */}
+                    {scripts.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1"><FileText size={12}/> Scripts / Notes</h4>
+                        <ul className="space-y-2">
+                          {scripts.map(file => (
+                            <li key={file.id} className="flex justify-between items-center text-sm bg-amber-50 p-2 rounded border border-amber-100">
+                              <span className="truncate pr-2 font-medium text-slate-700">{file.name}</span>
+                              <button 
+                                onClick={() => setViewingScript(file)}
+                                className="text-amber-700 hover:bg-amber-200 p-1 rounded px-2 text-xs font-medium"
+                              >
+                                Lire
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Bouton d'action global par pays */}
+                  <div className="p-4 bg-slate-50 border-t border-slate-100 mt-auto">
+                    <button className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium py-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
+                      <Download size={16} />
+                      Tout télécharger ({country?.code})
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Modal de lecture de script simulé */}
+        {viewingScript && (
+          <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50" onClick={() => setViewingScript(null)}>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                  <FileText className="text-amber-500" />
+                  {viewingScript.name}
+                </h3>
+                <button onClick={() => setViewingScript(null)} className="text-slate-500 hover:text-slate-800 p-2">✕</button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1 font-mono text-sm whitespace-pre-wrap text-slate-700">
+                {viewingScript.content || "Contenu du script non disponible dans cette simulation."}
+              </div>
+              <div className="p-4 border-t bg-slate-50 flex justify-end">
+                 <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+                   <Download size={16} /> Télécharger .txt
+                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
+  return (
+    <div className="min-h-screen bg-slate-100 font-sans">
+      {renderNav()}
+      
+      <main className="pb-12">
+        {currentView === 'home' && renderHomeView()}
+        {currentView === 'uploader' && <UploaderView />}
+        {currentView === 'dashboard' && <DashboardView />}
+      </main>
+
+      <footer className="bg-slate-900 text-slate-400 py-6 text-center text-sm border-t border-slate-800 mt-auto">
+        <p>JT WEB Hub - Outil de centralisation des reportages.</p>
+        <p className="text-xs mt-2 text-slate-500">Rétention automatique : Les fichiers sont supprimés 48h après la fin de la semaine de diffusion.</p>
+      </footer>
+    </div>
+  );
+}
