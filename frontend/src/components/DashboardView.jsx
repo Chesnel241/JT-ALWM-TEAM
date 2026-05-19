@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Folder, FileText, Video, Download, Trash2 } from 'lucide-react';
-import { api } from '../api/index.js';
+import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
@@ -139,7 +139,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             <span className="truncate pr-2 font-medium text-[color:var(--ink)]">{file.name}</span>
                             <div className="flex gap-1">
                               <a
-                                href={`/uploads/${file.filename}`}
+                                href={`${API_BASE}/uploads/${file.filename}`}
                                 download={file.name}
                                 className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
                                 title="Télécharger"
@@ -199,7 +199,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 {/* Télécharger tout */}
                 <div className="p-4 bg-[var(--paper)] border-t border-[var(--border)] mt-auto flex justify-end">
                   <a
-                    href={`/api/uploads/${selectedWeek}/${countryId}/archive`}
+                    href={`${API_BASE}/api/uploads/${selectedWeek}/${countryId}/archive`}
                     download={`uploads_${selectedWeek}_${country?.code || countryId}.zip`}
                     className="btn btn-primary flex items-center gap-2"
                   >
@@ -247,7 +247,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             <div className="p-4 border-t border-[var(--border)] bg-[var(--paper)] flex justify-end">
               {viewingScript.filename && (
                 <a
-                  href={`/uploads/${viewingScript.filename}`}
+                  href={`${API_BASE}/uploads/${viewingScript.filename}`}
                   download={viewingScript.name}
                   className="btn btn-primary flex items-center gap-2"
                 >

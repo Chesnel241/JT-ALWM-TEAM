@@ -43,9 +43,10 @@ cd "JT ALWM TEAM app"
    - **Name**: `jt-alwm-backend`
    - **Environment**: `Node`
    - **Root Directory**: `backend`
-   - **Build Command**: `npm install`
+   - **Build Command**: `npm ci`
    - **Start Command**: `npm start`
-   - **Plan**: Free ou Paid (selon besoin)
+   - **Plan**: Starter (le plan Free ne supporte pas le disque persistant)
+   - **Persistent Disk**: 2 GB, mount path `/app/uploads`
 
 #### Étape 2: Ajouter les Variables d'Environnement
 
@@ -54,9 +55,15 @@ Dans Render dashboard, aller à **Environment**:
 ```
 NODE_ENV=production
 PORT=3010
-SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
-CORS_ORIGIN=https://your-frontend-url.com
+CORS_ORIGIN=https://your-frontend-url.vercel.app
+SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id   # optionnel
+MAX_FILE_SIZE=209715200                                   # 200 MB
+LOG_DIR=/app/uploads/logs                                 # logs persistants
 ```
+
+⚠️ `CORS_ORIGIN` doit être l'URL **exacte** du frontend Vercel (incluant `https://`).
+Plusieurs origines : séparer par virgules sans espace, ex.
+`https://prod.example.com,https://staging.example.com`.
 
 #### Étape 3: Déployer
 
@@ -99,10 +106,12 @@ git push heroku master
 Dans **Settings → Environment Variables**:
 
 ```
-VITE_API_BASE_URL=https://jt-alwm-backend.onrender.com
-VITE_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
-VITE_ENV=production
+VITE_API_URL=https://jt-alwm-backend.onrender.com
+VITE_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id   # optionnel
 ```
+
+⚠️ **NE PAS** mettre de slash final dans `VITE_API_URL`. Le code l'ajoute lui-même.
+⚠️ La variable s'appelle **`VITE_API_URL`** (et non `VITE_API_BASE_URL`).
 
 #### Étape 3: Déployer
 
@@ -149,9 +158,8 @@ AWS_SECRET_ACCESS_KEY=
 ### Frontend (.env.production)
 
 ```env
-VITE_API_BASE_URL=https://your-backend-url.com
+VITE_API_URL=https://your-backend-url.onrender.com
 VITE_SENTRY_DSN=https://xxxx@sentry.io/xxxx
-VITE_ENV=production
 ```
 
 ### Générer une Clé Sentry
@@ -211,7 +219,7 @@ app.use(cors({
 **Symptômes**: Page blanche
 
 **Solutions**:
-1. Vérifier `VITE_API_BASE_URL`
+1. Vérifier `VITE_API_URL`
 2. Vérifier console (F12) pour errors
 3. Vérifier logs Vercel
 
