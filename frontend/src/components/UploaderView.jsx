@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   UploadCloud, Folder, FileText, Video,
   CheckCircle, Clock, ChevronRight, Trash2, AlertCircle,
@@ -23,7 +23,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [fileToDelete, setFileToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingUploads, setIsLoadingUploads] = useState(true);
-  const intervalsRef = useRef({});
 
   // Charger les fichiers existants
   useEffect(() => {
@@ -35,50 +34,45 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       .finally(() => setIsLoadingUploads(false));
   }, [selectedWeek, country.id]);
 
-  // Cleanup des intervals au démontage
-  useEffect(() => {
-    return () => Object.values(intervalsRef.current).forEach(clearInterval);
-  }, []);
-
-  const simulateProgress = (tempId, file) => {
-    let progress = 0;
-    intervalsRef.current[tempId] = setInterval(() => {
-      progress = Math.min(progress + Math.random() * 20 + 5, 95);
-      setUploading((prev) =>
-        prev.map((f) => (f.id === tempId ? { ...f, progress } : f))
-      );
-    }, 400);
-  };
-
-  const finishUpload = (tempId, result, error = null) => {
-    clearInterval(intervalsRef.current[tempId]);
-    delete intervalsRef.current[tempId];
-
-    if (error) {
-      setUploading((prev) =>
-        prev.map((f) => (f.id === tempId ? { ...f, progress: 0, status: 'error', error } : f))
-      );
-      addToast(`Erreur : ${error}`, 'error', 4000);
-      return;
-    }
-
-    setUploading((prev) =>
-      prev.map((f) => (f.id === tempId ? { ...f, progress: 100, status: 'completed' } : f))
-    );
-    setUploads((prev) => [...prev, result]);
-    addToast(`${result.name} uploadé avec succès`, 'success', 3000);
-  };
-
   const handleFiles = (filesList) => {
     Array.from(filesList).forEach((file) => {
       const tempId = Math.random().toString(36).slice(2);
-      setUploading((prev) => [...prev, { id: tempId, name: file.name, progress: 0, status: 'uploading' }]);
-      simulateProgress(tempId, file);
+      setUploading((prev) => [
+        ...prev,
+        { id: tempId, name: file.name, progress: 0, status: 'uploading' },
+      ]);
 
       api
-        .uploadFile(selectedWeek, country.id, file)
-        .then((result) => finishUpload(tempId, result))
-        .catch((err) => finishUpload(tempId, null, err.message));
+        .uploadFile(selectedWeek, country.id, file, {
+          onProgress: (pct) => {
+            // Plafonne à 99% tant que le serveur n'a pas répondu — passe à
+            // 100% / 'completed' uniquement à la résolution réelle.
+            setUploading((prev) =>
+              prev.map((f) =>
+                f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f
+              )
+            );
+          },
+        })
+        .then((result) => {
+          setUploading((prev) =>
+            prev.map((f) =>
+              f.id === tempId ? { ...f, progress: 100, status: 'completed' } : f
+            )
+          );
+          setUploads((prev) => [...prev, result]);
+          addToast(`${result.name} uploadé avec succès`, 'success', 3000);
+        })
+        .catch((err) => {
+          setUploading((prev) =>
+            prev.map((f) =>
+              f.id === tempId
+                ? { ...f, progress: 0, status: 'error', error: err.message }
+                : f
+            )
+          );
+          addToast(`Erreur : ${err.message}`, 'error', 4000);
+        });
     });
   };
 
