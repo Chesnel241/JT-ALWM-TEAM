@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Folder, FileText, Video, Download, Trash2 } from 'lucide-react';
 import { api } from '../api/index.js';
-import { useToast } from '../hooks/useToast.js';
+import { useToast } from '../hooks/useToast.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 

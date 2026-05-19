@@ -4,7 +4,7 @@ import {
   CheckCircle, Clock, ChevronRight, Trash2, AlertCircle,
 } from 'lucide-react';
 import { api } from '../api/index.js';
-import { useToast } from '../hooks/useToast.js';
+import { useToast } from '../hooks/useToast.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 

@@ -12,7 +12,7 @@ const router = Router();
  * GET /health
  * Health check endpoint pour monitoring et load balancer
  */
-router.get('/health', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const startTime = Date.now();
   
   try {
@@ -72,8 +72,10 @@ router.get('/health', asyncHandler(async (req, res) => {
 
 /**
  * GET /metrics - Extended metrics endpoint
+ * Note: monté séparément dans index.js pour exposer /metrics à la racine.
  */
-router.get('/metrics', asyncHandler(async (req, res) => {
+export const metricsRouter = Router();
+metricsRouter.get('/', asyncHandler(async (req, res) => {
   try {
     const uploadsDir = join(process.cwd(), 'uploads');
     const metrics = getMetrics(uploadsDir);

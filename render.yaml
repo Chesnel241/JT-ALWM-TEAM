@@ -4,39 +4,40 @@ services:
   - type: web
     name: jt-alwm-backend
     env: node
+    rootDir: backend
     plan: starter
     region: frankfurt
 
-    # Build configuration
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm start
 
-    # Environment variables
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3010
       - key: CORS_ORIGIN
-        value: https://jt-alwm-frontend.vercel.app
         sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: MAX_FILE_SIZE
+        value: 209715200
+      - key: LOG_DIR
+        value: /app/uploads/logs
 
-    # Mount uploads directory for persistence
     disk:
       name: uploads
       mountPath: /app/uploads
       sizeGB: 2
 
-    # Healthcheck
-    healthCheckPath: /api/weeks
-    healthCheckInterval: 30
+    healthCheckPath: /health
 
-    # Docker configuration
-    dockerCommand: npm start
-
-    # Scaling
+    # IMPORTANT: scaling forcé à 1 instance. Le store JSON et les uploads
+    # multer vivent sur un disque local non partagé entre instances —
+    # passer à 2+ entraînerait divergence des données et fichiers
+    # introuvables. Migration Postgres + S3/R2 requise avant scale-out.
     scaling:
       minInstances: 1
-      maxInstances: 3
+      maxInstances: 1
       targetMemoryPercent: 75
       targetCPUPercent: 75

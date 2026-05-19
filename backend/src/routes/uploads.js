@@ -8,7 +8,7 @@ import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { COUNTRIES, WEEKS } from '../data/constants.js';
 import { getWeekUploads, getCountryUploads, addUpload, deleteUpload } from '../data/store.js';
-import { validateFile } from '../middleware/fileValidator.js';
+import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 524288000); // 500MB par défaut
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200); // 200MB par défaut
 const ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx']);
 
 const upload = multer({
@@ -187,8 +187,14 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
       return next(createErrors.badRequest('Aucun fichier reçu'));
     }
 
-    // Valider le fichier avec fileValidator
-    const validation = validateFile(file);
+    // Valider le fichier avec fileValidator (extension + MIME + nom)
+    let validation = validateFile(file);
+    // Puis valider le magic number (contenu réel) sur le fichier écrit
+    if (validation.valid) {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const filePath = path.join(uploadsDir, file.filename);
+      validation = validateMagicNumber(filePath, ext);
+    }
     if (!validation.valid) {
       // ROLLBACK: Supprimer le fichier uploadé en cas de validation échouée
       const filePath = path.join(uploadsDir, file.filename);

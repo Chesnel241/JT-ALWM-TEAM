@@ -4,9 +4,10 @@ import { fileURLToPath } from 'url';
 import { mkdirSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const logsDir = path.join(__dirname, '../../logs');
+// LOG_DIR pointe vers /app/uploads/logs en production sur Render (disque
+// persistant) ; fallback dev = backend/logs/.
+const logsDir = process.env.LOG_DIR || path.join(__dirname, '../../logs');
 
-// Créer le dossier logs s'il n'existe pas
 mkdirSync(logsDir, { recursive: true });
 
 const isDev = process.env.NODE_ENV !== 'production';
