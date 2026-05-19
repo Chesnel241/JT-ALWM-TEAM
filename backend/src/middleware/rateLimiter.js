@@ -24,7 +24,7 @@ export const uploadLimiter = rateLimit({
     return false;
   },
   handler: (req, res, options) => {
-    res.status(options.statusCode).json({
+    res.status(options.statusCode || 429).json({
       code: 'RATE_LIMIT_EXCEEDED',
       message: options.message,
       details: {
@@ -52,7 +52,7 @@ export const globalLimiter = rateLimit({
     return req.method === 'GET' && req.path.startsWith('/uploads');
   },
   handler: (req, res, options) => {
-    res.status(options.statusCode).json({
+    res.status(options.statusCode || 429).json({
       code: 'GLOBAL_RATE_LIMIT_EXCEEDED',
       message: options.message,
       details: {
@@ -62,5 +62,27 @@ export const globalLimiter = rateLimit({
   }
 });
 
-export default { uploadLimiter, globalLimiter };
+/**
+ * Rate limiter pour la création de pays.
+ * Sans authentification, n'importe qui pourrait spammer des créations.
+ * Limite: 5 créations / IP / 10 min.
+ */
+export const createLimiter = rateLimit({
+  windowMs: parseInt(process.env.CREATE_RATE_LIMIT_WINDOW_MS || 600000), // 10 min
+  max: parseInt(process.env.CREATE_RATE_LIMIT_MAX || 5),
+  message: 'Trop de créations depuis cette IP. Veuillez réessayer plus tard.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false },
+  keyGenerator: (req) => req.headers['x-forwarded-for'] || req.ip || 'unknown',
+  handler: (req, res, options) => {
+    res.status(options.statusCode || 429).json({
+      code: 'CREATE_RATE_LIMIT_EXCEEDED',
+      message: options.message,
+      details: { retryAfter: req.rateLimit ? req.rateLimit.resetTime : null },
+    });
+  },
+});
+
+export default { uploadLimiter, globalLimiter, createLimiter };
 
