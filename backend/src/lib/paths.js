@@ -24,7 +24,7 @@ export function storePath() {
   }
   if (process.env.JT_STORE_PATH) return process.env.JT_STORE_PATH;
   if (HAS_RENDER_DISK) return path.join(RENDER_DISK, 'store.json');
-  return path.join(__dirname, '../data/store.json');
+  return path.join(process.cwd(), 'uploads', 'store.json');
 }
 
 export function uploadsDir() {
