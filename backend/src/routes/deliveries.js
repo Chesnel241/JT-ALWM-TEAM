@@ -23,6 +23,7 @@ import { isValidUUID } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { audit } from '../logger/audit.js';
 import { deliveryUpload, uploadsDir, DELIVERY_MAX_FILE_SIZE } from '../lib/upload.js';
+import { HAS_R2, uploadToR2, deleteFromR2 } from '../lib/s3.js';
 
 const router = Router();
 
@@ -49,7 +50,7 @@ router.post('/:weekId', asyncHandler(async (req, res, next) => {
     return next(createErrors.notFound('Week'));
   }
 
-  return deliveryUpload.single('file')(req, res, (err) => {
+  return deliveryUpload.single('file')(req, res, async (err) => {
     if (err) {
       logger.error(`Delivery upload error: ${err.message}`, {
         error: err.message,
@@ -96,6 +97,13 @@ router.post('/:weekId', asyncHandler(async (req, res, next) => {
     };
 
     try {
+      if (HAS_R2) {
+        const r2Key = `uploads/${file.filename}`;
+        await uploadToR2(path.join(uploadsDir, file.filename), r2Key);
+        // On supprime le fichier local après upload réussi
+        try { if (existsSync(path.join(uploadsDir, file.filename))) unlinkSync(path.join(uploadsDir, file.filename)); } catch { /* ignore */ }
+      }
+
       const result = addDelivery(weekId, fileData);
       const durationMs = Date.now() - startTime;
       recordUpload(durationMs, true);
@@ -113,6 +121,9 @@ router.post('/:weekId', asyncHandler(async (req, res, next) => {
       recordUpload(Date.now() - startTime, false);
       const filePath = path.join(uploadsDir, file.filename);
       try { if (existsSync(filePath)) unlinkSync(filePath); } catch { /* ignore */ }
+      if (HAS_R2) {
+        try { await deleteFromR2(`uploads/${file.filename}`); } catch { /* ignore */ }
+      }
       logger.error(`Delivery store error: ${storeErr.message}`, {
         error: storeErr.message, context: { weekId },
       });
@@ -132,13 +143,22 @@ router.delete('/:weekId/:fileId', asyncHandler(async (req, res, next) => {
   if (!removed) return next(createErrors.notFound('Fichier'));
 
   if (removed.filename) {
-    const filePath = path.join(uploadsDir, removed.filename);
-    if (existsSync(filePath)) {
-      try { unlinkSync(filePath); }
+    if (HAS_R2) {
+      try { await deleteFromR2(`uploads/${removed.filename}`); }
       catch (err) {
-        logger.warn(`Failed to delete delivery file: ${removed.filename}`, {
+        logger.warn(`Failed to delete delivery file from R2: ${removed.filename}`, {
           error: err.message, context: { weekId, fileId },
         });
+      }
+    } else {
+      const filePath = path.join(uploadsDir, removed.filename);
+      if (existsSync(filePath)) {
+        try { unlinkSync(filePath); }
+        catch (err) {
+          logger.warn(`Failed to delete delivery file locally: ${removed.filename}`, {
+            error: err.message, context: { weekId, fileId },
+          });
+        }
       }
     }
   }

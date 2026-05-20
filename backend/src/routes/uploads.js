@@ -13,7 +13,7 @@ import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
-import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2 } from '../lib/s3.js';
+import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2, checkR2Exists } from '../lib/s3.js';
 import { Readable } from 'stream';
 
 function createLazyStream(factory) {
@@ -146,6 +146,11 @@ router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) =>
   for (const file of files) {
     const archivePath = file.reportage ? `${file.reportage}/${file.name}` : file.name;
     if (HAS_R2) {
+      const exists = await checkR2Exists(`uploads/${file.filename}`);
+      if (!exists) {
+        logger.warn(`Skipping missing R2 file in ZIP: ${file.filename}`);
+        continue;
+      }
       const lazyStream = createLazyStream(() => getR2ReadStream(`uploads/${file.filename}`));
       archive.append(lazyStream, { name: archivePath });
       logger.debug(`Added lazy R2 stream to archive: ${file.name}`, {
@@ -153,6 +158,10 @@ router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) =>
       });
     } else {
       const filePath = path.join(uploadsDir, file.filename);
+      if (!existsSync(filePath)) {
+        logger.warn(`Skipping missing local file in ZIP: ${file.filename}`);
+        continue;
+      }
       archive.append(createReadStream(filePath), { name: archivePath });
       logger.debug(`Added local to archive: ${file.name}`, {
         context: { filename: file.filename, size: file.size },
@@ -442,12 +451,17 @@ router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next)
     // Supprimer le fichier physique si présent
     if (deleted.filename) {
       if (HAS_R2) {
-        await deleteFromR2(`uploads/${deleted.filename}`).catch(delErr => {
-          logger.warn(`Failed to delete R2 file: ${deleted.filename}`, {
+        try {
+          await deleteFromR2(`uploads/${deleted.filename}`);
+        } catch (delErr) {
+          logger.warn(`Failed to delete R2 file: ${deleted.filename}, rolling back DB deletion`, {
             error: delErr.message,
             context: { weekId, countryId, fileId },
           });
-        });
+          // Rollback: Re-insert into DB
+          addUpload(weekId, countryId, deleted);
+          return next(createErrors.internalError('Erreur de suppression du fichier distant'));
+        }
       } else {
         const filePath = path.join(uploadsDir, deleted.filename);
         if (existsSync(filePath)) {

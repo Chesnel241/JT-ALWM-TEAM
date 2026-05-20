@@ -18,20 +18,31 @@ import { logsDir as resolveLogsDir } from '../lib/paths.js';
 const auditDir = resolveLogsDir();
 mkdirSync(auditDir, { recursive: true });
 
+const isDev = process.env.NODE_ENV !== 'production';
+
+const auditTransports = [];
+if (isDev) {
+  auditTransports.push(
+    new winston.transports.File({
+      filename: path.join(auditDir, 'audit.log'),
+      maxsize: 20 * 1024 * 1024, // 20 MB
+      maxFiles: 10,              // ~200 MB max
+      tailable: true,
+    })
+  );
+} else {
+  // En production sans disque persistant, on envoie l'audit sur stdout
+  // dans un format JSON Lines que l'infrastructure de log pourra parser.
+  auditTransports.push(new winston.transports.Console());
+}
+
 const auditLogger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.json()
   ),
-  transports: [
-    new winston.transports.File({
-      filename: path.join(auditDir, 'audit.log'),
-      maxsize: 20 * 1024 * 1024, // 20 MB
-      maxFiles: 10,              // ~200 MB max
-      tailable: true,
-    }),
-  ],
+  transports: auditTransports,
 });
 
 /**

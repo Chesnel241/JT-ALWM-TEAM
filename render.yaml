@@ -35,10 +35,18 @@ services:
       - key: UPLOADS_DIR
         value: /app/uploads/files
 
-    disk:
-      name: uploads
-      mountPath: /app/uploads
-      sizeGB: 2
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
 
     healthCheckPath: /health
 

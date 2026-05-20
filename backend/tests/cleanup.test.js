@@ -34,7 +34,7 @@ describe('cleanupExpiredUploads — purge mercredi 00:00', () => {
     addUpload('2026-w18', 'sn', { id: 'x', name: 'old.mp4', filename, type: 'video' });
 
     expect(existsSync(join(CLEANUP_TMP, filename))).toBe(true);
-    const removed = cleanupExpiredUploads(null, CLEANUP_TMP);
+    const removed = await cleanupExpiredUploads(null, CLEANUP_TMP);
 
     expect(removed).toBeGreaterThan(0);
     expect(existsSync(join(CLEANUP_TMP, filename))).toBe(false);
@@ -54,7 +54,7 @@ describe('cleanupExpiredUploads — purge mercredi 00:00', () => {
     writeFileSync(join(CLEANUP_TMP, filename), 'data');
     addUpload(futureWeek, 'sn', { id: 'y', name: 'fut.mp4', filename, type: 'video' });
 
-    cleanupExpiredUploads(null, CLEANUP_TMP);
+    await cleanupExpiredUploads(null, CLEANUP_TMP);
 
     expect(existsSync(join(CLEANUP_TMP, filename))).toBe(true);
     expect(getCountryUploads(futureWeek, 'sn')).toHaveLength(1);
@@ -65,7 +65,7 @@ describe('cleanupExpiredUploads — purge mercredi 00:00', () => {
     addUpload('w-43', 'sn', { id: 'l', name: 'legacy.mp4', filename: 'legacy.mp4', type: 'video' });
     writeFileSync(join(CLEANUP_TMP, 'legacy.mp4'), 'old');
 
-    cleanupExpiredUploads(null, CLEANUP_TMP);
+    await cleanupExpiredUploads(null, CLEANUP_TMP);
 
     // Le fichier physique est nettoyé comme orphelin (il est dans la DB
     // sous w-43 mais l'algorithme ne reconnaît pas ce format). En fait
@@ -76,7 +76,7 @@ describe('cleanupExpiredUploads — purge mercredi 00:00', () => {
   it('ne touche pas à la clé _countries', async () => {
     const { addCustomCountry, cleanupExpiredUploads, getCustomCountries } = await freshStore();
     addCustomCountry({ id: 'bj', name: 'Bénin', code: 'BJ' });
-    cleanupExpiredUploads(null, CLEANUP_TMP);
+    await cleanupExpiredUploads(null, CLEANUP_TMP);
     expect(getCustomCountries()).toHaveLength(1);
   });
 
@@ -84,7 +84,7 @@ describe('cleanupExpiredUploads — purge mercredi 00:00', () => {
     const { cleanupExpiredUploads } = await freshStore();
     const orphan = join(CLEANUP_TMP, 'orphan.mp4');
     writeFileSync(orphan, 'unknown');
-    cleanupExpiredUploads(null, CLEANUP_TMP);
+    await cleanupExpiredUploads(null, CLEANUP_TMP);
     expect(existsSync(orphan)).toBe(false);
   });
 });

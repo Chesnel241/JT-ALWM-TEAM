@@ -62,27 +62,34 @@ const errorFileTransport = new winston.transports.File({
   level: 'error',
 });
 
-// Créer le logger
-const logger = winston.createLogger({
-  level: isDev ? 'debug' : 'info',
-  format: customFormat,
-  transports: [
-    consoleTransport,
-    fileTransport,
-    errorFileTransport,
-  ],
-  exceptionHandlers: [
+// Créer le logger avec les transports conditionnels
+const transports = [consoleTransport];
+const exceptionHandlers = [];
+const rejectionHandlers = [];
+
+if (isDev) {
+  transports.push(fileTransport);
+  transports.push(errorFileTransport);
+  exceptionHandlers.push(
     new winston.transports.File({
       filename: path.join(logsDir, 'exceptions.log'),
       format: customFormat,
-    }),
-  ],
-  rejectionHandlers: [
+    })
+  );
+  rejectionHandlers.push(
     new winston.transports.File({
       filename: path.join(logsDir, 'rejections.log'),
       format: customFormat,
-    }),
-  ],
+    })
+  );
+}
+
+const logger = winston.createLogger({
+  level: isDev ? 'debug' : 'info',
+  format: customFormat,
+  transports,
+  exceptionHandlers,
+  rejectionHandlers,
 });
 
 // Ajouter des raccourcis pour les logs courants

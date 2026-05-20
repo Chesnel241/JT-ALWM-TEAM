@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Upload } from '@aws-sdk/lib-storage';
 import { createReadStream } from 'fs';
@@ -163,3 +163,20 @@ export async function listR2Objects(prefix = 'uploads/') {
   const response = await s3.send(command);
   return (response.Contents || []).map(obj => obj.Key);
 }
+
+/**
+ * Vérifie si un fichier existe dans R2 sans le télécharger
+ * @param {string} r2Key 
+ * @returns {Promise<boolean>}
+ */
+export async function checkR2Exists(r2Key) {
+  if (!HAS_R2) return false;
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: r2Key }));
+    return true;
+  } catch (err) {
+    if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) return false;
+    throw err;
+  }
+}
+
