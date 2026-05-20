@@ -28,10 +28,11 @@ export const api = {
 
   // Utilise XMLHttpRequest plutôt que fetch pour exposer la progression
   // réelle d'upload (fetch n'a pas d'événement progress sur les requêtes).
-  uploadFile: (weekId, countryId, file, { onProgress, signal } = {}) => {
+  uploadFile: (weekId, countryId, file, { onProgress, signal, reportage } = {}) => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${BASE}/uploads/${weekId}/${countryId}`);
+      const url = `${BASE}/uploads/${weekId}/${countryId}${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`;
+      xhr.open('POST', url);
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && typeof onProgress === 'function') {
@@ -62,11 +63,11 @@ export const api = {
     });
   },
 
-  submitScript: (weekId, countryId, content) =>
+  submitScript: (weekId, countryId, content, reportage) =>
     request(`/uploads/${weekId}/${countryId}/script`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, reportage }),
     }),
 
   deleteFile: (weekId, countryId, fileId) =>

@@ -144,15 +144,16 @@ router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) =>
   
   // Append streams lazily without eagerly opening S3 connections
   for (const file of files) {
+    const archivePath = file.reportage ? `${file.reportage}/${file.name}` : file.name;
     if (HAS_R2) {
       const lazyStream = createLazyStream(() => getR2ReadStream(`uploads/${file.filename}`));
-      archive.append(lazyStream, { name: file.name });
+      archive.append(lazyStream, { name: archivePath });
       logger.debug(`Added lazy R2 stream to archive: ${file.name}`, {
         context: { filename: file.filename, size: file.size },
       });
     } else {
       const filePath = path.join(uploadsDir, file.filename);
-      archive.append(createReadStream(filePath), { name: file.name });
+      archive.append(createReadStream(filePath), { name: archivePath });
       logger.debug(`Added local to archive: ${file.name}`, {
         context: { filename: file.filename, size: file.size },
       });
@@ -237,6 +238,7 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
     }
 
     const isScript = ['.txt', '.docx'].includes(path.extname(file.originalname).toLowerCase());
+    const reportage = req.query.reportage || null;
 
     const fileData = {
       id: uuidv4(),
@@ -245,6 +247,7 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
       type: isScript ? 'script' : 'video',
       size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
       status: 'completed',
+      reportage,
       uploadedAt: new Date().toISOString(),
     };
 
@@ -322,7 +325,7 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
 // POST /api/uploads/:weekId/:countryId/script — saisie manuelle de script
 router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
-  const { content } = req.body;
+  const { content, reportage } = req.body;
 
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
     logger.warn('Script upload attempt with invalid week or country', {
@@ -367,6 +370,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
     status: 'completed',
     content,
     filename,
+    reportage: reportage || null,
     uploadedAt: new Date().toISOString(),
   };
 
