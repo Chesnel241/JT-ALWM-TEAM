@@ -56,12 +56,12 @@ describe('store: deleteUpload', () => {
 });
 
 describe('store: recovery from corrupted JSON', () => {
-  it('falls back to seed if store.json is unreadable', async () => {
+  it('falls back to empty seed if store.json is unreadable', async () => {
     writeFileSync(STORE_PATH, '{ not valid json');
     vi.resetModules();
-    const { getWeekUploads } = await import('../src/data/store.js');
-    const weekData = getWeekUploads('w-43');
-    expect(weekData).toBeDefined();
-    expect(weekData.sn).toBeDefined();
+    const { getWeekUploads, getCustomCountries } = await import('../src/data/store.js');
+    // Pas de crash, l'API store reste utilisable
+    expect(getWeekUploads('w-43')).toEqual({});
+    expect(getCustomCountries()).toEqual([]);
   });
 });

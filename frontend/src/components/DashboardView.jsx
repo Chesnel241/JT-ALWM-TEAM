@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { Folder, FileText, Video, Download, Trash2 } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
+import { useI18n } from '../i18n/I18nContext.jsx';
+import { formatRelative, formatAbsolute } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 
 export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries }) {
+  const { t, lang } = useI18n();
   const { addToast } = useToast();
   const [dashboard, setDashboard] = useState({});
   const [loading, setLoading] = useState(true);
@@ -21,10 +24,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       .then(setDashboard)
       .catch((err) => {
         console.error(err);
-        addToast('Erreur lors du chargement', 'error', 3000);
+        addToast(t.uploader.errorPrefix, 'error', 3000);
       })
       .finally(() => setLoading(false));
-  }, [selectedWeek, addToast]);
+  }, [selectedWeek, addToast, t.uploader.errorPrefix]);
 
   const openDeleteDialog = (countryId, fileId) => {
     const file = dashboard[countryId]?.find(f => f.id === fileId);
@@ -43,11 +46,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         ...prev,
         [fileToDelete.countryId]: prev[fileToDelete.countryId].filter((f) => f.id !== fileToDelete.fileId),
       }));
-      addToast(`${fileToDelete.fileName} supprimé`, 'success', 3000);
+      addToast(t.uploader.deleted(fileToDelete.fileName), 'success', 3000);
       setDeleteDialogOpen(false);
       setFileToDelete(null);
     } catch (err) {
-      addToast(`Erreur : ${err.message}`, 'error', 4000);
+      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
       setIsDeleting(false);
     }
@@ -57,19 +60,29 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     (id) => dashboard[id]?.length > 0
   );
 
+  const renderUploadMeta = (file) => (
+    <span
+      className="text-[10px] text-[color:var(--muted)] mt-0.5 block"
+      title={formatAbsolute(file.uploadedAt, lang)}
+    >
+      {file.size}
+      {file.uploadedAt && (
+        <> · {t.dashboard.uploadedAt} {formatRelative(file.uploadedAt, lang)}</>
+      )}
+    </span>
+  );
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
       <div className="flex flex-wrap justify-between items-end gap-6 mb-8">
         <div>
-          <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-3">Montage</div>
-          <h2 className="text-3xl md:text-4xl font-semibold text-[color:var(--ink)] mb-2">Tableau de bord</h2>
-          <p className="text-[color:var(--muted)]">Vue centralisee des elements recus et scripts.</p>
+          <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-3">{t.nav.editing}</div>
+          <h2 className="text-3xl md:text-4xl font-semibold text-[color:var(--ink)] mb-2">{t.dashboard.title}</h2>
         </div>
         <div className="panel p-2 flex items-center gap-3">
           <label className="sr-only" htmlFor="dashboard-week">
-            Choisir la semaine de diffusion
+            {t.dashboard.weekLabel}
           </label>
-          <span className="text-sm text-[color:var(--muted)] font-medium">Semaine</span>
           <select
             id="dashboard-week"
             value={selectedWeek}
@@ -78,7 +91,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           >
             {weeks.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.name}
+                {w.name} ({w.dates}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
               </option>
             ))}
           </select>
@@ -92,10 +105,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       ) : countriesWithUploads.length === 0 ? (
         <div className="panel border-2 border-dashed p-12 text-center">
           <Folder className="mx-auto h-16 w-16 text-[color:var(--muted)] mb-4" />
-          <h3 className="text-xl font-medium text-[color:var(--ink)]">Aucun element recu pour cette semaine</h3>
-          <p className="text-[color:var(--muted)] mt-2">
-            Les fichiers apparaîtront ici dès que les correspondants les uploaderont.
-          </p>
+          <h3 className="text-xl font-medium text-[color:var(--ink)]">{t.dashboard.noUploads}</h3>
         </div>
       ) : (
         <div className="space-y-4">
@@ -110,7 +120,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 key={countryId}
                 className="panel overflow-hidden"
               >
-                {/* En-tête pays */}
                 <div className="bg-[var(--paper)] border-b border-[var(--border)] p-4 flex flex-wrap justify-between items-center gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-[var(--accent)]/15 flex items-center justify-center font-bold text-sm text-[color:var(--accent-deep)]">
@@ -119,16 +128,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <span className="font-semibold text-[color:var(--ink)]">{country?.name}</span>
                   </div>
                   <span className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)]">
-                    {files.length} fichier{files.length > 1 ? 's' : ''}
+                    {files.length}
                   </span>
                 </div>
 
-                {/* Fichiers */}
                 <div className="p-4 flex-1 grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-4">
                   {videos.length > 0 && (
                     <div>
                       <h4 className="text-xs font-bold text-[color:var(--muted)] uppercase tracking-wider mb-2 flex items-center gap-1">
-                        <Video size={12} /> Videos / Rushs
+                        <Video size={12} /> {t.dashboard.videos}
                       </h4>
                       <ul className="space-y-2">
                         {videos.map((file) => (
@@ -136,20 +144,23 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             key={file.id}
                             className="flex justify-between items-center text-sm bg-[var(--paper)] p-2 rounded-2xl border border-[var(--border)]"
                           >
-                            <span className="truncate pr-2 font-medium text-[color:var(--ink)]">{file.name}</span>
-                            <div className="flex gap-1">
+                            <div className="flex-1 overflow-hidden pr-2">
+                              <span className="truncate font-medium text-[color:var(--ink)] block">{file.name}</span>
+                              {renderUploadMeta(file)}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
                               <a
                                 href={`${API_BASE}/uploads/${file.filename}`}
                                 download={file.name}
                                 className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
-                                title="Télécharger"
+                                title={t.dashboard.downloadFile}
                               >
                                 <Download size={16} />
                               </a>
                               <button
                                 onClick={() => openDeleteDialog(countryId, file.id)}
                                 className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
-                                title="Supprimer"
+                                title={t.dashboard.delete}
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -163,7 +174,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   {scripts.length > 0 && (
                     <div>
                       <h4 className="text-xs font-bold text-[color:var(--muted)] uppercase tracking-wider mb-2 flex items-center gap-1">
-                        <FileText size={12} /> Scripts / Notes
+                        <FileText size={12} /> {t.dashboard.scripts}
                       </h4>
                       <ul className="space-y-2">
                         {scripts.map((file) => (
@@ -171,20 +182,23 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             key={file.id}
                             className="flex justify-between items-center text-sm bg-[var(--signal)]/10 p-2 rounded-2xl border border-[var(--signal)]/30"
                           >
-                            <span className="truncate pr-2 font-medium text-[color:var(--ink)]">{file.name}</span>
-                            <div className="flex gap-1">
+                            <div className="flex-1 overflow-hidden pr-2">
+                              <span className="truncate font-medium text-[color:var(--ink)] block">{file.name}</span>
+                              {renderUploadMeta(file)}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
                               <button
                                 onClick={() => setViewingScript(file)}
                                 type="button"
                                 className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded px-2 text-xs font-medium"
                               >
-                                Lire
+                                {t.dashboard.read}
                               </button>
                               <button
                                 onClick={() => openDeleteDialog(countryId, file.id)}
                                 type="button"
                                 className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
-                                title="Supprimer"
+                                title={t.dashboard.delete}
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -196,7 +210,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   )}
                 </div>
 
-                {/* Télécharger tout */}
                 <div className="p-4 bg-[var(--paper)] border-t border-[var(--border)] mt-auto flex justify-end">
                   <a
                     href={`${API_BASE}/api/uploads/${selectedWeek}/${countryId}/archive`}
@@ -204,7 +217,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     className="btn btn-primary flex items-center gap-2"
                   >
                     <Download size={16} />
-                    Telecharger ZIP ({country?.code})
+                    {t.dashboard.downloadAll(country?.code)}
                   </a>
                 </div>
               </div>
@@ -213,7 +226,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         </div>
       )}
 
-      {/* Modal lecture script */}
       {viewingScript && (
         <div
           className="fixed inset-0 bg-[color:oklch(0.2_0.02_250_/_0.6)] flex items-center justify-center p-4 z-50"
@@ -235,14 +247,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <button
                 onClick={() => setViewingScript(null)}
                 type="button"
-                aria-label="Fermer la lecture du script"
+                aria-label={t.common.close}
                 className="text-[color:var(--muted)] hover:text-[color:var(--ink)] p-2 text-lg leading-none"
               >
                 ✕
               </button>
             </div>
             <div className="p-6 overflow-y-auto flex-1 font-mono text-sm whitespace-pre-wrap text-[color:var(--ink)]">
-              {viewingScript.content || 'Contenu non disponible.'}
+              {viewingScript.content || t.dashboard.modalEmpty}
             </div>
             <div className="p-4 border-t border-[var(--border)] bg-[var(--paper)] flex justify-end">
               {viewingScript.filename && (
@@ -251,7 +263,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   download={viewingScript.name}
                   className="btn btn-primary flex items-center gap-2"
                 >
-                  <Download size={16} /> Telecharger .txt
+                  <Download size={16} /> {t.dashboard.modalDownload}
                 </a>
               )}
             </div>
@@ -261,10 +273,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
       <ConfirmDialog
         isOpen={deleteDialogOpen}
-        title="Supprimer ce fichier ?"
-        message={`Êtes-vous sûr de vouloir supprimer "${fileToDelete?.fileName}" ? Cette action est irréversible.`}
-        confirmText="Supprimer"
-        cancelText="Annuler"
+        title={t.uploader.deleteTitle}
+        message={t.uploader.deleteMsg(fileToDelete?.fileName || '')}
+        confirmText={t.uploader.deleteConfirm}
+        cancelText={t.uploader.cancel}
         variant="danger"
         isLoading={isDeleting}
         onConfirm={handleConfirmDelete}

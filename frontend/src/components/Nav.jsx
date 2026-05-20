@@ -1,6 +1,9 @@
 import { LayoutDashboard } from 'lucide-react';
+import { useI18n } from '../i18n/I18nContext.jsx';
+import LanguageSwitcher from './LanguageSwitcher.jsx';
 
 export default function Nav({ currentView, setCurrentView }) {
+  const { t } = useI18n();
   return (
     <nav className="border-b border-[var(--border)] bg-[var(--paper)] sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
@@ -11,11 +14,12 @@ export default function Nav({ currentView, setCurrentView }) {
             className="h-11 w-11 rounded-full object-contain"
           />
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">JT ALWM</p>
-            <h1 className="text-xl font-semibold text-[color:var(--ink)]">Hub de reportages</h1>
+            <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">{t.nav.brand}</p>
+            <h1 className="text-xl font-semibold text-[color:var(--ink)]">{t.nav.tagline}</h1>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <LanguageSwitcher />
           <button
             onClick={() => setCurrentView('home')}
             type="button"
@@ -26,7 +30,7 @@ export default function Nav({ currentView, setCurrentView }) {
                 : 'btn-ghost border border-[var(--border)]'
             }`}
           >
-            Espace Correspondants
+            {t.nav.correspondents}
           </button>
           <button
             onClick={() => setCurrentView('dashboard')}
@@ -39,7 +43,7 @@ export default function Nav({ currentView, setCurrentView }) {
             }`}
           >
             <LayoutDashboard size={18} />
-            Espace Montage
+            {t.nav.editing}
           </button>
         </div>
       </div>
