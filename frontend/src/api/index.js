@@ -1,3 +1,5 @@
+import { tStatic } from '../i18n/runtime.js';
+
 export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const BASE = `${API_BASE}/api`;
 
@@ -5,7 +7,7 @@ async function request(url, options = {}) {
   const res = await fetch(`${BASE}${url}`, options);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || 'Erreur serveur');
+    throw new Error(err.error || tStatic().errors.serverError);
   }
   return res.status === 204 ? null : res.json();
 }
@@ -46,12 +48,12 @@ export const api = {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(body);
         } else {
-          reject(new Error((body && body.message) || xhr.statusText || 'Erreur serveur'));
+          reject(new Error((body && body.message) || xhr.statusText || tStatic().errors.serverError));
         }
       });
 
-      xhr.addEventListener('error', () => reject(new Error('Erreur réseau')));
-      xhr.addEventListener('abort', () => reject(new Error('Upload annulé')));
+      xhr.addEventListener('error', () => reject(new Error(tStatic().errors.networkError)));
+      xhr.addEventListener('abort', () => reject(new Error(tStatic().errors.uploadCancelled)));
 
       if (signal) {
         signal.addEventListener('abort', () => xhr.abort(), { once: true });
@@ -91,8 +93,8 @@ export const api = {
         if (xhr.status >= 200 && xhr.status < 300) resolve(body);
         else reject(new Error((body && body.message) || xhr.statusText || 'Erreur serveur'));
       });
-      xhr.addEventListener('error', () => reject(new Error('Erreur réseau')));
-      xhr.addEventListener('abort', () => reject(new Error('Upload annulé')));
+      xhr.addEventListener('error', () => reject(new Error(tStatic().errors.networkError)));
+      xhr.addEventListener('abort', () => reject(new Error(tStatic().errors.uploadCancelled)));
       if (signal) signal.addEventListener('abort', () => xhr.abort(), { once: true });
       const form = new FormData();
       form.append('file', file);

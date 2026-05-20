@@ -90,8 +90,19 @@ export const translations = {
       close: 'Fermer',
       loading: 'Chargement...',
     },
+    errors: {
+      serverError: 'Erreur serveur',
+      networkError: 'Erreur réseau',
+      uploadCancelled: 'Upload annulé',
+    },
     notifications: {
-      newUploads: (n) => `Nouvel(s) élément(s) reçu(s) (${n}) !`,
+      newUploads: (n) => `${n} nouvel${n > 1 ? 's' : ''} élément${n > 1 ? 's' : ''} reçu${n > 1 ? 's' : ''} !`,
+    },
+    errorBoundary: {
+      title: 'Oups ! Une erreur est survenue',
+      message: "L'application a rencontré un problème inattendu. Veuillez rafraîchir la page et réessayer.",
+      reload: 'Rafraîchir la page',
+      help: "Si le problème persiste, contactez l'administrateur.",
     },
     langSwitcher: {
       label: 'Langue',
@@ -224,8 +235,19 @@ export const translations = {
       close: 'Close',
       loading: 'Loading...',
     },
+    errors: {
+      serverError: 'Server error',
+      networkError: 'Network error',
+      uploadCancelled: 'Upload cancelled',
+    },
     notifications: {
-      newUploads: (n) => `New upload(s) received (${n})!`,
+      newUploads: (n) => `${n} new item${n > 1 ? 's' : ''} received!`,
+    },
+    errorBoundary: {
+      title: 'Oops! Something went wrong',
+      message: 'The app ran into an unexpected issue. Please refresh the page and try again.',
+      reload: 'Reload page',
+      help: 'If the problem persists, contact the administrator.',
     },
     langSwitcher: {
       label: 'Language',
