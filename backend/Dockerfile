@@ -33,7 +33,7 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/package*.json ./
 
 # Create uploads directory with proper permissions
-RUN mkdir -p /app/uploads && chmod 755 /app/uploads
+RUN mkdir -p /app/uploads && chown -R node:node /app
 
 # Set environment to production
 ENV NODE_ENV=production
