@@ -7,7 +7,10 @@ import { createApp } from './app.js';
 const PORT = process.env.PORT || 3010;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
 const corsOrigins = CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
-const uploadsDir = join(process.cwd(), 'uploads');
+// UPLOADS_DIR doit pointer vers le disque persistant en production
+// (ex: /app/uploads/files sur Render). Sinon les fichiers disparaissent
+// à chaque redéploiement.
+const uploadsDir = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
 
 const app = createApp({ uploadsDir, corsOrigins });
 

@@ -16,8 +16,12 @@ import { audit } from '../logger/audit.js';
 
 const router = Router();
 
+// Path absolu pour que multer écrive sur le disque persistant en prod.
+// En dev, fallback sur cwd/uploads/.
+const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, 'uploads/'),
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
     cb(null, `${uuidv4()}${ext}`);
@@ -48,7 +52,6 @@ const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 const isValidCountry = (countryId) =>
   COUNTRIES.some((c) => c.id === countryId) ||
   getCustomCountries().some((c) => c.id === countryId);
-const uploadsDir = path.join(process.cwd(), 'uploads');
 
 // GET /api/uploads/:weekId — tous les pays d'une semaine
 router.get('/:weekId', (req, res) => {

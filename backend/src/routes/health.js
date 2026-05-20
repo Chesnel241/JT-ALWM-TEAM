@@ -16,7 +16,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const startTime = Date.now();
   
   try {
-    const uploadsDir = join(process.cwd(), 'uploads');
+    const uploadsDir = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
     const responseTime = Date.now() - startTime;
     const metrics = getMetrics(uploadsDir);
     const memUsage = process.memoryUsage();
@@ -77,7 +77,7 @@ router.get('/', asyncHandler(async (req, res) => {
 export const metricsRouter = Router();
 metricsRouter.get('/', asyncHandler(async (req, res) => {
   try {
-    const uploadsDir = join(process.cwd(), 'uploads');
+    const uploadsDir = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
     const metrics = getMetrics(uploadsDir);
     const memUsage = process.memoryUsage();
     const alertState = getAlertState();
