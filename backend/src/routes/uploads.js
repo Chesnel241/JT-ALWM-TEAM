@@ -174,7 +174,7 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
     return next(createErrors.notFound('Week ou Country'));
   }
 
-  return upload.single('file')(req, res, (err) => {
+  return upload.single('file')(req, res, async (err) => {
     if (err) {
       logger.error(`Upload error: ${err.message}`, {
         error: err.message,
