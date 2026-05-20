@@ -8,6 +8,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Define build arguments
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+
 # Install dependencies
 RUN npm ci
 
@@ -28,10 +32,7 @@ RUN ls -la dist/
 # ============================================================================
 # STAGE 2: RUNTIME - Serve with nginx-alpine
 # ============================================================================
-FROM nginx:latest
-
-# Install bash and curl for debugging/healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+FROM nginx:1.27-alpine
 
 # Configure nginx with gzip and optimizations
 COPY --from=builder /app/dist /usr/share/nginx/html
@@ -76,7 +77,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost/health || exit 1
+  CMD wget -qO- http://localhost/health || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

@@ -45,8 +45,8 @@ cd "JT ALWM TEAM app"
    - **Root Directory**: `backend`
    - **Build Command**: `npm ci`
    - **Start Command**: `npm start`
-   - **Plan**: Starter (le plan Free ne supporte pas le disque persistant)
-   - **Persistent Disk**: 2 GB, mount path `/app/uploads`
+   - **Plan**: Free (avec Upstash Redis pour les métadonnées)
+   - **Important**: Le plan Free n'a pas de disque persistant. Les vidéos uploadées disparaissent après 15 min d'inactivité.
 
 #### Étape 2: Ajouter les Variables d'Environnement
 
@@ -58,7 +58,12 @@ PORT=3010
 CORS_ORIGIN=https://your-frontend-url.vercel.app
 SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id   # optionnel
 MAX_FILE_SIZE=209715200                                   # 200 MB
-LOG_DIR=/app/uploads/logs                                 # logs persistants
+UPSTASH_REDIS_REST_URL=https://...                        # Requis pour plan Free
+UPSTASH_REDIS_REST_TOKEN=...
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=jt-alwm-uploads
 ```
 
 ⚠️ `CORS_ORIGIN` doit être l'URL **exacte** du frontend Vercel (incluant `https://`).
@@ -146,13 +151,15 @@ CORS_ORIGIN=https://your-frontend-url.com
 # Sentry (Error Tracking)
 SENTRY_DSN=https://xxxx@sentry.io/xxxx
 
-# Database (si futur)
-DATABASE_URL=
+# Database (Redis Upstash pour Render Free)
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 
-# Storage (si futur)
-AWS_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
+# Cloudflare R2 Storage (Pour Render Free)
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET_NAME=
 ```
 
 ### Frontend (.env.production)
@@ -210,9 +217,9 @@ app.use(cors({
 **Symptômes**: Fichiers ne persistent pas après restart
 
 **Solutions**:
-- Render supprime les fichiers entre redéploiements
-- Utiliser un service externe: AWS S3, Cloudinary, etc.
-- Voir section Backup Strategy
+- Render Free supprime les fichiers sur le disque éphémère après 15 min d'inactivité ou entre redéploiements.
+- Les données (pays) survivent grâce à Upstash Redis.
+- Les fichiers vidéos sont automatiquement synchronisés vers **Cloudflare R2** si les variables d'environnement sont configurées. Vérifiez que `R2_ACCOUNT_ID` etc. sont bien renseignés.
 
 ### Problème: Frontend vide
 

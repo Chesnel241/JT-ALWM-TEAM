@@ -15,10 +15,6 @@ export const uploadLimiter = rateLimit({
   message: 'Trop d\'uploads depuis cette IP. Veuillez réessayer plus tard.',
   standardHeaders: true,
   legacyHeaders: false, validate: { xForwardedForHeader: false, default: false },
-  keyGenerator: (req) => {
-    // Utiliser X-Forwarded-For si disponible (proxy/load balancer)
-    return req.headers['x-forwarded-for'] || req.ip || 'unknown';
-  },
   skip: (req) => {
     // Optionnel: ignorer certaines routes ou IPs
     return false;
@@ -44,9 +40,6 @@ export const globalLimiter = rateLimit({
   message: 'Trop de requêtes depuis cette IP. Veuillez réessayer plus tard.',
   standardHeaders: true,
   legacyHeaders: false, validate: { xForwardedForHeader: false, default: false },
-  keyGenerator: (req) => {
-    return req.headers['x-forwarded-for'] || req.ip || 'unknown';
-  },
   skip: (req) => {
     // Optionnel: exclure les requêtes GET sur /uploads (fichiers statiques)
     return req.method === 'GET' && req.path.startsWith('/uploads');
@@ -74,7 +67,6 @@ export const createLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, default: false },
-  keyGenerator: (req) => req.headers['x-forwarded-for'] || req.ip || 'unknown',
   handler: (req, res, options) => {
     res.status(options.statusCode || 429).json({
       code: 'CREATE_RATE_LIMIT_EXCEEDED',

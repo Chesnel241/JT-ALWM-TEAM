@@ -7,7 +7,7 @@ import { openSync, readSync, closeSync } from 'fs';
 
 const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx'];
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10); // 200MB par défaut
-const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f]/g;
+const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f]/;
 
 // Signatures (magic numbers) des formats acceptés. `.txt` et `.docx` ne
 // sont pas vérifiés ici : le txt n'a pas de signature, le docx est un

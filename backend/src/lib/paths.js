@@ -19,6 +19,9 @@ const RENDER_DISK = '/app/uploads';
 const HAS_RENDER_DISK = existsSync(RENDER_DISK);
 
 export function storePath() {
+  if (!HAS_RENDER_DISK && process.env.NODE_ENV === 'production' && !process.env.UPSTASH_REDIS_REST_URL) {
+    console.warn('⚠️ WARNING: No persistent Render disk detected and no Upstash Redis configured. Data will be lost on restart.');
+  }
   if (process.env.JT_STORE_PATH) return process.env.JT_STORE_PATH;
   if (HAS_RENDER_DISK) return path.join(RENDER_DISK, 'store.json');
   return path.join(__dirname, '../data/store.json');

@@ -66,8 +66,10 @@ cd frontend && npm test    # vitest + RTL (8 tests)
 - `CORS_ORIGIN` — séparé par virgules. Ex: `https://jt-alwm.vercel.app,https://staging.example.com`
 - `MAX_FILE_SIZE` — bytes. Défaut **200 MB** (compatible plan Render Starter)
 - `JT_STORE_PATH` — chemin du store JSON (overridable, utile en tests)
-- `LOG_DIR` — dossier des logs Winston. En prod : `/app/uploads/logs` (disque persistant)
+- `LOG_DIR` — dossier des logs Winston.
 - `SENTRY_DSN` — error tracking (no-op si absent)
+- `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` — requis sur plan Free pour persister les métadonnées.
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` — requis pour persister les fichiers vidéos sur Cloudflare R2.
 
 ### Frontend
 - `VITE_API_URL` — URL absolue du backend en prod (ex: `https://jt-alwm-backend.onrender.com`). Vide en dev (proxy Vite).
@@ -75,7 +77,7 @@ cd frontend && npm test    # vitest + RTL (8 tests)
 
 ## Production
 
-- **Backend** : Render.com (Frankfurt, plan Starter $7/mois)
+- **Backend** : Render.com (Frankfurt, plan Free + Upstash Redis)
 - **Frontend** : Vercel (région `fra1`)
 - **Branche déployée** : `master`
 - **CI/CD** : GitHub Actions (`.github/workflows/deploy.yml`)
@@ -86,15 +88,7 @@ cd frontend && npm test    # vitest + RTL (8 tests)
   Choix produit assumé pour un hub interne, mais ne diffuser l'URL
   qu'aux personnes concernées et envisager un mot de passe partagé
   côté Vercel (Vercel Password Protection) si l'URL devient connue.
-- **Scaling forcé à 1 instance.** Le store JSON et les uploads vivent
-  sur un disque local non partagé. Toute mise à l'échelle horizontale
-  exige une migration préalable vers Postgres + stockage objet
-  (Cloudflare R2, AWS S3…).
-- **Limite upload : 200 MB.** Au-dessus, risque d'OOM sur Render
-  Starter (512 MB RAM) et de timeout requête.
-- **Plan de migration** quand le volume disque dépasse ~1.5 GB :
-  migrer vers Postgres (métadonnées) + R2/S3 (binaires), retirer le
-  disque Render, lever `scaling.maxInstances`.
+- **Aucune persistance des fichiers locaux sur le plan Free.** Render supprime les fichiers du disque à chaque mise en veille. Cependant, le backend transfère automatiquement les fichiers vers **Cloudflare R2** et stocke les métadonnées sur **Upstash Redis**. L'architecture est donc 100% robuste sur le plan Free.
 
 ### Smoke tests post-déploiement
 

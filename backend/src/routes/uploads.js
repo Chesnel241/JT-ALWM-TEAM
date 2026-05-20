@@ -13,6 +13,32 @@ import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
+import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2 } from '../lib/s3.js';
+import { Readable } from 'stream';
+
+function createLazyStream(factory) {
+  let stream = null;
+  let initiating = false;
+
+  return new Readable({
+    async read(size) {
+      if (stream) return stream.resume();
+      if (initiating) return;
+      
+      initiating = true;
+      try {
+        stream = await factory();
+        stream.on('data', chunk => {
+          if (!this.push(chunk)) stream.pause();
+        });
+        stream.on('end', () => this.push(null));
+        stream.on('error', err => this.destroy(err));
+      } catch (err) {
+        this.destroy(err);
+      }
+    }
+  });
+}
 
 const router = Router();
 
@@ -60,7 +86,9 @@ router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) =>
   }
 
   const uploads = getCountryUploads(weekId, countryId);
-  const files = uploads.filter((u) => u.filename && existsSync(path.join(uploadsDir, u.filename)));
+  // Si R2 est actif, on assume que le fichier existe dans le cloud (ou on tentera de l'attraper).
+  // Sinon, on vérifie l'existence locale.
+  const files = uploads.filter((u) => u.filename && (HAS_R2 || existsSync(path.join(uploadsDir, u.filename))));
   
   if (files.length === 0) {
     logger.warn('Archive request with no files', {
@@ -74,7 +102,7 @@ router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) =>
   res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
 
   const archive = archiver('zip', { 
-    zlib: { level: 9 },
+    zlib: { level: 0 },
   });
 
   archive.on('error', (err) => {
@@ -87,6 +115,10 @@ router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) =>
         code: err.code,
       },
     });
+    
+    if (res.headersSent) {
+      return res.end();
+    }
     
     // Gérer les erreurs de disque plein
     if (err.code === 'ENOSPC') {
@@ -110,21 +142,22 @@ router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) =>
 
   archive.pipe(res);
   
-  files.forEach((file) => {
-    const filePath = path.join(uploadsDir, file.filename);
-    try {
-      archive.append(createReadStream(filePath), { name: file.name });
-      logger.debug(`Added to archive: ${file.name}`, {
+  // Append streams lazily without eagerly opening S3 connections
+  for (const file of files) {
+    if (HAS_R2) {
+      const lazyStream = createLazyStream(() => getR2ReadStream(`uploads/${file.filename}`));
+      archive.append(lazyStream, { name: file.name });
+      logger.debug(`Added lazy R2 stream to archive: ${file.name}`, {
         context: { filename: file.filename, size: file.size },
       });
-    } catch (err) {
-      logger.error(`Failed to add file to archive: ${file.name}`, {
-        error: err.message,
-        context: { filename: file.filename },
+    } else {
+      const filePath = path.join(uploadsDir, file.filename);
+      archive.append(createReadStream(filePath), { name: file.name });
+      logger.debug(`Added local to archive: ${file.name}`, {
+        context: { filename: file.filename, size: file.size },
       });
     }
-  });
-  
+  }
   archive.finalize();
 }));
 
@@ -227,6 +260,26 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
         filename: file.originalname,
         size: file.size,
       });
+
+      // --- NOUVEAU: Upload vers R2 ---
+      if (HAS_R2) {
+        try {
+          const filePath = path.join(uploadsDir, file.filename);
+          logger.info(`Starting R2 upload for ${file.filename}`);
+          await uploadToR2(filePath, `uploads/${file.filename}`, file.mimetype);
+          logger.info(`R2 upload complete for ${file.filename}, deleting local temporary file`);
+          // Supprimer le fichier local après succès
+          unlinkSync(filePath);
+        } catch (r2Err) {
+          logger.error(`R2 upload failed for ${file.filename}`, { error: r2Err.message });
+          // Rollback: on annule l'upload DB car le fichier n'est pas dans le Cloud
+          deleteUpload(weekId, countryId, fileData.id);
+          const filePath = path.join(uploadsDir, file.filename);
+          if (existsSync(filePath)) unlinkSync(filePath);
+          return next(createErrors.internalError('Erreur lors du transfert vers Cloudflare R2'));
+        }
+      }
+      // ---------------------------------
       
       logger.info('Upload completed and persisted', {
         context: {
@@ -289,7 +342,11 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
   const filePath = path.join(uploadsDir, filename);
 
   try {
-    writeFileSync(filePath, content, 'utf-8');
+    if (HAS_R2) {
+      await uploadBufferToR2(content, `uploads/${filename}`, 'text/plain; charset=utf-8');
+    } else {
+      writeFileSync(filePath, content, 'utf-8');
+    }
   } catch (err) {
     logger.error(`Failed to write script file: ${filename}`, {
       error: err.message,
@@ -380,25 +437,34 @@ router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next)
 
     // Supprimer le fichier physique si présent
     if (deleted.filename) {
-      const filePath = path.join(uploadsDir, deleted.filename);
-      if (existsSync(filePath)) {
-        try {
-          unlinkSync(filePath);
-          logger.info('File deleted successfully', {
-            context: { 
-              weekId, 
-              countryId, 
-              filename: deleted.filename, 
-              fileId,
-              deletedSize: deleted.size,
-            },
-          });
-        } catch (delErr) {
-          // Log mais ne pas échouer la requête si le fichier ne peut pas être supprimé
-          logger.warn(`Failed to delete physical file: ${deleted.filename}`, {
+      if (HAS_R2) {
+        await deleteFromR2(`uploads/${deleted.filename}`).catch(delErr => {
+          logger.warn(`Failed to delete R2 file: ${deleted.filename}`, {
             error: delErr.message,
             context: { weekId, countryId, fileId },
           });
+        });
+      } else {
+        const filePath = path.join(uploadsDir, deleted.filename);
+        if (existsSync(filePath)) {
+          try {
+            unlinkSync(filePath);
+            logger.info('File deleted successfully', {
+              context: { 
+                weekId, 
+                countryId, 
+                filename: deleted.filename, 
+                fileId,
+                deletedSize: deleted.size,
+              },
+            });
+          } catch (delErr) {
+            // Log mais ne pas échouer la requête si le fichier ne peut pas être supprimé
+            logger.warn(`Failed to delete physical file: ${deleted.filename}`, {
+              error: delErr.message,
+              context: { weekId, countryId, fileId },
+            });
+          }
         }
       }
     }

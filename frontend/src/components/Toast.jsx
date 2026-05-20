@@ -6,7 +6,8 @@ function ToastItem({ id, message, type, onRemove }) {
   useEffect(() => {
     const timer = setTimeout(onRemove, 3000);
     return () => clearTimeout(timer);
-  }, [onRemove]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const typeConfig = {
     success: {

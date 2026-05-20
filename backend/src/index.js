@@ -1,6 +1,6 @@
 import logger from './logger/index.js';
 import { startAlertMonitoring } from './monitoring/alerts.js';
-import { cleanupExpiredUploads } from './data/store.js';
+import { cleanupExpiredUploads, initDb } from './data/store.js';
 import { createApp } from './app.js';
 import { uploadsDir as resolveUploadsDir, pathsDiagnostic } from './lib/paths.js';
 
@@ -39,6 +39,9 @@ try {
     stack: err.stack,
   });
 }
+
+// Ensure DB is loaded (from Redis or local) before listening
+await initDb();
 
 const server = app.listen(PORT, () => {
   logger.info(`✅ Backend JT ALWM démarré`, {

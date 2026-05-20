@@ -4,37 +4,79 @@ import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
 import { weekExpiryDate } from './constants.js';
 import { storePath } from '../lib/paths.js';
+import { Redis } from '@upstash/redis';
+import { HAS_R2, deleteManyFromR2, listR2Objects } from '../lib/s3.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = storePath();
+
+// Setup Upstash Redis client if credentials exist
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
+const REDIS_KEY = 'jt_alwm_store_v1';
 
 // Store local persistant (remplacer par une DB en production).
 // Démarre vide en production — les uploads remplissent le store.
 const seed = {};
 
-function loadDb() {
+let db = {};
+
+export async function initDb() {
+  if (redis) {
+    try {
+      logger.info('Attempting to load DB from Upstash Redis...');
+      const redisData = await redis.get(REDIS_KEY);
+      if (redisData) {
+        db = typeof redisData === 'string' ? JSON.parse(redisData) : redisData;
+        logger.info('DB successfully loaded from Redis');
+        persistDbLocal(); // sync it back to the local ephemeral disk
+        return;
+      }
+      logger.info('Redis DB is empty, falling back to local/seed');
+    } catch (err) {
+      logger.error('Failed to load DB from Redis, falling back to local', { error: err.message });
+    }
+  }
+
   if (!existsSync(DB_PATH)) {
-    return JSON.parse(JSON.stringify(seed));
+    db = JSON.parse(JSON.stringify(seed));
+    return;
   }
 
   try {
     const raw = readFileSync(DB_PATH, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return JSON.parse(JSON.stringify(seed));
+    db = JSON.parse(raw);
+    logger.info('DB loaded from local disk');
+  } catch (err) {
+    logger.error('Failed to parse local DB', { error: err.message });
+    db = JSON.parse(JSON.stringify(seed));
   }
 }
 
 // Écriture atomique : tmp file + rename. Évite la corruption du JSON
 // si le process meurt en plein write. Suffisant en mono-instance ; pour
 // multi-instance il faudrait migrer vers une vraie DB.
-function persistDb() {
-  const tmpPath = `${DB_PATH}.${process.pid}.tmp`;
-  writeFileSync(tmpPath, JSON.stringify(db, null, 2));
-  renameSync(tmpPath, DB_PATH);
+function persistDbLocal() {
+  try {
+    const tmpPath = `${DB_PATH}.${process.pid}.tmp`;
+    writeFileSync(tmpPath, JSON.stringify(db, null, 2));
+    renameSync(tmpPath, DB_PATH);
+  } catch (err) {
+    logger.error('Failed to persist DB locally', { error: err.message });
+  }
 }
 
-const db = loadDb();
+function persistDb() {
+  persistDbLocal();
+  
+  if (redis) {
+    // Fire and forget: sync to Redis asynchronously so we don't block the API
+    redis.set(REDIS_KEY, JSON.stringify(db)).catch(err => {
+      logger.error('Failed to sync DB to Redis', { error: err.message });
+    });
+  }
+}
 
 // Clés réservées d'une entrée de semaine (`db[weekId][...]`) qui ne sont
 // pas des correspondants. `_delivery` = montage final ("JT Prêt").
@@ -130,11 +172,13 @@ function deleteUploadFile(upload, uploadsDir) {
   return false;
 }
 
-export function cleanupExpiredUploads(_unused, uploadsDir) {
+export async function cleanupExpiredUploads(_unused, uploadsDir) {
   const now = new Date();
   let removedCount = 0;
   let removedFromDb = 0;
   const removedFiles = [];
+  const r2KeysToDelete = new Set();
+  const weeksToDelete = [];
   const details = {
     startTime: now.toISOString(),
     errors: [],
@@ -142,26 +186,14 @@ export function cleanupExpiredUploads(_unused, uploadsDir) {
 
   logger.info('Starting cleanup of expired uploads', { context: { uploadsDir } });
 
-  // Itère sur toutes les clés du store et purge celles dont l'ID
-  // identifie une semaine expirée (= mercredi 00:00 de la semaine
-  // suivante atteint). Les IDs qui ne sont pas au format `YYYY-wWW`
-  // (anciennes données de test, métadonnées, etc.) sont ignorés ici.
+  // 1. Identify expired weeks and their R2 keys
   for (const weekId of Object.keys(db)) {
     if (META_KEYS.has(weekId)) continue;
 
     const expiry = weekExpiryDate(weekId);
-    if (!expiry) {
-      logger.debug(`Skipping unrecognised weekId during cleanup: ${weekId}`);
-      continue;
-    }
-    if (now < expiry) {
-      logger.debug(`Week ${weekId} not yet expired`, {
-        context: { weekId, expiryDate: expiry.toISOString() },
-      });
-      continue;
-    }
+    if (!expiry || now < expiry) continue;
 
-    logger.info(`Cleanup: Week ${weekId} expired, removing uploads`, {
+    logger.info(`Cleanup: Week ${weekId} expired, preparing to remove uploads`, {
       context: { weekId, expiryDate: expiry.toISOString() },
     });
 
@@ -169,28 +201,56 @@ export function cleanupExpiredUploads(_unused, uploadsDir) {
     if (weekUploads) {
       for (const countryId of Object.keys(weekUploads)) {
         for (const upload of weekUploads[countryId]) {
-          if (deleteUploadFile(upload, uploadsDir)) {
-            removedCount++;
-            removedFiles.push({ weekId, countryId, filename: upload.filename });
+          if (HAS_R2 && upload.filename) {
+            r2KeysToDelete.add(`uploads/${upload.filename}`);
           }
         }
       }
     }
+    weeksToDelete.push(weekId);
+  }
 
+  // 2. Delete from R2 FIRST (Fix Issue #1: Delete-Before-Confirm Flaw)
+  if (r2KeysToDelete.size > 0) {
+    try {
+      await deleteManyFromR2(Array.from(r2KeysToDelete));
+      logger.info(`Deleted ${r2KeysToDelete.size} files from R2 during cleanup`);
+    } catch (err) {
+      logger.error('Failed to delete files from R2, aborting DB cleanup to prevent orphans', { error: err.message });
+      details.errors.push({ phase: 'r2_cleanup_abort', error: err.message });
+      return 0; // Abort DB cleanup to ensure we retry next time
+    }
+  }
+
+  // 3. R2 deletion succeeded. Now delete local files and DB entries.
+  for (const weekId of weeksToDelete) {
+    const weekUploads = db[weekId];
+    if (weekUploads) {
+      for (const countryId of Object.keys(weekUploads)) {
+        for (const upload of weekUploads[countryId]) {
+          if (deleteUploadFile(upload, uploadsDir)) {
+            removedCount++;
+            removedFiles.push({ weekId, countryId, filename: upload.filename });
+          } else if (HAS_R2) {
+             removedCount++;
+             removedFiles.push({ weekId, countryId, filename: upload.filename });
+          }
+        }
+      }
+    }
     delete db[weekId];
     removedFromDb++;
   }
 
-  // Nettoyer les fichiers orphelins (dans le dossier mais pas dans la DB)
+  // 4. Cleanup Local Orphans
   if (existsSync(uploadsDir)) {
     try {
       const physicalFiles = readdirSync(uploadsDir);
       const entries = readdirSync(uploadsDir, { withFileTypes: true });
       for (const file of physicalFiles) {
-        // Ignorer les sous-dossiers (ex: logs/ si LOG_DIR pointe ici)
         if (entries.find((d) => d.name === file)?.isDirectory()) continue;
+        if (file.endsWith('.json') || file.endsWith('.tmp')) continue;
 
-        // Vérifier si ce fichier est référencé dans la DB
         let found = false;
         for (const weekId of Object.keys(db)) {
           if (META_KEYS.has(weekId)) continue;
@@ -203,31 +263,49 @@ export function cleanupExpiredUploads(_unused, uploadsDir) {
           if (found) break;
         }
 
-        // Si pas trouvé, c'est un orphelin - le supprimer
         if (!found) {
           const filePath = join(uploadsDir, file);
           try {
-            unlinkSync(filePath);
-            removedCount++;
-            logger.info(`Orphan file deleted: ${file}`, {
-              context: { filename: file, reason: 'orphaned' },
-            });
-            removedFiles.push({ filename: file, reason: 'orphaned' });
+            if (existsSync(filePath)) {
+              unlinkSync(filePath);
+              logger.info(`Orphan local file deleted: ${file}`);
+            }
           } catch (err) {
-            logger.error(`Failed to delete orphan file: ${file}`, {
-              error: err.message,
-              context: { filename: file },
-            });
+            logger.error(`Failed to delete orphan file: ${file}`, { error: err.message });
             details.errors.push({ filename: file, error: err.message });
           }
         }
       }
     } catch (err) {
-      logger.error('Error during orphan file cleanup', {
-        error: err.message,
-        context: { uploadsDir },
-      });
-      details.errors.push({ phase: 'orphan_cleanup', error: err.message });
+      logger.error('Error during local orphan cleanup', { error: err.message });
+      details.errors.push({ phase: 'local_orphan_cleanup', error: err.message });
+    }
+  }
+
+  // 5. Cleanup True R2 Orphans (Fix Issue #2: Orphan Cleanup is Local-Only)
+  if (HAS_R2) {
+    try {
+      const allR2Keys = await listR2Objects('uploads/');
+      const activeFilenames = new Set();
+      
+      for (const weekId of Object.keys(db)) {
+        if (META_KEYS.has(weekId)) continue;
+        for (const countryId of Object.keys(db[weekId])) {
+           for (const upload of db[weekId][countryId]) {
+              if (upload.filename) activeFilenames.add(`uploads/${upload.filename}`);
+           }
+        }
+      }
+      
+      const r2Orphans = allR2Keys.filter(key => !activeFilenames.has(key));
+      if (r2Orphans.length > 0) {
+        // Optionnel : on pourrait utiliser deleteManyFromR2 si c'est supporté par S3 en mode silencieux
+        await deleteManyFromR2(r2Orphans);
+        logger.info(`Deleted ${r2Orphans.length} true orphan files from R2`);
+      }
+    } catch(err) {
+      logger.error('Error during R2 orphan cleanup', { error: err.message });
+      details.errors.push({ phase: 'r2_orphan_cleanup', error: err.message });
     }
   }
 

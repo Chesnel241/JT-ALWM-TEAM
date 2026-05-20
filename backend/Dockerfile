@@ -44,10 +44,13 @@ EXPOSE 3010
 
 # Health check to verify backend is responsive
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3010', (r) => {if (r.statusCode !== 404) throw new Error(r.statusCode)})" || exit 1
+  CMD node -e "require('http').get('http://localhost:3010/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
 
 # Use dumb-init to handle signals correctly
 ENTRYPOINT ["dumb-init", "--"]
+
+# Switch to non-root user
+USER node
 
 # Start the application
 CMD ["node", "src/index.js"]
