@@ -116,6 +116,18 @@ export const translations = {
       deleted: (name) => `${name} supprimé`,
       published: 'Disponible au téléchargement',
     },
+    countdown: {
+      timeRemaining: 'Temps Restant',
+      days: 'j',
+      hours: 'h',
+      minutes: 'm',
+      seconds: 's',
+      finished: 'TERMINE',
+      lateTitle: 'VOUS êtes en retard, le JT est finalisé',
+      lateDesc: 'La date limite d\'envoi pour cette semaine (Dimanche 17h30) est dépassée. Vos envois seront tout de même traités si nécessaire.',
+      normalTitle: 'Délai de soumission',
+      normalDesc: 'Le JT doit être finalisé avant <strong className="text-[color:var(--ink)]">Dimanche 17h30</strong>. Le compteur ci-contre vous indique le temps restant pour uploader vos sujets sereinement.',
+    },
   },
 
   en: {
@@ -234,6 +246,18 @@ export const translations = {
       deleteMsg: (name) => `Are you sure you want to delete "${name}"? This cannot be undone.`,
       deleted: (name) => `${name} deleted`,
       published: 'Available for download',
+    },
+    countdown: {
+      timeRemaining: 'Time Remaining',
+      days: 'd',
+      hours: 'h',
+      minutes: 'm',
+      seconds: 's',
+      finished: 'ENDED',
+      lateTitle: 'YOU are late, the broadcast is finalized',
+      lateDesc: 'The submission deadline for this week (Sunday 5:30 PM) has passed. Your uploads will still be processed if necessary.',
+      normalTitle: 'Submission Deadline',
+      normalDesc: 'The broadcast must be finalized before <strong className="text-[color:var(--ink)]">Sunday 5:30 PM</strong>. The timer shows the remaining time to upload your reports peacefully.',
     },
   },
 };

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
+import { useI18n } from '../i18n/I18nContext.jsx';
 
 export default function CountdownTimer({ week }) {
+  const { t } = useI18n();
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -62,14 +64,14 @@ export default function CountdownTimer({ week }) {
         </svg>
         <div className="absolute flex flex-col items-center justify-center">
           {isLate ? (
-            <span className="text-xl font-black text-red-500">TERMINE</span>
+            <span className="text-xl font-black text-red-500">{t.countdown.finished}</span>
           ) : (
             <>
               <span className="text-2xl font-black tabular-nums tracking-tight text-[color:var(--ink)]">
-                {d}j {h.toString().padStart(2, '0')}h
+                {d}{t.countdown.days} {h.toString().padStart(2, '0')}{t.countdown.hours}
               </span>
               <span className="text-xs font-bold text-[color:var(--muted)]">
-                {m.toString().padStart(2, '0')}m {s.toString().padStart(2, '0')}s
+                {m.toString().padStart(2, '0')}{t.countdown.minutes} {s.toString().padStart(2, '0')}{t.countdown.seconds}
               </span>
             </>
           )}
@@ -81,20 +83,18 @@ export default function CountdownTimer({ week }) {
           <>
             <h2 className="text-2xl font-black text-red-600 dark:text-red-400 flex items-center justify-center md:justify-start gap-2 mb-2">
               <AlertCircle size={28} className="animate-pulse" />
-              VOUS êtes en retard, le JT est finalisé
+              {t.countdown.lateTitle}
             </h2>
             <p className="text-red-500/80 dark:text-red-300/80 font-medium">
-              La date limite d'envoi pour cette semaine (Dimanche 17h30) est dépassée. Vos envois seront tout de même traités si nécessaire.
+              {t.countdown.lateDesc}
             </p>
           </>
         ) : (
           <>
             <h2 className="text-xl font-bold text-[color:var(--ink)] mb-2">
-              Délai de soumission
+              {t.countdown.normalTitle}
             </h2>
-            <p className="text-[color:var(--muted)]">
-              Le JT doit être finalisé avant <strong className="text-[color:var(--ink)]">Dimanche 17h30</strong>. Le compteur ci-contre vous indique le temps restant pour uploader vos sujets sereinement.
-            </p>
+            <p className="text-[color:var(--muted)]" dangerouslySetInnerHTML={{ __html: t.countdown.normalDesc }} />
           </>
         )}
       </div>
