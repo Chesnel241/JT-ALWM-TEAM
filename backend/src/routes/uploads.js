@@ -6,7 +6,8 @@ import path from 'path';
 import { createReadStream, existsSync, unlinkSync, writeFileSync } from 'fs';
 import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
-import { COUNTRIES, WEEKS } from '../data/constants.js';
+import { COUNTRIES, buildWeeks } from '../data/constants.js';
+import { getCustomCountries } from '../data/store.js';
 import { getWeekUploads, getCountryUploads, addUpload, deleteUpload } from '../data/store.js';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
@@ -41,8 +42,12 @@ const upload = multer({
   },
 });
 
-const isValidWeek = (weekId) => WEEKS.some((w) => w.id === weekId);
-const isValidCountry = (countryId) => COUNTRIES.some((c) => c.id === countryId);
+// La validation se fait contre la liste recalculée à chaque appel —
+// indispensable car la fenêtre visible glisse chaque jour à minuit.
+const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
+const isValidCountry = (countryId) =>
+  COUNTRIES.some((c) => c.id === countryId) ||
+  getCustomCountries().some((c) => c.id === countryId);
 const uploadsDir = path.join(process.cwd(), 'uploads');
 
 // GET /api/uploads/:weekId — tous les pays d'une semaine

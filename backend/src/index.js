@@ -1,7 +1,6 @@
 import { join } from 'path';
 import logger from './logger/index.js';
 import { startAlertMonitoring } from './monitoring/alerts.js';
-import { WEEKS } from './data/constants.js';
 import { cleanupExpiredUploads } from './data/store.js';
 import { createApp } from './app.js';
 
@@ -19,10 +18,10 @@ logger.info('Initializing cleanup scheduler', {
 });
 
 try {
-  cleanupExpiredUploads(WEEKS, uploadsDir);
+  cleanupExpiredUploads(null, uploadsDir);
   setInterval(() => {
     try {
-      cleanupExpiredUploads(WEEKS, uploadsDir);
+      cleanupExpiredUploads(null, uploadsDir);
     } catch (err) {
       logger.error('Error during scheduled cleanup', {
         error: err.message,

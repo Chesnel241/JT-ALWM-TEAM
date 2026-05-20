@@ -40,9 +40,6 @@ function loadCountries() {
 
 export const COUNTRIES = loadCountries();
 
-export const WEEKS_PAST = parseInt(process.env.WEEKS_PAST || 4, 10);
-export const WEEKS_FUTURE = parseInt(process.env.WEEKS_FUTURE || 2, 10);
-
 // Décale `date` au lundi de sa semaine ISO (ramener au début de la
 // semaine, lundi 00:00 dans le fuseau local du serveur).
 function startOfIsoWeek(date) {
@@ -82,55 +79,97 @@ function isoWeekYear(date) {
 const MONTHS_FR = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc'];
 
 function formatRange(monday, sunday) {
-  const sameMonth = monday.getMonth() === sunday.getMonth();
   const m1 = `${monday.getDate()} ${MONTHS_FR[monday.getMonth()]}`;
-  const m2 = sameMonth
-    ? `${sunday.getDate()} ${MONTHS_FR[sunday.getMonth()]}`
-    : `${sunday.getDate()} ${MONTHS_FR[sunday.getMonth()]}`;
+  const m2 = `${sunday.getDate()} ${MONTHS_FR[sunday.getMonth()]}`;
   return `${m1} - ${m2}`;
 }
 
+function makeWeek(monday, status) {
+  const sunday = endOfIsoWeek(monday);
+  const year = isoWeekYear(monday);
+  const num = isoWeekNumber(monday);
+  return {
+    id: `${year}-w${String(num).padStart(2, '0')}`,
+    name: `Semaine ${num}`,
+    dates: formatRange(monday, sunday),
+    status,
+    startDate: monday.toISOString(),
+    endDate: sunday.toISOString(),
+  };
+}
+
 /**
- * Génère la liste des semaines visibles dans l'outil, centrée sur la
- * semaine actuelle. Format ISO 8601 : ID stable d'une année à l'autre.
- *
- * Status:
- *  - archived : semaine passée (ses uploads seront nettoyés 48 h après)
- *  - active   : semaine courante (la semaine "EN COURS")
- *  - upcoming : semaine future
- *
- * Note: la liste est recalculée à chaque démarrage du serveur. Les IDs
- * (ex: "2026-w21") restent valides tant que la semaine est dans la
- * fenêtre [past, future]. Une fois sortie, elle disparaît de l'API mais
- * les fichiers physiques sont conservés jusqu'au cleanup (48h après la
- * fin).
+ * Construit l'ID ISO (YYYY-wWW) d'une date donnée.
  */
-export function buildWeeks(now = new Date(), { past = WEEKS_PAST, future = WEEKS_FUTURE } = {}) {
+export function weekIdFor(date) {
+  return makeWeek(startOfIsoWeek(date), 'active').id;
+}
+
+/**
+ * Calcule la date d'expiration d'une semaine identifiée par son ID ISO.
+ * Une semaine W expire **mercredi 00:00 de la semaine W+1** (= sunday
+ * 23:59:59 + 48 h). Au-delà, ses uploads sont purgés et elle disparaît
+ * de la liste visible.
+ *
+ * Retourne `null` si l'ID n'est pas au format `YYYY-wWW`.
+ */
+export function weekExpiryDate(weekId) {
+  const m = /^(\d{4})-w(\d{1,2})$/.exec(weekId);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const week = parseInt(m[2], 10);
+
+  // ISO 8601 : la semaine 1 est celle qui contient le 4 janvier.
+  // On part du 4 janvier de cette année-là, on remonte à son lundi, puis
+  // on avance de (week - 1) semaines.
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const mondayWeek1 = new Date(jan4);
+  mondayWeek1.setDate(jan4.getDate() - jan4Day + 1);
+  mondayWeek1.setHours(0, 0, 0, 0);
+
+  const monday = new Date(mondayWeek1);
+  monday.setDate(mondayWeek1.getDate() + (week - 1) * 7);
+  const sunday = endOfIsoWeek(monday);
+
+  // Mercredi 00:00 de la semaine suivante = 48 h après dimanche 23:59:59
+  return new Date(sunday.getTime() + 48 * 60 * 60 * 1000 + 1);
+}
+
+/**
+ * Génère la liste des semaines visibles selon la règle métier "cycle de
+ * 9 jours" :
+ *
+ *  - Semaine **précédente** : visible uniquement le lundi et le mardi
+ *    de la semaine actuelle (statut `archived`). Le mercredi à 00:00,
+ *    elle disparaît et ses uploads sont purgés (cf. cleanup).
+ *  - Semaine **courante** : toujours visible (statut `active`).
+ *  - Semaine **suivante** : toujours visible (statut `upcoming`).
+ *
+ * Résultat : 2 ou 3 semaines, jamais plus.
+ */
+export function buildWeeks(now = new Date()) {
   const currentMonday = startOfIsoWeek(now);
+  const isoDay = now.getDay() === 0 ? 7 : now.getDay(); // 1=lun, ..., 7=dim
   const weeks = [];
 
-  for (let offset = -past; offset <= future; offset++) {
-    const monday = new Date(currentMonday);
-    monday.setDate(monday.getDate() + offset * 7);
-    const sunday = endOfIsoWeek(monday);
-    const year = isoWeekYear(monday);
-    const num = isoWeekNumber(monday);
-    const id = `${year}-w${String(num).padStart(2, '0')}`;
-    const status = offset < 0 ? 'archived' : offset === 0 ? 'active' : 'upcoming';
-
-    weeks.push({
-      id,
-      name: `Semaine ${num}`,
-      dates: formatRange(monday, sunday),
-      status,
-      startDate: monday.toISOString(),
-      endDate: sunday.toISOString(),
-    });
+  // Semaine précédente visible uniquement lundi (1) et mardi (2)
+  if (isoDay <= 2) {
+    const prevMonday = new Date(currentMonday);
+    prevMonday.setDate(prevMonday.getDate() - 7);
+    weeks.push(makeWeek(prevMonday, 'archived'));
   }
+
+  weeks.push(makeWeek(currentMonday, 'active'));
+
+  const nextMonday = new Date(currentMonday);
+  nextMonday.setDate(nextMonday.getDate() + 7);
+  weeks.push(makeWeek(nextMonday, 'upcoming'));
 
   return weeks;
 }
 
-// La liste est rebattie à chaque démarrage. Pour la régénérer sans
-// redéployer, déclencher un restart du service Render.
+// La liste est recalculée à chaque démarrage. Le service Render redémarre
+// régulièrement (deploys + autoscaling), ce qui garantit que la liste
+// reste à jour. En complément, un timer interne régénère côté API.
 export const WEEKS = buildWeeks();

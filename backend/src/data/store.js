@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync, renam
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
+import { weekExpiryDate } from './constants.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.JT_STORE_PATH || join(__dirname, 'store.json');
@@ -71,9 +72,8 @@ export function deleteUpload(weekId, countryId, fileId) {
   return removed;
 }
 
-function parseWeekEndDate(week) {
-  return week?.endDate ? new Date(week.endDate) : null;
-}
+// Clés réservées du store (méta-données qui ne sont pas des semaines).
+const META_KEYS = new Set(['_countries']);
 
 function deleteUploadFile(upload, uploadsDir) {
   if (!upload?.filename || !uploadsDir) return false;
@@ -95,7 +95,7 @@ function deleteUploadFile(upload, uploadsDir) {
   return false;
 }
 
-export function cleanupExpiredUploads(weeks, uploadsDir) {
+export function cleanupExpiredUploads(_unused, uploadsDir) {
   const now = new Date();
   let removedCount = 0;
   let removedFromDb = 0;
@@ -107,42 +107,42 @@ export function cleanupExpiredUploads(weeks, uploadsDir) {
 
   logger.info('Starting cleanup of expired uploads', { context: { uploadsDir } });
 
-  // Nettoyer les fichiers liés aux semaines archivées expirées
-  for (const week of weeks) {
-    if (week.status !== 'archived') continue;
-    const endDate = parseWeekEndDate(week);
-    if (!endDate) {
-      logger.warn(`Could not parse end date for week ${week.id}`, {
-        context: { weekId: week.id, weekDates: week.dates },
+  // Itère sur toutes les clés du store et purge celles dont l'ID
+  // identifie une semaine expirée (= mercredi 00:00 de la semaine
+  // suivante atteint). Les IDs qui ne sont pas au format `YYYY-wWW`
+  // (anciennes données de test, métadonnées, etc.) sont ignorés ici.
+  for (const weekId of Object.keys(db)) {
+    if (META_KEYS.has(weekId)) continue;
+
+    const expiry = weekExpiryDate(weekId);
+    if (!expiry) {
+      logger.debug(`Skipping unrecognised weekId during cleanup: ${weekId}`);
+      continue;
+    }
+    if (now < expiry) {
+      logger.debug(`Week ${weekId} not yet expired`, {
+        context: { weekId, expiryDate: expiry.toISOString() },
       });
       continue;
     }
 
-    const expiry = new Date(endDate.getTime() + 48 * 60 * 60 * 1000);
-    if (now <= expiry) {
-      logger.debug(`Week ${week.id} not yet expired`, {
-        context: { weekId: week.id, expiryDate: expiry.toISOString() },
-      });
-      continue;
-    }
-
-    logger.info(`Cleanup: Week ${week.id} expired, removing uploads`, {
-      context: { weekId: week.id, endDate: endDate.toISOString() },
+    logger.info(`Cleanup: Week ${weekId} expired, removing uploads`, {
+      context: { weekId, expiryDate: expiry.toISOString() },
     });
 
-    const weekUploads = db[week.id];
-    if (!weekUploads) continue;
-
-    for (const countryId of Object.keys(weekUploads)) {
-      for (const upload of weekUploads[countryId]) {
-        if (deleteUploadFile(upload, uploadsDir)) {
-          removedCount++;
-          removedFiles.push({ weekId: week.id, countryId, filename: upload.filename });
+    const weekUploads = db[weekId];
+    if (weekUploads) {
+      for (const countryId of Object.keys(weekUploads)) {
+        for (const upload of weekUploads[countryId]) {
+          if (deleteUploadFile(upload, uploadsDir)) {
+            removedCount++;
+            removedFiles.push({ weekId, countryId, filename: upload.filename });
+          }
         }
       }
     }
 
-    delete db[week.id];
+    delete db[weekId];
     removedFromDb++;
   }
 
@@ -150,10 +150,15 @@ export function cleanupExpiredUploads(weeks, uploadsDir) {
   if (existsSync(uploadsDir)) {
     try {
       const physicalFiles = readdirSync(uploadsDir);
+      const entries = readdirSync(uploadsDir, { withFileTypes: true });
       for (const file of physicalFiles) {
+        // Ignorer les sous-dossiers (ex: logs/ si LOG_DIR pointe ici)
+        if (entries.find((d) => d.name === file)?.isDirectory()) continue;
+
         // Vérifier si ce fichier est référencé dans la DB
         let found = false;
         for (const weekId of Object.keys(db)) {
+          if (META_KEYS.has(weekId)) continue;
           for (const countryId of Object.keys(db[weekId])) {
             if (db[weekId][countryId].some((u) => u.filename === file)) {
               found = true;

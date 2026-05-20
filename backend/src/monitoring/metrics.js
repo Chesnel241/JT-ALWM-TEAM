@@ -1,6 +1,6 @@
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
-import { WEEKS } from '../data/constants.js';
+import { buildWeeks } from '../data/constants.js';
 
 export let metricsData = {
   start_time: Date.now(),
@@ -104,7 +104,7 @@ export function getMetrics(uploadsDir) {
       usage_mb: Math.round(diskUsage / 1024 / 1024),
       usage_gb: (diskUsage / 1024 / 1024 / 1024).toFixed(2),
     },
-    weeks: WEEKS.length,
+    weeks: buildWeeks().length,
   };
 }
 
