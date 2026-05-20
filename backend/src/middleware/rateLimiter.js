@@ -16,8 +16,9 @@ export const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false, validate: { xForwardedForHeader: false, default: false },
   skip: (req) => {
-    // Optionnel: ignorer certaines routes ou IPs
-    return false;
+    // On ne limite que les requêtes d'upload (POST/PUT),
+    // on ignore les requêtes GET (consultation) et DELETE.
+    return req.method !== 'POST' && req.method !== 'PUT';
   },
   handler: (req, res, options) => {
     res.status(options.statusCode || 429).json({
