@@ -1,4 +1,4 @@
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Sparkles } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 
@@ -44,6 +44,19 @@ export default function Nav({ currentView, setCurrentView }) {
           >
             <LayoutDashboard size={18} />
             {t.nav.editing}
+          </button>
+          <button
+            onClick={() => setCurrentView('delivery')}
+            type="button"
+            aria-current={currentView === 'delivery' ? 'page' : undefined}
+            className={`btn flex items-center gap-2 ${
+              currentView === 'delivery'
+                ? 'btn-primary'
+                : 'btn-ghost border border-[var(--border)]'
+            }`}
+          >
+            <Sparkles size={18} />
+            {t.nav.delivery}
           </button>
         </div>
       </div>

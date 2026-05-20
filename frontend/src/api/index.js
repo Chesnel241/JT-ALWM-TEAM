@@ -71,4 +71,34 @@ export const api = {
 
   deleteFile: (weekId, countryId, fileId) =>
     request(`/uploads/${weekId}/${countryId}/${fileId}`, { method: 'DELETE' }),
+
+  // === JT Prêt (deliveries) ===
+  getDeliveries: (weekId) => request(`/deliveries/${weekId}`),
+
+  uploadDelivery: (weekId, file, { onProgress, signal } = {}) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${BASE}/deliveries/${weekId}`);
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable && typeof onProgress === 'function') {
+          onProgress((e.loaded / e.total) * 100);
+        }
+      });
+      xhr.addEventListener('load', () => {
+        let body = null;
+        try { body = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { /* ignore */ }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+        else reject(new Error((body && body.message) || xhr.statusText || 'Erreur serveur'));
+      });
+      xhr.addEventListener('error', () => reject(new Error('Erreur réseau')));
+      xhr.addEventListener('abort', () => reject(new Error('Upload annulé')));
+      if (signal) signal.addEventListener('abort', () => xhr.abort(), { once: true });
+      const form = new FormData();
+      form.append('file', file);
+      xhr.send(form);
+    });
+  },
+
+  deleteDelivery: (weekId, fileId) =>
+    request(`/deliveries/${weekId}/${fileId}`, { method: 'DELETE' }),
 };

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import multer from 'multer';
 import archiver from 'archiver';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
@@ -13,38 +12,9 @@ import { validateFile, validateMagicNumber } from '../middleware/fileValidator.j
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { audit } from '../logger/audit.js';
+import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
 
 const router = Router();
-
-// Path absolu pour que multer écrive sur le disque persistant en prod.
-// En dev, fallback sur cwd/uploads/.
-const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
-
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200); // 200MB par défaut
-const ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx']);
-
-const upload = multer({
-  storage,
-  limits: { 
-    fileSize: MAX_FILE_SIZE,
-    files: 1,
-  },
-  fileFilter: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (!ALLOWED_EXTENSIONS.has(ext)) {
-      return cb(new Error('Type de fichier non autorise'));
-    }
-    return cb(null, true);
-  },
-});
 
 // La validation se fait contre la liste recalculée à chaque appel —
 // indispensable car la fenêtre visible glisse chaque jour à minuit.

@@ -35,12 +35,46 @@ function persistDb() {
 
 const db = loadDb();
 
+// Clés réservées d'une entrée de semaine (`db[weekId][...]`) qui ne sont
+// pas des correspondants. `_delivery` = montage final ("JT Prêt").
+const RESERVED_WEEK_KEYS = new Set(['_delivery']);
+
 export function getWeekUploads(weekId) {
-  return db[weekId] || {};
+  const week = db[weekId];
+  if (!week) return {};
+  // Exclut les clés réservées (deliveries sont récupérées séparément).
+  const result = {};
+  for (const [k, v] of Object.entries(week)) {
+    if (!RESERVED_WEEK_KEYS.has(k)) result[k] = v;
+  }
+  return result;
 }
 
 export function getCountryUploads(weekId, countryId) {
+  if (RESERVED_WEEK_KEYS.has(countryId)) return [];
   return db[weekId]?.[countryId] || [];
+}
+
+export function getDelivery(weekId) {
+  return db[weekId]?._delivery || [];
+}
+
+export function addDelivery(weekId, fileData) {
+  if (!db[weekId]) db[weekId] = {};
+  if (!db[weekId]._delivery) db[weekId]._delivery = [];
+  db[weekId]._delivery.push(fileData);
+  persistDb();
+  return fileData;
+}
+
+export function deleteDelivery(weekId, fileId) {
+  if (!db[weekId]?._delivery) return false;
+  const list = db[weekId]._delivery;
+  const index = list.findIndex((f) => f.id === fileId);
+  if (index === -1) return false;
+  const [removed] = list.splice(index, 1);
+  persistDb();
+  return removed;
 }
 
 export function getCustomCountries() {

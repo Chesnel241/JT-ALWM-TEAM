@@ -17,10 +17,18 @@ beforeEach(() => {
 });
 
 describe('Nav', () => {
-  it('renders both navigation buttons (FR by default)', () => {
+  it('renders all navigation buttons (FR by default)', () => {
     renderWith();
     expect(screen.getByText('Espace Correspondants')).toBeInTheDocument();
     expect(screen.getByText('Espace Montage')).toBeInTheDocument();
+    expect(screen.getByText('JT Prêt')).toBeInTheDocument();
+  });
+
+  it('switches to delivery view on JT Prêt click', () => {
+    const setView = vi.fn();
+    renderWith({ currentView: 'home', setCurrentView: setView });
+    fireEvent.click(screen.getByText('JT Prêt'));
+    expect(setView).toHaveBeenCalledWith('delivery');
   });
 
   it('marks the active view with aria-current=page', () => {

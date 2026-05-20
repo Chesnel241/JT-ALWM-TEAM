@@ -8,6 +8,7 @@ import { initMetrics } from './monitoring/metrics.js';
 import countriesRouter from './routes/countries.js';
 import weeksRouter from './routes/weeks.js';
 import uploadsRouter from './routes/uploads.js';
+import deliveriesRouter from './routes/deliveries.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
@@ -73,6 +74,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/countries', countriesRouter);
   app.use('/api/weeks', weeksRouter);
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);
+  app.use('/api/deliveries', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), deliveriesRouter);
 
   app.use(notFoundMiddleware);
   app.use(errorHandlerMiddleware);

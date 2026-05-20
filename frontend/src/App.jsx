@@ -10,6 +10,7 @@ import SkeletonCard from './components/SkeletonCard.jsx';
 const HomeView = lazy(() => import('./components/HomeView.jsx'));
 const UploaderView = lazy(() => import('./components/UploaderView.jsx'));
 const DashboardView = lazy(() => import('./components/DashboardView.jsx'));
+const DeliveryView = lazy(() => import('./components/DeliveryView.jsx'));
 
 function LoadingFallback() {
   return (
@@ -81,6 +82,13 @@ function AppShell() {
                 selectedWeek={selectedWeek}
                 setSelectedWeek={setSelectedWeek}
                 countries={countries}
+              />
+            )}
+            {currentView === 'delivery' && (
+              <DeliveryView
+                weeks={weeks}
+                selectedWeek={selectedWeek}
+                setSelectedWeek={setSelectedWeek}
               />
             )}
           </Suspense>
