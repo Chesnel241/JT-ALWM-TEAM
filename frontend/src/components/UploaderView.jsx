@@ -9,6 +9,7 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
+import CountdownTimer from './CountdownTimer.jsx';
 
 const FILE_ICONS = {
   video: { Icon: Video, color: 'text-blue-500', bg: 'bg-blue-100' },
@@ -157,6 +158,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           ))}
         </select>
       </div>
+
+      {selectedWeek && (
+        <CountdownTimer week={weeks.find(w => w.id === selectedWeek)} />
+      )}
 
       <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
         <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.reportageCountTitle}</h3>
