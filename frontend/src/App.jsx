@@ -1,7 +1,7 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import Nav from './components/Nav.jsx';
 import ToastContainer from './components/Toast.jsx';
-import { ToastProvider } from './hooks/useToast.jsx';
+import { ToastProvider, useToast } from './hooks/useToast.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { I18nProvider, useI18n } from './i18n/I18nContext.jsx';
 import { api } from './api/index.js';
@@ -29,6 +29,10 @@ function AppShell() {
   const [weeks, setWeeks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { addToast } = useToast();
+  const [newUploadsCount, setNewUploadsCount] = useState(0);
+  const previousTotalRef = useRef(null);
+
   useEffect(() => {
     setIsLoading(true);
     Promise.all([api.getCountries(), api.getWeeks()])
@@ -46,6 +50,39 @@ function AppShell() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!selectedWeek) return;
+
+    const checkNewUploads = async () => {
+      try {
+        const dashboard = await api.getDashboard(selectedWeek);
+        const currentTotal = Object.values(dashboard).reduce((acc, files) => acc + files.length, 0);
+
+        if (previousTotalRef.current !== null && currentTotal > previousTotalRef.current && currentView !== 'dashboard') {
+          const diff = currentTotal - previousTotalRef.current;
+          setNewUploadsCount(prev => prev + diff);
+          addToast(`Nouvel(s) élément(s) reçu(s) (${diff}) !`, 'success', 4000);
+        }
+        previousTotalRef.current = currentTotal;
+      } catch (err) {
+        console.error('Erreur lors de la vérification des nouveaux uploads:', err);
+      }
+    };
+
+    // On lance la vérification initiale
+    checkNewUploads();
+
+    // Puis on vérifie toutes les 20 secondes
+    const interval = setInterval(checkNewUploads, 20000);
+    return () => clearInterval(interval);
+  }, [selectedWeek, currentView, addToast]);
+
+  useEffect(() => {
+    if (currentView === 'dashboard') {
+      setNewUploadsCount(0);
+    }
+  }, [currentView]);
+
   const handleSelectCountry = (country) => {
     setSelectedCountry(country);
     setCurrentView('uploader');
@@ -53,7 +90,7 @@ function AppShell() {
 
   return (
     <div className="app-shell flex flex-col">
-      <Nav currentView={currentView} setCurrentView={setCurrentView} />
+      <Nav currentView={currentView} setCurrentView={setCurrentView} newUploadsCount={newUploadsCount} />
 
       <main className="flex-1 pb-12">
         {isLoading ? (
