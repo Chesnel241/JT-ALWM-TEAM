@@ -11,7 +11,13 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 
 export const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
-export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10); // 200MB
+
+// Limites séparées : les rushes restent à 200 Mo (volume × pays × jours),
+// les deliveries (montage final) peuvent monter à 400 Mo car c'est un
+// fichier unique par semaine et la qualité finale pèse plus lourd.
+export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10);            // 200 MB
+export const DELIVERY_MAX_FILE_SIZE = parseInt(process.env.DELIVERY_MAX_FILE_SIZE || 419430400, 10); // 400 MB
+
 export const ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx']);
 
 const storage = multer.diskStorage({
@@ -22,14 +28,19 @@ const storage = multer.diskStorage({
   },
 });
 
-export const fileUpload = multer({
-  storage,
-  limits: { fileSize: MAX_FILE_SIZE, files: 1 },
-  fileFilter: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (!ALLOWED_EXTENSIONS.has(ext)) {
-      return cb(new Error('Type de fichier non autorisé'));
-    }
-    return cb(null, true);
-  },
-});
+function buildUploader(maxSize) {
+  return multer({
+    storage,
+    limits: { fileSize: maxSize, files: 1 },
+    fileFilter: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (!ALLOWED_EXTENSIONS.has(ext)) {
+        return cb(new Error('Type de fichier non autorisé'));
+      }
+      return cb(null, true);
+    },
+  });
+}
+
+export const fileUpload = buildUploader(MAX_FILE_SIZE);
+export const deliveryUpload = buildUploader(DELIVERY_MAX_FILE_SIZE);

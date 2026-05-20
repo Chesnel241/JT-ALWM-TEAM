@@ -65,25 +65,28 @@ export function validateMagicNumber(filePath, ext) {
 }
 
 /**
- * Valide un fichier uploadé
+ * Valide un fichier uploadé.
  * @param {Object} file - Objet fichier de multer
+ * @param {Object} [opts]
+ * @param {number} [opts.maxSize] - Taille max en octets (défaut MAX_FILE_SIZE).
+ *   Permet aux routes de spécifier une limite contextuelle (rushes 200 Mo,
+ *   delivery 400 Mo, etc.). multer applique déjà sa propre limite avant
+ *   d'arriver ici, ce check sert de défense en profondeur.
  * @returns {Object} - {valid: boolean, error?: string}
  */
-export function validateFile(file) {
+export function validateFile(file, { maxSize = MAX_FILE_SIZE } = {}) {
   if (!file) {
     return { valid: false, error: 'Aucun fichier fourni' };
   }
 
-  // Vérifier la présence des propriétés requises
   if (!file.originalname || !file.size || !file.mimetype) {
     return { valid: false, error: 'Fichier invalide ou corrompu' };
   }
 
-  // Vérifier la taille
-  if (file.size > MAX_FILE_SIZE) {
-    return { 
-      valid: false, 
-      error: `Fichier trop volumineux. Maximum: ${MAX_FILE_SIZE / (1024 * 1024)}MB`
+  if (file.size > maxSize) {
+    return {
+      valid: false,
+      error: `Fichier trop volumineux. Maximum: ${Math.round(maxSize / (1024 * 1024))}MB`,
     };
   }
 

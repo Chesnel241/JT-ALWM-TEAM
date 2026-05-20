@@ -22,7 +22,7 @@ import { validateFile, validateMagicNumber } from '../middleware/fileValidator.j
 import { isValidUUID } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { audit } from '../logger/audit.js';
-import { fileUpload, uploadsDir } from '../lib/upload.js';
+import { deliveryUpload, uploadsDir, DELIVERY_MAX_FILE_SIZE } from '../lib/upload.js';
 
 const router = Router();
 
@@ -49,7 +49,7 @@ router.post('/:weekId', asyncHandler(async (req, res, next) => {
     return next(createErrors.notFound('Week'));
   }
 
-  return fileUpload.single('file')(req, res, (err) => {
+  return deliveryUpload.single('file')(req, res, (err) => {
     if (err) {
       logger.error(`Delivery upload error: ${err.message}`, {
         error: err.message,
@@ -65,8 +65,9 @@ router.post('/:weekId', asyncHandler(async (req, res, next) => {
       return next(createErrors.badRequest('Aucun fichier reçu'));
     }
 
-    // Validation extension/MIME/nom puis magic number sur disque
-    let validation = validateFile(file);
+    // Validation extension/MIME/nom puis magic number sur disque.
+    // Limite à 400 Mo pour les deliveries (vs 200 Mo pour les rushes).
+    let validation = validateFile(file, { maxSize: DELIVERY_MAX_FILE_SIZE });
     if (validation.valid) {
       const ext = path.extname(file.originalname).toLowerCase();
       validation = validateMagicNumber(path.join(uploadsDir, file.filename), ext);

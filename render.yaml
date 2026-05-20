@@ -21,7 +21,9 @@ services:
       - key: SENTRY_DSN
         sync: false
       - key: MAX_FILE_SIZE
-        value: 209715200
+        value: 209715200          # 200 Mo : rushes (par pays, par jour)
+      - key: DELIVERY_MAX_FILE_SIZE
+        value: 419430400          # 400 Mo : JT Prêt (montage final hebdo)
       # IMPORTANT — toutes les données persistantes vivent sous
       # /app/uploads (le disque monté ci-dessous). Sans ces 3 env vars,
       # le code écrit dans des chemins éphémères qui sont wipés à chaque
