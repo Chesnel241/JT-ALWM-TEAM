@@ -9,8 +9,9 @@
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import { uploadsDir as resolveUploadsDir } from './paths.js';
 
-export const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+export const uploadsDir = resolveUploadsDir();
 
 // Limites séparées : les rushes restent à 200 Mo (volume × pays × jours),
 // les deliveries (montage final) peuvent monter à 400 Mo car c'est un

@@ -1,16 +1,17 @@
-import { join } from 'path';
 import logger from './logger/index.js';
 import { startAlertMonitoring } from './monitoring/alerts.js';
 import { cleanupExpiredUploads } from './data/store.js';
 import { createApp } from './app.js';
+import { uploadsDir as resolveUploadsDir, pathsDiagnostic } from './lib/paths.js';
 
 const PORT = process.env.PORT || 3010;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
 const corsOrigins = CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
-// UPLOADS_DIR doit pointer vers le disque persistant en production
-// (ex: /app/uploads/files sur Render). Sinon les fichiers disparaissent
-// à chaque redéploiement.
-const uploadsDir = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
+const uploadsDir = resolveUploadsDir();
+
+// Trace les chemins effectivement utilisés — facilite le debug
+// "pourquoi mes données disparaissent" depuis les logs Render.
+logger.info('Persistence paths resolved', { context: pathsDiagnostic() });
 
 const app = createApp({ uploadsDir, corsOrigins });
 

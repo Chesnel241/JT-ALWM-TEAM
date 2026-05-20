@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { statSync } from 'fs';
-import { join } from 'path';
 import logger from '../logger/index.js';
 import { getMetrics } from '../monitoring/metrics.js';
 import { getAlertState } from '../monitoring/alerts.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { uploadsDir as resolveUploadsDir } from '../lib/paths.js';
 
 const router = Router();
 
@@ -16,7 +15,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const startTime = Date.now();
   
   try {
-    const uploadsDir = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
+    const uploadsDir = resolveUploadsDir();
     const responseTime = Date.now() - startTime;
     const metrics = getMetrics(uploadsDir);
     const memUsage = process.memoryUsage();
@@ -77,7 +76,7 @@ router.get('/', asyncHandler(async (req, res) => {
 export const metricsRouter = Router();
 metricsRouter.get('/', asyncHandler(async (req, res) => {
   try {
-    const uploadsDir = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
+    const uploadsDir = resolveUploadsDir();
     const metrics = getMetrics(uploadsDir);
     const memUsage = process.memoryUsage();
     const alertState = getAlertState();

@@ -3,9 +3,10 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
 import { weekExpiryDate } from './constants.js';
+import { storePath } from '../lib/paths.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = process.env.JT_STORE_PATH || join(__dirname, 'store.json');
+const DB_PATH = storePath();
 
 // Store local persistant (remplacer par une DB en production).
 // Démarre vide en production — les uploads remplissent le store.

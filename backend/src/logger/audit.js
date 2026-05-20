@@ -12,11 +12,10 @@
 
 import winston from 'winston';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { mkdirSync } from 'fs';
+import { logsDir as resolveLogsDir } from '../lib/paths.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const auditDir = process.env.LOG_DIR || path.join(__dirname, '../../logs');
+const auditDir = resolveLogsDir();
 mkdirSync(auditDir, { recursive: true });
 
 const auditLogger = winston.createLogger({

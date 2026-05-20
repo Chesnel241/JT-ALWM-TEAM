@@ -1,13 +1,9 @@
 import winston from 'winston';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { mkdirSync } from 'fs';
+import { logsDir as resolveLogsDir } from '../lib/paths.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// LOG_DIR pointe vers /app/uploads/logs en production sur Render (disque
-// persistant) ; fallback dev = backend/logs/.
-const logsDir = process.env.LOG_DIR || path.join(__dirname, '../../logs');
-
+const logsDir = resolveLogsDir();
 mkdirSync(logsDir, { recursive: true });
 
 const isDev = process.env.NODE_ENV !== 'production';
