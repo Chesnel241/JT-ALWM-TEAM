@@ -13,7 +13,14 @@ const DB_PATH = storePath();
 // Setup Upstash Redis client if credentials exist
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
+let redis = null;
+if (redisUrl && redisToken) {
+  try {
+    redis = new Redis({ url: redisUrl, token: redisToken });
+  } catch (err) {
+    logger.error('Invalid Upstash Redis configuration', { error: err.message });
+  }
+}
 const REDIS_KEY = 'jt_alwm_store_v1';
 
 // Store local persistant (remplacer par une DB en production).
