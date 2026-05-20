@@ -65,6 +65,8 @@ export const translations = {
       cancel: 'Annuler',
       deleted: (name) => `${name} supprimé`,
       uploadedAt: 'Envoyé',
+      lockedTitle: 'Uploads clôturés pour cette semaine',
+      lockedDesc: "La date limite d'envoi (dimanche 17h30) est dépassée. Les uploads sont bloqués jusqu'à la prochaine semaine. Pour un envoi exceptionnel, contactez l'équipe montage directement.",
     },
     dashboard: {
       title: 'Tableau de bord',
@@ -210,6 +212,8 @@ export const translations = {
       cancel: 'Cancel',
       deleted: (name) => `${name} deleted`,
       uploadedAt: 'Sent',
+      lockedTitle: 'Uploads closed for this week',
+      lockedDesc: "The submission deadline (Sunday 5:30 PM) has passed. Uploads are blocked until next week. For an exceptional submission, contact the editing team directly.",
     },
     dashboard: {
       title: 'Dashboard',

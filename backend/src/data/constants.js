@@ -107,6 +107,37 @@ export function weekIdFor(date) {
 }
 
 /**
+ * Date limite d'envoi des rushes pour une semaine donnée.
+ * Règle métier : **dimanche 17h30 (fuseau serveur) de la semaine**.
+ * Après ce moment, les correspondants ne peuvent plus uploader.
+ * L'équipe montage (deliveries) reste libre d'uploader le JT final
+ * jusqu'à la purge mercredi 00:00 W+1.
+ *
+ * @param {string} weekId - ex: "2026-w21"
+ * @returns {Date|null}
+ */
+export function weekUploadCutoff(weekId) {
+  const m = /^(\d{4})-w(\d{1,2})$/.exec(weekId);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const week = parseInt(m[2], 10);
+
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const mondayWeek1 = new Date(jan4);
+  mondayWeek1.setDate(jan4.getDate() - jan4Day + 1);
+  mondayWeek1.setHours(0, 0, 0, 0);
+
+  const monday = new Date(mondayWeek1);
+  monday.setDate(mondayWeek1.getDate() + (week - 1) * 7);
+  // Dimanche = lundi + 6 jours, 17h30
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(17, 30, 0, 0);
+  return sunday;
+}
+
+/**
  * Calcule la date d'expiration d'une semaine identifiée par son ID ISO.
  * Une semaine W expire **mercredi 00:00 de la semaine W+1** (= sunday
  * 23:59:59 + 48 h). Au-delà, ses uploads sont purgés et elle disparaît

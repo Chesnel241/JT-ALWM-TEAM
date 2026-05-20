@@ -38,6 +38,18 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       .finally(() => setIsLoadingUploads(false));
   }, [selectedWeek, country.id]);
 
+  // Cutoff dimanche 17h30 — recalculé chaque seconde via le re-render
+  // déclenché par CountdownTimer (qui partage le même `now`). Pour
+  // garder le composant léger, on calcule ici à chaque render.
+  const currentWeek = weeks.find(w => w.id === selectedWeek);
+  const isLocked = (() => {
+    if (!currentWeek?.startDate) return false;
+    const cutoff = new Date(currentWeek.startDate);
+    cutoff.setDate(cutoff.getDate() + 6);
+    cutoff.setHours(17, 30, 0, 0);
+    return new Date() > cutoff;
+  })();
+
   const handleFiles = (filesList, reportageName) => {
     Array.from(filesList).forEach((file) => {
       const tempId = Math.random().toString(36).slice(2);
@@ -159,8 +171,15 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </select>
       </div>
 
-      {selectedWeek && (
-        <CountdownTimer week={weeks.find(w => w.id === selectedWeek)} />
+      {currentWeek && <CountdownTimer week={currentWeek} />}
+      {isLocked && (
+        <div role="alert" className="panel p-5 mb-8 border-2 border-red-500/50 bg-red-50/60 dark:bg-red-950/30 flex items-start gap-3">
+          <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={22} />
+          <div>
+            <p className="font-bold text-red-700 dark:text-red-300">{t.uploader.lockedTitle}</p>
+            <p className="text-sm text-red-600/90 dark:text-red-300/80 mt-1">{t.uploader.lockedDesc}</p>
+          </div>
+        </div>
       )}
 
       <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
@@ -193,14 +212,17 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               <div className="space-y-6">
                 <div
                   className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center transition-colors ${
-                    isDragActive
-                      ? 'border-[color:var(--accent)] bg-[var(--accent)]/10'
-                      : 'border-[var(--border)] bg-[var(--paper)] hover:border-[color:var(--accent)]'
+                    isLocked
+                      ? 'border-[var(--border)] bg-[var(--paper-2)] opacity-50 cursor-not-allowed'
+                      : isDragActive
+                        ? 'border-[color:var(--accent)] bg-[var(--accent)]/10'
+                        : 'border-[var(--border)] bg-[var(--paper)] hover:border-[color:var(--accent)]'
                   }`}
-                  onDragEnter={(e) => handleDrag(e, reportageName)}
-                  onDragLeave={(e) => handleDrag(e, reportageName)}
-                  onDragOver={(e) => handleDrag(e, reportageName)}
-                  onDrop={(e) => handleDrop(e, reportageName)}
+                  onDragEnter={(e) => !isLocked && handleDrag(e, reportageName)}
+                  onDragLeave={(e) => !isLocked && handleDrag(e, reportageName)}
+                  onDragOver={(e) => !isLocked && handleDrag(e, reportageName)}
+                  onDrop={(e) => !isLocked && handleDrop(e, reportageName)}
+                  aria-disabled={isLocked}
                 >
                   <UploadCloud className={`mx-auto h-14 w-14 mb-4 transition-transform duration-200 ${
                     isDragActive ? 'text-[color:var(--accent-deep)] scale-[1.05]' : 'text-[color:var(--muted)]'
@@ -211,12 +233,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   <p className="text-[color:var(--muted)] text-sm mb-6">
                     {t.uploader.dropHint}
                   </p>
-                  <label className="btn btn-primary cursor-pointer">
+                  <label className={`btn btn-primary ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
                     {t.uploader.browse}
                     <input
                       type="file"
                       className="hidden"
                       multiple
+                      disabled={isLocked}
                       onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName)}
                     />
                   </label>
@@ -228,18 +251,19 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                     {t.uploader.scriptTitle}
                   </h3>
                   <textarea
-                    className="w-full border border-[var(--border)] rounded-2xl p-4 text-sm focus:ring-2 focus:ring-[color:var(--accent)] outline-none mb-3 bg-[var(--paper)]"
+                    className="w-full border border-[var(--border)] rounded-2xl p-4 text-sm focus:ring-2 focus:ring-[color:var(--accent)] outline-none mb-3 bg-[var(--paper)] disabled:opacity-50 disabled:cursor-not-allowed"
                     rows="4"
                     placeholder={t.uploader.scriptPh}
                     value={scriptText[reportageName] || ''}
                     onChange={(e) => setScriptText(prev => ({ ...prev, [reportageName]: e.target.value }))}
+                    disabled={isLocked}
                   />
                   <div className="flex justify-end">
                     <button
                       onClick={() => handleScriptSubmit(reportageName)}
-                      disabled={!(scriptText[reportageName] || '').trim()}
+                      disabled={isLocked || !(scriptText[reportageName] || '').trim()}
                       type="button"
-                      className="btn btn-primary disabled:opacity-50"
+                      className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t.uploader.scriptSubmit}
                     </button>

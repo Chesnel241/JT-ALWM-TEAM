@@ -5,7 +5,7 @@ import path from 'path';
 import { createReadStream, existsSync, unlinkSync, writeFileSync } from 'fs';
 import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
-import { COUNTRIES, buildWeeks } from '../data/constants.js';
+import { COUNTRIES, buildWeeks, weekUploadCutoff } from '../data/constants.js';
 import { getCustomCountries } from '../data/store.js';
 import { getWeekUploads, getCountryUploads, addUpload, deleteUpload } from '../data/store.js';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
@@ -48,6 +48,21 @@ const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 const isValidCountry = (countryId) =>
   COUNTRIES.some((c) => c.id === countryId) ||
   getCustomCountries().some((c) => c.id === countryId);
+
+// Renvoie une erreur 423 (Locked) si la date limite d'envoi (dimanche
+// 17h30) est dépassée pour cette semaine.
+function checkUploadCutoff(weekId) {
+  const cutoff = weekUploadCutoff(weekId);
+  if (!cutoff) return null;
+  if (new Date() > cutoff) {
+    const err = new Error('Date limite d\'envoi dépassée (dimanche 17h30)');
+    err.statusCode = 423;
+    err.code = 'UPLOAD_DEADLINE_PASSED';
+    err.publicMessage = 'Délai dépassé : les uploads pour cette semaine sont clôturés depuis dimanche 17h30.';
+    return err;
+  }
+  return null;
+}
 
 // GET /api/uploads/:weekId — tous les pays d'une semaine
 router.get('/:weekId', (req, res) => {
@@ -182,6 +197,14 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
       context: { weekId, countryId, ip: req.ip },
     });
     return next(createErrors.notFound('Week ou Country'));
+  }
+
+  // Bloque les rushes après dimanche 17h30
+  const cutoffErr = checkUploadCutoff(weekId);
+  if (cutoffErr) {
+    audit('upload.blocked_after_deadline', req, { weekId, countryId });
+    logger.info('Upload blocked: deadline passed', { context: { weekId, countryId, ip: req.ip } });
+    return next(cutoffErr);
   }
 
   return upload.single('file')(req, res, async (err) => {
@@ -341,6 +364,12 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
       context: { weekId, countryId, ip: req.ip },
     });
     return next(createErrors.notFound('Week ou Country'));
+  }
+
+  const cutoffErr = checkUploadCutoff(weekId);
+  if (cutoffErr) {
+    audit('upload.blocked_after_deadline', req, { weekId, countryId, kind: 'script' });
+    return next(cutoffErr);
   }
 
   if (!content?.trim()) {
