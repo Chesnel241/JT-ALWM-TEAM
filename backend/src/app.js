@@ -10,6 +10,7 @@ import weeksRouter from './routes/weeks.js';
 import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
+import { HAS_R2, getR2PresignedUrl } from './lib/s3.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter } from './middleware/rateLimiter.js';
@@ -67,6 +68,20 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use(timeoutMiddleware(REQUEST_TIMEOUT_MS));
   app.use(express.json({ limit: '100kb' }));
   app.use(sanitizerMiddleware);
+
+  // NOUVEAU : Redirection vers Cloudflare R2 pour lire les vidéos
+  app.get('/uploads/:filename', async (req, res, next) => {
+    if (HAS_R2) {
+      try {
+        const url = await getR2PresignedUrl(`uploads/${req.params.filename}`);
+        return res.redirect(302, url);
+      } catch (err) {
+        // Ignorer l'erreur et laisser express.static chercher localement
+      }
+    }
+    next();
+  });
+
   app.use('/uploads', express.static(dir));
 
   app.use('/health', healthRouter);

@@ -1,4 +1,5 @@
 import { S3Client, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Upload } from '@aws-sdk/lib-storage';
 import { createReadStream } from 'fs';
 import logger from '../logger/index.js';
@@ -96,6 +97,21 @@ export async function getR2ReadStream(r2Key) {
   const response = await s3.send(command);
   // response.Body est un ReadableStream (Node.js) avec le SDK v3
   return response.Body;
+}
+
+/**
+ * Génère une URL temporaire (presigned URL) pour lire le fichier directement depuis R2
+ * Permet au frontend de streamer la vidéo sans charger la RAM du serveur Render
+ */
+export async function getR2PresignedUrl(r2Key, expiresIn = 3600) {
+  if (!HAS_R2) throw new Error('R2 not configured');
+
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: r2Key,
+  });
+
+  return await getSignedUrl(s3, command, { expiresIn });
 }
 
 /**
