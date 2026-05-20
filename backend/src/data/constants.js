@@ -90,6 +90,7 @@ function makeWeek(monday, status) {
   const num = isoWeekNumber(monday);
   return {
     id: `${year}-w${String(num).padStart(2, '0')}`,
+    num,
     name: `Semaine ${num}`,
     dates: formatRange(monday, sunday),
     status,

@@ -6,7 +6,7 @@ import {
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute } from '../lib/dates.js';
+import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
@@ -153,7 +153,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         >
           {weeks.map((w) => (
             <option key={w.id} value={w.id}>
-              {w.name} ({w.dates}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
+              {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
             </option>
           ))}
         </select>

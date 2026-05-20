@@ -3,7 +3,7 @@ import { Folder, FileText, Video, Download, Trash2 } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute } from '../lib/dates.js';
+import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 
@@ -91,7 +91,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           >
             {weeks.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.name} ({w.dates}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
+                {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
               </option>
             ))}
           </select>

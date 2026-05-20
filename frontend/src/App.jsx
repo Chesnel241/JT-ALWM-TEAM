@@ -61,11 +61,11 @@ function AppShell() {
         if (previousTotalRef.current !== null && currentTotal > previousTotalRef.current && currentView !== 'dashboard') {
           const diff = currentTotal - previousTotalRef.current;
           setNewUploadsCount(prev => prev + diff);
-          addToast(`Nouvel(s) élément(s) reçu(s) (${diff}) !`, 'success', 4000);
+          addToast(t.notifications.newUploads(diff), 'success', 4000);
         }
         previousTotalRef.current = currentTotal;
       } catch (err) {
-        console.error('Erreur lors de la vérification des nouveaux uploads:', err);
+        console.error('Upload check error:', err);
       }
     };
 

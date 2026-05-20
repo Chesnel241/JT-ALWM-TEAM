@@ -55,3 +55,25 @@ export function formatAbsolute(iso, locale = 'fr') {
     minute: '2-digit',
   });
 }
+
+/**
+ * Formate le nom localisé d'une semaine.
+ * Ex: "Semaine 21" (fr) / "Week 21" (en)
+ */
+export function formatWeekLabel(week, locale = 'fr') {
+  const num = week.num ?? week.name?.match(/\d+/)?.[0] ?? '';
+  return locale === 'en' ? `Week ${num}` : `Semaine ${num}`;
+}
+
+/**
+ * Formate la plage de dates d'une semaine dans la bonne locale.
+ * Ex: "18 mai - 24 mai" (fr) / "May 18 - May 24" (en)
+ */
+export function formatWeekDates(week, locale = 'fr') {
+  if (!week.startDate || !week.endDate) return week.dates || '';
+  const loc = locale === 'en' ? 'en-US' : 'fr-FR';
+  const opts = { day: 'numeric', month: 'short' };
+  const start = new Date(week.startDate).toLocaleDateString(loc, opts);
+  const end = new Date(week.endDate).toLocaleDateString(loc, opts);
+  return `${start} - ${end}`;
+}

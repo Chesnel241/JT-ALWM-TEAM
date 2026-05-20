@@ -90,6 +90,9 @@ export const translations = {
       close: 'Fermer',
       loading: 'Chargement...',
     },
+    notifications: {
+      newUploads: (n) => `Nouvel(s) élément(s) reçu(s) (${n}) !`,
+    },
     langSwitcher: {
       label: 'Langue',
       fr: 'Français',
@@ -220,6 +223,9 @@ export const translations = {
     common: {
       close: 'Close',
       loading: 'Loading...',
+    },
+    notifications: {
+      newUploads: (n) => `New upload(s) received (${n})!`,
     },
     langSwitcher: {
       label: 'Language',

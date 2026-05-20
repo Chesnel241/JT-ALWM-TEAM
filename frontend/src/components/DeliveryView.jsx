@@ -6,7 +6,7 @@ import {
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute } from '../lib/dates.js';
+import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 
@@ -129,7 +129,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
           >
             {weeks.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.name} ({w.dates}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
+                {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
               </option>
             ))}
           </select>
@@ -216,7 +216,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
           <div className="flex items-center justify-between gap-2 mb-6">
             <h3 className="font-semibold text-[color:var(--ink)] flex items-center gap-2">
               <Sparkles size={18} className="text-[color:var(--accent-deep)]" />
-              {week?.name}
+              {week ? formatWeekLabel(week, lang) : ''}
             </h3>
             {deliveries.length > 0 && (
               <span className="badge bg-emerald-50 text-emerald-700">
