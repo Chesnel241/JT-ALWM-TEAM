@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
+import { useI18n } from '../i18n/I18nContext.jsx';
 
 const ID_RE = /^[a-z0-9-]{2,12}$/;
 const CODE_RE = /^[A-Z0-9]{2,5}$/;
 
 export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [id, setId] = useState('');
@@ -19,8 +21,6 @@ export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
     }
   }, [isOpen]);
 
-  // Auto-suggérer l'id depuis le code tant que l'utilisateur n'a pas
-  // tapé un id explicite.
   useEffect(() => {
     if (!idTouched) setId(code.toLowerCase().slice(0, 12));
   }, [code, idTouched]);
@@ -44,7 +44,7 @@ export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
     try {
       await onConfirm({ id: cleanId, name: cleanName, code: cleanCode });
     } catch (err) {
-      setError(err.message || 'Erreur');
+      setError(err.message || t.uploader.errorPrefix);
       setIsLoading(false);
     }
   };
@@ -68,68 +68,59 @@ export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
           id="add-country-title"
           className="text-lg font-semibold text-[color:var(--ink)] mb-1"
         >
-          Ajouter un pays
+          {t.addCountry.title}
         </h2>
         <p className="text-[color:var(--muted)] text-sm mb-5">
-          Une fois créé, le pays apparaît dans la liste et peut recevoir des uploads.
+          {t.addCountry.subtitle}
         </p>
 
         <div className="space-y-3 mb-4">
           <div>
-            <label
-              htmlFor="add-country-name"
-              className="block text-xs uppercase tracking-[0.15em] text-[color:var(--muted)] mb-1"
-            >
-              Nom du pays
+            <label htmlFor="add-country-name" className="block text-xs uppercase tracking-[0.15em] text-[color:var(--muted)] mb-1">
+              {t.addCountry.nameLabel}
             </label>
             <input
               id="add-country-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="ex: Bénin"
+              placeholder={t.addCountry.namePh}
               maxLength={60}
               required
               className="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm bg-[var(--paper)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
             />
           </div>
           <div>
-            <label
-              htmlFor="add-country-code"
-              className="block text-xs uppercase tracking-[0.15em] text-[color:var(--muted)] mb-1"
-            >
-              Code (2-5 lettres majuscules)
+            <label htmlFor="add-country-code" className="block text-xs uppercase tracking-[0.15em] text-[color:var(--muted)] mb-1">
+              {t.addCountry.codeLabel}
             </label>
             <input
               id="add-country-code"
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="ex: BJ"
+              placeholder={t.addCountry.codePh}
               maxLength={5}
               required
               className="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm bg-[var(--paper)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] uppercase"
             />
           </div>
           <div>
-            <label
-              htmlFor="add-country-id"
-              className="block text-xs uppercase tracking-[0.15em] text-[color:var(--muted)] mb-1"
-            >
-              Identifiant technique
+            <label htmlFor="add-country-id" className="block text-xs uppercase tracking-[0.15em] text-[color:var(--muted)] mb-1">
+              {t.addCountry.idLabel}
             </label>
             <input
               id="add-country-id"
               type="text"
               value={id}
               onChange={(e) => { setIdTouched(true); setId(e.target.value.toLowerCase()); }}
-              placeholder="ex: bj"
+              placeholder={t.addCountry.idPh}
               maxLength={12}
               required
               className="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm bg-[var(--paper)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] lowercase font-mono"
             />
             <p className="text-xs text-[color:var(--muted)] mt-1">
-              Utilisé dans les URLs. Pas modifiable après création.
+              {t.addCountry.idHelp}
             </p>
           </div>
         </div>
@@ -147,7 +138,7 @@ export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
             type="button"
             className="px-4 py-2 rounded-lg border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--paper-2)] transition-colors disabled:opacity-50 font-medium text-sm"
           >
-            Annuler
+            {t.addCountry.cancel}
           </button>
           <button
             type="submit"
@@ -157,10 +148,10 @@ export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
             {isLoading ? (
               <>
                 <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Ajout...
+                {t.addCountry.submitting}
               </>
             ) : (
-              'Ajouter le pays'
+              t.addCountry.submit
             )}
           </button>
         </div>

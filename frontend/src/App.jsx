@@ -3,6 +3,7 @@ import Nav from './components/Nav.jsx';
 import ToastContainer from './components/Toast.jsx';
 import { ToastProvider } from './hooks/useToast.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { I18nProvider, useI18n } from './i18n/I18nContext.jsx';
 import { api } from './api/index.js';
 import SkeletonCard from './components/SkeletonCard.jsx';
 
@@ -18,7 +19,8 @@ function LoadingFallback() {
   );
 }
 
-export default function App() {
+function AppShell() {
+  const { t } = useI18n();
   const [currentView, setCurrentView] = useState('home');
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [selectedWeek, setSelectedWeek] = useState('');
@@ -49,54 +51,62 @@ export default function App() {
   };
 
   return (
-    <ErrorBoundary>
-      <ToastProvider>
-        <div className="app-shell flex flex-col">
-          <Nav currentView={currentView} setCurrentView={setCurrentView} />
+    <div className="app-shell flex flex-col">
+      <Nav currentView={currentView} setCurrentView={setCurrentView} />
 
-          <main className="flex-1 pb-12">
-            {isLoading ? (
-              <LoadingFallback />
-            ) : (
-              <Suspense fallback={<LoadingFallback />}>
-                {currentView === 'home' && (
-                  <HomeView
-                    countries={countries}
-                    onSelectCountry={handleSelectCountry}
-                    onCountryAdded={(c) => setCountries((prev) => [...prev, c])}
-                  />
-                )}
-                {currentView === 'uploader' && selectedCountry && (
-                  <UploaderView
-                    country={selectedCountry}
-                    weeks={weeks}
-                    selectedWeek={selectedWeek}
-                    setSelectedWeek={setSelectedWeek}
-                    onBack={() => setCurrentView('home')}
-                  />
-                )}
-                {currentView === 'dashboard' && (
-                  <DashboardView
-                    weeks={weeks}
-                    selectedWeek={selectedWeek}
-                    setSelectedWeek={setSelectedWeek}
-                    countries={countries}
-                  />
-                )}
-              </Suspense>
+      <main className="flex-1 pb-12">
+        {isLoading ? (
+          <LoadingFallback />
+        ) : (
+          <Suspense fallback={<LoadingFallback />}>
+            {currentView === 'home' && (
+              <HomeView
+                countries={countries}
+                onSelectCountry={handleSelectCountry}
+                onCountryAdded={(c) => setCountries((prev) => [...prev, c])}
+              />
             )}
-          </main>
+            {currentView === 'uploader' && selectedCountry && (
+              <UploaderView
+                country={selectedCountry}
+                weeks={weeks}
+                selectedWeek={selectedWeek}
+                setSelectedWeek={setSelectedWeek}
+                onBack={() => setCurrentView('home')}
+              />
+            )}
+            {currentView === 'dashboard' && (
+              <DashboardView
+                weeks={weeks}
+                selectedWeek={selectedWeek}
+                setSelectedWeek={setSelectedWeek}
+                countries={countries}
+              />
+            )}
+          </Suspense>
+        )}
+      </main>
 
-          <footer className="bg-[var(--paper-2)] text-[color:var(--muted)] py-6 text-center text-sm border-t border-[var(--border)]">
-            <p>JT ALWM Hub, outil de centralisation des reportages.</p>
-            <p className="text-xs mt-2 text-[color:var(--muted)]">
-              Rétention automatique : Les fichiers sont supprimés 48h après la fin de la semaine de diffusion.
-            </p>
-          </footer>
+      <footer className="bg-[var(--paper-2)] text-[color:var(--muted)] py-6 text-center text-sm border-t border-[var(--border)]">
+        <p>{t.footer.brand}</p>
+        <p className="text-xs mt-2 text-[color:var(--muted)]">
+          {t.footer.retention}
+        </p>
+      </footer>
 
-          <ToastContainer />
-        </div>
-      </ToastProvider>
+      <ToastContainer />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <I18nProvider>
+        <ToastProvider>
+          <AppShell />
+        </ToastProvider>
+      </I18nProvider>
     </ErrorBoundary>
   );
 }

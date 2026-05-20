@@ -6,30 +6,9 @@ import logger from '../logger/index.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.JT_STORE_PATH || join(__dirname, 'store.json');
 
-// Store local persistant (remplacer par une DB en production)
-const seed = {
-  'w-43': {
-    sn: [
-      {
-        id: 'seed-1',
-        name: 'rush_manifestation_dakar.mp4',
-        type: 'video',
-        size: '450 MB',
-        status: 'completed',
-        uploadedAt: new Date().toISOString(),
-      },
-      {
-        id: 'seed-2',
-        name: 'script_manifestation.txt',
-        type: 'script',
-        size: '12 KB',
-        status: 'completed',
-        content: 'Le rassemblement a commencé à 10h...',
-        uploadedAt: new Date().toISOString(),
-      },
-    ],
-  },
-};
+// Store local persistant (remplacer par une DB en production).
+// Démarre vide en production — les uploads remplissent le store.
+const seed = {};
 
 function loadDb() {
   if (!existsSync(DB_PATH)) {
@@ -93,30 +72,7 @@ export function deleteUpload(weekId, countryId, fileId) {
 }
 
 function parseWeekEndDate(week) {
-  if (!week?.dates) return null;
-  const parts = week.dates.split('-').map((p) => p.trim());
-  if (parts.length < 2) return null;
-  const end = parts[1];
-  const [dayStr, monthStr] = end.split(' ');
-  const day = Number(dayStr);
-  const months = {
-    jan: 0,
-    fev: 1,
-    mar: 2,
-    avr: 3,
-    mai: 4,
-    jun: 5,
-    jul: 6,
-    aou: 7,
-    sep: 8,
-    oct: 9,
-    nov: 10,
-    dec: 11,
-  };
-  const key = monthStr?.toLowerCase().slice(0, 3);
-  if (!day || !months.hasOwnProperty(key)) return null;
-  const year = new Date().getFullYear();
-  return new Date(year, months[key], day, 23, 59, 59, 999);
+  return week?.endDate ? new Date(week.endDate) : null;
 }
 
 function deleteUploadFile(upload, uploadsDir) {

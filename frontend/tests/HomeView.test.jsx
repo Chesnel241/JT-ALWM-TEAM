@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import HomeView from '../src/components/HomeView.jsx';
 import { ToastProvider } from '../src/hooks/useToast.jsx';
+import { I18nProvider } from '../src/i18n/I18nContext.jsx';
 
 const COUNTRIES = [
   { id: 'sn', name: 'Sénégal', code: 'SN' },
@@ -10,11 +11,18 @@ const COUNTRIES = [
 
 function renderHome(props = {}) {
   return render(
-    <ToastProvider>
-      <HomeView countries={COUNTRIES} onSelectCountry={() => {}} {...props} />
-    </ToastProvider>
+    <I18nProvider>
+      <ToastProvider>
+        <HomeView countries={COUNTRIES} onSelectCountry={() => {}} {...props} />
+      </ToastProvider>
+    </I18nProvider>
   );
 }
+
+beforeEach(() => {
+  localStorage.clear();
+  localStorage.setItem('jt-alwm-lang', 'fr');
+});
 
 describe('HomeView', () => {
   it('renders one button per country', () => {

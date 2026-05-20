@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
+import { useI18n } from '../i18n/I18nContext.jsx';
+import { formatRelative, formatAbsolute } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 
@@ -14,9 +16,10 @@ const FILE_ICONS = {
 };
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
+  const { t, lang } = useI18n();
   const { addToast } = useToast();
   const [uploads, setUploads] = useState([]);
-  const [uploading, setUploading] = useState([]); // { id, name, progress, status, error }
+  const [uploading, setUploading] = useState([]);
   const [scriptText, setScriptText] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -24,7 +27,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingUploads, setIsLoadingUploads] = useState(true);
 
-  // Charger les fichiers existants
   useEffect(() => {
     if (!selectedWeek) return;
     setIsLoadingUploads(true);
@@ -45,8 +47,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       api
         .uploadFile(selectedWeek, country.id, file, {
           onProgress: (pct) => {
-            // Plafonne à 99% tant que le serveur n'a pas répondu — passe à
-            // 100% / 'completed' uniquement à la résolution réelle.
             setUploading((prev) =>
               prev.map((f) =>
                 f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f
@@ -61,7 +61,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             )
           );
           setUploads((prev) => [...prev, result]);
-          addToast(`${result.name} uploadé avec succès`, 'success', 3000);
+          addToast(t.uploader.uploadSuccess(result.name), 'success', 3000);
         })
         .catch((err) => {
           setUploading((prev) =>
@@ -71,7 +71,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 : f
             )
           );
-          addToast(`Erreur : ${err.message}`, 'error', 4000);
+          addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
         });
     });
   };
@@ -95,9 +95,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       const result = await api.submitScript(selectedWeek, country.id, scriptText);
       setUploads((prev) => [...prev, result]);
       setScriptText('');
-      addToast('Script ajouté avec succès', 'success', 3000);
+      addToast(t.uploader.scriptSuccess, 'success', 3000);
     } catch (err) {
-      addToast(`Erreur : ${err.message}`, 'error', 4000);
+      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     }
   };
 
@@ -112,11 +112,11 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     try {
       await api.deleteFile(selectedWeek, country.id, fileToDelete.id);
       setUploads((prev) => prev.filter((f) => f.id !== fileToDelete.id));
-      addToast(`${fileToDelete.name} supprimé`, 'success', 3000);
+      addToast(t.uploader.deleted(fileToDelete.name), 'success', 3000);
       setDeleteDialogOpen(false);
       setFileToDelete(null);
     } catch (err) {
-      addToast(`Erreur : ${err.message}`, 'error', 4000);
+      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
       setIsDeleting(false);
     }
@@ -126,7 +126,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
       <div className="flex flex-wrap items-center gap-4 mb-8">
         <button onClick={onBack} type="button" className="btn btn-ghost border border-[var(--border)]">
-          Pays
+          {t.uploader.back}
         </button>
         <ChevronRight size={16} className="text-[color:var(--muted)]" />
         <span className="font-semibold text-2xl text-[color:var(--ink)] flex items-center gap-2">
@@ -138,16 +138,14 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8">
-        {/* Colonne principale */}
         <div className="space-y-6">
-          {/* Sélecteur semaine */}
           <div className="panel p-5 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h3 className="font-semibold text-[color:var(--ink)]">Semaine de diffusion</h3>
-              <p className="text-sm text-[color:var(--muted)]">Verifiez le bon dossier avant de deposer.</p>
+              <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.weekTitle}</h3>
+              <p className="text-sm text-[color:var(--muted)]">{t.uploader.weekSubtitle}</p>
             </div>
             <label className="sr-only" htmlFor="uploader-week">
-              Choisir la semaine de diffusion
+              {t.uploader.weekLabel}
             </label>
             <select
               id="uploader-week"
@@ -157,13 +155,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             >
               {weeks.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name} ({w.dates}){w.status === 'active' ? ' - EN COURS' : ''}
+                  {w.name} ({w.dates}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Zone drag & drop */}
           <div
             className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center transition-colors ${
               dragActive
@@ -179,33 +176,32 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               dragActive ? 'text-[color:var(--accent-deep)] scale-[1.05]' : 'text-[color:var(--muted)]'
             }`} />
             <h3 className="text-lg font-semibold text-[color:var(--ink)] mb-2">
-              Glissez-déposez vos fichiers ici
+              {t.uploader.dropTitle}
             </h3>
             <p className="text-[color:var(--muted)] text-sm mb-6">
-              Vidéos (MP4, MOV), Audios (MP3, WAV), Scripts (TXT, DOCX).
+              {t.uploader.dropHint}
             </p>
             <label className="btn btn-primary cursor-pointer">
-              Parcourir les fichiers
+              {t.uploader.browse}
               <input
                 type="file"
                 className="hidden"
                 multiple
-                aria-label="Selectionner des fichiers a envoyer"
+                aria-label={t.uploader.browseAria}
                 onChange={(e) => e.target.files && handleFiles(e.target.files)}
               />
             </label>
           </div>
 
-          {/* Saisie rapide de script */}
           <div className="panel p-6">
             <h3 className="font-semibold text-[color:var(--ink)] mb-3 flex items-center gap-2">
               <FileText size={18} className="text-[color:var(--signal)]" />
-              Saisir un script rapidement
+              {t.uploader.scriptTitle}
             </h3>
             <textarea
               className="w-full border border-[var(--border)] rounded-2xl p-4 text-sm focus:ring-2 focus:ring-[color:var(--accent)] outline-none mb-3 bg-[var(--paper)]"
               rows="4"
-              placeholder="Collez ici le texte de la voix off ou vos notes pour le monteur..."
+              placeholder={t.uploader.scriptPh}
               value={scriptText}
               onChange={(e) => setScriptText(e.target.value)}
             />
@@ -216,15 +212,14 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 type="button"
                 className="btn btn-primary disabled:opacity-50"
               >
-                Ajouter le script
+                {t.uploader.scriptSubmit}
               </button>
             </div>
           </div>
 
-          {/* Transferts en cours */}
           {uploading.length > 0 && (
             <div className="panel p-6">
-              <h3 className="font-semibold text-[color:var(--ink)] mb-4">Transferts en cours</h3>
+              <h3 className="font-semibold text-[color:var(--ink)] mb-4">{t.uploader.transfers}</h3>
               <div className="space-y-4">
                 {uploading.map((f) => (
                   <div key={f.id} className="bg-[var(--paper)] p-3 rounded-2xl border border-[var(--border)]">
@@ -232,7 +227,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                       <span className="font-medium text-[color:var(--ink)] truncate pr-4">{f.name}</span>
                       {f.status === 'completed' && (
                         <span className="text-emerald-600 flex items-center gap-1">
-                          <CheckCircle size={14} /> Terminé
+                          <CheckCircle size={14} /> {t.uploader.done}
                         </span>
                       )}
                       {f.status === 'error' && (
@@ -263,12 +258,11 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           )}
         </div>
 
-        {/* Colonne latérale : fichiers sur le serveur */}
         <div className="panel p-6 h-fit">
           <div className="flex items-center gap-2 mb-6">
             <Folder className="text-[color:var(--muted)]" />
             <h3 className="font-semibold text-[color:var(--ink)]">
-              Dossier: {weeks.find((w) => w.id === selectedWeek)?.name}
+              {t.uploader.folder(weeks.find((w) => w.id === selectedWeek)?.name || '')}
             </h3>
           </div>
 
@@ -277,7 +271,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           ) : uploads.length === 0 ? (
             <div className="text-center text-[color:var(--muted)] py-8 flex flex-col items-center">
               <Clock size={32} className="text-[color:var(--muted)] mb-2" />
-              <p className="text-sm">Aucun fichier uploadé pour l'instant.</p>
+              <p className="text-sm">{t.uploader.noFiles}</p>
             </div>
           ) : (
             <ul className="space-y-3">
@@ -293,13 +287,23 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <p className="text-sm font-medium text-[color:var(--ink)] truncate">{file.name}</p>
-                      <p className="text-xs text-[color:var(--muted)]">{file.size}</p>
+                      <p className="text-xs text-[color:var(--muted)] flex items-center gap-2 flex-wrap">
+                        <span>{file.size}</span>
+                        {file.uploadedAt && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span title={formatAbsolute(file.uploadedAt, lang)}>
+                              {t.uploader.uploadedAt} {formatRelative(file.uploadedAt, lang)}
+                            </span>
+                          </>
+                        )}
+                      </p>
                     </div>
                     <button
                       onClick={() => openDeleteDialog(file)}
                       type="button"
                       className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded transition-colors"
-                      title="Supprimer"
+                      title={t.dashboard.delete}
                     >
                       <Trash2 size={15} />
                     </button>
@@ -313,10 +317,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
       <ConfirmDialog
         isOpen={deleteDialogOpen}
-        title="Supprimer ce fichier ?"
-        message={`Êtes-vous sûr de vouloir supprimer "${fileToDelete?.name}" ? Cette action est irréversible.`}
-        confirmText="Supprimer"
-        cancelText="Annuler"
+        title={t.uploader.deleteTitle}
+        message={t.uploader.deleteMsg(fileToDelete?.name || '')}
+        confirmText={t.uploader.deleteConfirm}
+        cancelText={t.uploader.cancel}
         variant="danger"
         isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
