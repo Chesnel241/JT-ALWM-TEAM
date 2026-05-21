@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { Lock } from 'lucide-react';
+import { Lock, MessageCircle } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 
 export default function LoginView({ onLogin }) {
@@ -17,6 +17,8 @@ export default function LoginView({ onLogin }) {
     localStorage.setItem('app-password', password);
     onLogin();
   };
+
+  const whatsappUrl = `https://wa.me/33778669907?text=${encodeURIComponent(t.login?.whatsappMessage || 'Bonjour, je n\'arrive pas à accéder à la plateforme ALWM. Pouvez-vous m\'aider ?')}`;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--background)] p-4 relative">
@@ -54,9 +56,20 @@ export default function LoginView({ onLogin }) {
         </form>
       </div>
 
-      <p className="mt-8 text-sm text-[color:var(--muted)] max-w-md text-center">
-        {t.login?.contactHelp || 'Si vous n\'avez pas le mot de passe ou avez besoin d\'aide, écrivez sur WhatsApp au +33778669907'}
-      </p>
+      <div className="mt-8 text-center flex flex-col items-center gap-3">
+        <p className="text-sm text-[color:var(--muted)] max-w-md">
+          {t.login?.contactHelp || 'Si vous n\'avez pas le mot de passe ou avez besoin d\'aide, écrivez sur WhatsApp au +33778669907'}
+        </p>
+        <a 
+          href={whatsappUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-full font-medium transition-colors shadow-sm"
+        >
+          <MessageCircle size={18} />
+          {t.login?.whatsappButton || 'Contacter sur WhatsApp'}
+        </a>
+      </div>
     </div>
   );
 }

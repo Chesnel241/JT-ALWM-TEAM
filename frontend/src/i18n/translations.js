@@ -149,6 +149,8 @@ export const translations = {
       passwordPlaceholder: 'Mot de passe',
       unlock: 'Déverrouiller',
       contactHelp: 'Si vous n\'avez pas le mot de passe ou avez besoin d\'aide, écrivez sur WhatsApp au +33778669907',
+      whatsappButton: 'Contacter sur WhatsApp',
+      whatsappMessage: 'Bonjour, je n\'arrive pas à accéder à la plateforme ALWM. Pouvez-vous m\'aider ?',
     },
   },
 
@@ -302,6 +304,8 @@ export const translations = {
       passwordPlaceholder: 'Password',
       unlock: 'Unlock',
       contactHelp: 'If you don\'t have the password or need help, message on WhatsApp at +33778669907',
+      whatsappButton: 'Contact on WhatsApp',
+      whatsappMessage: 'Hello, I cannot access the ALWM platform. Can you help me?',
     },
   },
 };
