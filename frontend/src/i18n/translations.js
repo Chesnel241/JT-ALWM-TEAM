@@ -137,7 +137,7 @@ export const translations = {
       deleted: (name) => `${name} supprimé`,
       published: 'Disponible au téléchargement',
       notifyAll: (count) => `Notifier ${count} journaliste(s) sur WhatsApp`,
-      whatsappMessage: 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme.',
+      whatsappMessage: 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme. / The ALWM broadcast is ready! You can download it from the platform.',
     },
     countdown: {
       timeRemaining: 'Temps Restant',
@@ -299,7 +299,7 @@ export const translations = {
       deleted: (name) => `${name} deleted`,
       published: 'Available for download',
       notifyAll: (count) => `Notify ${count} journalist(s) on WhatsApp`,
-      whatsappMessage: 'The ALWM broadcast is ready! You can download it from the platform.',
+      whatsappMessage: 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme. / The ALWM broadcast is ready! You can download it from the platform.',
     },
     countdown: {
       timeRemaining: 'Time Remaining',
