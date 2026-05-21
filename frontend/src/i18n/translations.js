@@ -144,6 +144,12 @@ export const translations = {
       normalTitle: 'Délai de soumission',
       normalDesc: 'Le JT doit être finalisé avant <strong className="text-[color:var(--ink)]">Dimanche 17h30</strong>. Le compteur ci-contre vous indique le temps restant pour uploader vos sujets sereinement.',
     },
+    login: {
+      instruction: 'Veuillez entrer le mot de passe global pour accéder à la plateforme.',
+      passwordPlaceholder: 'Mot de passe',
+      unlock: 'Déverrouiller',
+      contactHelp: 'Si vous n\'avez pas le mot de passe ou avez besoin d\'aide, écrivez sur WhatsApp au +33778669907',
+    },
   },
 
   en: {
@@ -289,7 +295,13 @@ export const translations = {
       lateTitle: 'YOU are late, the broadcast is finalized',
       lateDesc: 'The submission deadline for this week (Sunday 5:30 PM) has passed. Your uploads will still be processed if necessary.',
       normalTitle: 'Submission Deadline',
-      normalDesc: 'The broadcast must be finalized before <strong className="text-[color:var(--ink)]">Sunday 5:30 PM</strong>. The timer shows the remaining time to upload your reports peacefully.',
+      normalDesc: 'The broadcast must be finalized before <strong className="text-[color:var(--ink)]">Sunday 17:30</strong>. The timer shows the remaining time to comfortably upload your files.',
+    },
+    login: {
+      instruction: 'Please enter the global password to access the platform.',
+      passwordPlaceholder: 'Password',
+      unlock: 'Unlock',
+      contactHelp: 'If you don\'t have the password or need help, message on WhatsApp at +33778669907',
     },
   },
 };

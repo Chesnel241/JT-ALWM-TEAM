@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { Lock } from 'lucide-react';
+import LanguageSwitcher from './LanguageSwitcher.jsx';
 
 export default function LoginView({ onLogin }) {
   const { t } = useI18n();
@@ -13,13 +14,16 @@ export default function LoginView({ onLogin }) {
       setError(t.errors?.networkError || 'Mot de passe requis');
       return;
     }
-    // We simply save and trigger a reload or callback
     localStorage.setItem('app-password', password);
     onLogin();
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--background)] p-4 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
+
       <div className="panel p-8 max-w-md w-full border-t-4 border-t-[color:var(--accent)] text-center">
         <div className="mx-auto bg-[var(--accent)]/10 text-[color:var(--accent-deep)] w-16 h-16 rounded-full flex items-center justify-center mb-6">
           <Lock size={32} />
@@ -29,7 +33,7 @@ export default function LoginView({ onLogin }) {
           {t.nav?.brand || 'JT Access'}
         </h2>
         <p className="text-[color:var(--muted)] mb-8">
-          Veuillez entrer le mot de passe global pour accéder à la plateforme.
+          {t.login?.instruction || 'Veuillez entrer le mot de passe global pour accéder à la plateforme.'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -38,17 +42,21 @@ export default function LoginView({ onLogin }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mot de passe"
+              placeholder={t.login?.passwordPlaceholder || 'Mot de passe'}
               className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] focus:ring-1 focus:ring-[color:var(--accent)] transition-all"
               autoFocus
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button type="submit" className="btn btn-primary w-full py-3">
-            Déverrouiller
+            {t.login?.unlock || 'Déverrouiller'}
           </button>
         </form>
       </div>
+
+      <p className="mt-8 text-sm text-[color:var(--muted)] max-w-md text-center">
+        {t.login?.contactHelp || 'Si vous n\'avez pas le mot de passe ou avez besoin d\'aide, écrivez sur WhatsApp au +33778669907'}
+      </p>
     </div>
   );
 }
