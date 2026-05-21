@@ -32,6 +32,16 @@ export const api = {
   getDashboard: (weekId) =>
     request(`/uploads/${weekId}`),
 
+  subscribeToNotifications: (weekId, countryId, phone) =>
+    request(`/notifications/${weekId}/${countryId}/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    }),
+
+  getSubscriptions: (weekId) =>
+    request(`/notifications/${weekId}`),
+
   // Utilise XMLHttpRequest plutôt que fetch pour exposer la progression
   // réelle d'upload (fetch n'a pas d'événement progress sur les requêtes).
   uploadFile: (weekId, countryId, file, { onProgress, signal, reportage } = {}) => {

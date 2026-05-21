@@ -9,6 +9,7 @@ import countriesRouter from './routes/countries.js';
 import weeksRouter from './routes/weeks.js';
 import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
+import notificationsRouter from './routes/notifications.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
 import { HAS_R2, getR2PresignedUrl, checkR2Exists } from './lib/s3.js';
 import { requireAuth } from './middleware/auth.js';
@@ -96,6 +97,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
 
   app.use('/api/countries', countriesRouter);
   app.use('/api/weeks', weeksRouter);
+  app.use('/api/notifications', notificationsRouter);
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);
   app.use('/api/deliveries', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), deliveriesRouter);
 

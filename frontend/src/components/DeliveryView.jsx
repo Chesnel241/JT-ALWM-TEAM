@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   UploadCloud, Download, Trash2, Sparkles, Video, FileText, Music,
-  CheckCircle, AlertCircle,
+  CheckCircle, AlertCircle, MessageCircle
 } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -22,6 +22,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
   const [deliveries, setDeliveries] = useState([]);
   const [uploading, setUploading] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
@@ -37,7 +38,13 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
         addToast(err.message || t.uploader.errorPrefix, 'error', 3000);
       })
       .finally(() => setLoading(false));
+
+    api.getSubscriptions(selectedWeek)
+      .then(setSubscriptions)
+      .catch(console.error);
   }, [selectedWeek, addToast, t.uploader.errorPrefix]);
+
+  const whatsappMessage = t.delivery.whatsappMessage || 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme.';
 
   const handleFiles = (filesList) => {
     Array.from(filesList).forEach((file) => {
@@ -281,6 +288,30 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                 );
               })}
             </ul>
+          )}
+
+          {/* WhatsApp Notifier Buttons */}
+          {deliveries.length > 0 && subscriptions.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-[var(--border)]">
+              <h4 className="font-semibold text-sm text-[color:var(--ink)] mb-3 flex items-center gap-2">
+                <MessageCircle size={16} className="text-[#25D366]" />
+                {t.delivery.notifyAll ? t.delivery.notifyAll(subscriptions.length) : `Notifier ${subscriptions.length} journaliste(s)`}
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {subscriptions.map((sub, idx) => (
+                  <a
+                    key={idx}
+                    href={`https://wa.me/${sub.phone}?text=${encodeURIComponent(whatsappMessage)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] text-xs font-medium rounded-full transition-colors"
+                  >
+                    <MessageCircle size={12} />
+                    {sub.countryId.toUpperCase()} ({sub.phone})
+                  </a>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -67,6 +67,11 @@ export const translations = {
       uploadedAt: 'Envoyé',
       lockedTitle: 'Uploads clôturés pour cette semaine',
       lockedDesc: "La date limite d'envoi (dimanche 17h30) est dépassée. Les uploads sont bloqués jusqu'à la prochaine semaine. Pour un envoi exceptionnel, contactez l'équipe montage directement.",
+      notifyPrompt: 'Voulez-vous être notifié par WhatsApp quand le JT final sera disponible ?',
+      notifyYes: 'Oui, notifier ce numéro',
+      notifyNo: 'Non merci',
+      phonePlaceholder: 'Ex: +33600000000',
+      notifySuccess: 'Vous serez notifié !',
     },
     dashboard: {
       title: 'Tableau de bord',
@@ -131,6 +136,8 @@ export const translations = {
       deleteMsg: (name) => `Êtes-vous sûr de vouloir supprimer « ${name} » ? Cette action est irréversible.`,
       deleted: (name) => `${name} supprimé`,
       published: 'Disponible au téléchargement',
+      notifyAll: (count) => `Notifier ${count} journaliste(s) sur WhatsApp`,
+      whatsappMessage: 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme.',
     },
     countdown: {
       timeRemaining: 'Temps Restant',
@@ -222,6 +229,11 @@ export const translations = {
       uploadedAt: 'Sent',
       lockedTitle: 'Uploads closed for this week',
       lockedDesc: "The submission deadline (Sunday 5:30 PM) has passed. Uploads are blocked until next week. For an exceptional submission, contact the editing team directly.",
+      notifyPrompt: 'Do you want to be notified on WhatsApp when the final broadcast is available?',
+      notifyYes: 'Yes, notify this number',
+      notifyNo: 'No thanks',
+      phonePlaceholder: 'e.g. +33600000000',
+      notifySuccess: 'You will be notified!',
     },
     dashboard: {
       title: 'Dashboard',
@@ -286,6 +298,8 @@ export const translations = {
       deleteMsg: (name) => `Are you sure you want to delete "${name}"? This cannot be undone.`,
       deleted: (name) => `${name} deleted`,
       published: 'Available for download',
+      notifyAll: (count) => `Notify ${count} journalist(s) on WhatsApp`,
+      whatsappMessage: 'The ALWM broadcast is ready! You can download it from the platform.',
     },
     countdown: {
       timeRemaining: 'Time Remaining',

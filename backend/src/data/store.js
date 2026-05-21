@@ -156,6 +156,24 @@ export function deleteUpload(weekId, countryId, fileId) {
   return removed;
 }
 
+export function addSubscription(weekId, countryId, phone) {
+  if (!db[weekId]) db[weekId] = {};
+  if (!db[weekId]._subscriptions) db[weekId]._subscriptions = [];
+  
+  const subs = db[weekId]._subscriptions;
+  // Prevent duplicate numbers
+  if (!subs.some(sub => sub.phone === phone)) {
+    subs.push({ countryId, phone, timestamp: new Date().toISOString() });
+    persistDb();
+  }
+  return { success: true };
+}
+
+export function getSubscriptions(weekId) {
+  if (!db[weekId]?._subscriptions) return [];
+  return db[weekId]._subscriptions;
+}
+
 // Clés réservées du store (méta-données qui ne sont pas des semaines).
 const META_KEYS = new Set(['_countries']);
 
