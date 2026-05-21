@@ -123,7 +123,7 @@ export const api = {
     request(`/deliveries/${weekId}/${fileId}`, { method: 'DELETE' }),
 
   updateFileStatus: (weekId, countryId, fileId, status, feedback = '') =>
-    request(`/uploads/${weekId}/${countryId}/files/${fileId}/status`, {
+    request(`/uploads/${weekId}/files/${fileId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status, feedback }),
     }),
