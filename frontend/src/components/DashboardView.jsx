@@ -340,10 +340,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
       <ConfirmDialog
         isOpen={deleteDialogOpen}
-        title={t.dashboard.deleteTitle}
-        message={t.dashboard.deleteMsg(fileToDelete?.fileName || '')}
-        confirmText={t.dashboard.deleteConfirm}
-        cancelText={t.dashboard.cancel}
+        title={t.uploader.deleteTitle}
+        message={t.uploader.deleteMsg(fileToDelete?.fileName || '')}
+        confirmText={t.uploader.deleteConfirm}
+        cancelText={t.uploader.cancel}
         variant="danger"
         isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
