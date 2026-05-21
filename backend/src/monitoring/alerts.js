@@ -107,7 +107,9 @@ function checkDiskUsage(uploadsDir) {
  */
 function checkMemoryUsage() {
   const memUsage = process.memoryUsage();
-  const usagePercent = memUsage.heapUsed / memUsage.heapTotal;
+  // Render Free tier has 512MB RAM. Calculate usage against 512MB.
+  const SYSTEM_MEMORY_LIMIT_MB = 512;
+  const usagePercent = (memUsage.rss / 1024 / 1024) / SYSTEM_MEMORY_LIMIT_MB;
   const isAlert = usagePercent > ALERT_CONFIG.MEMORY_USAGE_THRESHOLD;
 
   if (isAlert && !alertState.memoryUsageAlert) {

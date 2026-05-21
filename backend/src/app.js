@@ -90,6 +90,8 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
 
   app.use('/uploads', express.static(dir));
 
+  app.get('/', (req, res) => res.status(200).send('ALWM Backend API is running.'));
+
   app.use('/health', healthRouter);
   app.use('/metrics', metricsRouter);
 
