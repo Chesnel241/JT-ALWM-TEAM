@@ -63,6 +63,19 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
             <Sparkles size={18} />
             {t.nav.delivery}
           </button>
+          <button
+            onClick={() => setCurrentView('analytics')}
+            type="button"
+            aria-current={currentView === 'analytics' ? 'page' : undefined}
+            className={`btn flex items-center gap-2 ${
+              currentView === 'analytics'
+                ? 'btn-primary'
+                : 'btn-ghost border border-[var(--border)]'
+            }`}
+          >
+            <LayoutDashboard size={18} className="rotate-90" />
+            Analytics
+          </button>
         </div>
       </div>
     </nav>

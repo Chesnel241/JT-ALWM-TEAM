@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Folder, FileText, Video, Download, Trash2 } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -16,6 +16,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Feedback State
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [fileToFeedback, setFileToFeedback] = useState(null);
+  const [feedbackStatus, setFeedbackStatus] = useState('');
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   useEffect(() => {
     if (!selectedWeek) return;
@@ -53,6 +60,38 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const openFeedbackDialog = (countryId, fileId, status) => {
+    const file = dashboard[countryId]?.find(f => f.id === fileId);
+    if (file) {
+      setFileToFeedback({ countryId, fileId, fileName: file.name });
+      setFeedbackStatus(status);
+      setFeedbackText(file.feedback || '');
+      setFeedbackDialogOpen(true);
+    }
+  };
+
+  const handleConfirmFeedback = async () => {
+    if (!fileToFeedback) return;
+    setIsSubmittingFeedback(true);
+    try {
+      await api.updateFileStatus(selectedWeek, fileToFeedback.countryId, fileToFeedback.fileId, feedbackStatus, feedbackText);
+      setDashboard((prev) => ({
+        ...prev,
+        [fileToFeedback.countryId]: prev[fileToFeedback.countryId].map((f) => 
+          f.id === fileToFeedback.fileId ? { ...f, status: feedbackStatus, feedback: feedbackText } : f
+        ),
+      }));
+      addToast(`Statut mis à jour`, 'success', 3000);
+      setFeedbackDialogOpen(false);
+      setFileToFeedback(null);
+      setFeedbackText('');
+    } catch (err) {
+      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
+    } finally {
+      setIsSubmittingFeedback(false);
     }
   };
 
@@ -149,14 +188,28 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               {renderUploadMeta(file)}
                             </div>
                             <div className="flex gap-1 shrink-0">
-                              <a
-                                href={`${API_BASE}/uploads/${file.filename}`}
-                                download={file.name}
-                                className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
-                                title={t.dashboard.downloadFile}
-                              >
-                                <Download size={16} />
-                              </a>
+                                <button
+                                  onClick={() => openFeedbackDialog(countryId, file.id, 'approved')}
+                                  className={`p-1 rounded transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-50' : 'text-[color:var(--muted)] hover:text-emerald-500'}`}
+                                  title="Approuver"
+                                >
+                                  <CheckCircle size={16} />
+                                </button>
+                                <button
+                                  onClick={() => openFeedbackDialog(countryId, file.id, 'rejected')}
+                                  className={`p-1 rounded transition-colors ${file.status === 'rejected' ? 'text-red-500 bg-red-50' : 'text-[color:var(--muted)] hover:text-red-500'}`}
+                                  title="Rejeter (Commentaire)"
+                                >
+                                  <XCircle size={16} />
+                                </button>
+                                <a
+                                  href={`${API_BASE}/uploads/${file.filename}`}
+                                  download={file.name}
+                                  className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
+                                  title={t.dashboard.downloadFile}
+                                >
+                                  <Download size={16} />
+                                </a>
                               <button
                                 onClick={() => openDeleteDialog(countryId, file.id)}
                                 className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
@@ -194,12 +247,26 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               >
                                 {t.dashboard.read}
                               </button>
-                              <button
-                                onClick={() => openDeleteDialog(countryId, file.id)}
-                                type="button"
-                                className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
-                                title={t.dashboard.delete}
-                              >
+                                <button
+                                  onClick={() => openFeedbackDialog(countryId, file.id, 'approved')}
+                                  className={`p-1 rounded transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-50' : 'text-[color:var(--muted)] hover:text-emerald-500'}`}
+                                  title="Approuver"
+                                >
+                                  <CheckCircle size={16} />
+                                </button>
+                                <button
+                                  onClick={() => openFeedbackDialog(countryId, file.id, 'rejected')}
+                                  className={`p-1 rounded transition-colors ${file.status === 'rejected' ? 'text-red-500 bg-red-50' : 'text-[color:var(--muted)] hover:text-red-500'}`}
+                                  title="Rejeter (Commentaire)"
+                                >
+                                  <XCircle size={16} />
+                                </button>
+                                <button
+                                  onClick={() => openDeleteDialog(countryId, file.id)}
+                                  type="button"
+                                  className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
+                                  title={t.dashboard.delete}
+                                >
                                 <Trash2 size={16} />
                               </button>
                             </div>
@@ -273,16 +340,45 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
       <ConfirmDialog
         isOpen={deleteDialogOpen}
-        title={t.uploader.deleteTitle}
-        message={t.uploader.deleteMsg(fileToDelete?.fileName || '')}
-        confirmText={t.uploader.deleteConfirm}
-        cancelText={t.uploader.cancel}
+        title={t.dashboard.deleteTitle}
+        message={t.dashboard.deleteMsg(fileToDelete?.fileName || '')}
+        confirmText={t.dashboard.deleteConfirm}
+        cancelText={t.dashboard.cancel}
         variant="danger"
         isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
         onCancel={() => {
           setDeleteDialogOpen(false);
           setFileToDelete(null);
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={feedbackDialogOpen}
+        title={feedbackStatus === 'approved' ? 'Approuver le reportage' : 'Rejeter le reportage'}
+        message={
+          <div className="mt-2 text-left">
+            <p className="text-[color:var(--muted)] mb-4">
+              {feedbackStatus === 'approved' ? 'Confirmer la validation de ce reportage.' : 'Expliquez pourquoi ce reportage doit être corrigé ou renvoyé.'}
+            </p>
+            {feedbackStatus === 'rejected' && (
+              <textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="Ex: Le son sature à 1:20, peux-tu refaire la prise ?"
+                className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all min-h-[100px]"
+              />
+            )}
+          </div>
+        }
+        confirmText={feedbackStatus === 'approved' ? 'Approuver' : 'Rejeter & Notifier'}
+        cancelText="Annuler"
+        variant={feedbackStatus === 'approved' ? 'primary' : 'danger'}
+        isLoading={isSubmittingFeedback}
+        onConfirm={handleConfirmFeedback}
+        onCancel={() => {
+          setFeedbackDialogOpen(false);
+          setFileToFeedback(null);
         }}
       />
     </div>

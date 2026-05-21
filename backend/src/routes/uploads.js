@@ -7,7 +7,8 @@ import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { COUNTRIES, buildWeeks, weekUploadCutoff } from '../data/constants.js';
 import { getCustomCountries } from '../data/store.js';
-import { getWeekUploads, getCountryUploads, addUpload, deleteUpload } from '../data/store.js';
+import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus } from '../data/store.js';
+import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
@@ -542,6 +543,34 @@ router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next)
     });
     return next(createErrors.internalError('Erreur lors de la suppression'));
   }
+}));
+
+// PATCH /api/uploads/:weekId/files/:fileId/status
+router.patch('/:weekId/files/:fileId/status', [
+  body('status').isIn(['pending', 'approved', 'rejected']).withMessage('Status must be one of: pending, approved, rejected'),
+  body('feedback').optional().isString().withMessage('Feedback must be a string')
+], asyncHandler(async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', errors: errors.array() });
+  }
+
+  const { weekId, fileId } = req.params;
+  const { status, feedback } = req.body;
+
+  if (!isValidWeek(weekId)) {
+    return next(createErrors.notFound('Week'));
+  }
+  if (!isValidUUID(fileId)) {
+    return next(createErrors.badRequest('fileId doit être un UUID valide'));
+  }
+
+  const updatedFile = updateFileStatus(weekId, fileId, status, feedback);
+  if (!updatedFile) {
+    return next(createErrors.notFound('Fichier'));
+  }
+
+  return res.json(updatedFile);
 }));
 
 export default router;

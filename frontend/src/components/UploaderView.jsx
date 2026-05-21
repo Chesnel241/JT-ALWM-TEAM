@@ -380,6 +380,19 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                                 </>
                               )}
                             </p>
+                            {file.status === 'approved' && (
+                              <p className="text-xs font-medium text-emerald-600 mt-1 flex items-center gap-1">
+                                <CheckCircle size={12} /> Validé
+                              </p>
+                            )}
+                            {file.status === 'rejected' && (
+                              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900/50">
+                                <p className="text-xs font-bold text-red-600 flex items-center gap-1 mb-1">
+                                  <AlertCircle size={12} /> À corriger
+                                </p>
+                                <p className="text-xs text-red-600/90">{file.feedback}</p>
+                              </div>
+                            )}
                           </div>
                           <button
                             onClick={() => openDeleteDialog(file)}

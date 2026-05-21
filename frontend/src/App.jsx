@@ -11,6 +11,7 @@ const HomeView = lazy(() => import('./components/HomeView.jsx'));
 const UploaderView = lazy(() => import('./components/UploaderView.jsx'));
 const DashboardView = lazy(() => import('./components/DashboardView.jsx'));
 const DeliveryView = lazy(() => import('./components/DeliveryView.jsx'));
+const AnalyticsView = lazy(() => import('./components/AnalyticsView.jsx'));
 import LoginView from './components/LoginView.jsx';
 
 function LoadingFallback() {
@@ -139,6 +140,9 @@ function AppShell() {
                 selectedWeek={selectedWeek}
                 setSelectedWeek={setSelectedWeek}
               />
+            )}
+            {currentView === 'analytics' && (
+              <AnalyticsView onBack={() => setCurrentView('home')} />
             )}
           </Suspense>
         )}

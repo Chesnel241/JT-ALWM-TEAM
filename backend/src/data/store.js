@@ -174,6 +174,42 @@ export function getSubscriptions(weekId) {
   return db[weekId]._subscriptions;
 }
 
+export function updateFileStatus(weekId, fileId, status, feedback) {
+  if (!db[weekId]) return false;
+  
+  let targetFile = null;
+
+  // Check in deliveries
+  if (db[weekId]._delivery) {
+    targetFile = db[weekId]._delivery.find(f => f.id === fileId);
+  }
+
+  // Check in countries
+  if (!targetFile) {
+    for (const key of Object.keys(db[weekId])) {
+      if (key === '_delivery' || key === '_subscriptions') continue;
+      const list = db[weekId][key];
+      if (Array.isArray(list)) {
+        targetFile = list.find(f => f.id === fileId);
+        if (targetFile) break;
+      }
+    }
+  }
+
+  if (targetFile) {
+    targetFile.status = status || 'pending';
+    if (feedback !== undefined) targetFile.feedback = feedback;
+    persistDb();
+    return targetFile;
+  }
+
+  return false;
+}
+
+export function getStore() {
+  return db;
+}
+
 // Clés réservées du store (méta-données qui ne sont pas des semaines).
 const META_KEYS = new Set(['_countries']);
 

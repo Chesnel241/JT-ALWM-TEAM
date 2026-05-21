@@ -121,4 +121,12 @@ export const api = {
 
   deleteDelivery: (weekId, fileId) =>
     request(`/deliveries/${weekId}/${fileId}`, { method: 'DELETE' }),
+
+  updateFileStatus: (weekId, countryId, fileId, status, feedback = '') =>
+    request(`/uploads/${weekId}/${countryId}/files/${fileId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, feedback }),
+    }),
+
+  getAnalytics: () => request('/analytics'),
 };
