@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { addSubscription, getSubscriptions } from '../data/store.js';
-import { isValidWeek, COUNTRIES } from '../data/constants.js';
+import { buildWeeks, COUNTRIES } from '../data/constants.js';
 
+const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 const isValidCountry = (countryId) => COUNTRIES.some((c) => c.id === countryId);
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { sanitizeParams } from '../middleware/sanitizer.js';
