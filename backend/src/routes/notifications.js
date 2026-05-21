@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { addSubscription, getSubscriptions } from '../data/store.js';
-import { isValidWeek, isValidCountry } from '../data/constants.js';
+import { isValidWeek, COUNTRIES } from '../data/constants.js';
+
+const isValidCountry = (countryId) => COUNTRIES.some((c) => c.id === countryId);
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { sanitizeParams } from '../middleware/sanitizer.js';
 import { globalLimiter } from '../middleware/rateLimiter.js';
