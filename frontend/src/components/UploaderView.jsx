@@ -16,6 +16,8 @@ const FILE_ICONS = {
   script: { Icon: FileText, color: 'text-amber-500', bg: 'bg-amber-100' },
 };
 
+import Tutorial5W1H from './Tutorial5W1H.jsx';
+
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
   const { t, lang } = useI18n();
   const { addToast } = useToast();
@@ -177,6 +179,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           </span>
         </span>
       </div>
+
+      <Tutorial5W1H />
 
       <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
