@@ -11,6 +11,7 @@ const HomeView = lazy(() => import('./components/HomeView.jsx'));
 const UploaderView = lazy(() => import('./components/UploaderView.jsx'));
 const DashboardView = lazy(() => import('./components/DashboardView.jsx'));
 const DeliveryView = lazy(() => import('./components/DeliveryView.jsx'));
+import LoginView from './components/LoginView.jsx';
 
 function LoadingFallback() {
   return (
@@ -28,6 +29,7 @@ function AppShell() {
   const [countries, setCountries] = useState([]);
   const [weeks, setWeeks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('app-password'));
 
   const { addToast } = useToast();
   const [newUploadsCount, setNewUploadsCount] = useState(0);
@@ -46,9 +48,15 @@ function AppShell() {
           setSelectedWeek(w[0].id);
         }
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        if (err.message && err.message.toLowerCase().includes('mot de passe')) {
+          setIsAuthenticated(false);
+          localStorage.removeItem('app-password');
+        }
+      })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!selectedWeek) return;
@@ -75,7 +83,7 @@ function AppShell() {
     // Puis on vérifie toutes les 20 secondes
     const interval = setInterval(checkNewUploads, 20000);
     return () => clearInterval(interval);
-  }, [selectedWeek, currentView, addToast]);
+  }, [selectedWeek, currentView, addToast, isAuthenticated]);
 
   useEffect(() => {
     if (currentView === 'dashboard') {
@@ -87,6 +95,10 @@ function AppShell() {
     setSelectedCountry(country);
     setCurrentView('uploader');
   };
+
+  if (!isAuthenticated) {
+    return <LoginView onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="app-shell flex flex-col">

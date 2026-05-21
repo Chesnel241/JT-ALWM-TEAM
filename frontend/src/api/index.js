@@ -4,7 +4,11 @@ export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const BASE = `${API_BASE}/api`;
 
 async function request(url, options = {}) {
-  const res = await fetch(`${BASE}${url}`, options);
+  const pwd = localStorage.getItem('app-password') || '';
+  const headers = { ...options.headers };
+  if (pwd) headers['X-App-Password'] = pwd;
+
+  const res = await fetch(`${BASE}${url}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || tStatic().errors.serverError);
@@ -35,6 +39,9 @@ export const api = {
       const xhr = new XMLHttpRequest();
       const url = `${BASE}/uploads/${weekId}/${countryId}${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`;
       xhr.open('POST', url);
+
+      const pwd = localStorage.getItem('app-password');
+      if (pwd) xhr.setRequestHeader('X-App-Password', pwd);
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && typeof onProgress === 'function') {

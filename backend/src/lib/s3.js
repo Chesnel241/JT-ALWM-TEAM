@@ -155,13 +155,28 @@ export async function deleteManyFromR2(r2Keys) {
 export async function listR2Objects(prefix = 'uploads/') {
   if (!HAS_R2) return [];
   
-  const command = new ListObjectsV2Command({
-    Bucket: BUCKET_NAME,
-    Prefix: prefix,
-  });
+  let allKeys = [];
+  let isTruncated = true;
+  let continuationToken = undefined;
 
-  const response = await s3.send(command);
-  return (response.Contents || []).map(obj => obj.Key);
+  while (isTruncated) {
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    });
+
+    const response = await s3.send(command);
+    
+    if (response.Contents) {
+      allKeys.push(...response.Contents.map(obj => obj.Key));
+    }
+    
+    isTruncated = response.IsTruncated;
+    continuationToken = response.NextContinuationToken;
+  }
+
+  return allKeys;
 }
 
 /**

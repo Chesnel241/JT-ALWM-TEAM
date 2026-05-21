@@ -77,5 +77,20 @@ export const createLimiter = rateLimit({
   },
 });
 
-export default { uploadLimiter, globalLimiter, createLimiter };
+export const archiveLimiter = rateLimit({
+  windowMs: parseInt(process.env.ARCHIVE_RATE_LIMIT_WINDOW_MS || 60000), // 1 min
+  max: parseInt(process.env.ARCHIVE_RATE_LIMIT_MAX || 5), // 5 archives max / min
+  message: 'Trop de téléchargements d\'archives. Veuillez patienter.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false },
+  handler: (req, res, options) => {
+    res.status(options.statusCode || 429).json({
+      code: 'ARCHIVE_RATE_LIMIT_EXCEEDED',
+      message: options.message,
+      details: { retryAfter: req.rateLimit ? req.rateLimit.resetTime : null },
+    });
+  },
+});
 
+export default { uploadLimiter, globalLimiter, createLimiter, archiveLimiter };

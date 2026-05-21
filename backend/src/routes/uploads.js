@@ -11,6 +11,7 @@ import { getWeekUploads, getCountryUploads, addUpload, deleteUpload } from '../d
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
+import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
 import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2, checkR2Exists } from '../lib/s3.js';
@@ -90,7 +91,7 @@ router.get('/:weekId/:countryId', (req, res) => {
 });
 
 // GET /api/uploads/:weekId/:countryId/archive — zip des fichiers d'un pays
-router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) => {
+router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
@@ -159,7 +160,10 @@ router.get('/:weekId/:countryId/archive', asyncHandler(async (req, res, next) =>
   
   // Append streams lazily without eagerly opening S3 connections
   for (const file of files) {
-    const archivePath = file.reportage ? `${file.reportage}/${file.name}` : file.name;
+    // Protection contre le Zip Slip (Path Traversal)
+    const safeName = path.basename(file.name);
+    const safeReportage = file.reportage ? file.reportage.replace(/[/\\]/g, '') : null;
+    const archivePath = safeReportage ? `${safeReportage}/${safeName}` : safeName;
     if (HAS_R2) {
       const exists = await checkR2Exists(`uploads/${file.filename}`);
       if (!exists) {

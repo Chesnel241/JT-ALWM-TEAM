@@ -172,6 +172,9 @@ export const createErrors = {
       `${resource} introuvable`
     ),
 
+  unauthorized: (message) =>
+    new AppError(message, 401, message),
+
   badRequest: (message) =>
     new AppError(message, 400, message),
 

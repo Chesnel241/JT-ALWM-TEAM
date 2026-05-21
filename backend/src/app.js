@@ -10,7 +10,8 @@ import weeksRouter from './routes/weeks.js';
 import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
-import { HAS_R2, getR2PresignedUrl } from './lib/s3.js';
+import { HAS_R2, getR2PresignedUrl, checkR2Exists } from './lib/s3.js';
+import { requireAuth } from './middleware/auth.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter } from './middleware/rateLimiter.js';
@@ -42,10 +43,9 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
 
   const app = express();
 
-  // Render (et la plupart des PaaS) placent un load balancer devant
-  // l'app. Sans `trust proxy`, req.ip vaut l'IP du LB et le rate
-  // limiter bloque tout le monde sous une seule clé.
-  app.set('trust proxy', 1);
+  // Render (et la plupart des PaaS) placent un load balancer devant l'app.
+  // Configuration propre du trust proxy via variable d'environnement (par défaut on truste les subnets locaux/Cloudflare ou le premier hop)
+  app.set('trust proxy', process.env.TRUST_PROXY || 1);
 
   if (enableMonitoring) {
     initSentry(app);
@@ -69,10 +69,14 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use(express.json({ limit: '100kb' }));
   app.use(sanitizerMiddleware);
 
-  // NOUVEAU : Redirection vers Cloudflare R2 pour lire les vidéos
+  // Redirection vers Cloudflare R2 pour lire les vidéos
   app.get('/uploads/:filename', async (req, res, next) => {
     if (HAS_R2) {
       try {
+        const exists = await checkR2Exists(`uploads/${req.params.filename}`);
+        if (!exists) {
+          return next(); // Passe au static local s'il n'est pas sur R2 ou 404
+        }
         const url = await getR2PresignedUrl(`uploads/${req.params.filename}`);
         return res.redirect(302, url);
       } catch (err) {
@@ -86,6 +90,10 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
 
   app.use('/health', healthRouter);
   app.use('/metrics', metricsRouter);
+
+  // Application de l'authentification sur toutes les routes de l'API
+  app.use('/api', requireAuth);
+
   app.use('/api/countries', countriesRouter);
   app.use('/api/weeks', weeksRouter);
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);

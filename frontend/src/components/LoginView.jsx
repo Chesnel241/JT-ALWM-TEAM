@@ -1,0 +1,54 @@
+import { useState } from 'react';
+import { useI18n } from '../i18n/I18nContext.jsx';
+import { Lock } from 'lucide-react';
+
+export default function LoginView({ onLogin }) {
+  const { t } = useI18n();
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!password) {
+      setError(t.errors?.networkError || 'Mot de passe requis');
+      return;
+    }
+    // We simply save and trigger a reload or callback
+    localStorage.setItem('app-password', password);
+    onLogin();
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4">
+      <div className="panel p-8 max-w-md w-full border-t-4 border-t-[color:var(--accent)] text-center">
+        <div className="mx-auto bg-[var(--accent)]/10 text-[color:var(--accent-deep)] w-16 h-16 rounded-full flex items-center justify-center mb-6">
+          <Lock size={32} />
+        </div>
+        
+        <h2 className="text-2xl font-bold text-[color:var(--ink)] mb-2">
+          {t.nav?.brand || 'JT Access'}
+        </h2>
+        <p className="text-[color:var(--muted)] mb-8">
+          Veuillez entrer le mot de passe global pour accéder à la plateforme.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mot de passe"
+              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] focus:ring-1 focus:ring-[color:var(--accent)] transition-all"
+              autoFocus
+            />
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <button type="submit" className="btn btn-primary w-full py-3">
+            Déverrouiller
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

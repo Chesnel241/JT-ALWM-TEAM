@@ -82,8 +82,9 @@ export function sanitizeParams(params) {
     }
 
     if (typeof value === 'string') {
-      // Trim et limiter la longueur (50k pour autoriser les scripts longs)
-      sanitized[key] = value.trim().substring(0, 50000);
+      // Trim, strip HTML, et limiter la longueur (50k)
+      let cleanString = value.replace(/<[^>]*>?/gm, '');
+      sanitized[key] = cleanString.trim().substring(0, 50000);
     } else if (typeof value === 'number' || typeof value === 'boolean') {
       sanitized[key] = value;
     }

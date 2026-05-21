@@ -212,7 +212,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
                 <div className="p-4 bg-[var(--paper)] border-t border-[var(--border)] mt-auto flex justify-end">
                   <a
-                    href={`${API_BASE}/api/uploads/${selectedWeek}/${countryId}/archive`}
+                    href={`${API_BASE}/api/uploads/${selectedWeek}/${countryId}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
                     download={`uploads_${selectedWeek}_${country?.code || countryId}.zip`}
                     className="btn btn-primary flex items-center gap-2"
                   >
