@@ -61,7 +61,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
     const url = isArchive 
-      ? `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}`
+      ? `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}&pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`
       : `${API_BASE}/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}`;
     const a = document.createElement('a');
     a.href = url;
