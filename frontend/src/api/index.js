@@ -10,8 +10,10 @@ async function request(url, options = {}) {
 
   const res = await fetch(`${BASE}${url}`, { ...options, headers });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || tStatic().errors.serverError);
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    // Préférer `message` (publicMessage user-friendly) à `error`
+    // (générique 'Internal server error' en prod).
+    throw new Error(err.message || err.error || tStatic().errors.serverError);
   }
   return res.status === 204 ? null : res.json();
 }
@@ -99,6 +101,10 @@ export const api = {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${BASE}/deliveries/${weekId}`);
+
+      const pwd = localStorage.getItem('app-password');
+      if (pwd) xhr.setRequestHeader('X-App-Password', pwd);
+
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && typeof onProgress === 'function') {
           onProgress((e.loaded / e.total) * 100);
@@ -108,7 +114,7 @@ export const api = {
         let body = null;
         try { body = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { /* ignore */ }
         if (xhr.status >= 200 && xhr.status < 300) resolve(body);
-        else reject(new Error((body && body.message) || xhr.statusText || 'Erreur serveur'));
+        else reject(new Error((body && body.message) || (body && body.error) || xhr.statusText || tStatic().errors.serverError));
       });
       xhr.addEventListener('error', () => reject(new Error(tStatic().errors.networkError)));
       xhr.addEventListener('abort', () => reject(new Error(tStatic().errors.uploadCancelled)));
