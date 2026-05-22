@@ -138,7 +138,16 @@ export function addCustomCountry(country) {
   return country;
 }
 
+// Clés internes du modèle (db[weekId][...]) qui ne sont PAS des
+// correspondants. addUpload doit refuser tout countryId qui collide
+// avec ces clés — défense en profondeur si un appelant contourne la
+// validation route-level.
+const RESERVED_FOR_UPLOAD = new Set(['_delivery', '_subscriptions']);
+
 export function addUpload(weekId, countryId, fileData) {
+  if (RESERVED_FOR_UPLOAD.has(countryId)) {
+    throw new Error(`countryId reserved: ${countryId}`);
+  }
   if (!db[weekId]) db[weekId] = {};
   if (!db[weekId][countryId]) db[weekId][countryId] = [];
   db[weekId][countryId].push(fileData);

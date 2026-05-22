@@ -136,12 +136,18 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
     if (res.headersSent) {
       return res.end();
     }
-    
-    // Gérer les erreurs de disque plein
+
+    // NB: `res.json(createErrors.X())` serait buggé — un AppError
+    // (Error class) sérialise en `{}` faute de propriétés enumerable.
+    // On construit explicitement le body JSON ici.
     if (err.code === 'ENOSPC') {
-      res.status(507).json(createErrors.diskFullError());
+      const e = createErrors.diskFullError();
+      res.status(507).json({ code: e.code, message: e.publicMessage });
     } else {
-      res.status(500).json(createErrors.internalError('Failed to create archive'));
+      res.status(500).json({
+        code: 'ARCHIVE_FAILED',
+        message: 'Échec de la création de l\'archive',
+      });
     }
   });
 

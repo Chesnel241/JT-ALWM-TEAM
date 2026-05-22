@@ -30,7 +30,9 @@ export function requireAuth(req, res, next) {
   // Hors prod : si pas de password configuré, on laisse passer (dev local).
   if (!GLOBAL_PASSWORD) return next();
 
-  const providedPassword = req.headers['x-app-password'] || req.query.pwd;
+  // Header uniquement. Query param (?pwd=...) banni : il fuiterait dans
+  // les access logs, l'historique navigateur et le header Referer.
+  const providedPassword = req.headers['x-app-password'];
 
   if (!providedPassword) {
     logger.warn('Authentication failed: No password provided', {
