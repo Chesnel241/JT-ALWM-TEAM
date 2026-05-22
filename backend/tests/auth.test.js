@@ -26,34 +26,32 @@ describe('POST /api/auth/login', () => {
       .send({ password: 'whatever' });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const cookies = res.headers['set-cookie'];
-    expect(cookies?.join(' ')).toMatch(/jt-auth=/);
-    expect(cookies?.join(' ')).toMatch(/HttpOnly/i);
+    expect(res.body.token).toBe('dev-noauth');
   });
 });
 
 describe('GET /api/auth/check', () => {
-  it('returns 401 without cookie', async () => {
+  it('returns 401 without header', async () => {
+    process.env.GLOBAL_PASSWORD = 'test-password';
     const res = await request(app).get('/api/auth/check');
     expect(res.status).toBe(401);
     expect(res.body.authenticated).toBe(false);
   });
 
-  it('returns 200 with valid cookie', async () => {
+  it('returns 200 with valid header', async () => {
+    process.env.GLOBAL_PASSWORD = 'test-password';
     const res = await request(app)
       .get('/api/auth/check')
-      .set('Cookie', ['jt-auth=ok']);
+      .set('X-App-Password', 'test-password');
     expect(res.status).toBe(200);
     expect(res.body.authenticated).toBe(true);
   });
 });
 
 describe('POST /api/auth/logout', () => {
-  it('clears the cookie', async () => {
+  it('returns success', async () => {
     const res = await request(app).post('/api/auth/logout');
     expect(res.status).toBe(200);
-    const cookies = res.headers['set-cookie'] || [];
-    // clearCookie sets it with an expired date and empty value
-    expect(cookies.join(' ')).toMatch(/jt-auth=;/);
+    expect(res.body.success).toBe(true);
   });
 });

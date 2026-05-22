@@ -1,6 +1,5 @@
 import { createErrors } from './errorHandler.js';
 import logger from '../logger/index.js';
-import { COOKIE_NAME } from '../routes/auth.js';
 
 const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD;
 const IS_TEST = process.env.NODE_ENV === 'test';
@@ -16,13 +15,16 @@ export function requireAuth(req, res, next) {
   if (req.method === 'OPTIONS') return next();
   if (IS_TEST) return next();
 
-  // Auth UNIQUEMENT via cookie httpOnly posé par POST /api/auth/login.
-  // Plus de header X-App-Password, plus de query string : le secret ne
-  // transite plus depuis du JS accessible côté client (XSS-resistant).
-  const cookie = req.cookies?.[COOKIE_NAME];
-  if (cookie) return next();
+  // Si aucun mot de passe n'est configuré (ex: dev local), on laisse passer
+  if (!GLOBAL_PASSWORD) return next();
 
-  logger.warn('Authentication failed: No valid session cookie', {
+  const token = req.header('x-app-password');
+  
+  if (token && token === GLOBAL_PASSWORD) {
+    return next();
+  }
+
+  logger.warn('Authentication failed: Invalid or missing X-App-Password', {
     context: { path: req.path, ip: req.ip },
   });
   return next(createErrors.unauthorized('Session requise'));

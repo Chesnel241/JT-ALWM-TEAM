@@ -3,10 +3,15 @@ import { tStatic } from '../i18n/runtime.js';
 export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const BASE = `${API_BASE}/api`;
 
-// Toutes les requêtes envoient et reçoivent le cookie de session.
-// Plus de `X-App-Password` header, plus de `localStorage` côté JS.
+// Toutes les requêtes envoient le token de session.
 async function request(url, options = {}) {
-  const res = await fetch(`${BASE}${url}`, { ...options, credentials: 'include' });
+  const headers = { ...options.headers };
+  const token = localStorage.getItem('app-password');
+  if (token) {
+    headers['X-App-Password'] = token;
+  }
+
+  const res = await fetch(`${BASE}${url}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(err.message || err.error || tStatic().errors.serverError);
@@ -16,15 +21,23 @@ async function request(url, options = {}) {
 
 export const api = {
   // === Auth ===
-  login: (password) =>
-    request('/auth/login', {
+  login: async (password) => {
+    const res = await request('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
-    }),
-  logout: () => request('/auth/logout', { method: 'POST' }),
+    });
+    if (res && res.token) {
+      localStorage.setItem('app-password', res.token);
+    }
+    return res;
+  },
+  logout: async () => {
+    localStorage.removeItem('app-password');
+    return request('/auth/logout', { method: 'POST' });
+  },
   checkAuth: () =>
-    fetch(`${BASE}/auth/check`, { credentials: 'include' }).then((r) => r.ok),
+    fetch(`${BASE}/auth/check`, { headers: { 'X-App-Password': localStorage.getItem('app-password') || '' } }).then((r) => r.ok),
 
   // === Métier ===
   getCountries: () => request('/countries'),
@@ -59,7 +72,11 @@ export const api = {
       const xhr = new XMLHttpRequest();
       const url = `${BASE}/uploads/${weekId}/${countryId}${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`;
       xhr.open('POST', url);
-      xhr.withCredentials = true; // envoie le cookie de session
+      
+      const token = localStorage.getItem('app-password');
+      if (token) {
+        xhr.setRequestHeader('X-App-Password', token);
+      }
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && typeof onProgress === 'function') {
@@ -107,8 +124,12 @@ export const api = {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${BASE}/deliveries/${weekId}`);
-      xhr.withCredentials = true;
-
+      
+      const token = localStorage.getItem('app-password');
+      if (token) {
+        xhr.setRequestHeader('X-App-Password', token);
+      }
+      
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && typeof onProgress === 'function') {
           onProgress((e.loaded / e.total) * 100);
