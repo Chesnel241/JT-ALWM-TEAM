@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import Nav from './components/Nav.jsx';
 import ToastContainer from './components/Toast.jsx';
+import HelpButton from './components/HelpButton.jsx';
 import { ToastProvider, useToast } from './hooks/useToast.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { I18nProvider, useI18n } from './i18n/I18nContext.jsx';
@@ -169,6 +170,7 @@ function AppShell() {
       </footer>
 
       <ToastContainer />
+      <HelpButton />
     </div>
   );
 }

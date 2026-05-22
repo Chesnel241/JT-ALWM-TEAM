@@ -111,6 +111,11 @@ export const translations = {
       reload: 'Rafraîchir la page',
       help: "Si le problème persiste, contactez l'administrateur.",
     },
+    help: {
+      cta: "Besoin d'aide ?",
+      aria: 'Contacter le support sur WhatsApp',
+      message: "Bonjour, j'ai besoin d'aide sur la plateforme JT ALWM.",
+    },
     langSwitcher: {
       label: 'Langue',
       fr: 'Français',
@@ -294,6 +299,11 @@ export const translations = {
       message: 'The app ran into an unexpected issue. Please refresh the page and try again.',
       reload: 'Reload page',
       help: 'If the problem persists, contact the administrator.',
+    },
+    help: {
+      cta: 'Need help?',
+      aria: 'Contact support on WhatsApp',
+      message: 'Hi, I need help with the JT ALWM platform.',
     },
     langSwitcher: {
       label: 'Language',
