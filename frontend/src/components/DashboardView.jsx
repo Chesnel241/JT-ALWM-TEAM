@@ -11,6 +11,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const { t, lang } = useI18n();
   const { addToast } = useToast();
   const [dashboard, setDashboard] = useState({});
+
   const [loading, setLoading] = useState(true);
   const [viewingScript, setViewingScript] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -19,6 +20,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   
   // Nouveaux états pour le mot de passe admin (sécurisation)
   const [adminPassword, setAdminPassword] = useState('');
+
+  // Download State
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [fileToDownload, setFileToDownload] = useState(null);
 
   // Feedback State
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
@@ -45,6 +50,28 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       setFileToDelete({ countryId, fileId, fileName: file.name });
       setDeleteDialogOpen(true);
     }
+  };
+
+  const openDownloadDialog = (file) => {
+    setFileToDownload(file);
+    setDownloadDialogOpen(true);
+  };
+
+  const handleConfirmDownload = () => {
+    if (!fileToDownload) return;
+    const isArchive = fileToDownload.filename.endsWith('/archive');
+    const url = isArchive 
+      ? `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}`
+      : `${API_BASE}/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileToDownload.name || fileToDownload.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setDownloadDialogOpen(false);
+    setFileToDownload(null);
+    setAdminPassword('');
   };
 
   const handleConfirmDelete = async () => {
@@ -207,14 +234,24 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                 >
                                   <XCircle size={16} />
                                 </button>
-                                <a
-                                  href={`${API_BASE}/uploads/${file.filename}`}
-                                  download={file.name}
-                                  className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
-                                  title={t.dashboard.downloadFile}
-                                >
-                                  <Download size={16} />
-                                </a>
+                                {countryId === 'mj' ? (
+                                  <button
+                                    onClick={() => openDownloadDialog(file)}
+                                    className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
+                                    title={t.dashboard.downloadFile}
+                                  >
+                                    <Download size={16} />
+                                  </button>
+                                ) : (
+                                  <a
+                                    href={`${API_BASE}/uploads/${file.filename}`}
+                                    download={file.name}
+                                    className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
+                                    title={t.dashboard.downloadFile}
+                                  >
+                                    <Download size={16} />
+                                  </a>
+                                )}
                               <button
                                 onClick={() => openDeleteDialog(countryId, file.id)}
                                 className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
@@ -245,13 +282,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               {renderUploadMeta(file)}
                             </div>
                             <div className="flex gap-1 shrink-0">
-                              <button
-                                onClick={() => setViewingScript(file)}
-                                type="button"
-                                className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded px-2 text-xs font-medium"
-                              >
-                                {t.dashboard.read}
-                              </button>
+                                <button
+                                  onClick={() => setViewingScript({ ...file, countryId })}
+                                  type="button"
+                                  className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded px-2 text-xs font-medium"
+                                >
+                                  {t.dashboard.read}
+                                </button>
                                 <button
                                   onClick={() => openFeedbackDialog(countryId, file.id, 'approved')}
                                   className={`p-1 rounded transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-50' : 'text-[color:var(--muted)] hover:text-emerald-500'}`}
@@ -266,6 +303,24 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                 >
                                   <XCircle size={16} />
                                 </button>
+                                {countryId === 'mj' ? (
+                                  <button
+                                    onClick={() => openDownloadDialog(file)}
+                                    className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
+                                    title={t.dashboard.downloadFile}
+                                  >
+                                    <Download size={16} />
+                                  </button>
+                                ) : (
+                                  <a
+                                    href={`${API_BASE}/uploads/${file.filename}`}
+                                    download={file.name}
+                                    className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
+                                    title={t.dashboard.downloadFile}
+                                  >
+                                    <Download size={16} />
+                                  </a>
+                                )}
                                 <button
                                   onClick={() => openDeleteDialog(countryId, file.id)}
                                   type="button"
@@ -283,14 +338,24 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
 
                 <div className="p-4 bg-[var(--paper)] border-t border-[var(--border)] mt-auto flex justify-end">
-                  <a
-                    href={`${API_BASE}/api/uploads/${selectedWeek}/${countryId}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
-                    download={`uploads_${selectedWeek}_${country?.code || countryId}.zip`}
-                    className="btn btn-primary flex items-center gap-2"
-                  >
-                    <Download size={16} />
-                    {t.dashboard.downloadAll(country?.code)}
-                  </a>
+                  {countryId === 'mj' ? (
+                    <button
+                      onClick={() => openDownloadDialog({ filename: `${selectedWeek}/mj/archive`, name: `uploads_${selectedWeek}_${country?.code || countryId}.zip` })}
+                      className="btn btn-primary flex items-center gap-2"
+                    >
+                      <Download size={16} />
+                      {t.dashboard.downloadAll(country?.code)}
+                    </button>
+                  ) : (
+                    <a
+                      href={`${API_BASE}/api/uploads/${selectedWeek}/${countryId}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
+                      download={`uploads_${selectedWeek}_${country?.code || countryId}.zip`}
+                      className="btn btn-primary flex items-center gap-2"
+                    >
+                      <Download size={16} />
+                      {t.dashboard.downloadAll(country?.code)}
+                    </a>
+                  )}
                 </div>
               </div>
             );
@@ -330,13 +395,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             </div>
             <div className="p-4 border-t border-[var(--border)] bg-[var(--paper)] flex justify-end">
               {viewingScript.filename && (
-                <a
-                  href={`${API_BASE}/uploads/${viewingScript.filename}`}
-                  download={viewingScript.name}
-                  className="btn btn-primary flex items-center gap-2"
-                >
-                  <Download size={16} /> {t.dashboard.modalDownload}
-                </a>
+                viewingScript.countryId === 'mj' ? (
+                  <button
+                    onClick={() => openDownloadDialog(viewingScript)}
+                    className="btn btn-primary flex items-center gap-2"
+                  >
+                    <Download size={16} /> {t.dashboard.modalDownload}
+                  </button>
+                ) : (
+                  <a
+                    href={`${API_BASE}/uploads/${viewingScript.filename}`}
+                    download={viewingScript.name}
+                    className="btn btn-primary flex items-center gap-2"
+                  >
+                    <Download size={16} /> {t.dashboard.modalDownload}
+                  </a>
+                )
               )}
             </div>
           </div>
@@ -404,6 +478,32 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           setFeedbackDialogOpen(false);
           setFileToFeedback(null);
           setFeedbackText('');
+          setAdminPassword('');
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={downloadDialogOpen}
+        title="Télécharger ce fichier"
+        message={
+          <div className="mt-2 text-left">
+            <p className="text-[color:var(--muted)] mb-4">Entrez le mot de passe Administrateur pour télécharger "{fileToDownload?.name}".</p>
+            <input
+              type="password"
+              placeholder="Mot de passe Administrateur"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            />
+          </div>
+        }
+        confirmText="Télécharger"
+        cancelText={t.uploader.cancel}
+        variant="primary"
+        onConfirm={handleConfirmDownload}
+        onCancel={() => {
+          setDownloadDialogOpen(false);
+          setFileToDownload(null);
           setAdminPassword('');
         }}
       />

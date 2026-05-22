@@ -215,12 +215,37 @@ export function updateFileStatus(weekId, fileId, status, feedback) {
   return false;
 }
 
+// Clés réservées du store (méta-données qui ne sont pas des semaines).
+const META_KEYS = new Set(['_countries']);
+
+export function getFileMetadata(filename) {
+  for (const weekId of Object.keys(db)) {
+    if (META_KEYS.has(weekId)) continue;
+    const weekData = db[weekId];
+    if (typeof weekData !== 'object' || !weekData) continue;
+    
+    // Check deliveries
+    if (weekData._delivery) {
+      const found = weekData._delivery.find(f => f.filename === filename);
+      if (found) return { ...found, weekId, countryId: '_delivery' };
+    }
+    
+    // Check countries
+    for (const countryId of Object.keys(weekData)) {
+      if (countryId === '_delivery' || countryId === '_subscriptions') continue;
+      const list = weekData[countryId];
+      if (Array.isArray(list)) {
+        const found = list.find(f => f.filename === filename);
+        if (found) return { ...found, weekId, countryId };
+      }
+    }
+  }
+  return null;
+}
+
 export function getStore() {
   return db;
 }
-
-// Clés réservées du store (méta-données qui ne sont pas des semaines).
-const META_KEYS = new Set(['_countries']);
 
 function deleteUploadFile(upload, uploadsDir) {
   if (!upload?.filename || !uploadsDir) return false;

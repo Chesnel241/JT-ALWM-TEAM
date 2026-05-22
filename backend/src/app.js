@@ -76,8 +76,18 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use(cookieParser());
   app.use(sanitizerMiddleware);
 
-  // Redirection vers Cloudflare R2 pour lire les vidéos
+  // Redirection vers Cloudflare R2 pour lire les vidéos, avec sécurisation MOT DU JT
   app.get('/uploads/:filename', async (req, res, next) => {
+    // Vérification de sécurité pour le pays "mj" (MOT DU JT)
+    const metadata = (await import('./data/store.js')).getFileMetadata(req.params.filename);
+    if (metadata && metadata.countryId === 'mj') {
+      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+      const providedToken = req.query.adminPassword || req.header('x-admin-password');
+      if (ADMIN_PASSWORD && providedToken !== ADMIN_PASSWORD) {
+        return res.status(403).send('Accès protégé : mot de passe administrateur requis pour cette rubrique.');
+      }
+    }
+
     if (HAS_R2) {
       try {
         const exists = await checkR2Exists(`uploads/${req.params.filename}`);
