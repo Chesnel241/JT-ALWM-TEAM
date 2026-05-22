@@ -77,7 +77,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (!fileToFeedback) return;
     setIsSubmittingFeedback(true);
     try {
-      await api.updateFileStatus(selectedWeek, fileToFeedback.countryId, fileToFeedback.fileId, feedbackStatus, feedbackText);
+      await api.updateFileStatus(selectedWeek, fileToFeedback.fileId, feedbackStatus, feedbackText);
       setDashboard((prev) => ({
         ...prev,
         [fileToFeedback.countryId]: prev[fileToFeedback.countryId].map((f) => 

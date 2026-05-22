@@ -12,11 +12,21 @@ const isDev = process.env.NODE_ENV !== 'production';
  * Uniform error response format
  */
 const formatErrorResponse = (error, statusCode) => {
+  // En prod, on n'expose JAMAIS error.message brut (peut leak des
+  // paths, requêtes SQL, stack traces). On exige un `publicMessage`
+  // explicite (les helpers `createErrors.*` en définissent un) ;
+  // sinon on retombe sur un message générique selon le code HTTP.
+  const isClientErr = statusCode >= 400 && statusCode < 500;
+  const safeMessage = isDev
+    ? (error.publicMessage || error.message)
+    : (error.publicMessage
+        || (isClientErr ? 'Requête invalide' : 'Erreur serveur interne'));
+
   return {
     success: false,
-    error: isDev ? error.message : 'Internal server error',
+    error: isDev ? error.message : (isClientErr ? 'Bad request' : 'Internal server error'),
     code: error.code || statusCode,
-    message: error.publicMessage || error.message,
+    message: safeMessage,
     timestamp: new Date().toISOString(),
     ...(isDev && error.stack && { stack: error.stack }),
   };

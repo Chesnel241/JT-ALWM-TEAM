@@ -17,31 +17,28 @@ const app = createApp({ uploadsDir, corsOrigins });
 
 startAlertMonitoring(uploadsDir);
 
+// Ensure DB is loaded (from Redis or local) before cleanup + listen
+await initDb();
+
 logger.info('Initializing cleanup scheduler', {
   context: { interval: '1 hour', uploadsDir },
 });
 
-try {
-  cleanupExpiredUploads(null, uploadsDir);
-  setInterval(() => {
-    try {
-      cleanupExpiredUploads(null, uploadsDir);
-    } catch (err) {
-      logger.error('Error during scheduled cleanup', {
-        error: err.message,
-        stack: err.stack,
-      });
-    }
-  }, 60 * 60 * 1000);
-} catch (err) {
-  logger.error('Error initializing cleanup', {
-    error: err.message,
-    stack: err.stack,
-  });
+// Helper qui await cleanup async + log toute exception (sinon
+// unhandledRejection silencieux dans setInterval).
+async function runCleanup() {
+  try {
+    await cleanupExpiredUploads(null, uploadsDir);
+  } catch (err) {
+    logger.error('Error during scheduled cleanup', {
+      error: err.message,
+      stack: err.stack,
+    });
+  }
 }
 
-// Ensure DB is loaded (from Redis or local) before listening
-await initDb();
+runCleanup();
+setInterval(runCleanup, 60 * 60 * 1000);
 
 const server = app.listen(PORT, () => {
   logger.info(`✅ Backend JT ALWM démarré`, {
