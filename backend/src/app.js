@@ -5,12 +5,14 @@ import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { initSentry } from './monitoring/sentry.js';
 import { initMetrics } from './monitoring/metrics.js';
+import cookieParser from 'cookie-parser';
 import countriesRouter from './routes/countries.js';
 import weeksRouter from './routes/weeks.js';
 import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
 import notificationsRouter from './routes/notifications.js';
 import analyticsRouter from './routes/analytics.js';
+import authRouter from './routes/auth.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
 import { HAS_R2, getR2PresignedUrl, checkR2Exists } from './lib/s3.js';
 import { requireAuth } from './middleware/auth.js';
@@ -65,10 +67,13 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     crossOriginEmbedderPolicy: false,
   }));
 
-  app.use(cors({ origin: corsOrigins }));
+  // credentials:true requis pour que le navigateur envoie/reçoive le
+  // cookie d'auth (sameSite=none impose credentials).
+  app.use(cors({ origin: corsOrigins, credentials: true }));
   app.use(globalLimiter);
   app.use(timeoutMiddleware(REQUEST_TIMEOUT_MS));
   app.use(express.json({ limit: '100kb' }));
+  app.use(cookieParser());
   app.use(sanitizerMiddleware);
 
   // Redirection vers Cloudflare R2 pour lire les vidéos
@@ -95,7 +100,11 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/health', healthRouter);
   app.use('/metrics', metricsRouter);
 
-  // Application de l'authentification sur toutes les routes de l'API
+  // Routes auth (login/logout/check) AVANT requireAuth : on doit
+  // pouvoir s'authentifier sans être déjà authentifié.
+  app.use('/api/auth', authRouter);
+
+  // Toutes les autres routes /api/* exigent un cookie de session valide.
   app.use('/api', requireAuth);
 
   app.use('/api/countries', countriesRouter);

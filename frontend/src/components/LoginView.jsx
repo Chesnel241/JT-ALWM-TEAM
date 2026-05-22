@@ -2,20 +2,32 @@ import { useState } from 'react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { Lock, MessageCircle } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
+import { api } from '../api/index.js';
 
 export default function LoginView({ onLogin }) {
   const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!password) {
-      setError(t.errors?.networkError || 'Mot de passe requis');
+      setError(t.login?.required || 'Mot de passe requis');
       return;
     }
-    localStorage.setItem('app-password', password);
-    onLogin();
+    setError('');
+    setSubmitting(true);
+    try {
+      // Le backend valide le password ET pose un cookie httpOnly.
+      // Aucun secret n'est stocké côté JS — XSS-resistant.
+      await api.login(password);
+      onLogin();
+    } catch (err) {
+      setError(err.message || t.errors?.serverError || 'Erreur');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const whatsappUrl = `https://wa.me/33778669907?text=${encodeURIComponent(t.login?.whatsappMessage || 'Bonjour, je n\'arrive pas à accéder à la plateforme ALWM. Pouvez-vous m\'aider ?')}`;
@@ -50,7 +62,7 @@ export default function LoginView({ onLogin }) {
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" className="btn btn-primary w-full py-3">
+          <button type="submit" disabled={submitting} className="btn btn-primary w-full py-3 disabled:opacity-50">
             {t.login?.unlock || 'Déverrouiller'}
           </button>
         </form>

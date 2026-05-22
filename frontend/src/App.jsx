@@ -30,13 +30,23 @@ function AppShell() {
   const [countries, setCountries] = useState([]);
   const [weeks, setWeeks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('app-password'));
+  // null = inconnu (au boot), true = session valide, false = login requis.
+  // Source de vérité = le cookie httpOnly côté serveur (api.checkAuth).
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+
+  useEffect(() => {
+    // Nettoyage du legacy localStorage (transition depuis l'ancien
+    // schéma password-in-localStorage).
+    try { localStorage.removeItem('app-password'); } catch { /* ignore */ }
+    api.checkAuth().then(setIsAuthenticated).catch(() => setIsAuthenticated(false));
+  }, []);
 
   const { addToast } = useToast();
   const [newUploadsCount, setNewUploadsCount] = useState(0);
   const previousTotalRef = useRef(null);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     setIsLoading(true);
     Promise.all([api.getCountries(), api.getWeeks()])
       .then(([c, w]) => {
@@ -51,9 +61,9 @@ function AppShell() {
       })
       .catch((err) => {
         console.error(err);
-        if (err.message && err.message.toLowerCase().includes('mot de passe')) {
+        // 401 → cookie expiré/manquant → on retombe sur la page login.
+        if (err.message && /session|mot de passe|unauthor/i.test(err.message)) {
           setIsAuthenticated(false);
-          localStorage.removeItem('app-password');
         }
       })
       .finally(() => setIsLoading(false));
@@ -97,6 +107,9 @@ function AppShell() {
     setCurrentView('uploader');
   };
 
+  if (isAuthenticated === null) {
+    return <LoadingFallback />; // check en cours, évite le flash login
+  }
   if (!isAuthenticated) {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
   }

@@ -3,22 +3,30 @@ import { tStatic } from '../i18n/runtime.js';
 export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const BASE = `${API_BASE}/api`;
 
+// Toutes les requêtes envoient et reçoivent le cookie de session.
+// Plus de `X-App-Password` header, plus de `localStorage` côté JS.
 async function request(url, options = {}) {
-  const pwd = localStorage.getItem('app-password') || '';
-  const headers = { ...options.headers };
-  if (pwd) headers['X-App-Password'] = pwd;
-
-  const res = await fetch(`${BASE}${url}`, { ...options, headers });
+  const res = await fetch(`${BASE}${url}`, { ...options, credentials: 'include' });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    // Préférer `message` (publicMessage user-friendly) à `error`
-    // (générique 'Internal server error' en prod).
     throw new Error(err.message || err.error || tStatic().errors.serverError);
   }
   return res.status === 204 ? null : res.json();
 }
 
 export const api = {
+  // === Auth ===
+  login: (password) =>
+    request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  checkAuth: () =>
+    fetch(`${BASE}/auth/check`, { credentials: 'include' }).then((r) => r.ok),
+
+  // === Métier ===
   getCountries: () => request('/countries'),
   createCountry: (country) =>
     request('/countries', {
@@ -44,16 +52,14 @@ export const api = {
   getSubscriptions: (weekId) =>
     request(`/notifications/${weekId}`),
 
-  // Utilise XMLHttpRequest plutôt que fetch pour exposer la progression
-  // réelle d'upload (fetch n'a pas d'événement progress sur les requêtes).
+  // XMLHttpRequest pour exposer la progression d'upload (fetch n'a pas
+  // d'événement progress sur les requêtes en envoi).
   uploadFile: (weekId, countryId, file, { onProgress, signal, reportage } = {}) => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const url = `${BASE}/uploads/${weekId}/${countryId}${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`;
       xhr.open('POST', url);
-
-      const pwd = localStorage.getItem('app-password');
-      if (pwd) xhr.setRequestHeader('X-App-Password', pwd);
+      xhr.withCredentials = true; // envoie le cookie de session
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && typeof onProgress === 'function') {
@@ -67,7 +73,7 @@ export const api = {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(body);
         } else {
-          reject(new Error((body && body.message) || xhr.statusText || tStatic().errors.serverError));
+          reject(new Error((body && body.message) || (body && body.error) || xhr.statusText || tStatic().errors.serverError));
         }
       });
 
@@ -101,9 +107,7 @@ export const api = {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${BASE}/deliveries/${weekId}`);
-
-      const pwd = localStorage.getItem('app-password');
-      if (pwd) xhr.setRequestHeader('X-App-Password', pwd);
+      xhr.withCredentials = true;
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && typeof onProgress === 'function') {
