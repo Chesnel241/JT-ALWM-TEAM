@@ -10,6 +10,9 @@ async function request(url, options = {}) {
   if (token) {
     headers['X-App-Password'] = token;
   }
+  if (options.adminPassword) {
+    headers['X-Admin-Password'] = options.adminPassword;
+  }
 
   const res = await fetch(`${BASE}${url}`, { ...options, headers });
   if (!res.ok) {
@@ -114,8 +117,11 @@ export const api = {
       body: JSON.stringify({ content, reportage }),
     }),
 
-  deleteFile: (weekId, countryId, fileId) =>
-    request(`/uploads/${weekId}/${countryId}/${fileId}`, { method: 'DELETE' }),
+  deleteFile: (weekId, countryId, fileId, adminPassword) =>
+    request(`/uploads/${weekId}/${countryId}/${fileId}`, { 
+      method: 'DELETE',
+      adminPassword
+    }),
 
   // === JT Prêt (deliveries) ===
   getDeliveries: (weekId) => request(`/deliveries/${weekId}`),
@@ -153,11 +159,14 @@ export const api = {
   deleteDelivery: (weekId, fileId) =>
     request(`/deliveries/${weekId}/${fileId}`, { method: 'DELETE' }),
 
-  updateFileStatus: (weekId, fileId, status, feedback = '') =>
+  updateFileStatus: (weekId, fileId, status, feedback, adminPassword) =>
     request(`/uploads/${weekId}/files/${fileId}/status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, feedback }),
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(adminPassword ? { 'X-Admin-Password': adminPassword } : {})
+      },
+      body: JSON.stringify({ status, feedback })
     }),
 
   getAnalytics: () => request('/analytics'),

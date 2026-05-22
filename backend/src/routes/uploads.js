@@ -12,6 +12,7 @@ import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
@@ -460,7 +461,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
 }));
 
 // DELETE /api/uploads/:weekId/:countryId/:fileId
-router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next) => {
+router.delete('/:weekId/:countryId/:fileId', requireAdmin, asyncHandler(async (req, res, next) => {
   const { weekId, countryId, fileId } = req.params;
   
   // Valider les paramètres
@@ -552,7 +553,7 @@ router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next)
 }));
 
 // PATCH /api/uploads/:weekId/files/:fileId/status
-router.patch('/:weekId/files/:fileId/status', [
+router.patch('/:weekId/files/:fileId/status', requireAdmin, [
   body('status').isIn(['pending', 'approved', 'rejected']).withMessage('Status must be one of: pending, approved, rejected'),
   body('feedback').optional().isString().withMessage('Feedback must be a string')
 ], asyncHandler(async (req, res, next) => {

@@ -16,6 +16,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Nouveaux états pour le mot de passe admin (sécurisation)
+  const [adminPassword, setAdminPassword] = useState('');
 
   // Feedback State
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
@@ -48,7 +51,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (!fileToDelete) return;
     setIsDeleting(true);
     try {
-      await api.deleteFile(selectedWeek, fileToDelete.countryId, fileToDelete.fileId);
+      await api.deleteFile(selectedWeek, fileToDelete.countryId, fileToDelete.fileId, adminPassword);
       setDashboard((prev) => ({
         ...prev,
         [fileToDelete.countryId]: prev[fileToDelete.countryId].filter((f) => f.id !== fileToDelete.fileId),
@@ -56,6 +59,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       addToast(t.uploader.deleted(fileToDelete.fileName), 'success', 3000);
       setDeleteDialogOpen(false);
       setFileToDelete(null);
+      setAdminPassword('');
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
@@ -77,7 +81,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (!fileToFeedback) return;
     setIsSubmittingFeedback(true);
     try {
-      await api.updateFileStatus(selectedWeek, fileToFeedback.fileId, feedbackStatus, feedbackText);
+      await api.updateFileStatus(selectedWeek, fileToFeedback.fileId, feedbackStatus, feedbackText, adminPassword);
       setDashboard((prev) => ({
         ...prev,
         [fileToFeedback.countryId]: prev[fileToFeedback.countryId].map((f) => 
@@ -88,6 +92,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       setFeedbackDialogOpen(false);
       setFileToFeedback(null);
       setFeedbackText('');
+      setAdminPassword('');
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
@@ -341,7 +346,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title={t.uploader.deleteTitle}
-        message={t.uploader.deleteMsg(fileToDelete?.fileName || '')}
+        message={
+          <div className="mt-2 text-left">
+            <p className="text-[color:var(--muted)] mb-4">{t.uploader.deleteMsg(fileToDelete?.fileName || '')}</p>
+            <input
+              type="password"
+              placeholder="Mot de passe Administrateur"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            />
+          </div>
+        }
         confirmText={t.uploader.deleteConfirm}
         cancelText={t.uploader.cancel}
         variant="danger"
@@ -350,6 +366,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         onCancel={() => {
           setDeleteDialogOpen(false);
           setFileToDelete(null);
+          setAdminPassword('');
         }}
       />
 
@@ -366,9 +383,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
                 placeholder="Ex: Le son sature à 1:20, peux-tu refaire la prise ?"
-                className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all min-h-[100px]"
+                className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all min-h-[100px] mb-4"
               />
             )}
+            <input
+              type="password"
+              placeholder="Mot de passe Administrateur"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            />
           </div>
         }
         confirmText={feedbackStatus === 'approved' ? 'Approuver' : 'Rejeter & Notifier'}
@@ -379,6 +403,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         onCancel={() => {
           setFeedbackDialogOpen(false);
           setFileToFeedback(null);
+          setFeedbackText('');
+          setAdminPassword('');
         }}
       />
     </div>

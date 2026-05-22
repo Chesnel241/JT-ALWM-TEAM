@@ -29,3 +29,25 @@ export function requireAuth(req, res, next) {
   });
   return next(createErrors.unauthorized('Session requise'));
 }
+
+export function requireAdmin(req, res, next) {
+  if (req.method === 'OPTIONS') return next();
+  if (IS_TEST) return next();
+
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  if (!ADMIN_PASSWORD) {
+    logger.warn('Admin action attempted but ADMIN_PASSWORD is not set on the server.');
+    return next(createErrors.forbidden('Action non configurée (mot de passe admin manquant sur le serveur)'));
+  }
+
+  const token = req.header('x-admin-password');
+  
+  if (token && token === ADMIN_PASSWORD) {
+    return next();
+  }
+
+  logger.warn('Admin authentication failed: Invalid or missing X-Admin-Password', {
+    context: { path: req.path, ip: req.ip },
+  });
+  return next(createErrors.forbidden('Mot de passe administrateur incorrect ou manquant'));
+}
