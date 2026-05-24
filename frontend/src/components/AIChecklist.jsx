@@ -49,10 +49,23 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
         const normalize = (str) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
         
         const countryMatchers = countries.map(c => {
-          const matchers = [normalize(c.name)];
+          const nameNorm = normalize(c.name);
+          const matchers = [nameNorm];
           if (ALIASES[c.id]) {
             ALIASES[c.id].forEach(alias => matchers.push(normalize(alias)));
           }
+          
+          // Fallback robustes si les IDs ont été personnalisés (ex: id: 'dagan' pour Congo Brazzaville)
+          if (nameNorm.includes('congo') && nameNorm.includes('brazza')) {
+            matchers.push('congobrazzaville', 'congobrazaville', 'congobrazza', 'congo brazza', 'congo');
+          }
+          if (nameNorm === 'rdc' || (nameNorm.includes('congo') && nameNorm.includes('demo'))) {
+            matchers.push('rdc', 'republiquedemocratiqueducongo', 'congo rdc', 'congokinshasa');
+          }
+          if (nameNorm.includes('ivoire') || nameNorm === 'civ') {
+            matchers.push('cotedivoire', 'civ');
+          }
+
           // Ajouter aussi l'id lui-même si c'est un mot valide (ex: afrique, gabon)
           if (c.id.length > 2) {
              matchers.push(normalize(c.id));
