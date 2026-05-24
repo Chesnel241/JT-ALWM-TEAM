@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { API_BASE } from '../api/index.js';
+import CountryAvatar from './CountryAvatar.jsx';
 
 // Aliases pour gérer les abréviations et les fautes d'orthographe fréquentes
 const ALIASES = {
@@ -131,7 +132,10 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
                 
                 return (
                   <div key={country.id} className={`flex items-center justify-between p-3 rounded-xl border ${hasScript ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
-                    <span className="font-semibold text-sm text-[color:var(--ink)]">{country.name}</span>
+                    <div className="flex items-center gap-2">
+                      <CountryAvatar country={country} className="w-6 h-6" />
+                      <span className="font-semibold text-sm text-[color:var(--ink)]">{country.name}</span>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       {hasScript ? (
                         <>
