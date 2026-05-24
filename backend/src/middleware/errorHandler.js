@@ -185,6 +185,9 @@ export const createErrors = {
   unauthorized: (message) =>
     new AppError(message, 401, message),
 
+  forbidden: (message) =>
+    new AppError(message, 403, message),
+
   badRequest: (message) =>
     new AppError(message, 400, message),
 
