@@ -6,6 +6,7 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
+import AIChecklist from './AIChecklist.jsx';
 
 export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries }) {
   const { t, lang } = useI18n();
@@ -260,6 +261,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
           {/* Media Grid */}
           <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper-2)]">
+            <AIChecklist 
+              dashboard={dashboard} 
+              countries={countries} 
+              selectedBin={selectedBin} 
+            />
+            
             {!selectedBin ? (
               <div className="h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20">
                 <Video size={48} className="mb-4 opacity-20" />
