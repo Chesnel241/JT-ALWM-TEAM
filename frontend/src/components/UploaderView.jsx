@@ -10,6 +10,7 @@ import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
+import CountryAvatar from './CountryAvatar.jsx';
 
 const FILE_ICONS = {
   video: { Icon: Video, color: 'text-blue-500', bg: 'bg-blue-100' },
@@ -173,10 +174,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </button>
         <ChevronRight size={16} className="text-[color:var(--muted)]" />
         <span className="font-semibold text-2xl text-[color:var(--ink)] flex items-center gap-2">
+          <CountryAvatar country={country} className="w-8 h-8 mr-1" />
           {country.name}
-          <span className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)]">
-            {country.code}
-          </span>
         </span>
       </div>
 

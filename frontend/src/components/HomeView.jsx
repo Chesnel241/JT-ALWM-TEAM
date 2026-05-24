@@ -4,6 +4,7 @@ import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import AddCountryDialog from './AddCountryDialog.jsx';
+import CountryAvatar from './CountryAvatar.jsx';
 
 export default function HomeView({ countries, onSelectCountry, onCountryAdded }) {
   const { t } = useI18n();
@@ -60,13 +61,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold ${
-                    country.id === 'tj' || country.id === 'mj'
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                      : 'bg-[var(--accent)]/15 text-[color:var(--accent-deep)]'
-                  }`}>
-                    {country.code}
-                  </div>
+                  <CountryAvatar country={country} className="h-10 w-10" />
                   <div className="text-left">
                     <p className="text-base font-semibold text-[color:var(--ink)]">{country.name}</p>
                     <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">{t.home.countryRole}</p>

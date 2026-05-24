@@ -7,6 +7,7 @@ import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import AIChecklist from './AIChecklist.jsx';
+import CountryAvatar from './CountryAvatar.jsx';
 
 export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries }) {
   const { t, lang } = useI18n();
@@ -188,7 +189,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       }`}
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <Folder size={16} className={isActive ? 'fill-current opacity-20' : ''} />
+                        <CountryAvatar country={country || { id: countryId, code: countryId, name: countryId }} className={`w-5 h-5 opacity-80 ${isActive ? '' : 'grayscale'}`} />
                         <span className="truncate">{country?.name || countryId}</span>
                       </div>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-[var(--accent)]/20 text-[color:var(--accent-deep)]' : 'bg-[var(--border)] text-[color:var(--muted)]'}`}>
@@ -209,9 +210,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             <div className="flex items-center gap-3">
               {selectedBin ? (
                 <>
-                  <div className="w-8 h-8 rounded-full bg-[var(--accent)]/15 flex items-center justify-center font-bold text-xs text-[color:var(--accent-deep)]">
-                    {countries.find(c => c.id === selectedBin)?.code}
-                  </div>
+                  <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-8 h-8" />
                   <h2 className="text-lg font-semibold text-[color:var(--ink)]">
                     {countries.find(c => c.id === selectedBin)?.name}
                   </h2>
