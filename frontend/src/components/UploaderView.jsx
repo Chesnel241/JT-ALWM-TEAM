@@ -212,7 +212,16 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       )}
 
       {country.id === 'tj' ? (
-        <TjUploader selectedWeek={selectedWeek} country={country} onUploaded={fetchData} t={t} />
+        <TjUploader 
+          selectedWeek={selectedWeek} 
+          country={country} 
+          onUploaded={() => {
+            api.getUploads(selectedWeek, country.id)
+              .then(setUploads)
+              .catch(console.error);
+          }} 
+          t={t} 
+        />
       ) : (
         <>
           <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
