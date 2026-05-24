@@ -275,16 +275,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] border border-[var(--border)] shadow-sm cursor-pointer flex items-center justify-center">
                         
                         {isVideo ? (
+                        <>
+                          <div className="absolute inset-0 flex items-center justify-center text-[color:var(--ink)]/10 z-0">
+                            <Video size={48} />
+                          </div>
                           <video 
-                            src={`${API_BASE}/uploads/${file.filename}#t=1.0`} 
-                            className="w-full h-full object-cover"
+                            src={`${API_BASE}/uploads/${file.filename}#t=0.1`} 
+                            className="w-full h-full object-cover relative z-10 bg-transparent"
                             preload="metadata"
                             muted
                             playsInline
+                            onError={(e) => { e.target.style.display = 'none'; }}
                           />
-                        ) : (
-                          <FileText className="text-[color:var(--signal)]/40 w-12 h-12 transition-transform duration-500 group-hover:scale-110" />
-                        )}
+                        </>
+                      ) : (
+                        <FileText className="text-[color:var(--signal)]/40 w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10" />
+                      )}
 
                         {/* Status Badge */}
                         {file.status !== 'pending' && (
