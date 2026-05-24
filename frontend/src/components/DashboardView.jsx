@@ -266,17 +266,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <p>Sélectionnez un chutier pour voir les médias</p>
               </div>
             ) : (
-              <>
-                {selectedBin === 'tj' && (
-                  <TjUploader 
-                    selectedWeek={selectedWeek} 
-                    onUploaded={() => {
-                      // Trigger a refresh of the dashboard
-                      api.getDashboard(selectedWeek).then(setDashboard).catch(console.error);
-                    }} 
-                  />
-                )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 content-start">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 content-start">
                 {(dashboard[selectedBin] || []).length === 0 ? (
                   <div className="col-span-full h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20">
                     <Folder size={48} className="mb-4 opacity-20" />
@@ -401,7 +391,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   })
                 )}
               </div>
-              </>
             )}
           </div>
         </main>
@@ -613,90 +602,5 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword })
     <pre className="whitespace-pre-wrap font-sans text-[color:var(--ink)] text-base leading-relaxed max-w-none">
       {content}
     </pre>
-  );
-}
-
-function TjUploader({ selectedWeek, onUploaded }) {
-  const [text, setText] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const { addToast } = useToast();
-
-  const handleTextUpload = async () => {
-    if (!text.trim()) return;
-    setIsUploading(true);
-    try {
-      const blob = new Blob([text], { type: 'text/plain' });
-      const file = new File([blob], `titres_et_rappels_${Date.now()}.txt`, { type: 'text/plain' });
-      await api.uploadFile(selectedWeek, 'tj', file, () => {}, 'Titres');
-      setText('');
-      addToast('Titres sauvegardés avec succès', 'success');
-      if (onUploaded) onUploaded();
-    } catch (err) {
-      console.error(err);
-      addToast('Erreur lors de la sauvegarde', 'error');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setIsUploading(true);
-    try {
-      for (const file of files) {
-        await api.uploadFile(selectedWeek, 'tj', file, () => {}, 'Audio/Voix Off');
-      }
-      addToast('Fichiers uploadés avec succès', 'success');
-      if (onUploaded) onUploaded();
-    } catch (err) {
-      console.error(err);
-      addToast("Erreur lors de l'upload", 'error');
-    } finally {
-      setIsUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  return (
-    <div className="mb-8 p-6 bg-[var(--paper)] border border-[var(--border)] rounded-2xl shadow-sm flex flex-col lg:flex-row gap-6">
-      <div className="flex-1">
-        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">Rédiger les Titres</h3>
-        <textarea 
-          className="w-full min-h-[150px] p-3 rounded-xl border border-[var(--border)] bg-[var(--paper-2)] text-[color:var(--ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] resize-y mb-3"
-          placeholder="Collez ou tapez les titres et rappels ici..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button 
-          onClick={handleTextUpload}
-          disabled={!text.trim() || isUploading}
-          className="btn btn-primary px-4 py-2 w-full disabled:opacity-50"
-        >
-          {isUploading ? 'Sauvegarde...' : 'Sauvegarder les Titres (Texte)'}
-        </button>
-      </div>
-
-      <div className="w-px bg-[var(--border)] hidden lg:block"></div>
-
-      <div className="flex-1 flex flex-col justify-center">
-        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">Uploader Audio & Vidéo</h3>
-        <p className="text-sm text-[color:var(--muted)] mb-4">Sélectionnez les voix off, les virgules sonores, etc.</p>
-        
-        <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-[var(--border)] rounded-xl cursor-pointer hover:bg-[color:var(--accent)]/5 hover:border-[color:var(--accent)] transition-colors group">
-          <Download className="w-8 h-8 text-[color:var(--muted)] group-hover:text-[color:var(--accent)] mb-3" />
-          <span className="font-medium text-[color:var(--ink)]">Cliquez pour choisir des fichiers</span>
-          <span className="text-xs text-[color:var(--muted)] mt-1">Audio (MP3, WAV), Vidéo, etc.</span>
-          <input 
-            type="file" 
-            className="hidden" 
-            multiple 
-            onChange={handleFileUpload} 
-            disabled={isUploading}
-          />
-        </label>
-        {isUploading && <p className="text-sm text-center text-[color:var(--accent)] font-medium mt-3">Upload en cours...</p>}
-      </div>
-    </div>
   );
 }

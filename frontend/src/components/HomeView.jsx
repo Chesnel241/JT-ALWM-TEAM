@@ -53,12 +53,18 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
                 onClick={() => onSelectCountry(country)}
                 type="button"
                 aria-label={t.home.enterAria(country.name)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-[var(--border)] transition-all hover:shadow-[var(--shadow-soft)] ${
-                  index % 2 === 0 ? 'bg-[var(--paper)]' : 'bg-[var(--paper-2)]'
-                } hover:border-[color:var(--accent)]`}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition-all hover:shadow-[var(--shadow-soft)] ${
+                  country.id === 'tj' || country.id === 'mj'
+                    ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 hover:border-amber-400'
+                    : `border-[var(--border)] hover:border-[color:var(--accent)] ${index % 2 === 0 ? 'bg-[var(--paper)]' : 'bg-[var(--paper-2)]'}`
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-[var(--accent)]/15 text-[color:var(--accent-deep)] flex items-center justify-center font-semibold">
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold ${
+                    country.id === 'tj' || country.id === 'mj'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                      : 'bg-[var(--accent)]/15 text-[color:var(--accent-deep)]'
+                  }`}>
                     {country.code}
                   </div>
                   <div className="text-left">
