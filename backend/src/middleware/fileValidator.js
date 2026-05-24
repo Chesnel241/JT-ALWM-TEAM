@@ -99,7 +99,7 @@ export function validateMagicNumber(filePath, ext) {
  *   d'arriver ici, ce check sert de défense en profondeur.
  * @returns {Object} - {valid: boolean, error?: string}
  */
-export function validateFile(file, { maxSize = MAX_FILE_SIZE } = {}) {
+export function validateFile(file, { maxSize = MAX_FILE_SIZE, allowImages = false } = {}) {
   if (!file) {
     return { valid: false, error: 'Aucun fichier fourni' };
   }
@@ -117,10 +117,13 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE } = {}) {
 
   // Vérifier l'extension
   const ext = getFileExtension(file.originalname);
-  if (!ALLOWED_EXTENSIONS.includes(ext.toLowerCase())) {
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic'];
+  const allowedExts = allowImages ? ALLOWED_EXTENSIONS : ALLOWED_EXTENSIONS.filter(e => !imageExtensions.includes(e));
+  
+  if (!allowedExts.includes(ext.toLowerCase())) {
     return { 
       valid: false, 
-      error: `Extension non autorisée: ${ext}. Autorisées: ${ALLOWED_EXTENSIONS.join(', ')}`
+      error: `Extension non autorisée: ${ext}. Autorisées: ${allowedExts.join(', ')}`
     };
   }
 
@@ -130,9 +133,11 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE } = {}) {
     'audio/mpeg', 'audio/wav',
     'text/plain',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/heic',
     'application/zip', 'application/x-zip-compressed'
   ];
+  if (allowImages) {
+    allowedMimes.push('image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/heic');
+  }
   
   if (!allowedMimes.includes(file.mimetype)) {
     return { 

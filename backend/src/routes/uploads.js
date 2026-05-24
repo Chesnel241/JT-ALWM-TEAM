@@ -253,8 +253,11 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
       return next(createErrors.badRequest('Aucun fichier reçu'));
     }
 
+    const reportageName = req.query.reportage || '';
+    const allowImages = reportageName === 'Séminaires de la semaine';
+
     // Valider le fichier avec fileValidator (extension + MIME + nom)
-    let validation = validateFile(file);
+    let validation = validateFile(file, { allowImages });
     // Puis valider le magic number (contenu réel) sur le fichier écrit
     if (validation.valid) {
       const ext = path.extname(file.originalname).toLowerCase();
