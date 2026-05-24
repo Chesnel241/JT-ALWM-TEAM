@@ -307,31 +307,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   </div>
                 </div>
 
-                <div className="panel p-6">
-                  <h3 className="font-semibold text-[color:var(--ink)] mb-3 flex items-center gap-2">
-                    <FileText size={18} className="text-[color:var(--signal)]" />
-                    {t.uploader.scriptTitle}
-                  </h3>
-                  <textarea
-                    className="w-full border border-[var(--border)] rounded-2xl p-4 text-sm focus:ring-2 focus:ring-[color:var(--accent)] outline-none mb-3 bg-[var(--paper)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    rows="4"
-                    placeholder={t.uploader.scriptPh}
-                    value={scriptText[reportageName] || ''}
-                    onChange={(e) => setScriptText(prev => ({ ...prev, [reportageName]: e.target.value }))}
-                    disabled={isLocked}
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleScriptSubmit(reportageName)}
-                      disabled={isLocked || !(scriptText[reportageName] || '').trim()}
-                      type="button"
-                      className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {t.uploader.scriptSubmit}
-                    </button>
-                  </div>
-                </div>
-
                 {repUploading.length > 0 && (
                   <div className="panel p-6">
                     <h3 className="font-semibold text-[color:var(--ink)] mb-4">{t.uploader.transfers}</h3>
@@ -371,6 +346,31 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                     </div>
                   </div>
                 )}
+
+                <div className="panel p-6">
+                  <h3 className="font-semibold text-[color:var(--ink)] mb-3 flex items-center gap-2">
+                    <FileText size={18} className="text-[color:var(--signal)]" />
+                    {t.uploader.scriptTitle}
+                  </h3>
+                  <textarea
+                    className="w-full border border-[var(--border)] rounded-2xl p-4 text-sm focus:ring-2 focus:ring-[color:var(--accent)] outline-none mb-3 bg-[var(--paper)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    rows="4"
+                    placeholder={t.uploader.scriptPh}
+                    value={scriptText[reportageName] || ''}
+                    onChange={(e) => setScriptText(prev => ({ ...prev, [reportageName]: e.target.value }))}
+                    disabled={isLocked}
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => handleScriptSubmit(reportageName)}
+                      disabled={isLocked || !(scriptText[reportageName] || '').trim()}
+                      type="button"
+                      className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {t.uploader.scriptSubmit}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="panel p-6 h-fit bg-[var(--paper)]">
