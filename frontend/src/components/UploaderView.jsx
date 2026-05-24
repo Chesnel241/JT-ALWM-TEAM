@@ -224,20 +224,24 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         />
       ) : (
         <>
-          <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
-        <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.reportageCountTitle}</h3>
-        <select
-          value={reportageCount}
-          onChange={(e) => setReportageCount(Number(e.target.value))}
-          className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-4 py-2 font-medium"
-        >
-          {[1, 2, 3, 4, 5].map((n) => (
-            <option key={n} value={n}>{n}</option>
-          ))}
-        </select>
-      </div>
+          {country.id !== 'mj' && (
+            <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
+              <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.reportageCountTitle}</h3>
+              <select
+                value={reportageCount}
+                onChange={(e) => setReportageCount(Number(e.target.value))}
+                className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-4 py-2 font-medium"
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
-      {[
+      {(country.id === 'mj' ? [
+        { id: 'mj', name: 'Mot du JT', badge: 'M', isFirst: true }
+      ] : [
         ...[...Array(reportageCount)].map((_, i) => ({
           id: `reportage-${i}`,
           name: t.uploader.reportageName(i + 1),
@@ -256,7 +260,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           badge: 'S',
           isFirst: false,
         }
-      ].map((section, i) => {
+      ]).map((section, i) => {
         const reportageName = section.name;
         const repUploads = uploads.filter(u => u.reportage === reportageName || (!u.reportage && section.isFirst));
         const repUploading = uploading.filter(u => u.reportage === reportageName);
