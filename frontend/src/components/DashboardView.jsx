@@ -62,7 +62,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const isArchive = fileToDownload.filename.endsWith('/archive');
     const url = isArchive 
       ? `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}&pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`
-      : `${API_BASE}/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}`;
+      : `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = fileToDownload.name || fileToDownload.filename;
@@ -286,7 +286,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             <Video size={48} />
                           </div>
                           <video 
-                            src={`${API_BASE}/uploads/${file.filename}#t=0.1`} 
+                            src={`${API_BASE}/api/uploads/${file.filename}#t=0.1`} 
                             className="w-full h-full object-cover relative z-10 bg-transparent"
                             preload="metadata"
                             muted
@@ -356,7 +356,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               </button>
                             ) : (
                               <a
-                                href={`${API_BASE}/uploads/${file.filename}`}
+                                href={`${API_BASE}/api/uploads/${file.filename}`}
                                 download={file.name}
                                 className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors block"
                                 title={t.dashboard.downloadFile}
@@ -437,7 +437,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   </button>
                 ) : (
                   <a
-                    href={`${API_BASE}/uploads/${viewingScript.filename}`}
+                    href={`${API_BASE}/api/uploads/${viewingScript.filename}`}
                     download={viewingScript.name}
                     className="btn btn-primary flex items-center gap-2"
                   >
@@ -572,8 +572,8 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword })
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let url = `${API_BASE}/uploads/${file.filename}`;
-    // If it's MOT DU JT, we need the password. However, static files /uploads/:filename 
+    let url = `${API_BASE}/api/uploads/${file.filename}`;
+    // If it's MOT DU JT, we need the password. However, static files /api/uploads/:filename 
     // expects it in the query string `?adminPassword=...`
     if (selectedBin === 'mj' && adminPassword) {
       url += `?adminPassword=${encodeURIComponent(adminPassword)}`;
