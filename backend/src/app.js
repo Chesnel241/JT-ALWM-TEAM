@@ -94,6 +94,11 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
         if (!exists) {
           return next(); // Passe au static local s'il n'est pas sur R2 ou 404
         }
+        if (req.query.proxy === 'true') {
+          const { getR2ReadStream } = await import('./lib/s3.js');
+          const stream = await getR2ReadStream(`uploads/${req.params.filename}`);
+          return stream.pipe(res);
+        }
         const url = await getR2PresignedUrl(`uploads/${req.params.filename}`);
         return res.redirect(302, url);
       } catch (err) {
