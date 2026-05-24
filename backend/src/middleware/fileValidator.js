@@ -5,7 +5,7 @@
 
 import { openSync, readSync, closeSync } from 'fs';
 
-const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx'];
+const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip'];
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10); // 200MB par défaut
 const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f/\\]/;
 
@@ -30,6 +30,10 @@ const MAGIC_SIGNATURES = {
     { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // 'RIFF'
   ],
   '.docx': [
+    { offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }, // ZIP local header
+    { offset: 0, bytes: [0x50, 0x4b, 0x05, 0x06] }, // empty archive
+  ],
+  '.zip': [
     { offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }, // ZIP local header
     { offset: 0, bytes: [0x50, 0x4b, 0x05, 0x06] }, // empty archive
   ],
