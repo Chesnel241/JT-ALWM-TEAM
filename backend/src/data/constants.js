@@ -4,7 +4,7 @@ const DEFAULT_COUNTRIES = [
   { id: 'sn', name: 'Sénégal', code: 'SN' },
   { id: 'ci', name: "Côte d'Ivoire", code: 'CI' },
   { id: 'cd', name: 'Rép. Dém. du Congo', code: 'CD' },
-  { id: 'cg', name: 'Congo Brazzaville', code: 'CG' },
+  { id: 'cg', name: 'Congo Brazzaville', code: 'CB' },
   { id: 'ma', name: 'Maroc', code: 'MA' },
   { id: 'tg', name: 'Togo', code: 'TG' },
 ];
