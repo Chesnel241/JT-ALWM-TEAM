@@ -14,29 +14,37 @@ const DEFAULT_COUNTRIES = [
 // [{"id":"bj","name":"Bénin","code":"BJ"}, ...] — un JSON array valide.
 // Si la valeur est invalide ou absente, on retombe sur la liste par défaut.
 function loadCountries() {
+  let list = DEFAULT_COUNTRIES;
   const raw = process.env.COUNTRIES_JSON;
-  if (!raw) return DEFAULT_COUNTRIES;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      console.warn('COUNTRIES_JSON ignored: must be a non-empty array');
-      return DEFAULT_COUNTRIES;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const valid = parsed.every(
+          (c) =>
+            c && typeof c.id === 'string' && c.id.length > 0 &&
+            typeof c.name === 'string' && c.name.length > 0 &&
+            typeof c.code === 'string' && c.code.length > 0
+        );
+        if (valid) {
+          list = parsed;
+        } else {
+          console.warn('COUNTRIES_JSON ignored: each item needs id/name/code strings');
+        }
+      } else {
+        console.warn('COUNTRIES_JSON ignored: must be a non-empty array');
+      }
+    } catch (err) {
+      console.warn(`COUNTRIES_JSON ignored: ${err.message}`);
     }
-    const valid = parsed.every(
-      (c) =>
-        c && typeof c.id === 'string' && c.id.length > 0 &&
-        typeof c.name === 'string' && c.name.length > 0 &&
-        typeof c.code === 'string' && c.code.length > 0
-    );
-    if (!valid) {
-      console.warn('COUNTRIES_JSON ignored: each item needs id/name/code strings');
-      return DEFAULT_COUNTRIES;
-    }
-    return parsed;
-  } catch (err) {
-    console.warn(`COUNTRIES_JSON ignored: ${err.message}`);
-    return DEFAULT_COUNTRIES;
   }
+
+  // Injecter systématiquement "Titres & Rappels JT" s'il n'existe pas
+  if (!list.find(c => c.id === 'tj')) {
+    list = [{ id: 'tj', name: 'Titres & Rappels JT', code: 'TJ' }, ...list];
+  }
+
+  return list;
 }
 
 export const COUNTRIES = loadCountries();

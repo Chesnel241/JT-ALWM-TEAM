@@ -128,7 +128,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   };
 
   const countriesWithUploads = Object.keys(dashboard).filter(
-    (id) => dashboard[id]?.length > 0
+    (id) => dashboard[id]?.length > 0 || id === 'tj'
   );
 
   const [selectedBin, setSelectedBin] = useState(null);
@@ -267,10 +267,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 content-start">
-                {dashboard[selectedBin].map(file => {
-                  const isVideo = file.type === 'video';
-                  return (
-                    <div key={file.id} className="group flex flex-col gap-2">
+                {(dashboard[selectedBin] || []).length === 0 ? (
+                  <div className="col-span-full h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20">
+                    <Folder size={48} className="mb-4 opacity-20" />
+                    <p>Aucun fichier dans ce chutier pour l'instant.</p>
+                  </div>
+                ) : (
+                  (dashboard[selectedBin] || []).map(file => {
+                    const isVideo = file.type === 'video';
+                    return (
+                      <div key={file.id} className="group flex flex-col gap-2">
                       {/* Thumbnail Box */}
                       <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] border border-[var(--border)] shadow-sm cursor-pointer flex items-center justify-center">
                         
@@ -381,8 +387,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         </div>
                       </div>
                     </div>
-                  )
-                })}
+                  );
+                  })
+                )}
               </div>
             )}
           </div>
