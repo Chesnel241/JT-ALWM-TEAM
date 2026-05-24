@@ -209,9 +209,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             <div className="flex items-center gap-3">
               {selectedBin ? (
                 <>
-                  <div className="w-8 h-8 rounded-full bg-[var(--accent)]/15 flex items-center justify-center font-bold text-xs text-[color:var(--accent-deep)]">
-                    {countries.find(c => c.id === selectedBin)?.code}
-                  </div>
+                  <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-8 h-8" />
                   <h2 className="text-lg font-semibold text-[color:var(--ink)]">
                     {countries.find(c => c.id === selectedBin)?.name}
                   </h2>

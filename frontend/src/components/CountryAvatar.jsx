@@ -36,11 +36,13 @@ export default function CountryAvatar({ country, className = "w-10 h-10" }) {
   return (
     <div className={`${className} rounded-full overflow-hidden shrink-0 border border-black/10 shadow-sm bg-[var(--paper)] flex items-center justify-center`}>
       <img 
-        src={`https://flagcdn.com/w40/${isoCode}.png`}
-        srcSet={`https://flagcdn.com/w80/${isoCode}.png 2x`}
+        src={`https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.2.1/flags/4x3/${isoCode}.svg`}
         alt={country.name}
         className="w-full h-full object-cover"
-        onError={() => setImgError(true)}
+        onError={(e) => {
+          console.error(`Failed to load flag for ${isoCode}`);
+          setImgError(true);
+        }}
       />
     </div>
   );
