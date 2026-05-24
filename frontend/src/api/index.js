@@ -43,7 +43,22 @@ export const api = {
     fetch(`${BASE}/auth/check`, { headers: { 'X-App-Password': localStorage.getItem('app-password') || '' } }).then((r) => r.ok),
 
   // === Métier ===
-  getCountries: () => request('/countries'),
+  getCountries: async () => {
+    const countries = await request('/countries');
+    return countries.map(c => {
+      // Force le code CB pour le Congo Brazzaville même s'il vient d'une DB personnalisée
+      if (
+        c.id === 'cg' || 
+        c.code === 'DAGAN' || 
+        c.code === 'CG' || 
+        c.name.toLowerCase().includes('congo-brazzaville') || 
+        c.name.toLowerCase().includes('congo brazzaville')
+      ) {
+        return { ...c, code: 'CB' };
+      }
+      return c;
+    });
+  },
   createCountry: (country) =>
     request('/countries', {
       method: 'POST',
