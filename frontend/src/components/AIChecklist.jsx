@@ -144,19 +144,18 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
               {expectedCountries.map(country => {
-                // Vérifier si le pays a soumis au moins un fichier script (.txt)
                 const countryFiles = dashboard[country.id] || [];
-                const hasScript = countryFiles.some(f => f.type === 'script' || f.filename.endsWith('.txt'));
+                const hasFiles = countryFiles.length > 0;
                 
                 return (
-                  <div key={country.id} className={`flex flex-col p-3 rounded-xl border ${hasScript ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                  <div key={country.id} className={`flex flex-col p-3 rounded-xl border ${hasFiles ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <CountryAvatar country={country} className="w-6 h-6" />
                         <span className="font-semibold text-sm text-[color:var(--ink)]">{country.name}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {hasScript ? (
+                        {hasFiles ? (
                           <>
                             <CheckCircle size={16} className="text-emerald-500" />
                             <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Reçu</span>
