@@ -5,7 +5,7 @@
 
 import { openSync, readSync, closeSync } from 'fs';
 
-const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png'];
+const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic'];
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10); // 200MB par défaut
 const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f/\\]/;
 
@@ -45,6 +45,18 @@ const MAGIC_SIGNATURES = {
   ],
   '.png': [
     { offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }, // PNG image
+  ],
+  '.gif': [
+    { offset: 0, bytes: [0x47, 0x49, 0x46, 0x38] }, // GIF8
+  ],
+  '.webp': [
+    { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
+  ],
+  '.bmp': [
+    { offset: 0, bytes: [0x42, 0x4d] }, // BM
+  ],
+  '.heic': [
+    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // ftyp
   ],
 };
 
