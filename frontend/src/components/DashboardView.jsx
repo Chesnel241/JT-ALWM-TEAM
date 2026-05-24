@@ -7,6 +7,7 @@ import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import AIChecklist from './AIChecklist.jsx';
+import CountryAvatar from './CountryAvatar.jsx';
 
 export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries }) {
   const { t, lang } = useI18n();
