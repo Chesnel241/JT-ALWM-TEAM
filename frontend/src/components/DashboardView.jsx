@@ -131,6 +131,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     (id) => dashboard[id]?.length > 0
   );
 
+  const [selectedBin, setSelectedBin] = useState(null);
+
+  useEffect(() => {
+    if (countriesWithUploads.length > 0 && (!selectedBin || !countriesWithUploads.includes(selectedBin))) {
+      setSelectedBin(countriesWithUploads[0]);
+    }
+  }, [dashboard, selectedBin, countriesWithUploads]);
+
   const renderUploadMeta = (file) => (
     <span
       className="text-[10px] text-[color:var(--muted)] mt-0.5 block"
@@ -144,224 +152,236 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-      <div className="flex flex-wrap justify-between items-end gap-6 mb-8">
-        <div>
-          <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-3">{t.nav.editing}</div>
-          <h2 className="text-3xl md:text-4xl font-semibold text-[color:var(--ink)] mb-2">{t.dashboard.title}</h2>
-        </div>
-        <div className="panel p-2 flex items-center gap-3">
-          <label className="sr-only" htmlFor="dashboard-week">
-            {t.dashboard.weekLabel}
-          </label>
-          <select
-            id="dashboard-week"
-            value={selectedWeek}
-            onChange={(e) => setSelectedWeek(e.target.value)}
-            className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-full px-4 py-2 font-semibold focus:ring-0 cursor-pointer"
-          >
-            {weeks.map((w) => (
-              <option key={w.id} value={w.id}>
-                {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="space-y-4">
-          <SkeletonCard count={3} />
-        </div>
-      ) : countriesWithUploads.length === 0 ? (
-        <div className="panel border-2 border-dashed p-12 text-center">
-          <Folder className="mx-auto h-16 w-16 text-[color:var(--muted)] mb-4" />
-          <h3 className="text-xl font-medium text-[color:var(--ink)]">{t.dashboard.noUploads}</h3>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {countriesWithUploads.map((countryId) => {
-            const country = countries.find((c) => c.id === countryId);
-            const files = dashboard[countryId];
-            const videos = files.filter((f) => f.type === 'video');
-            const scripts = files.filter((f) => f.type === 'script');
-
-            return (
-              <div
-                key={countryId}
-                className="panel overflow-hidden"
-              >
-                <div className="bg-[var(--paper)] border-b border-[var(--border)] p-4 flex flex-wrap justify-between items-center gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[var(--accent)]/15 flex items-center justify-center font-bold text-sm text-[color:var(--accent-deep)]">
-                      {country?.code}
-                    </div>
-                    <span className="font-semibold text-[color:var(--ink)]">{country?.name}</span>
-                  </div>
-                  <span className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)]">
-                    {files.length}
-                  </span>
-                </div>
-
-                <div className="p-4 flex-1 grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-4">
-                  {videos.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-bold text-[color:var(--muted)] uppercase tracking-wider mb-2 flex items-center gap-1">
-                        <Video size={12} /> {t.dashboard.videos}
-                      </h4>
-                      <ul className="space-y-2">
-                        {videos.map((file) => (
-                          <li
-                            key={file.id}
-                            className="flex justify-between items-center text-sm bg-[var(--paper)] p-2 rounded-2xl border border-[var(--border)]"
-                          >
-                            <div className="flex-1 overflow-hidden pr-2">
-                              <span className="truncate font-medium text-[color:var(--ink)] block">{file.name}</span>
-                              {renderUploadMeta(file)}
-                            </div>
-                            <div className="flex gap-1 shrink-0">
-                                <button
-                                  onClick={() => openFeedbackDialog(countryId, file.id, 'approved')}
-                                  className={`p-1 rounded transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-50' : 'text-[color:var(--muted)] hover:text-emerald-500'}`}
-                                  title="Approuver"
-                                >
-                                  <CheckCircle size={16} />
-                                </button>
-                                <button
-                                  onClick={() => openFeedbackDialog(countryId, file.id, 'rejected')}
-                                  className={`p-1 rounded transition-colors ${file.status === 'rejected' ? 'text-red-500 bg-red-50' : 'text-[color:var(--muted)] hover:text-red-500'}`}
-                                  title="Rejeter (Commentaire)"
-                                >
-                                  <XCircle size={16} />
-                                </button>
-                                {countryId === 'mj' ? (
-                                  <button
-                                    onClick={() => openDownloadDialog(file)}
-                                    className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
-                                    title={t.dashboard.downloadFile}
-                                  >
-                                    <Download size={16} />
-                                  </button>
-                                ) : (
-                                  <a
-                                    href={`${API_BASE}/uploads/${file.filename}`}
-                                    download={file.name}
-                                    className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
-                                    title={t.dashboard.downloadFile}
-                                  >
-                                    <Download size={16} />
-                                  </a>
-                                )}
-                              <button
-                                onClick={() => openDeleteDialog(countryId, file.id)}
-                                className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
-                                title={t.dashboard.delete}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {scripts.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-bold text-[color:var(--muted)] uppercase tracking-wider mb-2 flex items-center gap-1">
-                        <FileText size={12} /> {t.dashboard.scripts}
-                      </h4>
-                      <ul className="space-y-2">
-                        {scripts.map((file) => (
-                          <li
-                            key={file.id}
-                            className="flex justify-between items-center text-sm bg-[var(--signal)]/10 p-2 rounded-2xl border border-[var(--signal)]/30"
-                          >
-                            <div className="flex-1 overflow-hidden pr-2">
-                              <span className="truncate font-medium text-[color:var(--ink)] block">{file.name}</span>
-                              {renderUploadMeta(file)}
-                            </div>
-                            <div className="flex gap-1 shrink-0">
-                                <button
-                                  onClick={() => setViewingScript({ ...file, countryId })}
-                                  type="button"
-                                  className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded px-2 text-xs font-medium"
-                                >
-                                  {t.dashboard.read}
-                                </button>
-                                <button
-                                  onClick={() => openFeedbackDialog(countryId, file.id, 'approved')}
-                                  className={`p-1 rounded transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-50' : 'text-[color:var(--muted)] hover:text-emerald-500'}`}
-                                  title="Approuver"
-                                >
-                                  <CheckCircle size={16} />
-                                </button>
-                                <button
-                                  onClick={() => openFeedbackDialog(countryId, file.id, 'rejected')}
-                                  className={`p-1 rounded transition-colors ${file.status === 'rejected' ? 'text-red-500 bg-red-50' : 'text-[color:var(--muted)] hover:text-red-500'}`}
-                                  title="Rejeter (Commentaire)"
-                                >
-                                  <XCircle size={16} />
-                                </button>
-                                {countryId === 'mj' ? (
-                                  <button
-                                    onClick={() => openDownloadDialog(file)}
-                                    className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
-                                    title={t.dashboard.downloadFile}
-                                  >
-                                    <Download size={16} />
-                                  </button>
-                                ) : (
-                                  <a
-                                    href={`${API_BASE}/uploads/${file.filename}`}
-                                    download={file.name}
-                                    className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1 rounded"
-                                    title={t.dashboard.downloadFile}
-                                  >
-                                    <Download size={16} />
-                                  </a>
-                                )}
-                                <button
-                                  onClick={() => openDeleteDialog(countryId, file.id)}
-                                  type="button"
-                                  className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded"
-                                  title={t.dashboard.delete}
-                                >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-4 bg-[var(--paper)] border-t border-[var(--border)] mt-auto flex justify-end">
-                  {countryId === 'mj' ? (
-                    <button
-                      onClick={() => openDownloadDialog({ filename: `${selectedWeek}/mj/archive`, name: `uploads_${selectedWeek}_${country?.code || countryId}.zip` })}
-                      className="btn btn-primary flex items-center gap-2"
-                    >
-                      <Download size={16} />
-                      {t.dashboard.downloadAll(country?.code)}
-                    </button>
-                  ) : (
-                    <a
-                      href={`${API_BASE}/api/uploads/${selectedWeek}/${countryId}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
-                      download={`uploads_${selectedWeek}_${country?.code || countryId}.zip`}
-                      className="btn btn-primary flex items-center gap-2"
-                    >
-                      <Download size={16} />
-                      {t.dashboard.downloadAll(country?.code)}
-                    </a>
-                  )}
-                </div>
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 h-screen flex flex-col">
+      <div className="flex flex-col md:flex-row flex-1 border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
+        
+        {/* Sidebar Bins */}
+        <aside className="w-full md:w-64 bg-[var(--paper-2)] border-b md:border-b-0 md:border-r border-[var(--border)] flex flex-col overflow-y-auto shrink-0">
+          <div className="p-4 border-b border-[var(--border)] bg-[var(--paper)]">
+            <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-2 inline-block">{t.nav.editing}</div>
+            <h2 className="text-xl font-bold text-[color:var(--ink)]">{t.dashboard.title}</h2>
+          </div>
+          
+          <div className="p-4 flex-1">
+            <h3 className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider mb-3 px-2">Chutiers (Pays)</h3>
+            {loading ? (
+              <div className="space-y-2">
+                <SkeletonCard count={2} />
               </div>
-            );
-          })}
-        </div>
-      )}
+            ) : countriesWithUploads.length === 0 ? (
+              <div className="p-4 text-sm text-[color:var(--muted)] text-center">Aucun fichier déposé pour l'instant.</div>
+            ) : (
+              <div className="space-y-1">
+                {countriesWithUploads.map(countryId => {
+                  const country = countries.find((c) => c.id === countryId);
+                  const fileCount = dashboard[countryId].length;
+                  const isActive = selectedBin === countryId;
+                  return (
+                    <button 
+                      key={countryId}
+                      onClick={() => setSelectedBin(countryId)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors ${
+                        isActive 
+                          ? 'bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold' 
+                          : 'text-[color:var(--muted)] hover:bg-[var(--paper)] hover:text-[color:var(--ink)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Folder size={16} className={isActive ? 'fill-current opacity-20' : ''} />
+                        <span className="truncate">{country?.name || countryId}</span>
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-[var(--accent)]/20 text-[color:var(--accent-deep)]' : 'bg-[var(--border)] text-[color:var(--muted)]'}`}>
+                        {fileCount}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col min-w-0 bg-[var(--paper)]">
+          {/* Top Toolbar */}
+          <header className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex flex-wrap justify-between items-center gap-4 z-10 shrink-0">
+            <div className="flex items-center gap-3">
+              {selectedBin ? (
+                <>
+                  <div className="w-8 h-8 rounded-full bg-[var(--accent)]/15 flex items-center justify-center font-bold text-xs text-[color:var(--accent-deep)]">
+                    {countries.find(c => c.id === selectedBin)?.code}
+                  </div>
+                  <h2 className="text-lg font-semibold text-[color:var(--ink)]">
+                    {countries.find(c => c.id === selectedBin)?.name}
+                  </h2>
+                </>
+              ) : (
+                <h2 className="text-lg font-semibold text-[color:var(--muted)]">Media Pool</h2>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <label className="sr-only" htmlFor="dashboard-week">
+                {t.dashboard.weekLabel}
+              </label>
+              <select
+                id="dashboard-week"
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(e.target.value)}
+                className="bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-3 py-1.5 font-medium focus:ring-0 cursor-pointer"
+              >
+                {weeks.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {formatWeekLabel(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
+                  </option>
+                ))}
+              </select>
+
+              {selectedBin && (
+                selectedBin === 'mj' ? (
+                  <button
+                    onClick={() => openDownloadDialog({ filename: `${selectedWeek}/mj/archive`, name: `uploads_${selectedWeek}_mj.zip` })}
+                    className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
+                  >
+                    <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
+                  </button>
+                ) : (
+                  <a
+                    href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
+                    download={`uploads_${selectedWeek}_${selectedBin}.zip`}
+                    className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
+                  >
+                    <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
+                  </a>
+                )
+              )}
+            </div>
+          </header>
+
+          {/* Media Grid */}
+          <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper-2)]">
+            {!selectedBin ? (
+              <div className="h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20">
+                <Video size={48} className="mb-4 opacity-20" />
+                <p>Sélectionnez un chutier pour voir les médias</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 content-start">
+                {dashboard[selectedBin].map(file => {
+                  const isVideo = file.type === 'video';
+                  return (
+                    <div key={file.id} className="group flex flex-col gap-2">
+                      {/* Thumbnail Box */}
+                      <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] border border-[var(--border)] shadow-sm cursor-pointer flex items-center justify-center">
+                        
+                        {isVideo ? (
+                          <video 
+                            src={`${API_BASE}/uploads/${file.filename}#t=1.0`} 
+                            className="w-full h-full object-cover"
+                            preload="metadata"
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <FileText className="text-[color:var(--signal)]/40 w-12 h-12 transition-transform duration-500 group-hover:scale-110" />
+                        )}
+
+                        {/* Status Badge */}
+                        {file.status !== 'pending' && (
+                          <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md z-20 text-white ${
+                            file.status === 'approved' ? 'bg-emerald-500/90' : 'bg-red-500/90'
+                          }`}>
+                            {file.status === 'approved' ? 'Approuvé' : 'Rejeté'}
+                          </div>
+                        )}
+
+                        {/* Size Badge */}
+                        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-medium backdrop-blur-md z-20">
+                          {file.size}
+                        </div>
+
+                        {/* Hover Overlay with Action Toolbar */}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center backdrop-blur-[2px] z-10 p-2">
+                          {isVideo && (
+                            <div className="w-10 h-10 mb-2 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center text-white shadow-lg pointer-events-none">
+                              <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1"></div>
+                            </div>
+                          )}
+                          {!isVideo && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setViewingScript(file); }}
+                              className="w-10 h-10 mb-2 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur-md flex items-center justify-center text-white shadow-lg transition-colors"
+                              title="Lire le script"
+                            >
+                              <FileText size={18} />
+                            </button>
+                          )}
+                          
+                          {/* Hover Toolbar */}
+                          <div className="flex items-center gap-1 bg-white/95 rounded-lg p-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => openFeedbackDialog(selectedBin, file.id, 'approved')}
+                              className={`p-1.5 rounded-lg transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-100' : 'text-gray-600 hover:text-emerald-500 hover:bg-emerald-50'}`}
+                              title="Approuver"
+                            >
+                              <CheckCircle size={16} />
+                            </button>
+                            <button
+                              onClick={() => openFeedbackDialog(selectedBin, file.id, 'rejected')}
+                              className={`p-1.5 rounded-lg transition-colors ${file.status === 'rejected' ? 'text-red-500 bg-red-100' : 'text-gray-600 hover:text-red-500 hover:bg-red-50'}`}
+                              title="Rejeter (Commentaire)"
+                            >
+                              <XCircle size={16} />
+                            </button>
+                            
+                            {selectedBin === 'mj' ? (
+                              <button
+                                onClick={() => openDownloadDialog(file)}
+                                className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors"
+                                title={t.dashboard.downloadFile}
+                              >
+                                <Download size={16} />
+                              </button>
+                            ) : (
+                              <a
+                                href={`${API_BASE}/uploads/${file.filename}`}
+                                download={file.name}
+                                className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors block"
+                                title={t.dashboard.downloadFile}
+                              >
+                                <Download size={16} />
+                              </a>
+                            )}
+                            
+                            <button
+                              onClick={() => openDeleteDialog(selectedBin, file.id)}
+                              type="button"
+                              className="p-1.5 rounded-lg text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title={t.dashboard.delete}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Footer Meta */}
+                      <div className="px-1 mt-1">
+                        <div className="text-[13px] font-semibold text-[color:var(--ink)] truncate w-full" title={file.name}>
+                          {file.name}
+                        </div>
+                        <div className="text-[10px] text-[color:var(--muted)] mt-0.5 truncate" title={file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}>
+                          {file.uploadedAt ? formatRelative(file.uploadedAt, lang) : ''}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
 
       {viewingScript && (
         <div
@@ -395,7 +415,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             </div>
             <div className="p-4 border-t border-[var(--border)] bg-[var(--paper)] flex justify-end">
               {viewingScript.filename && (
-                viewingScript.countryId === 'mj' ? (
+                selectedBin === 'mj' ? (
                   <button
                     onClick={() => openDownloadDialog(viewingScript)}
                     className="btn btn-primary flex items-center gap-2"
