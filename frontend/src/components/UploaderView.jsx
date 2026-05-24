@@ -201,7 +201,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
       {currentWeek && <CountdownTimer week={currentWeek} />}
       {isLocked && (
-        <div role="alert" className="panel p-5 mb-8 border-2 border-red-500/50 bg-red-50/60 dark:bg-red-950/30 flex items-start gap-3">
+        <div role="alert" className="panel p-5 mb-8 border-2 !border-red-500/50 !bg-red-50 dark:!bg-red-950/30 flex items-start gap-3">
           <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={22} />
           <div>
             <p className="font-bold text-red-700 dark:text-red-300">{t.uploader.lockedTitle}</p>
