@@ -287,7 +287,7 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
           ip: req.ip,
         },
       });
-      return next(createErrors.fileTypeError());
+      return next(createErrors.fileTypeError(validation.error));
     }
 
     const isScript = ['.txt', '.docx'].includes(path.extname(file.originalname).toLowerCase());

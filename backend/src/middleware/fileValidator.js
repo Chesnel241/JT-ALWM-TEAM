@@ -129,7 +129,9 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE } = {}) {
     'video/mp4', 'video/quicktime',
     'audio/mpeg', 'audio/wav',
     'text/plain',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/heic',
+    'application/zip', 'application/x-zip-compressed'
   ];
   
   if (!allowedMimes.includes(file.mimetype)) {

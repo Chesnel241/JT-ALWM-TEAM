@@ -202,11 +202,11 @@ export const createErrors = {
       'Fichier trop volumineux'
     ),
 
-  fileTypeError: () =>
+  fileTypeError: (details) =>
     new AppError(
       'File type not allowed',
       415,
-      'Type de fichier non autorisé'
+      details || 'Type de fichier non autorisé'
     ),
 
   diskFullError: () =>
