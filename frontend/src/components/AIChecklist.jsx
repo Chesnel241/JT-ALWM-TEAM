@@ -66,24 +66,31 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
           const l = line.trim();
           if (!l) return;
 
-          const normalizedLine = normalize(line);
-          // Prendre le premier mot ou la première partie avant les ":" ou "-" pour une détection plus stricte
-          const firstPart = line.split(/[:\-]/)[0].trim();
+          const parts = line.split(/[:\-]/);
+          const firstPart = parts[0].trim();
           const normalizedFirstPart = normalize(firstPart);
+          const normalizedLine = normalize(line);
+          const title = parts.length > 1 ? parts.slice(1).join(':').trim() : line;
 
-          countryMatchers.forEach(c => {
+          let matched = false;
+          for (const c of countryMatchers) {
             // Ignorer tj et mj pour cette checklist
-            if (c.id === 'tj' || c.id === 'mj') return;
+            if (c.id === 'tj' || c.id === 'mj') continue;
 
-            c.matchers.forEach(matchWord => {
+            for (const matchWord of c.matchers) {
                // On cherche si le nom du pays apparaît en début de ligne ou avant les ":"
                if (normalizedFirstPart === matchWord || normalizedFirstPart.includes(matchWord) || normalizedLine.startsWith(matchWord)) {
                  if (!detected.has(c.id)) {
-                   detected.set(c.id, { id: c.id, name: c.name });
+                   // Transmettre l'objet pays complet pour que le composant CountryAvatar fonctionne correctement (avec le code)
+                   detected.set(c.id, { ...c, reportages: [] });
                  }
+                 detected.get(c.id).reportages.push({ title });
+                 matched = true;
+                 break;
                }
-            });
-          });
+            }
+            if (matched) break;
+          }
         });
 
         setExpectedCountries(Array.from(detected.values()));
@@ -122,33 +129,42 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
             <p className="text-sm text-[color:var(--muted)] mb-2">
               D'après les titres de la semaine, voici l'état des reportages attendus :
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
               {expectedCountries.map(country => {
                 // Vérifier si le pays a soumis au moins un fichier script (.txt)
-                // Ou si on se contente de vérifier si le chutier n'est pas vide.
-                // "via le script c'est plus rassurant" => On cherche un type=script
                 const countryFiles = dashboard[country.id] || [];
                 const hasScript = countryFiles.some(f => f.type === 'script' || f.filename.endsWith('.txt'));
                 
                 return (
-                  <div key={country.id} className={`flex items-center justify-between p-3 rounded-xl border ${hasScript ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
-                    <div className="flex items-center gap-2">
-                      <CountryAvatar country={country} className="w-6 h-6" />
-                      <span className="font-semibold text-sm text-[color:var(--ink)]">{country.name}</span>
+                  <div key={country.id} className={`flex flex-col p-3 rounded-xl border ${hasScript ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <CountryAvatar country={country} className="w-6 h-6" />
+                        <span className="font-semibold text-sm text-[color:var(--ink)]">{country.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {hasScript ? (
+                          <>
+                            <CheckCircle size={16} className="text-emerald-500" />
+                            <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Reçu</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle size={16} className="text-red-400" />
+                            <span className="text-xs font-bold text-red-500 uppercase tracking-wider">Pas reçu</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      {hasScript ? (
-                        <>
-                          <CheckCircle size={16} className="text-emerald-500" />
-                          <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Reçu</span>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle size={16} className="text-red-400" />
-                          <span className="text-xs font-bold text-red-500 uppercase tracking-wider">Pas reçu</span>
-                        </>
-                      )}
-                    </div>
+                    {country.reportages && country.reportages.length > 0 && (
+                      <div className="pl-8 space-y-1.5 mt-1 border-l-2 border-black/5 ml-3">
+                        {country.reportages.map((rep, idx) => (
+                          <p key={idx} className="text-[13px] text-[color:var(--muted)] leading-snug">
+                            {rep.title}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
