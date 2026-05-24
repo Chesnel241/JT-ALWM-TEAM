@@ -36,9 +36,6 @@ function AppShell() {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
 
   useEffect(() => {
-    // Nettoyage du legacy localStorage (transition depuis l'ancien
-    // schéma password-in-localStorage).
-    try { localStorage.removeItem('app-password'); } catch { /* ignore */ }
     api.checkAuth().then(setIsAuthenticated).catch(() => setIsAuthenticated(false));
   }, []);
 
