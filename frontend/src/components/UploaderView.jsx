@@ -226,7 +226,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
       {[
         ...[...Array(reportageCount)].map((_, i) => ({
-          id: i,
+          id: `reportage-${i}`,
           name: t.uploader.reportageName(i + 1),
           badge: i + 1,
           isFirst: i === 0,
@@ -235,6 +235,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           id: 'annonces',
           name: 'Annonces',
           badge: 'A',
+          isFirst: false,
+        },
+        {
+          id: 'seminaires',
+          name: 'Séminaires de la semaine',
+          badge: 'S',
           isFirst: false,
         }
       ].map((section, i) => {
