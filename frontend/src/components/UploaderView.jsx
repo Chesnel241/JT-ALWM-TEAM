@@ -262,16 +262,30 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   <p className="text-[color:var(--muted)] text-sm mb-6">
                     {t.uploader.dropHint}
                   </p>
-                  <label className={`btn btn-primary ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
-                    {t.uploader.browse}
-                    <input
-                      type="file"
-                      className="hidden"
-                      multiple
-                      disabled={isLocked}
-                      onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName)}
-                    />
-                  </label>
+                  <div className="flex gap-4 justify-center">
+                    <label className={`btn btn-primary ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
+                      {t.uploader.browse}
+                      <input
+                        type="file"
+                        className="hidden"
+                        multiple
+                        disabled={isLocked}
+                        onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName)}
+                      />
+                    </label>
+                    <label className={`btn btn-primary ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
+                      {t.uploader.browseFolder}
+                      <input
+                        type="file"
+                        className="hidden"
+                        multiple
+                        webkitdirectory="true"
+                        directory="true"
+                        disabled={isLocked}
+                        onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName)}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="panel p-6">

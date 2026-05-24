@@ -166,15 +166,30 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
             <p className="text-[color:var(--muted)] text-sm mb-6">
               {t.delivery.dropHint}
             </p>
-            <label className="btn btn-primary cursor-pointer">
-              {t.delivery.browse}
-              <input
-                type="file"
-                className="hidden"
-                aria-label={t.delivery.browseAria}
-                onChange={(e) => e.target.files && handleFiles(e.target.files)}
-              />
-            </label>
+            <div className="flex gap-4 justify-center">
+              <label className="btn btn-primary cursor-pointer">
+                {t.delivery.browse}
+                <input
+                  type="file"
+                  className="hidden"
+                  aria-label={t.delivery.browseAria}
+                  multiple
+                  onChange={(e) => e.target.files && handleFiles(e.target.files)}
+                />
+              </label>
+              <label className="btn btn-primary cursor-pointer">
+                {t.delivery.browseFolder}
+                <input
+                  type="file"
+                  className="hidden"
+                  aria-label={t.delivery.browseFolderAria}
+                  multiple
+                  webkitdirectory="true"
+                  directory="true"
+                  onChange={(e) => e.target.files && handleFiles(e.target.files)}
+                />
+              </label>
+            </div>
           </div>
 
           {uploading.length > 0 && (
