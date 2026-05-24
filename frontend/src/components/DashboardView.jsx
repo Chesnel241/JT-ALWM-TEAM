@@ -157,14 +157,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       <div className="flex flex-col md:flex-row flex-1 border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
         
         {/* Sidebar Bins */}
-        <aside className="w-full md:w-64 bg-[var(--paper-2)] border-b md:border-b-0 md:border-r border-[var(--border)] flex flex-col overflow-y-auto shrink-0">
-          <div className="p-4 border-b border-[var(--border)] bg-[var(--paper)]">
+        <aside className="w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 sticky top-0 md:static border-b">
+          <div className="p-3 md:p-4 border-b border-[var(--border)] bg-[var(--paper)] hidden md:block">
             <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-2 inline-block">{t.nav.editing}</div>
             <h2 className="text-xl font-bold text-[color:var(--ink)]">{t.dashboard.title}</h2>
           </div>
           
-          <div className="p-4 flex-1">
-            <h3 className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider mb-3 px-2">Chutiers (Pays)</h3>
+          <div className="p-2 md:p-4 md:flex-1 w-full overflow-hidden">
+            <h3 className="hidden md:block text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider mb-3 px-2">Chutiers (Pays)</h3>
             {loading ? (
               <div className="space-y-2">
                 <SkeletonCard count={2} />
@@ -172,7 +172,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             ) : countriesWithUploads.length === 0 ? (
               <div className="p-4 text-sm text-[color:var(--muted)] text-center">Aucun fichier déposé pour l'instant.</div>
             ) : (
-              <div className="space-y-1">
+              <div className="flex overflow-x-auto pb-1 md:pb-0 gap-2 md:space-y-1 md:flex-col md:gap-0 snap-x scrollbar-hide -mx-2 px-2 md:mx-0 md:px-0">
                 {countriesWithUploads.map(countryId => {
                   const country = countries.find((c) => c.id === countryId);
                   const fileCount = dashboard[countryId].length;
@@ -181,17 +181,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <button 
                       key={countryId}
                       onClick={() => setSelectedBin(countryId)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors ${
+                      className={`shrink-0 md:w-full flex items-center justify-between px-3 md:px-3 py-2 md:py-2.5 rounded-xl transition-all active:scale-[0.98] snap-start border md:border-transparent ${
                         isActive 
-                          ? 'bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold' 
-                          : 'text-[color:var(--muted)] hover:bg-[var(--paper)] hover:text-[color:var(--ink)]'
+                          ? 'bg-[var(--accent)] text-white font-semibold border-transparent shadow-md' 
+                          : 'bg-[var(--paper)] border-[var(--border)] text-[color:var(--muted)] sm:hover:bg-[var(--paper)] sm:hover:text-[color:var(--ink)]'
                       }`}
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <Folder size={16} className={isActive ? 'fill-current opacity-20' : ''} />
-                        <span className="truncate">{country?.name || countryId}</span>
+                        <Folder size={16} className={isActive ? 'fill-current opacity-30' : ''} />
+                        <span className="truncate whitespace-nowrap text-sm md:text-base">{country?.name || countryId}</span>
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-[var(--accent)]/20 text-[color:var(--accent-deep)]' : 'bg-[var(--border)] text-[color:var(--muted)]'}`}>
+                      <span className={`ml-3 text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)]'}`}>
                         {fileCount}
                       </span>
                     </button>
@@ -260,7 +260,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </header>
 
           {/* Media Grid */}
-          <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper-2)]">
+          <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-[var(--paper-2)]">
             <AIChecklist 
               dashboard={dashboard} 
               countries={countries} 
@@ -268,12 +268,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             />
             
             {!selectedBin ? (
-              <div className="h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20">
+              <div className="h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20 pt-10">
                 <Video size={48} className="mb-4 opacity-20" />
                 <p>Sélectionnez un chutier pour voir les médias</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 content-start">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6 content-start mt-4">
                 {(dashboard[selectedBin] || []).length === 0 ? (
                   <div className="col-span-full h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20">
                     <Folder size={48} className="mb-4 opacity-20" />

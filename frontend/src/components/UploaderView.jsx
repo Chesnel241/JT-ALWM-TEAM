@@ -167,13 +167,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-      <div className="flex flex-wrap items-center gap-4 mb-8">
-        <button onClick={onBack} type="button" className="btn btn-ghost border border-[var(--border)]">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <button onClick={onBack} type="button" className="btn btn-ghost border border-[var(--border)] py-1.5 sm:py-2 text-sm sm:text-base active:scale-[0.97]">
           {t.uploader.back}
         </button>
-        <ChevronRight size={16} className="text-[color:var(--muted)]" />
-        <span className="font-semibold text-2xl text-[color:var(--ink)] flex items-center gap-2">
+        <ChevronRight size={16} className="text-[color:var(--muted)] hidden sm:block" />
+        <span className="font-semibold text-xl sm:text-2xl text-[color:var(--ink)] flex items-center gap-2">
           <CountryAvatar country={country} className="w-8 h-8 mr-1" />
           {country.name}
         </span>
@@ -181,7 +181,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
       {country.id !== 'tj' && country.id !== 'mj' && <Tutorial5W1H />}
 
-      <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div className="panel p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.weekTitle}</h3>
           <p className="text-sm text-[color:var(--muted)]">{t.uploader.weekSubtitle}</p>
@@ -189,7 +189,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         <select
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
-          className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-full px-4 py-2 font-medium"
+          className="w-full sm:w-auto bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-full px-4 py-2.5 sm:py-2 font-medium"
         >
           {weeks.map((w) => (
             <option key={w.id} value={w.id}>
@@ -282,21 +282,21 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         const isDragActive = dragActive[reportageName];
 
         return (
-          <div key={section.id} className="mb-12 bg-black/5 dark:bg-white/5 p-6 sm:p-8 rounded-3xl border border-[var(--border)]">
-            <h2 className="text-2xl font-bold mb-6 text-[color:var(--ink)] flex items-center gap-2">
+          <div key={section.id} className="mb-8 sm:mb-12 bg-black/5 dark:bg-white/5 p-4 sm:p-6 md:p-8 rounded-[2rem] border border-[var(--border)]">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-[color:var(--ink)] flex items-center gap-2">
               <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">{section.badge}</span>
               {reportageName}
             </h2>
             
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8">
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <div
-                  className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center transition-colors ${
+                  className={`relative border-2 border-dashed rounded-[1.5rem] p-6 sm:p-10 text-center transition-all ${
                     isLocked
                       ? 'border-[var(--border)] bg-[var(--paper-2)] opacity-50 cursor-not-allowed'
                       : isDragActive
-                        ? 'border-[color:var(--accent)] bg-[var(--accent)]/10'
-                        : 'border-[var(--border)] bg-[var(--paper)] hover:border-[color:var(--accent)]'
+                        ? 'border-[color:var(--accent)] bg-[var(--accent)]/10 scale-[1.02]'
+                        : 'border-[var(--border)] bg-[var(--paper)] sm:hover:border-[color:var(--accent)]'
                   }`}
                   onDragEnter={(e) => !isLocked && handleDrag(e, reportageName)}
                   onDragLeave={(e) => !isLocked && handleDrag(e, reportageName)}
@@ -313,8 +313,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   <p className="text-[color:var(--muted)] text-sm mb-6">
                     {t.uploader.dropHint}
                   </p>
-                  <div className="flex gap-4 justify-center">
-                    <label className={`btn btn-primary ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <label className={`btn btn-primary w-full sm:w-auto text-center active:scale-[0.98] ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
                       {t.uploader.browse}
                       <input
                         type="file"
@@ -324,7 +324,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                         onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName)}
                       />
                     </label>
-                    <label className={`btn btn-primary ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
+                    <label className={`btn btn-primary w-full sm:w-auto text-center active:scale-[0.98] ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
                       {t.uploader.browseFolder}
                       <input
                         type="file"
@@ -397,7 +397,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                       onClick={() => handleScriptSubmit(reportageName)}
                       disabled={isLocked || !(scriptText[reportageName] || '').trim()}
                       type="button"
-                      className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn btn-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                     >
                       {t.uploader.scriptSubmit}
                     </button>
