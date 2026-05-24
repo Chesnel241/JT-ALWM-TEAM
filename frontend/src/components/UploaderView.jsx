@@ -180,7 +180,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </span>
       </div>
 
-      <Tutorial5W1H />
+      {country.id !== 'tj' && country.id !== 'mj' && <Tutorial5W1H />}
 
       <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
