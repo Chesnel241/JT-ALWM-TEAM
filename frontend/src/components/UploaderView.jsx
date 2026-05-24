@@ -211,37 +211,53 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </div>
       )}
 
-      {country.id === 'tj' ? (
-        <TjUploader 
-          selectedWeek={selectedWeek} 
-          country={country} 
-          onUploaded={() => {
-            api.getUploads(selectedWeek, country.id)
-              .then(setUploads)
-              .catch(console.error);
-          }} 
-          t={t} 
-        />
-      ) : (
+      {country.id === 'tj' || country.id === 'mj' ? (
         <>
-          {country.id !== 'mj' && (
-            <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
-              <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.reportageCountTitle}</h3>
-              <select
-                value={reportageCount}
-                onChange={(e) => setReportageCount(Number(e.target.value))}
-                className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-4 py-2 font-medium"
-              >
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>{n}</option>
+          <TjUploader 
+            selectedWeek={selectedWeek} 
+            country={country} 
+            onUploaded={() => {
+              api.getUploads(selectedWeek, country.id)
+                .then(setUploads)
+                .catch(console.error);
+            }} 
+            t={t} 
+          />
+          {uploads.length > 0 && (
+            <div className="mb-8 p-6 bg-[var(--paper)] border border-[var(--border)] rounded-2xl shadow-sm">
+              <h3 className="font-bold text-lg mb-4 text-[color:var(--ink)]">Fichiers sauvegardés</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {uploads.map(file => (
+                  <div key={file.id} className="bg-[var(--paper-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between">
+                    <div className="flex flex-col overflow-hidden mr-3">
+                      <span className="font-medium text-sm truncate text-[color:var(--ink)]">{file.name}</span>
+                      <span className="text-xs text-[color:var(--muted)]">{file.reportage || (country.id === 'tj' ? 'Titres / Audio' : 'Mot du JT')}</span>
+                    </div>
+                    <button onClick={() => openDeleteDialog(file)} className="text-red-500 hover:text-red-700 p-2 flex-shrink-0" title={t.uploader.delete}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 ))}
-              </select>
+              </div>
             </div>
           )}
+        </>
+      ) : (
+        <>
+          <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
+            <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.reportageCountTitle}</h3>
+            <select
+              value={reportageCount}
+              onChange={(e) => setReportageCount(Number(e.target.value))}
+              className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-4 py-2 font-medium"
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
 
-      {(country.id === 'mj' ? [
-        { id: 'mj', name: 'Mot du JT', badge: 'M', isFirst: true }
-      ] : [
+      {[
         ...[...Array(reportageCount)].map((_, i) => ({
           id: `reportage-${i}`,
           name: t.uploader.reportageName(i + 1),
@@ -260,7 +276,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           badge: 'S',
           isFirst: false,
         }
-      ]).map((section, i) => {
+      ].map((section, i) => {
         const reportageName = section.name;
         const repUploads = uploads.filter(u => u.reportage === reportageName || (!u.reportage && section.isFirst));
         const repUploading = uploading.filter(u => u.reportage === reportageName);
@@ -516,15 +532,18 @@ function TjUploader({ selectedWeek, country, onUploaded, t }) {
   const [isUploading, setIsUploading] = useState(false);
   const { addToast } = useToast();
 
+  const isMj = country.id === 'mj';
+
   const handleTextUpload = async () => {
     if (!text.trim()) return;
     setIsUploading(true);
     try {
       const blob = new Blob([text], { type: 'text/plain' });
-      const file = new File([blob], `titres_et_rappels_${Date.now()}.txt`, { type: 'text/plain' });
-      await api.uploadFile(selectedWeek, country.id, file, () => {}, 'Titres');
+      const filename = isMj ? `details_mot_du_jt_${Date.now()}.txt` : `titres_et_rappels_${Date.now()}.txt`;
+      const file = new File([blob], filename, { type: 'text/plain' });
+      await api.uploadFile(selectedWeek, country.id, file, () => {}, isMj ? 'Détails' : 'Titres');
       setText('');
-      addToast('Titres sauvegardés avec succès', 'success');
+      addToast(isMj ? 'Détails sauvegardés avec succès' : 'Titres sauvegardés avec succès', 'success');
       if (onUploaded) onUploaded();
     } catch (err) {
       console.error(err);
@@ -540,7 +559,7 @@ function TjUploader({ selectedWeek, country, onUploaded, t }) {
     setIsUploading(true);
     try {
       for (const file of files) {
-        await api.uploadFile(selectedWeek, country.id, file, () => {}, 'Audio/Voix Off');
+        await api.uploadFile(selectedWeek, country.id, file, () => {}, isMj ? 'Vidéo' : 'Audio/Voix Off');
       }
       addToast('Fichiers uploadés avec succès', 'success');
       if (onUploaded) onUploaded();
@@ -556,10 +575,12 @@ function TjUploader({ selectedWeek, country, onUploaded, t }) {
   return (
     <div className="mb-8 p-6 bg-[var(--paper)] border border-[var(--border)] rounded-2xl shadow-sm flex flex-col lg:flex-row gap-6">
       <div className="flex-1">
-        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">Rédiger les Titres</h3>
+        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">
+          {isMj ? "Détails (Orateur, Thème, Pays)" : "Rédiger les Titres"}
+        </h3>
         <textarea 
           className="w-full min-h-[150px] p-3 rounded-xl border border-[var(--border)] bg-[var(--paper-2)] text-[color:var(--ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] resize-y mb-3"
-          placeholder="Collez ou tapez les titres et rappels ici..."
+          placeholder={isMj ? "Collez ou tapez les détails de l'orateur, le thème, et le pays ici..." : "Collez ou tapez les titres et rappels ici..."}
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
@@ -568,20 +589,26 @@ function TjUploader({ selectedWeek, country, onUploaded, t }) {
           disabled={!text.trim() || isUploading}
           className="btn btn-primary px-4 py-2 w-full disabled:opacity-50"
         >
-          {isUploading ? 'Sauvegarde...' : 'Sauvegarder les Titres (Texte)'}
+          {isUploading ? 'Sauvegarde...' : (isMj ? 'Sauvegarder les Détails' : 'Sauvegarder les Titres')}
         </button>
       </div>
 
       <div className="w-px bg-[var(--border)] hidden lg:block"></div>
 
       <div className="flex-1 flex flex-col justify-center">
-        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">Uploader Audio & Vidéo</h3>
-        <p className="text-sm text-[color:var(--muted)] mb-4">Sélectionnez les voix off, les virgules sonores, etc.</p>
+        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">
+          {isMj ? "Uploader la Vidéo" : "Uploader Audio & Vidéo"}
+        </h3>
+        <p className="text-sm text-[color:var(--muted)] mb-4">
+          {isMj ? "Sélectionnez le fichier vidéo du Mot du JT." : "Sélectionnez les voix off, les virgules sonores, etc."}
+        </p>
         
         <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-[var(--border)] rounded-xl cursor-pointer hover:bg-[color:var(--accent)]/5 hover:border-[color:var(--accent)] transition-colors group">
           <UploadCloud className="w-8 h-8 text-[color:var(--muted)] group-hover:text-[color:var(--accent)] mb-3" />
           <span className="font-medium text-[color:var(--ink)]">Cliquez pour choisir des fichiers</span>
-          <span className="text-xs text-[color:var(--muted)] mt-1">Audio (MP3, WAV), Vidéo, etc.</span>
+          <span className="text-xs text-[color:var(--muted)] mt-1">
+            {isMj ? "Vidéo (MP4, MOV), etc." : "Audio (MP3, WAV), Vidéo, etc."}
+          </span>
           <input 
             type="file" 
             className="hidden" 
