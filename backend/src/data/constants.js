@@ -1,4 +1,5 @@
 const DEFAULT_COUNTRIES = [
+  { id: 'tj', name: 'Titres & Rappels JT', code: 'TJ' },
   { id: 'cm', name: 'Cameroun', code: 'CM' },
   { id: 'sn', name: 'Sénégal', code: 'SN' },
   { id: 'ci', name: "Côte d'Ivoire", code: 'CI' },

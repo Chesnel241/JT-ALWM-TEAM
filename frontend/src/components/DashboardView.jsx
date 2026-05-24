@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -533,6 +533,67 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           setAdminPassword('');
         }}
       />
+      {/* Script Viewer Modal */}
+      {viewingScript && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
+              <h3 className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
+                <FileText className="text-[color:var(--accent)]" size={20} />
+                {viewingScript.name}
+              </h3>
+              <button 
+                onClick={() => setViewingScript(null)}
+                className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--border)] rounded-lg transition-colors"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative">
+              <ScriptViewerContent file={viewingScript} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={localStorage.getItem('app-password')} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let url = `${API_BASE}/uploads/${file.filename}`;
+    // If it's MOT DU JT, we need the password. However, static files /uploads/:filename 
+    // expects it in the query string `?adminPassword=...`
+    if (selectedBin === 'mj' && adminPassword) {
+      url += `?adminPassword=${encodeURIComponent(adminPassword)}`;
+    }
+
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error('Impossible de charger le contenu. (Peut-être protégé ?)');
+        return res.text();
+      })
+      .then(text => {
+        setContent(text);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [file, selectedBin, adminPassword]);
+
+  if (loading) return <div className="flex justify-center items-center h-full text-[color:var(--muted)]">Chargement du texte...</div>;
+  if (error) return <div className="text-red-500 font-medium text-center mt-10 flex flex-col items-center gap-2"><AlertCircle /> {error}</div>;
+
+  return (
+    <pre className="whitespace-pre-wrap font-sans text-[color:var(--ink)] text-base leading-relaxed max-w-none">
+      {content}
+    </pre>
   );
 }

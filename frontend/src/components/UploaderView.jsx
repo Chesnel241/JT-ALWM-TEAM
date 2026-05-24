@@ -224,16 +224,29 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </select>
       </div>
 
-      {[...Array(reportageCount)].map((_, i) => {
-        const reportageName = t.uploader.reportageName(i + 1);
-        const repUploads = uploads.filter(u => u.reportage === reportageName || (!u.reportage && i === 0));
+      {[
+        ...[...Array(reportageCount)].map((_, i) => ({
+          id: i,
+          name: t.uploader.reportageName(i + 1),
+          badge: i + 1,
+          isFirst: i === 0,
+        })),
+        {
+          id: 'annonces',
+          name: 'Annonces',
+          badge: 'A',
+          isFirst: false,
+        }
+      ].map((section, i) => {
+        const reportageName = section.name;
+        const repUploads = uploads.filter(u => u.reportage === reportageName || (!u.reportage && section.isFirst));
         const repUploading = uploading.filter(u => u.reportage === reportageName);
         const isDragActive = dragActive[reportageName];
 
         return (
-          <div key={i} className="mb-12 bg-black/5 dark:bg-white/5 p-6 sm:p-8 rounded-3xl border border-[var(--border)]">
+          <div key={section.id} className="mb-12 bg-black/5 dark:bg-white/5 p-6 sm:p-8 rounded-3xl border border-[var(--border)]">
             <h2 className="text-2xl font-bold mb-6 text-[color:var(--ink)] flex items-center gap-2">
-              <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">{i + 1}</span>
+              <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">{section.badge}</span>
               {reportageName}
             </h2>
             
