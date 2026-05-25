@@ -18,6 +18,7 @@ import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
 import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2, checkR2Exists } from '../lib/s3.js';
 import { Readable } from 'stream';
+import { processVoiceover } from '../services/audioProcessor.js';
 
 function createLazyStream(factory) {
   let stream = null;
@@ -596,6 +597,110 @@ router.patch('/:weekId/files/:fileId/status', requireAdmin, [
   }
 
   return res.json(updatedFile);
+}));
+// --- VOIX OFF STUDIO ---
+// Upload raw voiceover, process via FFmpeg (EQ/Compressor), save audio + script.
+import { mkdirSync } from 'fs';
+
+router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandler(async (req, res, next) => {
+  const { weekId, countryId } = req.params;
+  const { reportageTitle, script } = req.body;
+
+  if (!isValidWeek(weekId)) {
+    return next(createErrors.notFound('Week'));
+  }
+
+  // Allow custom countries too
+  const customCountries = getCustomCountries();
+  const isValidCountry = COUNTRIES.some(c => c.id === countryId) || customCountries.some(c => c.id === countryId) || countryId === 'mj' || countryId === '_subscriptions';
+  if (!isValidCountry) {
+    return next(createErrors.badRequest('ID de pays/chutier invalide.'));
+  }
+
+  if (!req.file) {
+    return next(createErrors.badRequest('Fichier audio manquant.'));
+  }
+
+  if (!reportageTitle) {
+    return next(createErrors.badRequest('Le titre du reportage est requis.'));
+  }
+
+  try {
+    const rawAudioPath = req.file.path;
+    
+    // Generate paths for processed files
+    const safeTitle = sanitizeFilename(reportageTitle) || 'Reportage';
+    const audioFilename = `${Date.now()}-${safeTitle}-Voix.mp3`;
+    const scriptFilename = `${Date.now()}-${safeTitle}-Script.txt`;
+    
+    const finalAudioPath = path.join(uploadsDir, weekId, countryId, audioFilename);
+    const scriptPath = path.join(uploadsDir, weekId, countryId, scriptFilename);
+
+    // Ensure directory exists
+    const dir = path.join(uploadsDir, weekId, countryId);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+
+    // Process audio via FFmpeg
+    await processVoiceover(rawAudioPath, finalAudioPath);
+    
+    // Save Script
+    if (script) {
+      writeFileSync(scriptPath, script, 'utf8');
+    }
+
+    // Clean up raw recording
+    if (existsSync(rawAudioPath)) {
+      unlinkSync(rawAudioPath);
+    }
+
+    // Register audio in DB
+    const { statSync } = await import('fs');
+    const audioFileMeta = {
+      id: uuidv4(),
+      name: `${reportageTitle} - Voix (Studio).mp3`,
+      filename: `${weekId}/${countryId}/${audioFilename}`,
+      size: `${(statSync(finalAudioPath).size / (1024 * 1024)).toFixed(2)} MB`,
+      type: 'audio',
+      uploadedAt: new Date().toISOString(),
+      reportage: reportageTitle,
+      status: 'pending'
+    };
+    addUpload(weekId, countryId, audioFileMeta);
+
+    // Register script in DB if exists
+    let scriptFileMeta = null;
+    if (script) {
+      scriptFileMeta = {
+        id: uuidv4(),
+        name: `${reportageTitle} - Script.txt`,
+        filename: `${weekId}/${countryId}/${scriptFilename}`,
+        size: `${statSync(scriptPath).size} octets`,
+        type: 'script',
+        uploadedAt: new Date().toISOString(),
+        reportage: reportageTitle,
+        status: 'pending'
+      };
+      addUpload(weekId, countryId, scriptFileMeta);
+    }
+
+    recordUpload('audio', statSync(finalAudioPath).size);
+
+    res.status(201).json({
+      message: 'Voix traitée et enregistrée avec succès',
+      audio: audioFileMeta,
+      script: scriptFileMeta
+    });
+
+  } catch (error) {
+    logger.error('Voiceover processing error', { error: error.message, stack: error.stack });
+    // Clean up raw if fails
+    if (req.file && existsSync(req.file.path)) {
+      unlinkSync(req.file.path);
+    }
+    return next(createErrors.serverError('Erreur lors du traitement de la voix: ' + error.message));
+  }
 }));
 
 export default router;

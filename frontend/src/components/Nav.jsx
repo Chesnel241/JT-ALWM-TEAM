@@ -1,4 +1,4 @@
-import { LayoutDashboard, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Mic } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 
@@ -49,6 +49,19 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
                 {newUploadsCount}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setCurrentView('voixoff')}
+            type="button"
+            aria-current={currentView === 'voixoff' ? 'page' : undefined}
+            className={`btn flex items-center gap-2 ${
+              currentView === 'voixoff'
+                ? 'btn-primary'
+                : 'btn-ghost border border-[var(--border)]'
+            }`}
+          >
+            <Mic size={18} />
+            Voix Off
           </button>
           <button
             onClick={() => setCurrentView('delivery')}

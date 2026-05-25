@@ -162,4 +162,27 @@ body {
 	.animate-pulse {
 		animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 	}
+
+	.custom-scrollbar::-webkit-scrollbar {
+		width: 8px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-track {
+		background: rgba(255, 255, 255, 0.05);
+		border-radius: 4px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.2);
+		border-radius: 4px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: rgba(255, 255, 255, 0.3);
+	}
+
+	.custom-audio::-webkit-media-controls-panel {
+		background-color: #1f2937;
+	}
+	.custom-audio::-webkit-media-controls-current-time-display,
+	.custom-audio::-webkit-media-controls-time-remaining-display {
+		color: #fff;
+	}
 }
