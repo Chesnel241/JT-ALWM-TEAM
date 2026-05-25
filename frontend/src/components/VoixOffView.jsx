@@ -38,6 +38,9 @@ export default function VoixOffView({ countries, selectedWeek }) {
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
       }
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(console.error);
+      }
     };
   }, [audioUrl]);
 
@@ -51,7 +54,7 @@ export default function VoixOffView({ countries, selectedWeek }) {
     const dataArray = new Uint8Array(bufferLength);
     
     const draw = () => {
-      if (!isRecording) return;
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'inactive') return;
       requestRef.current = requestAnimationFrame(draw);
       
       analyser.getByteFrequencyData(dataArray);
@@ -120,7 +123,8 @@ export default function VoixOffView({ countries, selectedWeek }) {
       };
       
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeType = mediaRecorderRef.current.mimeType || '';
+        const blob = new Blob(audioChunksRef.current, mimeType ? { type: mimeType } : undefined);
         setAudioBlob(blob);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -147,6 +151,9 @@ export default function VoixOffView({ countries, selectedWeek }) {
       stopVisualizer();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
+      }
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(console.error);
       }
     }
   };
@@ -295,7 +302,11 @@ export default function VoixOffView({ countries, selectedWeek }) {
                 <div className="flex items-center gap-3 w-full">
                   <audio src={audioUrl} controls className="flex-1 h-10 custom-audio" />
                   <button
-                    onClick={() => { setAudioBlob(null); setAudioUrl(null); }}
+                    onClick={() => { 
+                      setAudioBlob(null); 
+                      if (audioUrl) URL.revokeObjectURL(audioUrl);
+                      setAudioUrl(null); 
+                    }}
                     className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
                   >
                     Recommencer

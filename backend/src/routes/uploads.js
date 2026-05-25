@@ -617,6 +617,14 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     return next(createErrors.badRequest('ID de pays/chutier invalide.'));
   }
 
+  const providedToken = req.body.adminPassword || req.header('x-admin-password');
+  const ignoreCutoff = ADMIN_PASSWORD && providedToken === ADMIN_PASSWORD;
+  
+  if (!ignoreCutoff) {
+    const cutoffErr = checkUploadCutoff(weekId);
+    if (cutoffErr) return next(cutoffErr);
+  }
+
   if (!req.file) {
     return next(createErrors.badRequest('Fichier audio manquant.'));
   }
@@ -627,11 +635,12 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
 
   try {
     const rawAudioPath = req.file.path;
+    const uploadStartTime = Date.now();
     
     // Generate paths for processed files
     const safeTitle = sanitizeFilename(reportageTitle) || 'Reportage';
-    const audioFilename = `${Date.now()}-${safeTitle}-Voix.mp3`;
-    const scriptFilename = `${Date.now()}-${safeTitle}-Script.txt`;
+    const audioFilename = `${uuidv4()}-${safeTitle}-Voix.mp3`;
+    const scriptFilename = `${uuidv4()}-${safeTitle}-Script.txt`;
     
     const finalAudioPath = path.join(uploadsDir, weekId, countryId, audioFilename);
     const scriptPath = path.join(uploadsDir, weekId, countryId, scriptFilename);
@@ -648,6 +657,13 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     // Save Script
     if (script) {
       writeFileSync(scriptPath, script, 'utf8');
+    }
+
+    if (HAS_R2) {
+      await uploadToR2(finalAudioPath, `uploads/${weekId}/${countryId}/${audioFilename}`, 'audio/mpeg');
+      if (script) {
+        await uploadToR2(scriptPath, `uploads/${weekId}/${countryId}/${scriptFilename}`, 'text/plain');
+      }
     }
 
     // Clean up raw recording
@@ -685,7 +701,8 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
       addUpload(weekId, countryId, scriptFileMeta);
     }
 
-    recordUpload('audio', statSync(finalAudioPath).size);
+    const uploadDurationMs = Date.now() - uploadStartTime;
+    recordUpload(uploadDurationMs, true);
 
     res.status(201).json({
       message: 'Voix traitée et enregistrée avec succès',
