@@ -28,6 +28,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // Nouveaux états pour le mot de passe admin (sécurisation)
   const [adminPassword, setAdminPassword] = useState('');
 
+  useEffect(() => {
+    if (!deleteDialogOpen && !feedbackDialogOpen && !downloadDialogOpen) {
+      setAdminPassword('');
+    }
+  }, [deleteDialogOpen, feedbackDialogOpen, downloadDialogOpen]);
+
   // Download State
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [fileToDownload, setFileToDownload] = useState(null);
@@ -46,7 +52,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       .then(setDashboard)
       .catch((err) => {
         console.error(err);
-        addToast(t.uploader.errorPrefix, 'error', 3000);
+        addToast(err.message || t.uploader.errorPrefix, 'error', 3000);
       })
       .finally(() => setLoading(false));
   }, [selectedWeek, addToast, t.uploader.errorPrefix]);
@@ -556,59 +562,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         </main>
       </div>
 
-      {viewingScript && (
-        <div
-          className="fixed inset-0 bg-[color:oklch(0.2_0.02_250_/_0.6)] flex items-center justify-center p-4 z-50"
-          onClick={() => setViewingScript(null)}
-          role="presentation"
-        >
-          <div
-            className="panel w-full max-w-2xl max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="script-modal-title"
-          >
-            <div className="p-4 border-b border-[var(--border)] flex justify-between items-center bg-[var(--paper)] rounded-t-2xl">
-              <h3 id="script-modal-title" className="font-semibold text-[color:var(--ink)] flex items-center gap-2">
-                <FileText className="text-[color:var(--signal)]" />
-                {viewingScript.name}
-              </h3>
-              <button
-                onClick={() => setViewingScript(null)}
-                type="button"
-                aria-label={t.common.close}
-                className="text-[color:var(--muted)] hover:text-[color:var(--ink)] p-2 text-lg leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1 font-mono text-sm whitespace-pre-wrap text-[color:var(--ink)]">
-              {viewingScript.content || t.dashboard.modalEmpty}
-            </div>
-            <div className="p-4 border-t border-[var(--border)] bg-[var(--paper)] flex justify-end">
-              {viewingScript.filename && (
-                selectedBin === 'mj' ? (
-                  <button
-                    onClick={() => openDownloadDialog(viewingScript)}
-                    className="btn btn-primary flex items-center gap-2"
-                  >
-                    <Download size={16} /> {t.dashboard.modalDownload}
-                  </button>
-                ) : (
-                  <a
-                    href={`${API_BASE}/uploads/${viewingScript.filename}`}
-                    download={viewingScript.name}
-                    className="btn btn-primary flex items-center gap-2"
-                  >
-                    <Download size={16} /> {t.dashboard.modalDownload}
-                  </a>
-                )
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       <ConfirmDialog
         isOpen={deleteDialogOpen}

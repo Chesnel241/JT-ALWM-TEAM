@@ -540,7 +540,7 @@ function TjUploader({ selectedWeek, country, onUploaded, t }) {
       const blob = new Blob([text], { type: 'text/plain' });
       const filename = isMj ? `details_mot_du_jt_${Date.now()}.txt` : `titres_et_rappels_${Date.now()}.txt`;
       const file = new File([blob], filename, { type: 'text/plain' });
-      await api.uploadFile(selectedWeek, country.id, file, () => {}, isMj ? 'Détails' : 'Titres');
+      await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Détails' : 'Titres' });
       setText('');
       addToast(isMj ? 'Détails sauvegardés avec succès' : 'Titres sauvegardés avec succès', 'success');
       if (onUploaded) onUploaded();
@@ -558,7 +558,7 @@ function TjUploader({ selectedWeek, country, onUploaded, t }) {
     setIsUploading(true);
     try {
       for (const file of files) {
-        await api.uploadFile(selectedWeek, country.id, file, () => {}, isMj ? 'Vidéo' : 'Audio/Voix Off');
+        await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Vidéo' : 'Audio/Voix Off' });
       }
       addToast('Fichiers uploadés avec succès', 'success');
       if (onUploaded) onUploaded();
