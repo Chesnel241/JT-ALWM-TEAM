@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -8,6 +8,7 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import AIChecklist from './AIChecklist.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
+import AdminUploadDialog from './AdminUploadDialog.jsx';
 
 export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries }) {
   const { t, lang } = useI18n();
@@ -20,6 +21,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [fileToDelete, setFileToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Admin Upload State
+  const [adminUploadOpen, setAdminUploadOpen] = useState(false);
+  const [isUploadingAdmin, setIsUploadingAdmin] = useState(false);
+
   // Nouveaux états pour le mot de passe admin (sécurisation)
   const [adminPassword, setAdminPassword] = useState('');
 
@@ -126,6 +131,24 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
       setIsSubmittingFeedback(false);
+    }
+  };
+
+  const handleAdminUpload = async (file, password) => {
+    setIsUploadingAdmin(true);
+    try {
+      await api.uploadFile(selectedWeek, selectedBin, file, {
+        adminPassword: password,
+        reportage: 'Reportage Assemblé',
+      });
+      addToast('Upload du reportage assemblé réussi', 'success');
+      setAdminUploadOpen(false);
+      const updatedDashboard = await api.getDashboard(selectedWeek);
+      setDashboard(updatedDashboard);
+    } catch (err) {
+      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 5000);
+    } finally {
+      setIsUploadingAdmin(false);
     }
   };
 
@@ -238,22 +261,31 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </select>
 
               {selectedBin && (
-                selectedBin === 'mj' ? (
+                <>
                   <button
-                    onClick={() => openDownloadDialog({ filename: `${selectedWeek}/mj/archive`, name: `uploads_${selectedWeek}_mj.zip` })}
-                    className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
+                    onClick={() => setAdminUploadOpen(true)}
+                    className="btn btn-secondary py-1.5 px-3 text-sm flex items-center gap-1.5"
+                    title="Uploader un reportage final (Admin)"
                   >
-                    <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
+                    <UploadCloud size={14} /> <span className="hidden sm:inline">Uploader le reportage assemblé</span>
                   </button>
-                ) : (
-                  <a
-                    href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
-                    download={`uploads_${selectedWeek}_${selectedBin}.zip`}
-                    className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
-                  >
-                    <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
-                  </a>
-                )
+                  {selectedBin === 'mj' ? (
+                    <button
+                      onClick={() => openDownloadDialog({ filename: `${selectedWeek}/mj/archive`, name: `uploads_${selectedWeek}_mj.zip` })}
+                      className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
+                    >
+                      <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
+                    </button>
+                  ) : (
+                    <a
+                      href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
+                      download={`uploads_${selectedWeek}_${selectedBin}.zip`}
+                      className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
+                    >
+                      <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
+                    </a>
+                  )}
+                </>
               )}
             </div>
           </header>
@@ -305,13 +337,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       )}
 
                         {/* Status Badge */}
-                        {file.status !== 'pending' && (
-                          <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md z-20 text-white ${
-                            file.status === 'approved' ? 'bg-emerald-500/90' : 'bg-red-500/90'
-                          }`}>
-                            {file.status === 'approved' ? 'Approuvé' : 'Rejeté'}
-                          </div>
-                        )}
+                        <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-20">
+                          {file.reportage === 'Reportage Assemblé' && (
+                            <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white bg-purple-500/90 border border-purple-400/30 flex items-center gap-1" title="Reportage finalisé uploadé par l'équipe de montage">
+                              <CheckCircle size={10} />
+                              Assemblé
+                            </div>
+                          )}
+                          {file.status !== 'pending' && (
+                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white ${
+                              file.status === 'approved' ? 'bg-emerald-500/90' : 'bg-red-500/90'
+                            }`}>
+                              {file.status === 'approved' ? 'Approuvé' : 'Rejeté'}
+                            </div>
+                          )}
+                        </div>
 
                         {/* Size Badge */}
                         <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-medium backdrop-blur-md z-20">
@@ -567,6 +607,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             </div>
           </div>
         </div>
+      )}
+
+      {selectedBin && (
+        <AdminUploadDialog
+          isOpen={adminUploadOpen}
+          onClose={() => setAdminUploadOpen(false)}
+          onUpload={handleAdminUpload}
+          isLoading={isUploadingAdmin}
+          countryName={countries.find(c => c.id === selectedBin)?.name || selectedBin}
+        />
       )}
     </div>
   );

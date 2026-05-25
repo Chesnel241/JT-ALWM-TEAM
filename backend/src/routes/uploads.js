@@ -220,12 +220,18 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
     return next(createErrors.notFound('Week ou Country'));
   }
 
-  // Bloque les rushes après dimanche 17h30
-  const cutoffErr = checkUploadCutoff(weekId);
-  if (cutoffErr) {
-    audit('upload.blocked_after_deadline', req, { weekId, countryId });
-    logger.info('Upload blocked: deadline passed', { context: { weekId, countryId, ip: req.ip } });
-    return next(cutoffErr);
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  const providedToken = req.query.adminPassword || req.header('x-admin-password');
+  const isAdmin = ADMIN_PASSWORD && providedToken === ADMIN_PASSWORD;
+
+  // Bloque les rushes après dimanche 17h30, sauf pour les admins (reportage assemblé)
+  if (!isAdmin) {
+    const cutoffErr = checkUploadCutoff(weekId);
+    if (cutoffErr) {
+      audit('upload.blocked_after_deadline', req, { weekId, countryId });
+      logger.info('Upload blocked: deadline passed', { context: { weekId, countryId, ip: req.ip } });
+      return next(cutoffErr);
+    }
   }
 
   return upload.single('file')(req, res, async (err) => {

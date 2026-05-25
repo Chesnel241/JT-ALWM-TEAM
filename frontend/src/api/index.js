@@ -85,7 +85,7 @@ export const api = {
 
   // XMLHttpRequest pour exposer la progression d'upload (fetch n'a pas
   // d'événement progress sur les requêtes en envoi).
-  uploadFile: (weekId, countryId, file, { onProgress, signal, reportage } = {}) => {
+  uploadFile: (weekId, countryId, file, { onProgress, signal, reportage, adminPassword } = {}) => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const url = `${BASE}/uploads/${weekId}/${countryId}${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`;
@@ -94,6 +94,9 @@ export const api = {
       const token = localStorage.getItem('app-password');
       if (token) {
         xhr.setRequestHeader('X-App-Password', token);
+      }
+      if (adminPassword) {
+        xhr.setRequestHeader('X-Admin-Password', adminPassword);
       }
 
       xhr.upload.addEventListener('progress', (e) => {
