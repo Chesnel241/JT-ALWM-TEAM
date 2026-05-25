@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -224,7 +224,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             )}
             {file.status !== 'pending' && (
               <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white ${
-                file.status === 'approved' ? 'bg-emerald-500/90' : 'bg-red-500/90'
+                file.status === 'approved' ? 'bg-[var(--accent)]' : 'bg-[var(--signal)]'
               }`}>
                 {file.status === 'approved' ? 'Approuvé' : 'Rejeté'}
               </div>
@@ -254,17 +254,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             )}
             
             {/* Hover Toolbar */}
-            <div className="flex items-center gap-1 bg-white/95 rounded-lg p-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1 bg-[var(--paper)]/95 rounded-lg p-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => openFeedbackDialog(selectedBin, file.id, 'approved')}
-                className={`p-1.5 rounded-lg transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-100' : 'text-gray-600 hover:text-emerald-500 hover:bg-emerald-50'}`}
+                className={`p-1.5 rounded-lg transition-colors ${file.status === 'approved' ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
                 title="Approuver"
               >
                 <CheckCircle size={16} />
               </button>
               <button
                 onClick={() => openFeedbackDialog(selectedBin, file.id, 'rejected')}
-                className={`p-1.5 rounded-lg transition-colors ${file.status === 'rejected' ? 'text-red-500 bg-red-100' : 'text-gray-600 hover:text-red-500 hover:bg-red-50'}`}
+                className={`p-1.5 rounded-lg transition-colors ${file.status === 'rejected' ? 'text-[var(--signal)] bg-[var(--signal)]/10' : 'text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10'}`}
                 title="Rejeter (Commentaire)"
               >
                 <XCircle size={16} />
@@ -292,7 +292,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <button
                 onClick={() => openDeleteDialog(selectedBin, file.id)}
                 type="button"
-                className="p-1.5 rounded-lg text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors"
+                className="p-1.5 rounded-lg text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 transition-colors"
                 title={t.dashboard.delete}
               >
                 <Trash2 size={16} />
@@ -412,7 +412,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <>
                   <button
                     onClick={() => setAdminUploadOpen(true)}
-                    className="btn border border-transparent bg-orange-500 hover:bg-orange-600 text-white shadow-sm py-1.5 px-3 text-sm flex items-center gap-1.5 transition-colors"
+                    className="btn border border-transparent bg-[var(--signal)] hover:opacity-90 text-[var(--paper)] shadow-sm py-1.5 px-3 text-sm flex items-center gap-1.5 transition-opacity"
                     title="Uploader un reportage final (Admin)"
                   >
                     <UploadCloud size={14} /> <span className="hidden sm:inline">Uploader le reportage assemblé</span>
@@ -460,7 +460,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   <>
                     <button
                       onClick={() => setAdminUploadOpen(true)}
-                      className="w-full btn border border-transparent bg-orange-500 hover:bg-orange-600 text-white shadow-sm py-2 px-3 text-sm flex items-center justify-center gap-2 transition-colors"
+                      className="w-full btn border border-transparent bg-[var(--signal)] hover:opacity-90 text-[var(--paper)] shadow-sm py-2 px-3 text-sm flex items-center justify-center gap-2 transition-opacity"
                     >
                       <UploadCloud size={16} /> <span>Upload Final</span>
                     </button>
@@ -654,27 +654,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         }}
       />
       {/* Script Viewer Modal */}
-      {viewingScript && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
-              <h3 className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
-                <FileText className="text-[color:var(--accent)]" size={20} />
-                {viewingScript.name}
-              </h3>
-              <button 
-                onClick={() => setViewingScript(null)}
-                className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--border)] rounded-lg transition-colors"
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative">
-              <ScriptViewerContent file={viewingScript} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={localStorage.getItem('app-password')} />
-            </div>
-          </div>
-        </div>
-      )}
+      <ScriptViewerModal 
+        file={viewingScript} 
+        onClose={() => setViewingScript(null)}
+        selectedWeek={selectedWeek}
+        selectedBin={selectedBin}
+        adminPassword={localStorage.getItem('app-password')}
+      />
 
       {selectedBin && (
         <AdminUploadDialog
@@ -689,6 +675,77 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   );
 }
 
+function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword }) {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!file) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+      if (e.key === 'Tab') {
+        if (!dialogRef.current) return;
+        const focusableElements = dialogRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    if (dialogRef.current) {
+      const closeBtn = dialogRef.current.querySelector('button');
+      if (closeBtn) closeBtn.focus();
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [file, onClose]);
+
+  if (!file) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
+      <div ref={dialogRef} className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
+          <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
+            <FileText className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
+            {file.name}
+          </h3>
+          <button 
+            onClick={onClose}
+            aria-label="Fermer le lecteur de script"
+            className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--border)] rounded-lg transition-colors focus-ring focus:outline-none"
+          >
+            <XCircle size={20} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative">
+          <ScriptViewerContent file={file} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={adminPassword} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -696,8 +753,6 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword })
 
   useEffect(() => {
     let url = `${API_BASE}/uploads/${file.filename}?proxy=true`;
-    // If it's MOT DU JT, we need the password. However, static files /uploads/:filename 
-    // expects it in the query string `?adminPassword=...`
     if (selectedBin === 'mj' && adminPassword) {
       url += `&adminPassword=${encodeURIComponent(adminPassword)}`;
     }
@@ -719,7 +774,7 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword })
   }, [file, selectedBin, adminPassword]);
 
   if (loading) return <div className="flex justify-center items-center h-full text-[color:var(--muted)]">Chargement du texte...</div>;
-  if (error) return <div className="text-red-500 font-medium text-center mt-10 flex flex-col items-center gap-2"><AlertCircle /> {error}</div>;
+  if (error) return <div className="text-[var(--signal)] font-medium text-center mt-10 flex flex-col items-center gap-2"><AlertCircle /> {error}</div>;
 
   return (
     <pre className="whitespace-pre-wrap font-sans text-[color:var(--ink)] text-base leading-relaxed max-w-none">

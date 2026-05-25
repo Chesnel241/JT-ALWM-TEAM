@@ -149,7 +149,7 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
                 const isReady = countryFiles.some(f => f.type === 'video' || f.filename.toLowerCase().endsWith('.zip'));
                 
                 return (
-                  <div key={country.id} className={`flex flex-col p-3 rounded-xl border ${isReady ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                  <div key={country.id} className={`flex flex-col p-3 rounded-xl border ${isReady ? 'border-[var(--accent)]/30 bg-[var(--accent)]/10' : 'border-[var(--signal)]/30 bg-[var(--signal)]/10'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <CountryAvatar country={country} className="w-6 h-6" />
@@ -158,8 +158,8 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isReady ? (
                           <>
-                            <CheckCircle size={16} className="text-emerald-500" />
-                            <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Reçu</span>
+                            <CheckCircle size={16} className="text-[var(--accent)]" />
+                            <span className="text-xs font-bold text-[var(--accent)] uppercase tracking-wider">Reçu</span>
                           </>
                         ) : (
                           <>

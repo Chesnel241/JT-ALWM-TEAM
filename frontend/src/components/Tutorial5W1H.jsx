@@ -18,7 +18,7 @@ export default function Tutorial5W1H() {
   const items = [
     { id: 'who', color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-200 dark:border-blue-800' },
     { id: 'what', color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30', border: 'border-purple-200 dark:border-purple-800' },
-    { id: 'where', color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30', border: 'border-emerald-200 dark:border-emerald-800' },
+    { id: 'where', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/10 dark:bg-[var(--accent)]/30', border: 'border-[var(--accent)]/20 dark:border-[var(--accent)]/80' },
     { id: 'when', color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30', border: 'border-amber-200 dark:border-amber-800' },
     { id: 'why', color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30', border: 'border-rose-200 dark:border-rose-800' },
     { id: 'how', color: 'text-cyan-500', bg: 'bg-cyan-100 dark:bg-cyan-900/30', border: 'border-cyan-200 dark:border-cyan-800' },

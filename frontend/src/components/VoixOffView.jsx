@@ -284,7 +284,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
           </div>
 
           {/* Right Column: Dark Studio Recording */}
-          <div className="bg-[#121212] rounded-3xl p-6 shadow-2xl border border-gray-800 flex flex-col relative overflow-hidden">
+          <div className="bg-[var(--ink)] rounded-3xl p-6 shadow-2xl border border-gray-800 flex flex-col relative overflow-hidden">
             <h3 className="text-sm uppercase tracking-widest text-gray-500 font-mono mb-4 flex items-center justify-between">
               <span>3. Studio d'enregistrement</span>
               {isRecording && (
@@ -340,7 +340,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
                   <button
                     onClick={handleUpload}
                     disabled={isUploading}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-[var(--accent)] hover:opacity-90 text-[var(--paper)] px-6 py-2 rounded-full font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isUploading ? 'Traitement...' : <><Upload size={18} /> Traiter et Envoyer</>}
                   </button>

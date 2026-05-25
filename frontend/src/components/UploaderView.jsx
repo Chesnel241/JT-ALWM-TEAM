@@ -31,6 +31,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [fileToDelete, setFileToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingUploads, setIsLoadingUploads] = useState(true);
+  const [submittingScripts, setSubmittingScripts] = useState({});
 
   // Notifications
   const [phoneModalOpen, setPhoneModalOpen] = useState(false);
@@ -120,6 +121,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const handleScriptSubmit = async (reportageName) => {
     const text = scriptText[reportageName] || '';
     if (!text.trim()) return;
+    setSubmittingScripts(prev => ({ ...prev, [reportageName]: true }));
     try {
       const result = await api.submitScript(selectedWeek, country.id, text, reportageName);
       setUploads((prev) => [...prev, result]);
@@ -127,6 +129,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       addToast(t.uploader.scriptSuccess, 'success', 3000);
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
+    } finally {
+      setSubmittingScripts(prev => ({ ...prev, [reportageName]: false }));
     }
   };
 
@@ -201,11 +205,11 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
       {currentWeek && <CountdownTimer week={currentWeek} />}
       {isLocked && (
-        <div role="alert" className="panel p-5 mb-8 border-2 !border-red-500/50 !bg-red-50 dark:!bg-red-950/30 flex items-start gap-3">
-          <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={22} />
+        <div role="alert" className="panel p-5 mb-8 border-2 !border-[var(--signal)]/50 !bg-[var(--signal)]/10 flex items-start gap-3">
+          <AlertCircle className="text-[var(--signal)] flex-shrink-0 mt-0.5" size={22} />
           <div>
-            <p className="font-bold text-red-700 dark:text-red-300">{t.uploader.lockedTitle}</p>
-            <p className="text-sm text-red-600/90 dark:text-red-300/80 mt-1">{t.uploader.lockedDesc}</p>
+            <p className="font-bold text-[var(--signal)]">{t.uploader.lockedTitle}</p>
+            <p className="text-sm text-[var(--signal)]/90 mt-1">{t.uploader.lockedDesc}</p>
           </div>
         </div>
       )}
@@ -232,7 +236,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                       <span className="font-medium text-sm truncate text-[color:var(--ink)]">{file.name}</span>
                       <span className="text-xs text-[color:var(--muted)]">{file.reportage || (country.id === 'tj' ? 'Titres / Audio' : 'Mot du JT')}</span>
                     </div>
-                    <button onClick={() => openDeleteDialog(file)} className="text-red-500 hover:text-red-700 p-2 flex-shrink-0" title={t.uploader.delete}>
+                    <button onClick={() => openDeleteDialog(file)} className="text-[var(--signal)] hover:opacity-80 p-2 flex-shrink-0" title={t.uploader.delete}>
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -348,12 +352,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                           <div className="flex justify-between text-sm mb-2">
                             <span className="font-medium text-[color:var(--ink)] truncate pr-4">{f.name}</span>
                             {f.status === 'completed' && (
-                              <span className="text-emerald-600 flex items-center gap-1">
+                              <span className="text-[var(--accent)] flex items-center gap-1">
                                 <CheckCircle size={14} /> {t.uploader.done}
                               </span>
                             )}
                             {f.status === 'error' && (
-                              <span className="text-red-500 flex items-center gap-1">
+                              <span className="text-[var(--signal)] flex items-center gap-1">
                                 <AlertCircle size={14} /> {f.error}
                               </span>
                             )}
@@ -365,9 +369,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                             <div
                               className={`h-2 rounded-full transition-all duration-300 ${
                                 f.status === 'completed'
-                                  ? 'bg-emerald-500'
+                                  ? 'bg-[var(--accent)]'
                                   : f.status === 'error'
-                                  ? 'bg-red-400'
+                                  ? 'bg-[var(--signal)]'
                                   : 'bg-[color:var(--accent)]'
                               }`}
                               style={{ width: `${f.progress}%` }}
@@ -395,11 +399,18 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   <div className="flex justify-end">
                     <button
                       onClick={() => handleScriptSubmit(reportageName)}
-                      disabled={isLocked || !(scriptText[reportageName] || '').trim()}
+                      disabled={isLocked || !(scriptText[reportageName] || '').trim() || submittingScripts[reportageName]}
                       type="button"
-                      className="btn btn-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                      className="btn btn-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                      {t.uploader.scriptSubmit}
+                      {submittingScripts[reportageName] ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Envoi...
+                        </>
+                      ) : (
+                        t.uploader.scriptSubmit
+                      )}
                     </button>
                   </div>
                 </div>
@@ -446,23 +457,23 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                               )}
                             </p>
                             {file.status === 'approved' && (
-                              <p className="text-xs font-medium text-emerald-600 mt-1 flex items-center gap-1">
+                              <p className="text-xs font-medium text-[var(--accent)] mt-1 flex items-center gap-1">
                                 <CheckCircle size={12} /> Validé
                               </p>
                             )}
                             {file.status === 'rejected' && (
-                              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900/50">
-                                <p className="text-xs font-bold text-red-600 flex items-center gap-1 mb-1">
+                              <div className="mt-2 p-2 bg-[var(--signal)]/10 rounded-lg border border-[var(--signal)]/20">
+                                <p className="text-xs font-bold text-[var(--signal)] flex items-center gap-1 mb-1">
                                   <AlertCircle size={12} /> À corriger
                                 </p>
-                                <p className="text-xs text-red-600/90">{file.feedback}</p>
+                                <p className="text-xs text-[var(--signal)]/90">{file.feedback}</p>
                               </div>
                             )}
                           </div>
                           <button
                             onClick={() => openDeleteDialog(file)}
                             type="button"
-                            className="text-[color:var(--muted)] hover:text-red-500 p-1 rounded transition-colors"
+                            className="text-[color:var(--muted)] hover:text-[var(--signal)] p-1 rounded transition-colors"
                             title={t.dashboard.delete}
                           >
                             <Trash2 size={15} />
@@ -586,9 +597,16 @@ function TjUploader({ selectedWeek, country, onUploaded, t }) {
         <button 
           onClick={handleTextUpload}
           disabled={!text.trim() || isUploading}
-          className="btn btn-primary px-4 py-2 w-full disabled:opacity-50"
+          className="btn btn-primary px-4 py-2 w-full disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {isUploading ? 'Sauvegarde...' : (isMj ? 'Sauvegarder les Détails' : 'Sauvegarder les Titres')}
+          {isUploading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-[var(--paper)]/30 border-t-[var(--paper)] rounded-full animate-spin" />
+              Sauvegarde...
+            </>
+          ) : (
+            isMj ? 'Sauvegarder les Détails' : 'Sauvegarder les Titres'
+          )}
         </button>
       </div>
 
@@ -616,7 +634,12 @@ function TjUploader({ selectedWeek, country, onUploaded, t }) {
             disabled={isUploading}
           />
         </label>
-        {isUploading && <p className="text-sm text-center text-[color:var(--accent)] font-medium mt-3">Upload en cours...</p>}
+        {isUploading && (
+          <div className="flex items-center justify-center gap-2 mt-3 text-[color:var(--accent)] font-medium">
+            <div className="w-4 h-4 border-2 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin" />
+            <p className="text-sm">Upload en cours...</p>
+          </div>
+        )}
       </div>
     </div>
   );

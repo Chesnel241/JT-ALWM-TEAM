@@ -201,7 +201,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                     <div className="flex justify-between text-sm mb-2">
                       <span className="font-medium text-[color:var(--ink)] truncate pr-4">{f.name}</span>
                       {f.status === 'completed' && (
-                        <span className="text-emerald-600 flex items-center gap-1">
+                        <span className="text-[var(--accent)] flex items-center gap-1">
                           <CheckCircle size={14} /> {t.delivery.done}
                         </span>
                       )}
@@ -218,9 +218,9 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                       <div
                         className={`h-2 rounded-full transition-all duration-300 ${
                           f.status === 'completed'
-                            ? 'bg-emerald-500'
+                            ? 'bg-[var(--accent)]'
                             : f.status === 'error'
-                            ? 'bg-red-400'
+                            ? 'bg-[var(--signal)]'
                             : 'bg-[color:var(--accent)]'
                         }`}
                         style={{ width: `${f.progress}%` }}
@@ -241,7 +241,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
               {week ? formatWeekLabel(week, lang) : ''}
             </h3>
             {deliveries.length > 0 && (
-              <span className="badge bg-emerald-50 text-emerald-700">
+              <span className="badge bg-[var(--accent)]/10 text-[var(--accent)]">
                 {t.delivery.published}
               </span>
             )}

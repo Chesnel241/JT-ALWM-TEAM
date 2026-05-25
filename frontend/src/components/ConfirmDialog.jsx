@@ -1,4 +1,5 @@
 import { AlertCircle } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 export default function ConfirmDialog({
   isOpen,
@@ -11,6 +12,52 @@ export default function ConfirmDialog({
   onCancel,
   isLoading = false,
 }) {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+      if (e.key === 'Tab') {
+        if (!dialogRef.current) return;
+        const focusableElements = dialogRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // Focus the first button on open
+    if (dialogRef.current) {
+      const focusableElements = dialogRef.current.querySelectorAll('button');
+      if (focusableElements.length > 0) {
+        focusableElements[0].focus();
+      }
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
 
   const variantConfig = {
@@ -20,9 +67,9 @@ export default function ConfirmDialog({
       iconColor: 'text-[var(--accent-deep)]',
     },
     danger: {
-      buttonColor: 'bg-red-600 hover:bg-red-700',
-      iconBg: 'bg-red-50',
-      iconColor: 'text-red-600',
+      buttonColor: 'bg-[var(--signal)] hover:opacity-80',
+      iconBg: 'bg-[var(--signal)]/10',
+      iconColor: 'text-[var(--signal)]',
     },
   };
 
@@ -30,14 +77,18 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-[var(--ink)]/30 flex items-center justify-center z-50 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="dialog-title"
+      aria-describedby="dialog-description"
     >
-      <div className="bg-[var(--paper)] rounded-2xl shadow-lg max-w-sm w-full p-6 border border-[var(--border)]">
+      <div 
+        ref={dialogRef}
+        className="bg-[var(--paper)] rounded-2xl shadow-lg max-w-sm w-full p-6 border border-[var(--border)]"
+      >
         <div className={`${config.iconBg} w-12 h-12 rounded-full flex items-center justify-center mb-4`}>
-          <AlertCircle className={config.iconColor} size={24} />
+          <AlertCircle className={config.iconColor} size={24} aria-hidden="true" />
         </div>
 
         <h2
@@ -47,7 +98,7 @@ export default function ConfirmDialog({
           {title}
         </h2>
 
-        <p className="text-[color:var(--muted)] text-sm mb-6">
+        <p id="dialog-description" className="text-[color:var(--muted)] text-sm mb-6">
           {message}
         </p>
 
@@ -55,7 +106,7 @@ export default function ConfirmDialog({
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--paper-2)] transition-colors disabled:opacity-50 font-medium text-sm"
+            className="px-4 py-2 rounded-lg border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--paper-2)] transition-colors disabled:opacity-50 font-medium text-sm focus:outline-none focus-ring"
             type="button"
           >
             {cancelText}
@@ -63,12 +114,13 @@ export default function ConfirmDialog({
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-lg ${config.buttonColor} text-white transition-colors disabled:opacity-50 font-medium text-sm flex items-center gap-2`}
+            className={`px-4 py-2 rounded-lg ${config.buttonColor} text-[var(--paper)] transition-colors disabled:opacity-50 font-medium text-sm flex items-center gap-2 focus:outline-none focus-ring`}
             type="button"
           >
             {isLoading ? (
               <>
-                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="h-4 w-4 border-2 border-[var(--paper)] border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                <span className="sr-only">Chargement</span>
                 En cours...
               </>
             ) : (
