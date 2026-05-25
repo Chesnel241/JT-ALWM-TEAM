@@ -83,7 +83,7 @@ export function sanitizeParams(params) {
 
     if (typeof value === 'string') {
       // Trim, strip HTML, et limiter la longueur (50k)
-      let cleanString = value.replace(/<[^>]*>?/gm, '');
+      let cleanString = value.replace(/[<>]/g, '');
       sanitized[key] = cleanString.trim().substring(0, 50000);
     } else if (typeof value === 'number' || typeof value === 'boolean') {
       sanitized[key] = value;

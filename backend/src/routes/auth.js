@@ -8,6 +8,7 @@
 
 import { Router } from 'express';
 import { timingSafeEqual } from 'crypto';
+import rateLimit from 'express-rate-limit';
 import logger from '../logger/index.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 
@@ -22,8 +23,16 @@ function safeEqual(a, b) {
   return timingSafeEqual(bufA, bufB);
 }
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  message: { error: 'Trop de tentatives de connexion, veuillez réessayer plus tard' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // POST /api/auth/login — body: { password }
-router.post('/login', asyncHandler(async (req, res, next) => {
+router.post('/login', loginLimiter, asyncHandler(async (req, res, next) => {
   const { password } = req.body || {};
   if (!password || typeof password !== 'string') {
     return next(createErrors.badRequest('Mot de passe requis'));

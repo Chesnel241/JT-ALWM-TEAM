@@ -5,7 +5,7 @@
 
 import { openSync, readSync, closeSync } from 'fs';
 
-const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic'];
+const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm'];
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10); // 200MB par défaut
 const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f/\\]/;
 
@@ -58,6 +58,9 @@ const MAGIC_SIGNATURES = {
   '.heic': [
     { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // ftyp
   ],
+  '.webm': [
+    { offset: 0, bytes: [0x1a, 0x45, 0xdf, 0xa3] }, // Matroska / WebM
+  ],
 };
 
 function matchesSignature(buf, signature) {
@@ -65,8 +68,28 @@ function matchesSignature(buf, signature) {
 }
 
 export function validateMagicNumber(filePath, ext) {
+  if (ext.toLowerCase() === '.txt') {
+    let fd;
+    try {
+      fd = openSync(filePath, 'r');
+      const buf = Buffer.alloc(1024);
+      const bytesRead = readSync(fd, buf, 0, 1024, 0);
+      const content = buf.toString('utf8', 0, bytesRead);
+      if (/<script/i.test(content) || /<html/i.test(content)) {
+        return { valid: false, error: 'Fichier texte contient des balises non autorisées' };
+      }
+      return { valid: true };
+    } catch (err) {
+      return { valid: false, error: `Lecture du fichier texte échouée: ${err.message}` };
+    } finally {
+      if (fd !== undefined) {
+        try { closeSync(fd); } catch { /* ignore */ }
+      }
+    }
+  }
+
   const signatures = MAGIC_SIGNATURES[ext.toLowerCase()];
-  if (!signatures) return { valid: true }; // ex: .txt — pas de check
+  if (!signatures) return { valid: true }; // ex: .docx — pas de check pour l'instant
   let fd;
   try {
     fd = openSync(filePath, 'r');
@@ -129,8 +152,8 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE, allowImages = fals
 
   // Vérifier le MIME type (validation basique)
   const allowedMimes = [
-    'video/mp4', 'video/quicktime',
-    'audio/mpeg', 'audio/wav',
+    'video/mp4', 'video/quicktime', 'video/webm',
+    'audio/mpeg', 'audio/wav', 'audio/webm',
     'text/plain',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/zip', 'application/x-zip-compressed'

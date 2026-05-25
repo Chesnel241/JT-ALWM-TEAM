@@ -46,6 +46,8 @@ function createLazyStream(factory) {
 
 const router = Router();
 
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
 // La validation se fait contre la liste recalculée à chaque appel —
 // indispensable car la fenêtre visible glisse chaque jour à minuit.
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
@@ -106,7 +108,6 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
 
   // Sécurisation spécifique pour MOT DU JT
   if (countryId === 'mj') {
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
     const providedToken = req.query.adminPassword || req.header('x-admin-password');
     if (ADMIN_PASSWORD && providedToken !== ADMIN_PASSWORD) {
       return res.status(403).json({ error: 'Accès protégé : mot de passe administrateur requis pour cette rubrique.' });
@@ -221,7 +222,6 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
     return next(createErrors.notFound('Week ou Country'));
   }
 
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
   const providedToken = req.query.adminPassword || req.header('x-admin-password');
   const isAdmin = ADMIN_PASSWORD && providedToken === ADMIN_PASSWORD;
 

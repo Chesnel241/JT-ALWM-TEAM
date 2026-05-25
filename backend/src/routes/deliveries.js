@@ -21,6 +21,7 @@ import { getDelivery, addDelivery, deleteDelivery } from '../data/store.js';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { isValidUUID } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { audit } from '../logger/audit.js';
 import { deliveryUpload, uploadsDir, DELIVERY_MAX_FILE_SIZE } from '../lib/upload.js';
 import { HAS_R2, uploadToR2, deleteFromR2 } from '../lib/s3.js';
@@ -39,7 +40,7 @@ router.get('/:weekId', (req, res, next) => {
 });
 
 // POST /api/deliveries/:weekId — publication d'un nouveau montage
-router.post('/:weekId', asyncHandler(async (req, res, next) => {
+router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
   const startTime = Date.now();
   const { weekId } = req.params;
 
@@ -133,7 +134,7 @@ router.post('/:weekId', asyncHandler(async (req, res, next) => {
 }));
 
 // DELETE /api/deliveries/:weekId/:fileId
-router.delete('/:weekId/:fileId', asyncHandler(async (req, res, next) => {
+router.delete('/:weekId/:fileId', requireAdmin, asyncHandler(async (req, res, next) => {
   const { weekId, fileId } = req.params;
 
   if (!isValidWeek(weekId)) return next(createErrors.notFound('Week'));

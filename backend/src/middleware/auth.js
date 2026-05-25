@@ -1,9 +1,18 @@
 import { createErrors } from './errorHandler.js';
 import logger from '../logger/index.js';
+import { timingSafeEqual } from 'crypto';
 
 const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD;
 const IS_TEST = process.env.NODE_ENV === 'test';
 const IS_PROD = process.env.NODE_ENV === 'production';
+
+function safeEqual(a, b) {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 // Fail-closed en prod si pas de mot de passe configuré.
 if (IS_PROD && !GLOBAL_PASSWORD) {
@@ -20,7 +29,7 @@ export function requireAuth(req, res, next) {
 
   const token = req.header('x-app-password') || req.query.pwd;
   
-  if (token && token === GLOBAL_PASSWORD) {
+  if (token && safeEqual(token, GLOBAL_PASSWORD)) {
     return next();
   }
 
@@ -42,7 +51,7 @@ export function requireAdmin(req, res, next) {
 
   const token = req.header('x-admin-password');
   
-  if (token && token === ADMIN_PASSWORD) {
+  if (token && safeEqual(token, ADMIN_PASSWORD)) {
     return next();
   }
 
