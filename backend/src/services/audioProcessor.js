@@ -18,13 +18,18 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
  */
 export function processVoiceover(inputPath, outputPath) {
   return new Promise((resolve, reject) => {
-    // We use a chain of audio filters to enhance the voice:
-    // 1. highpass=f=80 (Remove rumbling/wind below 80Hz)
-    // 2. acompressor=threshold=0.05:ratio=10:attack=200:release=1000 (Vocal compression)
-    // 3. loudnorm=I=-14:TP=-1.5:LRA=11 (EBU R128 Loudness Normalization to -14 LUFS)
+    // 1. Remove background hum/hiss
+    // 2. Remove low-end rumble
+    // 3. Noise gate to silence breaths/room noise in pauses
+    // 4. Smooth out dynamics (fast attack, moderate release, 4:1 ratio)
+    // 5. Mild EQ boost for presence/crispness (Radio announcer EQ)
+    // 6. EBU R128 loudness normalization
     const filterChain = [
+      "afftdn=nf=-25",
       "highpass=f=80",
-      "acompressor=threshold=0.05:ratio=10:attack=200:release=1000",
+      "agate=threshold=0.04:ratio=4:attack=2:release=100",
+      "acompressor=threshold=0.1:ratio=4:attack=5:release=100",
+      "treble=g=2:f=4000:w=0.5t",
       "loudnorm=I=-14:TP=-1.5:LRA=11"
     ].join(',');
 
