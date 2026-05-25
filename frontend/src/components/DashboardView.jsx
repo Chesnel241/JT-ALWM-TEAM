@@ -176,6 +176,137 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     </span>
   );
 
+  const renderFileCard = (file) => {
+    const isVideo = file.type === 'video' || !!file.name.match(/\.(mp4|mov|avi|mkv)$/i);
+    const isAudio = file.type === 'audio' || !!file.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
+    
+    return (
+      <div key={file.id} className="group flex flex-col gap-2">
+        {/* Thumbnail Box */}
+        <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] border border-[var(--border)] shadow-sm cursor-pointer flex items-center justify-center">
+          
+          {isVideo ? (
+            <>
+              <div className="absolute inset-0 flex items-center justify-center text-[color:var(--ink)]/10 z-0">
+                <Video size={48} />
+              </div>
+              <video 
+                src={`${API_BASE}/uploads/${file.filename}#t=0.1`} 
+                className="w-full h-full object-cover relative z-10 bg-transparent"
+                preload="metadata"
+                muted
+                playsInline
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </>
+          ) : isAudio ? (
+            <div className="absolute inset-0 flex items-center justify-center text-[color:var(--signal)]/40 z-0 bg-gradient-to-tr from-[var(--paper)] to-blue-50">
+               <Mic className="w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10 text-blue-400" />
+            </div>
+          ) : (
+            <FileText className="text-[color:var(--signal)]/40 w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10" />
+          )}
+
+          {/* Status Badge */}
+          <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-20">
+            {file.reportage === 'Reportage Assemblé' && (
+              <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white bg-purple-500/90 border border-purple-400/30 flex items-center gap-1" title="Reportage finalisé uploadé par l'équipe de montage">
+                <CheckCircle size={10} />
+                Assemblé
+              </div>
+            )}
+            {file.status !== 'pending' && (
+              <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white ${
+                file.status === 'approved' ? 'bg-emerald-500/90' : 'bg-red-500/90'
+              }`}>
+                {file.status === 'approved' ? 'Approuvé' : 'Rejeté'}
+              </div>
+            )}
+          </div>
+
+          {/* Size Badge */}
+          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-medium backdrop-blur-md z-20">
+            {file.size}
+          </div>
+
+          {/* Hover Overlay with Action Toolbar */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center backdrop-blur-[2px] z-10 p-2">
+            {isVideo && (
+              <div className="w-10 h-10 mb-2 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center text-white shadow-lg pointer-events-none">
+                <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1"></div>
+              </div>
+            )}
+            {!isVideo && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setViewingScript(file); }}
+                className="w-10 h-10 mb-2 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur-md flex items-center justify-center text-white shadow-lg transition-colors"
+                title={isAudio ? "Écouter / Voir détails" : "Lire le script"}
+              >
+                {isAudio ? <Mic size={18} /> : <FileText size={18} />}
+              </button>
+            )}
+            
+            {/* Hover Toolbar */}
+            <div className="flex items-center gap-1 bg-white/95 rounded-lg p-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => openFeedbackDialog(selectedBin, file.id, 'approved')}
+                className={`p-1.5 rounded-lg transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-100' : 'text-gray-600 hover:text-emerald-500 hover:bg-emerald-50'}`}
+                title="Approuver"
+              >
+                <CheckCircle size={16} />
+              </button>
+              <button
+                onClick={() => openFeedbackDialog(selectedBin, file.id, 'rejected')}
+                className={`p-1.5 rounded-lg transition-colors ${file.status === 'rejected' ? 'text-red-500 bg-red-100' : 'text-gray-600 hover:text-red-500 hover:bg-red-50'}`}
+                title="Rejeter (Commentaire)"
+              >
+                <XCircle size={16} />
+              </button>
+              
+              {selectedBin === 'mj' ? (
+                <button
+                  onClick={() => openDownloadDialog(file)}
+                  className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors"
+                  title={t.dashboard.downloadFile}
+                >
+                  <Download size={16} />
+                </button>
+              ) : (
+                <a
+                  href={`${API_BASE}/uploads/${file.filename}`}
+                  download={file.name}
+                  className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors block"
+                  title={t.dashboard.downloadFile}
+                >
+                  <Download size={16} />
+                </a>
+              )}
+              
+              <button
+                onClick={() => openDeleteDialog(selectedBin, file.id)}
+                type="button"
+                className="p-1.5 rounded-lg text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors"
+                title={t.dashboard.delete}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Footer Meta */}
+        <div className="px-1 mt-1">
+          <div className="text-[13px] font-semibold text-[color:var(--ink)] truncate w-full" title={file.name}>
+            {file.name}
+          </div>
+          <div className="text-[10px] text-[color:var(--muted)] mt-0.5 truncate" title={file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}>
+            {file.uploadedAt ? formatRelative(file.uploadedAt, lang) : ''}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 h-screen flex flex-col">
       <div className="flex flex-col md:flex-row flex-1 border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
@@ -304,138 +435,62 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <p>Sélectionnez un chutier pour voir les médias</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6 content-start mt-4">
-                {(dashboard[selectedBin] || []).length === 0 ? (
-                  <div className="col-span-full h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20">
-                    <Folder size={48} className="mb-4 opacity-20" />
-                    <p>Aucun fichier dans ce chutier pour l'instant.</p>
-                  </div>
-                ) : (
-                  (dashboard[selectedBin] || []).map(file => {
-                    const isVideo = file.type === 'video';
+              <div className="mt-4 flex flex-col gap-8">
+                {(() => {
+                  const allFiles = dashboard[selectedBin] || [];
+                  if (allFiles.length === 0) {
                     return (
-                      <div key={file.id} className="group flex flex-col gap-2">
-                      {/* Thumbnail Box */}
-                      <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] border border-[var(--border)] shadow-sm cursor-pointer flex items-center justify-center">
-                        
-                        {isVideo ? (
-                        <>
-                          <div className="absolute inset-0 flex items-center justify-center text-[color:var(--ink)]/10 z-0">
-                            <Video size={48} />
+                      <div className="h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] py-20">
+                        <Folder size={48} className="mb-4 opacity-20" />
+                        <p>Aucun fichier dans ce chutier pour l'instant.</p>
+                      </div>
+                    );
+                  }
+
+                  const videoFiles = allFiles.filter(f => f.type === 'video' || !!f.name.match(/\.(mp4|mov|avi|mkv)$/i));
+                  const audioFiles = allFiles.filter(f => f.type === 'audio' || !!f.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i));
+                  const scriptFiles = allFiles.filter(f => !videoFiles.includes(f) && !audioFiles.includes(f));
+
+                  return (
+                    <>
+                      {/* Videos & Rushs */}
+                      {videoFiles.length > 0 && (
+                        <section>
+                          <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
+                            <Video size={16} /> Vidéos & Rushs
+                          </h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+                            {videoFiles.map(file => renderFileCard(file))}
                           </div>
-                          <video 
-                            src={`${API_BASE}/uploads/${file.filename}#t=0.1`} 
-                            className="w-full h-full object-cover relative z-10 bg-transparent"
-                            preload="metadata"
-                            muted
-                            playsInline
-                            onError={(e) => { e.target.style.display = 'none'; }}
-                          />
-                        </>
-                      ) : (
-                        <FileText className="text-[color:var(--signal)]/40 w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10" />
+                        </section>
                       )}
 
-                        {/* Status Badge */}
-                        <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-20">
-                          {file.reportage === 'Reportage Assemblé' && (
-                            <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white bg-purple-500/90 border border-purple-400/30 flex items-center gap-1" title="Reportage finalisé uploadé par l'équipe de montage">
-                              <CheckCircle size={10} />
-                              Assemblé
-                            </div>
-                          )}
-                          {file.status !== 'pending' && (
-                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white ${
-                              file.status === 'approved' ? 'bg-emerald-500/90' : 'bg-red-500/90'
-                            }`}>
-                              {file.status === 'approved' ? 'Approuvé' : 'Rejeté'}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Size Badge */}
-                        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-medium backdrop-blur-md z-20">
-                          {file.size}
-                        </div>
-
-                        {/* Hover Overlay with Action Toolbar */}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center backdrop-blur-[2px] z-10 p-2">
-                          {isVideo && (
-                            <div className="w-10 h-10 mb-2 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center text-white shadow-lg pointer-events-none">
-                              <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1"></div>
-                            </div>
-                          )}
-                          {!isVideo && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setViewingScript(file); }}
-                              className="w-10 h-10 mb-2 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur-md flex items-center justify-center text-white shadow-lg transition-colors"
-                              title="Lire le script"
-                            >
-                              <FileText size={18} />
-                            </button>
-                          )}
-                          
-                          {/* Hover Toolbar */}
-                          <div className="flex items-center gap-1 bg-white/95 rounded-lg p-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => openFeedbackDialog(selectedBin, file.id, 'approved')}
-                              className={`p-1.5 rounded-lg transition-colors ${file.status === 'approved' ? 'text-emerald-500 bg-emerald-100' : 'text-gray-600 hover:text-emerald-500 hover:bg-emerald-50'}`}
-                              title="Approuver"
-                            >
-                              <CheckCircle size={16} />
-                            </button>
-                            <button
-                              onClick={() => openFeedbackDialog(selectedBin, file.id, 'rejected')}
-                              className={`p-1.5 rounded-lg transition-colors ${file.status === 'rejected' ? 'text-red-500 bg-red-100' : 'text-gray-600 hover:text-red-500 hover:bg-red-50'}`}
-                              title="Rejeter (Commentaire)"
-                            >
-                              <XCircle size={16} />
-                            </button>
-                            
-                            {selectedBin === 'mj' ? (
-                              <button
-                                onClick={() => openDownloadDialog(file)}
-                                className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors"
-                                title={t.dashboard.downloadFile}
-                              >
-                                <Download size={16} />
-                              </button>
-                            ) : (
-                              <a
-                                href={`${API_BASE}/uploads/${file.filename}`}
-                                download={file.name}
-                                className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors block"
-                                title={t.dashboard.downloadFile}
-                              >
-                                <Download size={16} />
-                              </a>
-                            )}
-                            
-                            <button
-                              onClick={() => openDeleteDialog(selectedBin, file.id)}
-                              type="button"
-                              className="p-1.5 rounded-lg text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              title={t.dashboard.delete}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                      {/* Voix Off */}
+                      {audioFiles.length > 0 && (
+                        <section>
+                          <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
+                            <Mic size={16} /> Voix Off
+                          </h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+                            {audioFiles.map(file => renderFileCard(file))}
                           </div>
-                        </div>
-                      </div>
-                      
-                      {/* Footer Meta */}
-                      <div className="px-1 mt-1">
-                        <div className="text-[13px] font-semibold text-[color:var(--ink)] truncate w-full" title={file.name}>
-                          {file.name}
-                        </div>
-                        <div className="text-[10px] text-[color:var(--muted)] mt-0.5 truncate" title={file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}>
-                          {file.uploadedAt ? formatRelative(file.uploadedAt, lang) : ''}
-                        </div>
-                      </div>
-                    </div>
+                        </section>
+                      )}
+
+                      {/* Scripts & Documents */}
+                      {scriptFiles.length > 0 && (
+                        <section>
+                          <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
+                            <FileText size={16} /> Scripts & Documents
+                          </h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+                            {scriptFiles.map(file => renderFileCard(file))}
+                          </div>
+                        </section>
+                      )}
+                    </>
                   );
-                  })
-                )}
+                })()}
               </div>
             )}
           </div>
