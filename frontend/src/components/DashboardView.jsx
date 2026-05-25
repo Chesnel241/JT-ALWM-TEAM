@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -309,7 +309,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-0 md:px-4 sm:px-6 py-0 md:py-6 min-h-screen md:h-screen flex flex-col">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 md:h-screen min-h-screen flex flex-col">
       <div className="flex flex-col md:flex-row flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
         
         {/* Sidebar Bins (Mobile Collapsible) */}
@@ -364,8 +364,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-w-0 bg-[var(--paper)]">
           {/* Top Toolbar */}
-          <header className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex flex-nowrap justify-between items-center gap-2 z-10 shrink-0 sticky top-0 md:static">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <header className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex justify-between items-center z-10 shrink-0 relative">
+            <div className="flex items-center gap-3">
               <button 
                 className="md:hidden p-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] shrink-0" 
                 onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
@@ -374,17 +374,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </button>
               {selectedBin ? (
                 <>
-                  <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-6 h-6 md:w-8 md:h-8 shrink-0" />
-                  <h2 className="text-base md:text-lg font-semibold text-[color:var(--ink)] truncate">
+                  <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-8 h-8" />
+                  <h2 className="text-lg font-semibold text-[color:var(--ink)]">
                     {countries.find(c => c.id === selectedBin)?.name}
                   </h2>
                 </>
               ) : (
-                <h2 className="text-base md:text-lg font-semibold text-[color:var(--muted)] truncate">Media Pool</h2>
+                <h2 className="text-lg font-semibold text-[color:var(--muted)]">Media Pool</h2>
               )}
             </div>
             
-            <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {/* Desktop Actions */}
+            <div className="hidden md:flex items-center gap-3">
               <label className="sr-only" htmlFor="dashboard-week">
                 {t.dashboard.weekLabel}
               </label>
@@ -429,6 +430,54 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </>
               )}
             </div>
+
+            {/* Mobile Actions Dropdown */}
+            <details className="md:hidden group relative">
+              <summary className="list-none cursor-pointer p-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg flex items-center justify-center">
+                <span className="sr-only">Actions</span>
+                <MoreVertical size={20} className="text-[color:var(--ink)]" />
+              </summary>
+              <div className="absolute right-0 top-full mt-2 w-64 bg-[var(--paper)] border border-[var(--border)] shadow-xl rounded-xl p-4 flex flex-col gap-3 z-50">
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="w-full bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-3 py-2 font-medium focus:ring-0 cursor-pointer"
+                >
+                  {weeks.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {formatWeekLabel(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
+                    </option>
+                  ))}
+                </select>
+
+                {selectedBin && (
+                  <>
+                    <button
+                      onClick={() => setAdminUploadOpen(true)}
+                      className="w-full btn border border-transparent bg-orange-500 hover:bg-orange-600 text-white shadow-sm py-2 px-3 text-sm flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <UploadCloud size={16} /> <span>Upload Final</span>
+                    </button>
+                    {selectedBin === 'mj' ? (
+                      <button
+                        onClick={() => openDownloadDialog({ filename: `${selectedWeek}/mj/archive`, name: `uploads_${selectedWeek}_mj.zip` })}
+                        className="w-full btn btn-primary py-2 px-3 text-sm flex items-center justify-center gap-2"
+                      >
+                        <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}</span>
+                      </button>
+                    ) : (
+                      <a
+                        href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
+                        download={`uploads_${selectedWeek}_${selectedBin}.zip`}
+                        className="w-full btn btn-primary py-2 px-3 text-sm flex items-center justify-center gap-2 text-center"
+                      >
+                        <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}</span>
+                      </a>
+                    )}
+                  </>
+                )}
+              </div>
+            </details>
           </header>
 
           {/* Media Grid */}
@@ -469,7 +518,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
                             <Video size={16} /> Vidéos & Rushs
                           </h3>
-                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-6 md:pb-0 md:overflow-visible scrollbar-hide">
+                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
                             {videoFiles.map(file => renderFileCard(file))}
                           </div>
                         </section>
@@ -481,7 +530,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
                             <Mic size={16} /> Voix Off
                           </h3>
-                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-6 md:pb-0 md:overflow-visible scrollbar-hide">
+                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
                             {audioFiles.map(file => renderFileCard(file))}
                           </div>
                         </section>
@@ -493,7 +542,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
                             <FileText size={16} /> Scripts & Documents
                           </h3>
-                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-6 md:pb-0 md:overflow-visible scrollbar-hide">
+                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
                             {scriptFiles.map(file => renderFileCard(file))}
                           </div>
                         </section>
