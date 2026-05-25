@@ -168,10 +168,14 @@ export default function VoixOffView({ countries, selectedWeek }) {
     formData.append('script', script);
 
     try {
-      // Use internal api method or raw fetch
+      // Use raw fetch with credentials to pass the httpOnly session cookie
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3010'}/api/uploads/voiceover/${selectedWeek}/${selectedCountry.id}`, {
         method: 'POST',
         body: formData,
+        credentials: 'include',
+        headers: {
+          'x-admin-password': localStorage.getItem('app-password') || ''
+        }
       });
       
       if (!res.ok) {
