@@ -157,6 +157,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   );
 
   const [selectedBin, setSelectedBin] = useState(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (countriesWithUploads.length > 0 && (!selectedBin || !countriesWithUploads.includes(selectedBin))) {
@@ -181,7 +182,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const isAudio = file.type === 'audio' || !!file.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
     
     return (
-      <div key={file.id} className="group flex flex-col gap-2">
+      <div key={file.id} className="group flex flex-col gap-2 shrink-0 w-64 md:w-auto snap-start relative">
         {/* Thumbnail Box */}
         <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] border border-[var(--border)] shadow-sm cursor-pointer flex items-center justify-center">
           
@@ -308,18 +309,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 h-screen flex flex-col">
-      <div className="flex flex-col md:flex-row flex-1 border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
+    <div className="max-w-[1400px] mx-auto px-0 md:px-4 sm:px-6 py-0 md:py-6 min-h-screen md:h-screen flex flex-col">
+      <div className="flex flex-col md:flex-row flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
         
-        {/* Sidebar Bins */}
-        <aside className="w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 sticky top-0 md:static border-b">
+        {/* Sidebar Bins (Mobile Collapsible) */}
+        <aside className={`w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 ${isMobileSidebarOpen ? 'block' : 'hidden md:flex'}`}>
           <div className="p-3 md:p-4 border-b border-[var(--border)] bg-[var(--paper)] hidden md:block">
             <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-2 inline-block">{t.nav.editing}</div>
             <h2 className="text-xl font-bold text-[color:var(--ink)]">{t.dashboard.title}</h2>
           </div>
           
           <div className="p-2 md:p-4 md:flex-1 w-full overflow-hidden">
-            <h3 className="hidden md:block text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider mb-3 px-2">Chutiers (Pays)</h3>
+            <div className="flex items-center justify-between px-2 mb-3 md:mb-0">
+              <h3 className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Chutiers (Pays)</h3>
+              <button className="md:hidden text-xs text-[color:var(--accent)]" onClick={() => setIsMobileSidebarOpen(false)}>Fermer</button>
+            </div>
             {loading ? (
               <div className="space-y-2">
                 <SkeletonCard count={2} />
@@ -360,21 +364,27 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-w-0 bg-[var(--paper)]">
           {/* Top Toolbar */}
-          <header className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex flex-wrap justify-between items-center gap-4 z-10 shrink-0">
-            <div className="flex items-center gap-3">
+          <header className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex flex-nowrap justify-between items-center gap-2 z-10 shrink-0 sticky top-0 md:static">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              <button 
+                className="md:hidden p-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] shrink-0" 
+                onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+              >
+                <Folder size={18} />
+              </button>
               {selectedBin ? (
                 <>
-                  <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-8 h-8" />
-                  <h2 className="text-lg font-semibold text-[color:var(--ink)]">
+                  <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-6 h-6 md:w-8 md:h-8 shrink-0" />
+                  <h2 className="text-base md:text-lg font-semibold text-[color:var(--ink)] truncate">
                     {countries.find(c => c.id === selectedBin)?.name}
                   </h2>
                 </>
               ) : (
-                <h2 className="text-lg font-semibold text-[color:var(--muted)]">Media Pool</h2>
+                <h2 className="text-base md:text-lg font-semibold text-[color:var(--muted)] truncate">Media Pool</h2>
               )}
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3 shrink-0">
               <label className="sr-only" htmlFor="dashboard-week">
                 {t.dashboard.weekLabel}
               </label>
@@ -422,7 +432,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </header>
 
           {/* Media Grid */}
-          <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-[var(--paper-2)]">
+          <div className="p-4 md:p-6 md:overflow-y-auto flex-1 bg-[var(--paper-2)]">
             <AIChecklist 
               dashboard={dashboard} 
               countries={countries} 
@@ -459,7 +469,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
                             <Video size={16} /> Vidéos & Rushs
                           </h3>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-6 md:pb-0 md:overflow-visible scrollbar-hide">
                             {videoFiles.map(file => renderFileCard(file))}
                           </div>
                         </section>
@@ -471,7 +481,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
                             <Mic size={16} /> Voix Off
                           </h3>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-6 md:pb-0 md:overflow-visible scrollbar-hide">
                             {audioFiles.map(file => renderFileCard(file))}
                           </div>
                         </section>
@@ -483,7 +493,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
                             <FileText size={16} /> Scripts & Documents
                           </h3>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-6 md:pb-0 md:overflow-visible scrollbar-hide">
                             {scriptFiles.map(file => renderFileCard(file))}
                           </div>
                         </section>
