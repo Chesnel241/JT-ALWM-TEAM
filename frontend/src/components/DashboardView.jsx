@@ -264,7 +264,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <>
                   <button
                     onClick={() => setAdminUploadOpen(true)}
-                    className="btn btn-secondary py-1.5 px-3 text-sm flex items-center gap-1.5"
+                    className="btn border border-[var(--border)] bg-[var(--paper)] hover:bg-[var(--paper-2)] text-[color:var(--ink)] shadow-sm py-1.5 px-3 text-sm flex items-center gap-1.5 transition-colors"
                     title="Uploader un reportage final (Admin)"
                   >
                     <UploadCloud size={14} /> <span className="hidden sm:inline">Uploader le reportage assemblé</span>
