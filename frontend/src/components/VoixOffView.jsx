@@ -3,9 +3,12 @@ import { Mic, Square, Upload, Play, AlertCircle } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
+import { formatWeekLabel, formatWeekDates } from '../lib/dates.js';
+import { useI18n } from '../i18n/I18nContext.jsx';
 
-export default function VoixOffView({ countries, selectedWeek }) {
+export default function VoixOffView({ countries, selectedWeek, weeks, setSelectedWeek }) {
   const { addToast } = useToast();
+  const { lang } = useI18n();
   
   // Exclude _subscriptions and mj if needed, or keep them. Let's keep all except _subscriptions
   const selectableCountries = countries.filter(c => c.id !== '_subscriptions');
@@ -174,6 +177,7 @@ export default function VoixOffView({ countries, selectedWeek }) {
         body: formData,
         credentials: 'include',
         headers: {
+          'X-App-Password': localStorage.getItem('app-password') || '',
           'x-admin-password': localStorage.getItem('app-password') || ''
         }
       });
@@ -205,9 +209,27 @@ export default function VoixOffView({ countries, selectedWeek }) {
         <h2 className="text-3xl font-bold text-[color:var(--ink)] flex items-center gap-3 mb-2">
           🎙️ Studio Voix Off
         </h2>
-        <p className="text-[color:var(--muted)]">
+        <p className="text-[color:var(--muted)] mb-6">
           Sélectionnez votre pays, préparez votre texte, et enregistrez. Notre système appliquera une compression de studio professionnelle automatiquement.
         </p>
+
+        {/* --- SÉLECTEUR DE SEMAINE --- */}
+        <div className="bg-[var(--paper)] p-4 rounded-xl border border-[var(--border)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="font-semibold text-[color:var(--ink)]">Semaine d'enregistrement</h3>
+          </div>
+          <select
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            className="w-full sm:w-auto bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-full px-4 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
+          >
+            {weeks?.map((w) => (
+              <option key={w.id} value={w.id}>
+                {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Country Selection - Horizontal Scroll */}
