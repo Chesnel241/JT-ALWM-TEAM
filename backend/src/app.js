@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
-import { initSentry } from './monitoring/sentry.js';
+import { initSentry, getSentryErrorHandler } from './monitoring/sentry.js';
 import { initMetrics } from './monitoring/metrics.js';
 import cookieParser from 'cookie-parser';
 import countriesRouter from './routes/countries.js';
@@ -41,6 +41,11 @@ function timeoutMiddleware(ms) {
   };
 }
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } = {}) {
   const dir = uploadsDir || join(process.cwd(), 'uploads');
   mkdirSync(dir, { recursive: true });
@@ -77,9 +82,10 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use(sanitizerMiddleware);
 
   // Redirection vers Cloudflare R2 pour lire les vidéos, avec sécurisation MOT DU JT
-  app.get('/uploads/:filename', async (req, res, next) => {
+  app.get('/uploads/*', async (req, res, next) => {
+    const filename = req.params[0];
     // Vérification de sécurité pour le pays "mj" (MOT DU JT)
-    const metadata = (await import('./data/store.js')).getFileMetadata(req.params.filename);
+    const metadata = (await import('./data/store.js')).getFileMetadata(filename);
     if (metadata && metadata.countryId === 'mj') {
       const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
       const providedToken = req.query.adminPassword || req.header('x-admin-password');
@@ -90,16 +96,16 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
 
     if (HAS_R2) {
       try {
-        const exists = await checkR2Exists(`uploads/${req.params.filename}`);
+        const exists = await checkR2Exists(`uploads/${filename}`);
         if (!exists) {
           return next(); // Passe au static local s'il n'est pas sur R2 ou 404
         }
         if (req.query.proxy === 'true') {
           const { getR2ReadStream } = await import('./lib/s3.js');
-          const stream = await getR2ReadStream(`uploads/${req.params.filename}`);
+          const stream = await getR2ReadStream(`uploads/${filename}`);
           return stream.pipe(res);
         }
-        const url = await getR2PresignedUrl(`uploads/${req.params.filename}`);
+        const url = await getR2PresignedUrl(`uploads/${filename}`);
         return res.redirect(302, url);
       } catch (err) {
         // Ignorer l'erreur et laisser express.static chercher localement
@@ -130,6 +136,9 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/deliveries', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), deliveriesRouter);
 
   app.use(notFoundMiddleware);
+  if (enableMonitoring) {
+    app.use(getSentryErrorHandler());
+  }
   app.use(errorHandlerMiddleware);
 
   return app;

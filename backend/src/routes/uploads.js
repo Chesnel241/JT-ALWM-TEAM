@@ -236,29 +236,38 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
   }
 
   return upload.single('file')(req, res, async (err) => {
-    if (err) {
-      logger.error(`Upload error: ${err.message}`, {
-        error: err.message,
-        context: { weekId, countryId, code: err.code, ip: req.ip },
-      });
+    try {
+      if (err) {
+        logger.error(`Upload error: ${err.message}`, {
+          error: err.message,
+          context: { weekId, countryId, code: err.code, ip: req.ip },
+        });
 
-      // Gestion des erreurs multer
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return next(createErrors.fileSizeError());
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return next(createErrors.fileSizeError());
+        }
+        if (err.code === 'ENOSPC') {
+          return next(createErrors.diskFullError());
+        }
+        return next(createErrors.badRequest(err.message || 'Erreur upload'));
       }
-      if (err.code === 'ENOSPC') {
-        return next(createErrors.diskFullError());
-      }
-      return next(createErrors.badRequest(err.message || 'Erreur upload'));
-    }
 
-    const file = req.file;
-    if (!file) {
-      logger.warn('Upload attempt without file', {
-        context: { weekId, countryId, ip: req.ip },
-      });
-      return next(createErrors.badRequest('Aucun fichier reçu'));
-    }
+      const file = req.file;
+      if (!file) {
+        logger.warn('Upload attempt without file', {
+          context: { weekId, countryId, ip: req.ip },
+        });
+        return next(createErrors.badRequest('Aucun fichier reçu'));
+      }
+
+      if (!isAdmin) {
+        const cutoffErr = checkUploadCutoff(weekId);
+        if (cutoffErr) {
+          const filePath = path.join(uploadsDir, file.filename);
+          if (existsSync(filePath)) unlinkSync(filePath);
+          return next(cutoffErr);
+        }
+      }
 
     const reportageName = req.query.reportage || '';
     const allowImages = reportageName === 'Séminaires de la semaine';
@@ -300,14 +309,18 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
       return next(createErrors.fileTypeError(validation.error));
     }
 
-    const isScript = ['.txt', '.docx'].includes(path.extname(file.originalname).toLowerCase());
+    }
+
+    const isScript = file.mimetype.startsWith('text/') || file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const isImage = file.mimetype.startsWith('image/');
+    const isAudio = file.mimetype.startsWith('audio/');
     const reportage = req.query.reportage || null;
 
     const fileData = {
       id: uuidv4(),
       name: file.originalname,
       filename: file.filename,
-      type: isScript ? 'script' : 'video',
+      type: isScript ? 'script' : isImage ? 'image' : isAudio ? 'audio' : 'video',
       size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
       status: 'completed',
       reportage,
@@ -381,6 +394,8 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
 
       logger.uploadFailed(weekId, countryId, file.originalname, storeErr);
       return next(createErrors.internalError('Erreur lors de la sauvegarde des métadonnées'));
+    } catch (e) {
+      return next(e);
     }
   });
 }));
@@ -408,6 +423,10 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
       context: { weekId, countryId, ip: req.ip },
     });
     return next(createErrors.badRequest('Contenu vide'));
+  }
+
+  if (content.length > 100000) {
+    return next(createErrors.badRequest('Script trop long'));
   }
 
   const filename = `${uuidv4()}.txt`;
@@ -633,8 +652,16 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     return next(createErrors.badRequest('Le titre du reportage est requis.'));
   }
 
+  if (script && script.length > 100000) {
+    return next(createErrors.badRequest('Le script est trop long.'));
+  }
+
+  let rawAudioPath;
+  let finalAudioPath;
+  let scriptPath;
+
   try {
-    const rawAudioPath = req.file.path;
+    rawAudioPath = req.file.path;
     const uploadStartTime = Date.now();
     
     // Generate paths for processed files
@@ -642,8 +669,8 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     const audioFilename = `${uuidv4()}-${safeTitle}-Voix.mp3`;
     const scriptFilename = `${uuidv4()}-${safeTitle}-Script.txt`;
     
-    const finalAudioPath = path.join(uploadsDir, weekId, countryId, audioFilename);
-    const scriptPath = path.join(uploadsDir, weekId, countryId, scriptFilename);
+    finalAudioPath = path.join(uploadsDir, weekId, countryId, audioFilename);
+    scriptPath = path.join(uploadsDir, weekId, countryId, scriptFilename);
 
     // Ensure directory exists
     const dir = path.join(uploadsDir, weekId, countryId);
@@ -712,9 +739,15 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
 
   } catch (error) {
     logger.error('Voiceover processing error', { error: error.message, stack: error.stack });
-    // Clean up raw if fails
-    if (req.file && existsSync(req.file.path)) {
-      unlinkSync(req.file.path);
+    // Clean up files if fails
+    if (rawAudioPath && existsSync(rawAudioPath)) {
+      unlinkSync(rawAudioPath);
+    }
+    if (finalAudioPath && existsSync(finalAudioPath)) {
+      unlinkSync(finalAudioPath);
+    }
+    if (scriptPath && existsSync(scriptPath)) {
+      unlinkSync(scriptPath);
     }
     return next(createErrors.serverError('Erreur lors du traitement de la voix: ' + error.message));
   }

@@ -54,7 +54,7 @@ const auditLogger = winston.createLogger({
 export function audit(action, req, details = {}) {
   auditLogger.info(action, {
     action,
-    ip: req?.headers?.['x-forwarded-for'] || req?.ip || 'unknown',
+    ip: req?.ip || 'unknown',
     userAgent: req?.headers?.['user-agent'] || 'unknown',
     method: req?.method,
     path: req?.originalUrl || req?.path,

@@ -52,83 +52,84 @@ router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
   }
 
   return deliveryUpload.single('file')(req, res, async (err) => {
-    if (err) {
-      logger.error(`Delivery upload error: ${err.message}`, {
-        error: err.message,
-        context: { weekId, code: err.code, ip: req.ip },
-      });
-      if (err.code === 'LIMIT_FILE_SIZE') return next(createErrors.fileSizeError());
-      if (err.code === 'ENOSPC') return next(createErrors.diskFullError());
-      return next(createErrors.badRequest(err.message || 'Erreur upload'));
-    }
-
-    const file = req.file;
-    if (!file) {
-      return next(createErrors.badRequest('Aucun fichier reçu'));
-    }
-
-    // Validation extension/MIME/nom puis magic number sur disque.
-    // Limite à 400 Mo pour les deliveries (vs 200 Mo pour les rushes).
-    let validation = validateFile(file, { maxSize: DELIVERY_MAX_FILE_SIZE });
-    if (validation.valid) {
-      const ext = path.extname(file.originalname).toLowerCase();
-      validation = validateMagicNumber(path.join(uploadsDir, file.filename), ext);
-    }
-    if (!validation.valid) {
-      const filePath = path.join(uploadsDir, file.filename);
-      try { if (existsSync(filePath)) unlinkSync(filePath); } catch { /* ignore */ }
-      logger.warn(`Invalid delivery file rejected: ${validation.error}`, {
-        context: { weekId, filename: file.originalname, error: validation.error, ip: req.ip },
-      });
-      return next(createErrors.fileTypeError());
-    }
-
-    const ext = path.extname(file.originalname).toLowerCase();
-    const isVideo = ['.mp4', '.mov'].includes(ext);
-    const isAudio = ['.mp3', '.wav'].includes(ext);
-
-    const fileData = {
-      id: uuidv4(),
-      name: file.originalname,
-      filename: file.filename,
-      type: isVideo ? 'video' : isAudio ? 'audio' : 'document',
-      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      status: 'completed',
-      uploadedAt: new Date().toISOString(),
-    };
-
     try {
-      if (HAS_R2) {
-        const r2Key = `uploads/${file.filename}`;
-        await uploadToR2(path.join(uploadsDir, file.filename), r2Key);
-        // On supprime le fichier local après upload réussi
-        try { if (existsSync(path.join(uploadsDir, file.filename))) unlinkSync(path.join(uploadsDir, file.filename)); } catch { /* ignore */ }
+      if (err) {
+        logger.error(`Delivery upload error: ${err.message}`, {
+          error: err.message,
+          context: { weekId, code: err.code, ip: req.ip },
+        });
+        if (err.code === 'LIMIT_FILE_SIZE') return next(createErrors.fileSizeError());
+        if (err.code === 'ENOSPC') return next(createErrors.diskFullError());
+        return next(createErrors.badRequest(err.message || 'Erreur upload'));
       }
 
-      const result = addDelivery(weekId, fileData);
-      const durationMs = Date.now() - startTime;
-      recordUpload(durationMs, true);
-      audit('delivery.create', req, {
-        weekId,
-        fileId: fileData.id,
-        filename: file.originalname,
-        size: file.size,
-      });
-      logger.info('Delivery uploaded', {
-        context: { weekId, fileId: fileData.id, filename: file.originalname, durationMs },
-      });
-      return res.status(201).json(result);
-    } catch (storeErr) {
-      recordUpload(Date.now() - startTime, false);
-      const filePath = path.join(uploadsDir, file.filename);
-      try { if (existsSync(filePath)) unlinkSync(filePath); } catch { /* ignore */ }
-      if (HAS_R2) {
-        try { await deleteFromR2(`uploads/${file.filename}`); } catch { /* ignore */ }
+      const file = req.file;
+      if (!file) {
+        return next(createErrors.badRequest('Aucun fichier reçu'));
       }
-      logger.error(`Delivery store error: ${storeErr.message}`, {
-        error: storeErr.message, context: { weekId },
-      });
-      return next(createErrors.internalError('Erreur lors de la sauvegarde'));
+
+      let validation = validateFile(file, { maxSize: DELIVERY_MAX_FILE_SIZE });
+      if (validation.valid) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        validation = validateMagicNumber(path.join(uploadsDir, file.filename), ext);
+      }
+      if (!validation.valid) {
+        const filePath = path.join(uploadsDir, file.filename);
+        try { if (existsSync(filePath)) unlinkSync(filePath); } catch { /* ignore */ }
+        logger.warn(`Invalid delivery file rejected: ${validation.error}`, {
+          context: { weekId, filename: file.originalname, error: validation.error, ip: req.ip },
+        });
+        return next(createErrors.fileTypeError());
+      }
+
+      const ext = path.extname(file.originalname).toLowerCase();
+      const isVideo = ['.mp4', '.mov'].includes(ext);
+      const isAudio = ['.mp3', '.wav'].includes(ext);
+
+      const fileData = {
+        id: uuidv4(),
+        name: file.originalname,
+        filename: file.filename,
+        type: isVideo ? 'video' : isAudio ? 'audio' : 'document',
+        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        status: 'completed',
+        uploadedAt: new Date().toISOString(),
+      };
+
+      try {
+        if (HAS_R2) {
+          const r2Key = `uploads/${file.filename}`;
+          await uploadToR2(path.join(uploadsDir, file.filename), r2Key);
+          try { if (existsSync(path.join(uploadsDir, file.filename))) unlinkSync(path.join(uploadsDir, file.filename)); } catch { /* ignore */ }
+        }
+
+        const result = addDelivery(weekId, fileData);
+        const durationMs = Date.now() - startTime;
+        recordUpload(durationMs, true);
+        audit('delivery.create', req, {
+          weekId,
+          fileId: fileData.id,
+          filename: file.originalname,
+          size: file.size,
+        });
+        logger.info('Delivery uploaded', {
+          context: { weekId, fileId: fileData.id, filename: file.originalname, durationMs },
+        });
+        return res.status(201).json(result);
+      } catch (storeErr) {
+        recordUpload(Date.now() - startTime, false);
+        const filePath = path.join(uploadsDir, file.filename);
+        try { if (existsSync(filePath)) unlinkSync(filePath); } catch { /* ignore */ }
+        if (HAS_R2) {
+          try { await deleteFromR2(`uploads/${file.filename}`); } catch { /* ignore */ }
+        }
+        logger.error(`Delivery store error: ${storeErr.message}`, {
+          error: storeErr.message, context: { weekId },
+        });
+        return next(createErrors.internalError('Erreur lors de la sauvegarde'));
+      }
+    } catch (e) {
+      next(e);
     }
   });
 }));

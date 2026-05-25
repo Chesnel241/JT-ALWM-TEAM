@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync, renameSync } from 'fs';
+import { existsSync } from 'fs';
+import { readFile, writeFile, unlink, readdir, rename } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
@@ -52,7 +53,7 @@ export async function initDb() {
   }
 
   try {
-    const raw = readFileSync(DB_PATH, 'utf-8');
+    const raw = await readFile(DB_PATH, 'utf-8');
     db = JSON.parse(raw);
     logger.info('DB loaded from local disk');
   } catch (err) {
@@ -64,11 +65,11 @@ export async function initDb() {
 // Écriture atomique : tmp file + rename. Évite la corruption du JSON
 // si le process meurt en plein write. Suffisant en mono-instance ; pour
 // multi-instance il faudrait migrer vers une vraie DB.
-function persistDbLocal() {
+async function persistDbLocal() {
   try {
     const tmpPath = `${DB_PATH}.${process.pid}.tmp`;
-    writeFileSync(tmpPath, JSON.stringify(db, null, 2));
-    renameSync(tmpPath, DB_PATH);
+    await writeFile(tmpPath, JSON.stringify(db, null, 2));
+    await rename(tmpPath, DB_PATH);
   } catch (err) {
     logger.error('Failed to persist DB locally', { error: err.message });
   }
@@ -247,12 +248,12 @@ export function getStore() {
   return db;
 }
 
-function deleteUploadFile(upload, uploadsDir) {
+async function deleteUploadFile(upload, uploadsDir) {
   if (!upload?.filename || !uploadsDir) return false;
   const filePath = join(uploadsDir, upload.filename);
   try {
     if (existsSync(filePath)) {
-      unlinkSync(filePath);
+      await unlink(filePath);
       logger.info(`File deleted: ${upload.filename}`, {
         context: { filename: upload.filename, uploadId: upload.id },
       });
@@ -323,7 +324,7 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
     if (weekUploads) {
       for (const countryId of Object.keys(weekUploads)) {
         for (const upload of weekUploads[countryId]) {
-          if (deleteUploadFile(upload, uploadsDir)) {
+          if (await deleteUploadFile(upload, uploadsDir)) {
             removedCount++;
             removedFiles.push({ weekId, countryId, filename: upload.filename });
           } else if (HAS_R2) {
@@ -340,8 +341,8 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
   // 4. Cleanup Local Orphans
   if (existsSync(uploadsDir)) {
     try {
-      const physicalFiles = readdirSync(uploadsDir);
-      const entries = readdirSync(uploadsDir, { withFileTypes: true });
+      const physicalFiles = await readdir(uploadsDir);
+      const entries = await readdir(uploadsDir, { withFileTypes: true });
       for (const file of physicalFiles) {
         if (entries.find((d) => d.name === file)?.isDirectory()) continue;
         if (file.endsWith('.json') || file.endsWith('.tmp')) continue;
@@ -362,7 +363,7 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
           const filePath = join(uploadsDir, file);
           try {
             if (existsSync(filePath)) {
-              unlinkSync(filePath);
+              await unlink(filePath);
               logger.info(`Orphan local file deleted: ${file}`);
             }
           } catch (err) {
