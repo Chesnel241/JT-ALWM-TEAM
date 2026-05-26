@@ -188,6 +188,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-App-Password': localStorage.getItem('app-password') || '',
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -199,13 +200,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           }))
         })
       });
-      
+
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.errors?.[0]?.msg || data.message || 'Erreur lors du montage vidéo');
       }
-      
-      setGeneratedVideoUrl(`${API_BASE}${data.exportUrl}`);
+
+      // exportUrl = URL R2 absolue (prod) ou chemin relatif (dev).
+      const exportUrl = /^https?:\/\//.test(data.exportUrl)
+        ? data.exportUrl
+        : `${API_BASE}${data.exportUrl}`;
+      setGeneratedVideoUrl(exportUrl);
       addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
     } catch (err) {
       console.error(err);

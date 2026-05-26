@@ -43,11 +43,12 @@ router.post(
 
       logger.info('Demande de concaténation reçue', { clipsCount: clips.length });
 
-      const exportPath = await concatenateVideos(clips);
+      const { url } = await concatenateVideos(clips);
 
       res.status(200).json({
         message: 'Montage terminé avec succès.',
-        exportUrl: `/uploads/${exportPath}`
+        // url = presigned R2 absolue (prod) ou chemin relatif /uploads/... (dev)
+        exportUrl: url,
       });
     } catch (err) {
       logger.error('Erreur lors du montage vidéo via /editor/concat', { error: err.message });

@@ -1,69 +1,124 @@
 import ffmpeg from 'fluent-ffmpeg';
+import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadsDir } from '../lib/upload.js';
+import { HAS_R2, getR2ReadStream, uploadToR2, getR2PresignedUrl } from '../lib/s3.js';
 import logger from '../logger/index.js';
 import { getTemplate } from '../data/overlayTemplates.js';
 
+// Enregistre le binaire ffmpeg fourni par @ffmpeg-installer (sinon
+// fluent-ffmpeg ne trouve pas ffmpeg sur Render → crash "Cannot find ffmpeg").
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Bundled font — used for all drawtext overlays.
-// On Linux (Render) the backend root is process.cwd().
 const FONT_PATH = path.join(__dirname, '../../fonts/Inter.ttf')
   .replace(/\\/g, '/'); // FFmpeg always wants forward slashes
+const HAS_FONT = fs.existsSync(FONT_PATH);
+
+// Télécharge un fichier R2 vers un chemin local. Retourne destPath.
+async function downloadFromR2(r2Key, destPath) {
+  const stream = await getR2ReadStream(r2Key);
+  await new Promise((resolve, reject) => {
+    const out = fs.createWriteStream(destPath);
+    stream.on('error', reject);
+    out.on('error', reject);
+    out.on('finish', resolve);
+    stream.pipe(out);
+  });
+  return destPath;
+}
 
 /**
- * Concatenate and optionally trim a list of video clips.
- * @param {Array<{filename: string, inPoint?: number, outPoint?: number}>} clips
- *   - filename: the file stored in uploadsDir
- *   - inPoint:  start trim in seconds (default: 0 = keep from beginning)
- *   - outPoint: end trim in seconds (default: null = keep until end)
+ * Résout le chemin local d'un clip. En mode R2, télécharge le fichier
+ * dans workDir et retourne ce chemin temporaire. Sinon, retourne le
+ * chemin local sous uploadsDir.
+ */
+async function resolveClipPath(filename, workDir) {
+  if (HAS_R2) {
+    const dest = path.join(workDir, filename);
+    await downloadFromR2(`uploads/${filename}`, dest);
+    return dest;
+  }
+  const local = path.join(uploadsDir, filename);
+  if (!fs.existsSync(local)) {
+    throw new Error(`Le fichier "${filename}" n'existe pas sur le serveur.`);
+  }
+  return local;
+}
+
+/**
+ * Concatène et trim une liste de clips, applique les overlays.
+ * Retourne { url } : URL présignée R2 (prod) ou chemin relatif (dev).
  */
 export async function concatenateVideos(clips) {
-  return new Promise((resolve, reject) => {
-    if (!clips || clips.length === 0) {
-      return reject(new Error('Aucune vidéo fournie pour le montage.'));
+  if (!clips || clips.length === 0) {
+    throw new Error('Aucune vidéo fournie pour le montage.');
+  }
+
+  // Support legacy API: array of strings → objects.
+  const normalizedClips = clips.map((c) =>
+    typeof c === 'string' ? { filename: c } : c
+  );
+
+  // Répertoire de travail temporaire (toujours disque local — ffmpeg
+  // ne lit pas le réseau).
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-editor-'));
+  const outputFilename = `export_${uuidv4()}.mp4`;
+  const outputPath = path.join(workDir, outputFilename);
+
+  try {
+    // Télécharge/résout tous les clips AVANT de lancer ffmpeg.
+    const localPaths = [];
+    for (const clip of normalizedClips) {
+      localPaths.push(await resolveClipPath(clip.filename, workDir));
     }
 
-    // Support legacy API: if clips is an array of strings, convert to objects.
-    const normalizedClips = clips.map((c) =>
-      typeof c === 'string' ? { filename: c } : c
-    );
+    await runFfmpeg(normalizedClips, localPaths, outputPath);
 
+    // Mode R2 : push le rendu sur R2 + URL présignée 24h.
+    if (HAS_R2) {
+      const r2Key = `exports/${outputFilename}`;
+      await uploadToR2(outputPath, r2Key, 'video/mp4');
+      const url = await getR2PresignedUrl(r2Key, 60 * 60 * 24);
+      return { url };
+    }
+
+    // Mode local (dev) : déplace le rendu dans uploadsDir/exports.
     const exportsDir = path.join(uploadsDir, 'exports');
-    if (!fs.existsSync(exportsDir)) {
-      fs.mkdirSync(exportsDir, { recursive: true });
-    }
+    fs.mkdirSync(exportsDir, { recursive: true });
+    fs.copyFileSync(outputPath, path.join(exportsDir, outputFilename));
+    return { url: `/uploads/exports/${outputFilename}` };
+  } finally {
+    try { fs.rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+}
 
-    const outputFilename = `export_${uuidv4()}.mp4`;
-    const outputPath = path.join(exportsDir, outputFilename);
-
+/**
+ * Lance ffmpeg : trim + scale/letterbox + overlays + concat.
+ */
+function runFfmpeg(normalizedClips, localPaths, outputPath) {
+  return new Promise((resolve, reject) => {
     const command = ffmpeg();
     const filterGraph = [];
     let concatInputs = '';
 
     for (let i = 0; i < normalizedClips.length; i++) {
-      const { filename, inPoint, outPoint, overlays = [] } = normalizedClips[i];
-      const filePath = path.join(uploadsDir, filename);
+      const { inPoint, outPoint, overlays = [] } = normalizedClips[i];
+      command.input(localPaths[i]);
 
-      if (!fs.existsSync(filePath)) {
-        return reject(new Error(`Le fichier "${filename}" n'existe pas sur le serveur.`));
-      }
-
-      command.input(filePath);
-
-      // Build video filter chain for this clip
       const videoFilters = [];
 
-      // 1. Apply trim if requested
       if (inPoint != null || outPoint != null) {
-        const trimIn  = inPoint  != null ? inPoint  : 0;
+        const trimIn = inPoint != null ? inPoint : 0;
         const trimOut = outPoint != null ? outPoint : 9999999;
         videoFilters.push(`trim=${trimIn}:${trimOut},setpts=PTS-STARTPTS`);
       }
 
-      // 2. Scale to 1920x1080 with black bars (letterbox) to handle any format
       videoFilters.push(
         'scale=1920:1080:force_original_aspect_ratio=decrease',
         'pad=1920:1080:(ow-iw)/2:(oh-ih)/2',
@@ -71,47 +126,44 @@ export async function concatenateVideos(clips) {
         'fps=30'
       );
 
-      // 3. Apply text overlays (drawtext + drawbox) for each annotation
-      for (const overlay of overlays) {
-        const template = getTemplate(overlay.templateId);
-        if (!template) continue;
-        try {
-          const drawtextFilters = template.build(overlay.fields || {}, FONT_PATH);
-          // Enable/disable overlay based on timing (if specified)
-          const startSec = overlay.startTime ?? 0;
-          const durSec   = overlay.duration  ?? null;
-          
-          for (const filter of drawtextFilters) {
-            // Wrap filter with enable expression if timing is set
-            if (durSec != null) {
-              const filterName = filter.split('=')[0]; // drawtext or drawbox
-              const rest = filter.slice(filterName.length + 1);
-              videoFilters.push(`${filterName}=enable='between(t,${startSec},${startSec + durSec})':${rest}`);
-            } else {
-              videoFilters.push(filter);
+      // Overlays drawtext/drawbox — seulement si la police est présente.
+      if (HAS_FONT) {
+        for (const overlay of overlays) {
+          const template = getTemplate(overlay.templateId);
+          if (!template) continue;
+          try {
+            const drawtextFilters = template.build(overlay.fields || {}, FONT_PATH);
+            const startSec = overlay.startTime ?? 0;
+            const durSec = overlay.duration ?? null;
+            for (const filter of drawtextFilters) {
+              if (durSec != null) {
+                const filterName = filter.split('=')[0];
+                const rest = filter.slice(filterName.length + 1);
+                videoFilters.push(`${filterName}=enable='between(t,${startSec},${startSec + durSec})':${rest}`);
+              } else {
+                videoFilters.push(filter);
+              }
             }
+          } catch (err) {
+            logger.warn(`Overlay skipped (template error): ${err.message}`);
           }
-        } catch (err) {
-          logger.warn(`Overlay skipped (template error): ${err.message}`);
         }
+      } else if (overlays.length > 0) {
+        logger.warn('Overlays ignorés : police Inter.ttf introuvable');
       }
 
       filterGraph.push(`[${i}:v]${videoFilters.join(',')}[v${i}]`);
 
-      // Build audio filter chain for this clip
       const audioFilters = [];
-
       if (inPoint != null || outPoint != null) {
-        const trimIn  = inPoint  != null ? inPoint  : 0;
+        const trimIn = inPoint != null ? inPoint : 0;
         const trimOut = outPoint != null ? outPoint : 9999999;
         audioFilters.push(`atrim=${trimIn}:${trimOut},asetpts=PTS-STARTPTS`);
       }
-
       audioFilters.push(
         'aresample=48000',
         'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'
       );
-
       filterGraph.push(`[${i}:a]${audioFilters.join(',')}[a${i}]`);
 
       concatInputs += `[v${i}][a${i}]`;
@@ -131,15 +183,11 @@ export async function concatenateVideos(clips) {
         '-b:a 192k',
         '-movflags +faststart',
       ])
-      .on('start', (cmd) => {
-        logger.info('Démarrage de la concaténation vidéo', { command: cmd });
-      })
-      .on('progress', (progress) => {
-        logger.debug("Progression de l'export...", { percent: progress.percent });
-      })
+      .on('start', (cmd) => logger.info('Démarrage de la concaténation vidéo', { command: cmd }))
+      .on('progress', (p) => logger.debug("Progression de l'export...", { percent: p.percent }))
       .on('end', () => {
-        logger.info('Concaténation vidéo terminée avec succès', { outputFilename });
-        resolve(`exports/${outputFilename}`);
+        logger.info('Concaténation vidéo terminée avec succès');
+        resolve();
       })
       .on('error', (err) => {
         logger.error('Erreur lors de la concaténation FFmpeg', { error: err.message });
@@ -148,4 +196,3 @@ export async function concatenateVideos(clips) {
       .save(outputPath);
   });
 }
-
