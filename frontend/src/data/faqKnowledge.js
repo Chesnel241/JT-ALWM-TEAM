@@ -47,6 +47,10 @@ export const faqKnowledge = [
   {
     keywords: ['merci', 'super', 'génial', 'top', 'parfait'],
     answer: "Avec grand plaisir ! N'hésitez pas si vous avez d'autres questions. Bon reportage ! 🎤"
+  },
+  {
+    keywords: ['page', 'endroit', 'lieu', 'suis-je', 'ici', 'où on est', 'quelle page'],
+    answer: "Pour savoir où vous êtes et à quoi sert cet écran, le plus simple est de cliquer sur 'Lancer la visite guidée de cette page' juste au-dessus du champ texte ! Je vous ferai faire le tour du propriétaire. 😉"
   }
 ];
 
