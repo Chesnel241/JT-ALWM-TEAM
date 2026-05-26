@@ -21,6 +21,14 @@ export default function TrimModal({ file, onClose, onConfirm }) {
   const [outPoint, setOutPoint] = useState(null); // null = end of video
 
   // Load video metadata
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+    };
+  }, []);
+
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
@@ -48,7 +56,10 @@ export default function TrimModal({ file, onClose, onConfirm }) {
       if (outPoint != null && videoRef.current.currentTime >= outPoint) {
         videoRef.current.currentTime = inPoint;
       }
-      videoRef.current.play();
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => { /* ignore abort */ });
+      }
     }
     setIsPlaying((v) => !v);
   }, [isPlaying, outPoint, inPoint]);
@@ -72,15 +83,19 @@ export default function TrimModal({ file, onClose, onConfirm }) {
   };
 
   const setIn = () => {
-    const t = videoRef.current?.currentTime ?? 0;
+    let t = videoRef.current?.currentTime ?? 0;
+    if (outPoint != null && t >= outPoint - 0.5) {
+      t = Math.max(0, outPoint - 0.5);
+    }
     setInPoint(t);
-    if (outPoint != null && t >= outPoint) setOutPoint(duration);
   };
 
   const setOut = () => {
-    const t = videoRef.current?.currentTime ?? duration;
+    let t = videoRef.current?.currentTime ?? duration;
+    if (t <= inPoint + 0.5) {
+      t = Math.min(duration, inPoint + 0.5);
+    }
     setOutPoint(t);
-    if (t <= inPoint) setInPoint(0);
   };
 
   // Click on progress bar → seek

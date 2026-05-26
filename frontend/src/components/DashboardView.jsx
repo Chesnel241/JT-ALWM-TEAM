@@ -208,6 +208,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   const handleGenerateVideo = async () => {
     if (timelineClips.length === 0) return;
+    if (isGeneratingVideo) return;
     setIsGeneratingVideo(true);
     setGeneratedVideoUrl(null);
     setExportProgress(0);
@@ -217,6 +218,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const token = localStorage.getItem('app-password') || '';
     try {
+      if (sseRef.current) {
+        try { sseRef.current.close(); } catch { /* ignore */ }
+      }
       // Ouvre le flux de progression réel (téléchargement → encodage → upload).
       const es = new EventSource(
         `${API_BASE}/api/editor/progress/${jobId}?pwd=${encodeURIComponent(token)}`
@@ -248,7 +252,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           sseRef.current = null;
         }
       };
-      es.onerror = () => { try { es.close(); sseRef.current = null; } catch { /* ignore */ } };
+      es.onerror = () => { 
+        try { es.close(); sseRef.current = null; } catch { /* ignore */ } 
+        setIsGeneratingVideo(false);
+        addToast("Connexion au serveur perdue pendant le montage.", "error");
+      };
 
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
         method: 'POST',
@@ -1179,7 +1187,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           onClose={() => setOverlayTarget(null)}
           onSave={(updatedClip) => {
             setTimelineClips((prev) =>
-              prev.map((c) => (c.id === updatedClip.id ? updatedClip : c))
+              prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c))
             );
             addToast('Animations mises à jour', 'success', 2000);
           }}
@@ -1194,8 +1202,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           onConfirm={(trimmedClip) => {
             setTimelineClips((prev) => {
               // If already in timeline, update its trim data
-              const exists = prev.find((c) => c.id === trimmedClip.id);
-              if (exists && exists.instanceId === trimmedClip.instanceId) {
+              const index = prev.findIndex((c) => c.instanceId === trimmedClip.instanceId);
+              if (index >= 0) {
                 return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
               }
               // If it's a new addition (from the top section), give it a unique instanceId

@@ -38,11 +38,30 @@ router.post(
     body('clips.*.outPoint')
       .optional()
       .isFloat({ min: 0 })
-      .withMessage('outPoint doit être un nombre positif (en secondes).'),
+      .withMessage('outPoint doit être un nombre positif (en secondes).')
+      .custom((value, { req, path }) => {
+        const match = path.match(/^clips\[(\d+)\]\.outPoint$/);
+        if (match) {
+          const index = match[1];
+          const inPoint = req.body.clips[index].inPoint;
+          if (inPoint !== undefined && value <= inPoint) {
+            throw new Error('outPoint doit être strictement supérieur à inPoint.');
+          }
+        }
+        return true;
+      }),
     body('clips.*.overlays')
       .optional()
       .isArray()
       .withMessage('overlays doit être un tableau.'),
+    body('clips.*.overlays.*.startTime')
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage('startTime doit être positif.'),
+    body('clips.*.overlays.*.duration')
+      .optional()
+      .isFloat({ min: 0.1 })
+      .withMessage('duration doit être supérieur à 0.'),
     body('clips.*.overlays.*.templateId')
       .optional()
       .isString()

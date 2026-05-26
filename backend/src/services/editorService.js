@@ -12,6 +12,15 @@ import logger from '../logger/index.js';
 import { getTemplate } from '../data/overlayTemplates.js';
 import { setProgress } from './editorProgress.js';
 
+let isRendering = false;
+
+const checkAudio = (filePath) => new Promise((resolve) => {
+  ffmpeg.ffprobe(filePath, (err, metadata) => {
+    if (err || !metadata || !metadata.streams) return resolve(false);
+    resolve(metadata.streams.some(s => s.codec_type === 'audio'));
+  });
+});
+
 // Enregistre le binaire ffmpeg fourni par @ffmpeg-installer (sinon
 // fluent-ffmpeg ne trouve pas ffmpeg sur Render → crash "Cannot find ffmpeg").
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
@@ -62,6 +71,13 @@ export async function concatenateVideos(clips, jobId = null) {
     throw new Error('Aucune vidéo fournie pour le montage.');
   }
 
+  if (isRendering) {
+    const error = new Error('Le serveur est déjà en train de monter une vidéo, veuillez patienter.');
+    error.status = 429;
+    throw error;
+  }
+  isRendering = true;
+
   // Support legacy API: array of strings → objects.
   const normalizedClips = clips.map((c) =>
     typeof c === 'string' ? { filename: c } : c
@@ -101,6 +117,7 @@ export async function concatenateVideos(clips, jobId = null) {
     fs.copyFileSync(outputPath, path.join(exportsDir, outputFilename));
     return { url: `/uploads/exports/${outputFilename}` };
   } finally {
+    isRendering = false;
     try { fs.rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
   }
 }
@@ -117,6 +134,8 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
     const { inPoint, outPoint, overlays = [] } = normalizedClips[i];
     const normPath = path.join(workDir, `norm_${i}.mp4`);
     normPaths.push(normPath);
+
+    const hasAudio = await checkAudio(localPaths[i]);
 
     await new Promise((resolve, reject) => {
       const command = ffmpeg(localPaths[i]);
@@ -164,17 +183,25 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
       command.videoFilters(videoFilters);
 
       const audioFilters = [];
-      if (inPoint != null || outPoint != null) {
-        const trimIn = inPoint != null ? inPoint : 0;
-        const trimOut = outPoint != null ? outPoint : 9999999;
-        audioFilters.push(`atrim=${trimIn}:${trimOut},asetpts=PTS-STARTPTS`);
+      if (hasAudio) {
+        if (inPoint != null || outPoint != null) {
+          const trimIn = inPoint != null ? inPoint : 0;
+          const trimOut = outPoint != null ? outPoint : 9999999;
+          audioFilters.push(`atrim=${trimIn}:${trimOut},asetpts=PTS-STARTPTS`);
+        }
+        audioFilters.push(
+          'aresample=48000',
+          'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'
+        );
+        command.audioFilters(audioFilters);
+      } else {
+        command.input('anullsrc=r=48000:cl=stereo').inputFormat('lavfi');
+        command.outputOptions([
+          '-map 0:v:0',
+          '-map 1:a:0',
+          '-shortest'
+        ]);
       }
-      audioFilters.push(
-        'aresample=48000',
-        'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'
-      );
-      
-      command.audioFilters(audioFilters);
       
       command.outputOptions([
         '-c:v libx264',
