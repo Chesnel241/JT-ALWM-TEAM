@@ -27,16 +27,19 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
     if (!selectedWeek) return;
     setLoading(true);
     api.getDeliveries(selectedWeek)
-      .then(setDeliveries)
+      // Garde-fou : une réponse non-array (404/objet d'erreur) ferait
+      // crasher deliveries.map → écran blanc. On force un tableau.
+      .then((d) => setDeliveries(Array.isArray(d) ? d : []))
       .catch((err) => {
         console.error(err);
+        setDeliveries([]);
         addToast(err.message || t.uploader.errorPrefix, 'error', 3000);
       })
       .finally(() => setLoading(false));
 
     api.getSubscriptions(selectedWeek)
-      .then(setSubscriptions)
-      .catch(console.error);
+      .then((s) => setSubscriptions(Array.isArray(s) ? s : []))
+      .catch(() => setSubscriptions([]));
   }, [selectedWeek, addToast, t.uploader.errorPrefix]);
 
   const whatsappMessage = t.delivery.whatsappMessage || 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme.';
