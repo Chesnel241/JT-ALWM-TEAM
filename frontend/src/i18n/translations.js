@@ -188,7 +188,44 @@ export const translations = {
       whyEx: 'Ex : "...l’origine serait accidentelle selon les pompiers..."',
       how: 'Comment (How)',
       howDesc: 'Le déroulement, les moyens.',
-      howEx: 'Ex : "...le feu s’est propagé via des palettes stockées dehors."',
+    },
+    aiAssistant: {
+      botName: 'Assistant IA',
+      greeting: "Veux-tu savoir comment faire ? 👋",
+      chatGreeting: "Bonjour ! Je suis l'assistant IA. Posez-moi vos questions ou cliquez sur le bouton 'Guide Visuel' pour une visite guidée de cette page.",
+      inputPlaceholder: "Posez votre question...",
+      startTour: "Lancer la visite guidée de cette page",
+      suggestedTitle: "Questions fréquentes",
+      defaultAnswer: "Je ne suis pas sûr de bien comprendre votre question. Si je ne peux pas vous aider, **vous pouvez contacter directement le support sur WhatsApp au +33778669907**.",
+      joyride: {
+        back: 'Précédent',
+        close: 'Fermer',
+        last: 'Terminer',
+        next: 'Suivant',
+        skip: 'Passer le guide'
+      },
+      tourHome: {
+        welcome: "Bienvenue sur le JT ALWM ! Je suis votre guide. Je vais vous montrer comment utiliser la plateforme en quelques secondes.",
+        countryList: "C'est ici que vous devez sélectionner votre pays pour accéder à votre Espace Reportages.",
+        addCountry: "Si votre pays n'est pas dans la liste, vous pouvez l'ajouter facilement avec ce bouton.",
+        navEditing: "L'équipe de montage utilise cet onglet pour récupérer vos rushs et scripts. Vous n'avez normalement pas besoin d'y aller.",
+        navDelivery: "C'est ici que vous pourrez voir et télécharger le JT une fois qu'il sera monté et prêt !"
+      },
+      tourUploader: {
+        welcome: "Vous êtes dans votre Espace Reportages. C'est ici que vous envoyez vos fichiers à l'équipe de montage.",
+        countdown: "Ici, vous voyez le temps qu'il vous reste avant la clôture des envois pour cette semaine (Dimanche 17h30).",
+        weekSelector: "Assurez-vous toujours que la bonne semaine de diffusion est sélectionnée ici. Par défaut, c'est la semaine en cours.",
+        dropzone: "Glissez et déposez simplement vos vidéos, images ou audios dans ce gros cadre ! Vous pouvez envoyer plusieurs fichiers en même temps.",
+        scriptBox: "Vous n'avez pas le temps de faire un fichier Word ? Tapez ou collez directement le texte de votre voix off ou vos instructions pour le monteur ici.",
+        uploadList: "Tous les fichiers que vous avez envoyés pour cette semaine apparaîtront ici. Vous pouvez les supprimer si vous avez fait une erreur."
+      },
+      suggestedQuestions: {
+        q1: "Comment uploader un fichier ?",
+        q2: "Quelle est l'heure limite d'envoi ?",
+        q3: "Comment ajouter un pays ?",
+        q4: "Où voir le JT finalisé ?",
+        q5: "Comment ajouter un script texte ?"
+      }
     },
   },
 
@@ -382,6 +419,44 @@ export const translations = {
       how: 'How',
       howDesc: 'The process, the means.',
       howEx: 'Ex: "...the fire spread through pallets stored outside."',
+    },
+    aiAssistant: {
+      botName: 'AI Assistant',
+      greeting: "Need help figuring this out? 👋",
+      chatGreeting: "Hello! I am the AI assistant. Ask me your questions or click the 'Visual Guide' button for a guided tour of this page.",
+      inputPlaceholder: "Ask your question...",
+      startTour: "Start the visual guide for this page",
+      suggestedTitle: "Frequent questions",
+      defaultAnswer: "I'm not sure I understand your question. If I can't help you, **you can contact the support directly on WhatsApp at +33778669907**.",
+      joyride: {
+        back: 'Back',
+        close: 'Close',
+        last: 'Finish',
+        next: 'Next',
+        skip: 'Skip tour'
+      },
+      tourHome: {
+        welcome: "Welcome to the ALWM Newscast! I'm your guide. I'll show you how to use the platform in a few seconds.",
+        countryList: "This is where you must select your country to access your Reports Space.",
+        addCountry: "If your country is not in the list, you can easily add it with this button.",
+        navEditing: "The editing team uses this tab to retrieve your rushes and scripts. You usually don't need to go there.",
+        navDelivery: "This is where you can see and download the newscast once it's edited and ready!"
+      },
+      tourUploader: {
+        welcome: "You are in your Reports Space. This is where you send your files to the editing team.",
+        countdown: "Here, you see the time you have left before submissions close for this week (Sunday 5:30 PM).",
+        weekSelector: "Always make sure the correct broadcast week is selected here. By default, it's the current week.",
+        dropzone: "Simply drag and drop your videos, images, or audios in this big frame! You can send multiple files at the same time.",
+        scriptBox: "No time to make a Word file? Type or paste the text for your voice-over or your instructions for the editor directly here.",
+        uploadList: "All the files you sent for this week will appear here. You can delete them if you made a mistake."
+      },
+      suggestedQuestions: {
+        q1: "How to upload a file?",
+        q2: "What is the submission deadline?",
+        q3: "How to add a country?",
+        q4: "Where to see the final newscast?",
+        q5: "How to add a text script?"
+      }
     },
   },
 };

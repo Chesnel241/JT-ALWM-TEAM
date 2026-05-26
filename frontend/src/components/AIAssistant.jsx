@@ -2,20 +2,23 @@ import { useState, useRef, useEffect } from 'react';
 import * as JoyrideModule from 'react-joyride';
 const Joyride = JoyrideModule.Joyride || (JoyrideModule.default ? (JoyrideModule.default.default || JoyrideModule.default) : null);
 const STATUS = JoyrideModule.STATUS || { FINISHED: 'finished', SKIPPED: 'skipped' };
+import { useI18n } from '../i18n/I18nContext';
 import { MessageSquare, X, Send, Bot, User, HelpCircle } from 'lucide-react';
-import { tourSteps } from '../data/tourSteps';
-import { getAIResponse, suggestedQuestions } from '../data/faqKnowledge';
+import { getTourSteps } from '../data/tourSteps';
+import { getAIResponse, getSuggestedQuestions } from '../data/faqKnowledge';
 
 export default function AIAssistant({ currentPage }) {
+  const { t, lang } = useI18n();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'ai', content: "Bonjour ! Je suis l'assistant IA. Posez-moi vos questions ou cliquez sur le bouton 'Guide Visuel' pour une visite guidée de cette page." }
+    { role: 'ai', content: t.aiAssistant.chatGreeting }
   ]);
   const [inputValue, setInputValue] = useState('');
   
   // Joyride State
   const [runTour, setRunTour] = useState(false);
-  const [steps, setSteps] = useState([]);
+  const allTourSteps = getTourSteps(t);
+  const steps = allTourSteps[currentPage] || [];
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -24,20 +27,6 @@ export default function AIAssistant({ currentPage }) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-
-  useEffect(() => {
-    // Set steps based on current page context
-    if (tourSteps[currentPage]) {
-      setSteps(tourSteps[currentPage]);
-    } else {
-      setSteps([]); // No tour for this page
-    }
-  }, [currentPage]);
-
-  const handleStartTour = () => {
-    setIsChatOpen(false); // Close chat if open to show the tour better
-    setRunTour(true);
-  };
 
   const handleJoyrideCallback = (data) => {
     const { status } = data;
@@ -51,13 +40,12 @@ export default function AIAssistant({ currentPage }) {
   const sendQuestion = (questionText) => {
     if (!questionText.trim()) return;
 
-    const newMessages = [...messages, { role: 'user', content: questionText }];
-    setMessages(newMessages);
+    setMessages(prev => [...prev, { role: 'user', content: questionText }]);
     setInputValue('');
 
     // Simulate AI thinking delay
     setTimeout(() => {
-      const response = getAIResponse(questionText);
+      const response = getAIResponse(questionText, t, lang);
       setMessages(prev => [...prev, { role: 'ai', content: response }]);
     }, 600);
   };
@@ -73,28 +61,25 @@ export default function AIAssistant({ currentPage }) {
       {Joyride && (
         <Joyride
           steps={steps}
-        run={runTour}
-        continuous={true}
-        showProgress={true}
-        showSkipButton={true}
-        callback={handleJoyrideCallback}
-        styles={{
-          options: {
-            primaryColor: 'var(--accent)',
-            zIndex: 10000,
-          },
-          tooltipContainer: {
-            textAlign: 'left'
-          }
-        }}
-        locale={{
-          back: 'Précédent',
-          close: 'Fermer',
-          last: 'Terminer',
-          next: 'Suivant',
-          skip: 'Passer le guide'
-        }}
-      />
+          run={runTour}
+          continuous={true}
+          showProgress={true}
+          showSkipButton={true}
+          callback={handleJoyrideCallback}
+          styles={{
+            options: {
+              primaryColor: 'var(--ink)',
+              zIndex: 10000,
+            }
+          }}
+          locale={{
+            back: t.aiAssistant.joyride.back,
+            close: t.aiAssistant.joyride.close,
+            last: t.aiAssistant.joyride.last,
+            next: t.aiAssistant.joyride.next,
+            skip: t.aiAssistant.joyride.skip
+          }}
+        />
       )}
 
       {/* Floating Button */}
@@ -102,27 +87,26 @@ export default function AIAssistant({ currentPage }) {
         
         {/* Floating Bubble Prompt */}
         {!isChatOpen && !runTour && (
-          <div 
-            className="mb-3 bg-white text-[color:var(--ink)] px-4 py-2 rounded-2xl shadow-lg cursor-pointer border border-[var(--border)] animate-bounce font-medium text-sm"
+          <button 
             onClick={() => setIsChatOpen(true)}
+            className="flex items-center gap-2 bg-[var(--paper)] text-[color:var(--ink)] px-4 py-2 rounded-full shadow-lg border border-[var(--border)] hover:bg-[var(--paper-2)] transition-colors mb-4 animate-bounce"
           >
-            Veux-tu savoir comment faire ? 👋
-            <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white border-b border-r border-[var(--border)] transform rotate-45"></div>
-          </div>
+            <span className="text-sm font-medium">{t.aiAssistant.greeting}</span>
+          </button>
         )}
 
         {/* The Chat Window */}
         {isChatOpen && (
           <div className="mb-4 w-80 sm:w-96 bg-[var(--paper)] rounded-2xl shadow-2xl border border-[var(--border)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
             {/* Header */}
-            <div className="bg-[var(--accent)] p-4 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold">
-                <Bot size={20} />
-                Assistant IA
+            <div className="p-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2 text-[color:var(--ink)] font-semibold">
+                <Bot className="w-5 h-5" />
+                {t.aiAssistant.botName}
               </div>
               <button 
                 onClick={() => setIsChatOpen(false)}
-                className="text-white/80 hover:text-white transition-colors"
+                className="text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
               >
                 <X size={20} />
               </button>
@@ -141,31 +125,34 @@ export default function AIAssistant({ currentPage }) {
                 </div>
               ))}
               <div ref={messagesEndRef} />
+              
+              {/* Visual Guide Trigger */}
+              {steps.length > 0 && (
+                <div className="p-3 bg-[var(--paper-2)] rounded-lg text-center mx-4 mt-2 shrink-0">
+                  <button 
+                    onClick={() => {
+                      setIsChatOpen(false);
+                      setRunTour(true);
+                    }}
+                    className="flex items-center justify-center gap-2 w-full py-2 bg-[var(--ink)] text-[color:var(--paper)] rounded-lg font-medium hover:opacity-90 transition-opacity"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    {t.aiAssistant.startTour}
+                  </button>
+                </div>
+              )}
             </div>
-
-            {/* Visual Guide Trigger */}
-            {steps.length > 0 && (
-              <div className="p-2 bg-[var(--paper)] border-t border-[var(--border)]">
-                <button 
-                  onClick={handleStartTour}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-[color:var(--accent)]/10 text-[color:var(--accent-deep)] hover:bg-[color:var(--accent)]/20 transition-colors font-medium text-sm border border-[color:var(--accent)]/20"
-                >
-                  <HelpCircle size={16} />
-                  Lancer la visite guidée de cette page
-                </button>
-              </div>
-            )}
 
             {/* Suggested Questions */}
             {messages.length === 1 && (
-              <div className="px-4 pb-3 bg-[var(--paper)] flex flex-col gap-2">
-                <p className="text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wider mb-1">Questions fréquentes</p>
+              <div className="p-4 border-t border-[var(--border)] shrink-0">
+                <p className="text-xs text-[color:var(--muted)] mb-2 font-medium uppercase tracking-wider">{t.aiAssistant.suggestedTitle}</p>
                 <div className="flex flex-wrap gap-2">
-                  {suggestedQuestions.map((q, idx) => (
+                  {getSuggestedQuestions(t).map((q, idx) => (
                     <button
                       key={idx}
                       onClick={() => sendQuestion(q)}
-                      className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors active:scale-95"
+                      className="text-xs bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] px-3 py-1.5 rounded-full hover:border-[var(--ink)] transition-colors"
                     >
                       {q}
                     </button>
@@ -180,8 +167,8 @@ export default function AIAssistant({ currentPage }) {
                 type="text" 
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Posez votre question..." 
-                className="flex-1 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                placeholder={t.aiAssistant.inputPlaceholder}
+                className="flex-1 bg-transparent border-none outline-none text-sm text-[color:var(--ink)] placeholder-[color:var(--muted)]"
               />
               <button 
                 type="submit" 
@@ -198,7 +185,7 @@ export default function AIAssistant({ currentPage }) {
         {!isChatOpen && (
           <button 
             onClick={() => setIsChatOpen(true)}
-            className="w-14 h-14 bg-[var(--accent)] text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform focus:outline-none focus:ring-4 focus:ring-[var(--accent)]/30"
+            className="w-14 h-14 bg-[var(--ink)] text-[color:var(--paper)] rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform focus:outline-none focus:ring-4 focus:ring-[var(--ink)]/30"
           >
             <MessageSquare size={24} />
           </button>
