@@ -468,8 +468,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [selectedBin, setSelectedBin] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+  // Bins spéciaux toujours valides (rubriques fixes, pas des pays avec
+  // uploads). Sans ça, sélectionner "JT Prêt"/"MOT DU JT" était
+  // immédiatement réinitialisé par l'effet ci-dessous → la fenêtre
+  // d'upload s'ouvrait puis se refermait en quelques ms.
+  const SPECIAL_BINS = ['delivery', 'mj', 'tj'];
+
   useEffect(() => {
-    if (countriesWithUploads.length > 0 && (!selectedBin || !countriesWithUploads.includes(selectedBin))) {
+    const valid =
+      selectedBin &&
+      (SPECIAL_BINS.includes(selectedBin) || countriesWithUploads.includes(selectedBin));
+    if (!valid && countriesWithUploads.length > 0) {
       setSelectedBin(countriesWithUploads[0]);
     }
   }, [selectedBin, countriesWithUploads]);
