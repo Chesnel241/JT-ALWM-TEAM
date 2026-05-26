@@ -3,6 +3,14 @@
  * Ce système analyse les mots-clés de l'utilisateur pour trouver la meilleure réponse.
  */
 
+export const suggestedQuestions = [
+  "Comment uploader un fichier ?",
+  "Quelle est l'heure limite d'envoi ?",
+  "Comment ajouter un pays ?",
+  "Où voir le JT finalisé ?",
+  "Comment ajouter un script texte ?"
+];
+
 export const faqKnowledge = [
   {
     keywords: ['bonjour', 'salut', 'coucou', 'hello', 'hey'],

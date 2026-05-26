@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import Joyride, { STATUS } from 'react-joyride';
 import { MessageSquare, X, Send, Bot, User, HelpCircle } from 'lucide-react';
 import { tourSteps } from '../data/tourSteps';
-import { getAIResponse } from '../data/faqKnowledge';
+import { getAIResponse, suggestedQuestions } from '../data/faqKnowledge';
 
 export default function AIAssistant({ currentPage }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -46,20 +46,23 @@ export default function AIAssistant({ currentPage }) {
     }
   };
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
+  const sendQuestion = (questionText) => {
+    if (!questionText.trim()) return;
 
-    // Add user message
-    const newMessages = [...messages, { role: 'user', content: inputValue }];
+    const newMessages = [...messages, { role: 'user', content: questionText }];
     setMessages(newMessages);
     setInputValue('');
 
     // Simulate AI thinking delay
     setTimeout(() => {
-      const response = getAIResponse(inputValue);
+      const response = getAIResponse(questionText);
       setMessages(prev => [...prev, { role: 'ai', content: response }]);
     }, 600);
+  };
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    sendQuestion(inputValue);
   };
 
   return (
@@ -141,11 +144,29 @@ export default function AIAssistant({ currentPage }) {
               <div className="p-2 bg-[var(--paper)] border-t border-[var(--border)]">
                 <button 
                   onClick={handleStartTour}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors font-medium text-sm"
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-[color:var(--accent)]/10 text-[color:var(--accent-deep)] hover:bg-[color:var(--accent)]/20 transition-colors font-medium text-sm border border-[color:var(--accent)]/20"
                 >
                   <HelpCircle size={16} />
                   Lancer la visite guidée de cette page
                 </button>
+              </div>
+            )}
+
+            {/* Suggested Questions */}
+            {messages.length === 1 && (
+              <div className="px-4 pb-3 bg-[var(--paper)] flex flex-col gap-2">
+                <p className="text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wider mb-1">Questions fréquentes</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedQuestions.map((q, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => sendQuestion(q)}
+                      className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors active:scale-95"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
