@@ -7,7 +7,7 @@
  */
 
 import { Router } from 'express';
-import { timingSafeEqual } from 'crypto';
+import { timingSafeEqual, createHash } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import logger from '../logger/index.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
@@ -17,16 +17,23 @@ const router = Router();
 const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD;
 
 function safeEqual(a, b) {
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
+  const hashA = createHash('sha256').update(String(a)).digest();
+  const hashB = createHash('sha256').update(String(b)).digest();
+  return timingSafeEqual(hashA, hashB);
 }
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // Limit each IP to 5 requests per windowMs
   message: { error: 'Trop de tentatives de connexion, veuillez réessayer plus tard' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { error: 'Trop de requêtes, veuillez réessayer plus tard' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -57,7 +64,7 @@ router.post('/logout', (req, res) => {
 });
 
 // GET /api/auth/check — pour que le front sache si la session est valide
-router.get('/check', (req, res) => {
+router.get('/check', authLimiter, (req, res) => {
   const token = req.headers['x-app-password'];
   if (!token) return res.status(401).json({ authenticated: false });
   
@@ -68,7 +75,7 @@ router.get('/check', (req, res) => {
 });
 
 // GET /api/auth/check-admin — vérifier si le mot de passe admin est valide
-router.get('/check-admin', (req, res) => {
+router.get('/check-admin', authLimiter, (req, res) => {
   const token = req.headers['x-admin-password'];
   if (!token) return res.status(401).json({ authenticated: false });
   

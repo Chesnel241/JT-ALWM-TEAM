@@ -210,8 +210,24 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
   archive.finalize();
 }));
 
+const uploadMiddleware = (req, res, next) => {
+  const { weekId, countryId } = req.params;
+  const providedToken = req.query.adminPassword || req.header('x-admin-password');
+  const isAdmin = ADMIN_PASSWORD && providedToken === ADMIN_PASSWORD;
+
+  if (!isAdmin) {
+    const cutoffErr = checkUploadCutoff(weekId);
+    if (cutoffErr) {
+      audit('upload.blocked_after_deadline', req, { weekId, countryId });
+      logger.info('Upload blocked: deadline passed', { context: { weekId, countryId, ip: req.ip } });
+      return next(cutoffErr);
+    }
+  }
+  next();
+};
+
 // POST /api/uploads/:weekId/:countryId — upload fichier
-router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
+router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, res, next) => {
   const uploadStartTime = Date.now();
   const { weekId, countryId } = req.params;
   
@@ -225,16 +241,6 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
 
   const providedToken = req.query.adminPassword || req.header('x-admin-password');
   const isAdmin = ADMIN_PASSWORD && providedToken === ADMIN_PASSWORD;
-
-  // Bloque les rushes après dimanche 17h30, sauf pour les admins (reportage assemblé)
-  if (!isAdmin) {
-    const cutoffErr = checkUploadCutoff(weekId);
-    if (cutoffErr) {
-      audit('upload.blocked_after_deadline', req, { weekId, countryId });
-      logger.info('Upload blocked: deadline passed', { context: { weekId, countryId, ip: req.ip } });
-      return next(cutoffErr);
-    }
-  }
 
   return upload.single('file')(req, res, async (err) => {
     try {
@@ -259,15 +265,6 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
           context: { weekId, countryId, ip: req.ip },
         });
         return next(createErrors.badRequest('Aucun fichier reçu'));
-      }
-
-      if (!isAdmin) {
-        const cutoffErr = checkUploadCutoff(weekId);
-        if (cutoffErr) {
-          const filePath = path.join(uploadsDir, file.filename);
-          if (existsSync(filePath)) unlinkSync(filePath);
-          return next(cutoffErr);
-        }
       }
 
     const reportageName = req.query.reportage || '';
