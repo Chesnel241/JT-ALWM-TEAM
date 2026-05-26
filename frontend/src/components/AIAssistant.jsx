@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import * as JoyrideModule from 'react-joyride';
-const Joyride = JoyrideModule.Joyride || (JoyrideModule.default ? (JoyrideModule.default.default || JoyrideModule.default) : null);
-const STATUS = JoyrideModule.STATUS || { FINISHED: 'finished', SKIPPED: 'skipped' };
+import { Joyride, STATUS } from 'react-joyride';
 import { useI18n } from '../i18n/I18nContext';
 import { MessageSquare, X, Send, Bot, User, HelpCircle } from 'lucide-react';
 import { getTourSteps } from '../data/tourSteps';
