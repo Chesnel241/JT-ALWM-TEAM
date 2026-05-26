@@ -15,8 +15,8 @@ export default function AIAssistant({ currentPage }) {
   ]);
   const [inputValue, setInputValue] = useState('');
   
-  // Joyride State
   const [runTour, setRunTour] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
   const allTourSteps = getTourSteps(t);
   const steps = allTourSteps[currentPage] || [];
   const messagesEndRef = useRef(null);
@@ -29,11 +29,17 @@ export default function AIAssistant({ currentPage }) {
   }, [messages]);
 
   const handleJoyrideCallback = (data) => {
-    const { status } = data;
+    const { status, type, index, action } = data;
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
     
-    if (finishedStatuses.includes(status)) {
+    // Update step index as the user navigates
+    if (type === 'step:after' || type === 'target:not_found') {
+      setStepIndex(index + (action === 'prev' ? -1 : 1));
+    }
+    // Handle tour finish
+    else if (finishedStatuses.includes(status)) {
       setRunTour(false);
+      setStepIndex(0);
     }
   };
 
@@ -62,6 +68,7 @@ export default function AIAssistant({ currentPage }) {
         <Joyride
           steps={steps}
           run={runTour}
+          stepIndex={stepIndex}
           continuous={true}
           showProgress={true}
           showSkipButton={true}
@@ -132,6 +139,7 @@ export default function AIAssistant({ currentPage }) {
                   <button 
                     onClick={() => {
                       setIsChatOpen(false);
+                      setStepIndex(0);
                       setRunTour(true);
                     }}
                     className="flex items-center justify-center gap-2 w-full py-2 bg-[var(--ink)] text-[color:var(--paper)] rounded-lg font-medium hover:opacity-90 transition-opacity"
