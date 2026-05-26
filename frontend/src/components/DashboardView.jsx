@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -266,9 +266,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }
   };
 
-  const countriesWithUploads = Object.keys(dashboard).filter(
-    (id) => dashboard[id]?.length > 0 || id === 'tj'
-  );
+  const countriesWithUploads = useMemo(() => {
+    return Object.keys(dashboard).filter(
+      (id) => dashboard[id]?.length > 0 || id === 'tj'
+    );
+  }, [dashboard]);
 
   const [selectedBin, setSelectedBin] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -277,7 +279,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (countriesWithUploads.length > 0 && (!selectedBin || !countriesWithUploads.includes(selectedBin))) {
       setSelectedBin(countriesWithUploads[0]);
     }
-  }, [dashboard, selectedBin, countriesWithUploads]);
+  }, [selectedBin, countriesWithUploads]);
 
   const renderUploadMeta = (file) => (
     <span
