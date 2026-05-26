@@ -42,6 +42,8 @@ export async function compressTo720(filePath, ext) {
           '-c:a aac',
           '-b:a 128k',
           '-movflags +faststart',
+          '-threads 2',
+          '-max_muxing_queue_size 1024'
         ])
         .on('start', () => logger.info(`Compression 720p: ${path.basename(filePath)}`))
         .on('progress', (p) => logger.debug('Compression…', { percent: p.percent }))

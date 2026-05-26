@@ -189,10 +189,12 @@ function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
       .outputOptions([
         '-c:v libx264',
         '-crf 23',
-        '-preset fast',
+        '-preset ultrafast',
         '-c:a aac',
         '-b:a 192k',
         '-movflags +faststart',
+        '-threads 2',
+        '-max_muxing_queue_size 1024'
       ])
       .on('start', (cmd) => logger.info('Démarrage de la concaténation vidéo', { command: cmd }))
       .on('progress', (p) => {
