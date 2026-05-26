@@ -39,7 +39,11 @@ export function finishJob(jobId, status = 'done', url = null) {
   job.status = status;
   const payload = `data: ${JSON.stringify({ percent: job.percent, status, url })}\n\n`;
   for (const res of job.listeners) {
-    try { res.write(payload); res.end(); } catch { /* ignore */ }
+    try {
+      if (res._hb) { clearInterval(res._hb); res._hb = null; }
+      res.write(payload);
+      res.end();
+    } catch { /* ignore */ }
   }
   jobs.delete(jobId);
 }
@@ -49,9 +53,16 @@ export function addListener(jobId, res) {
   job.listeners.add(res);
   // Pousse l'état courant immédiatement.
   res.write(`data: ${JSON.stringify({ percent: job.percent, status: job.status })}\n\n`);
+  // Heartbeat (commentaire SSE) toutes les 15 s : empêche les proxies
+  // (Render) de fermer la connexion idle pendant un encodage long sans
+  // mise à jour de %.
+  res._hb = setInterval(() => {
+    try { res.write(': ping\n\n'); } catch { /* ignore */ }
+  }, 15000);
 }
 
 export function removeListener(jobId, res) {
+  if (res._hb) { clearInterval(res._hb); res._hb = null; }
   const job = jobs.get(jobId);
   if (job) job.listeners.delete(res);
 }

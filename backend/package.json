@@ -12,6 +12,7 @@
     "@aws-sdk/lib-storage": "^3.1050.0",
     "@aws-sdk/s3-request-presigner": "^3.1050.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
     "@sentry/node": "^10.53.1",
     "@upstash/redis": "^1.38.0",
     "archiver": "7.0.1",

@@ -1,5 +1,6 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import ffprobeInstaller from '@ffprobe-installer/ffprobe';
 import fs from 'fs';
 import os from 'os';
 import { pipeline } from 'stream/promises';
@@ -14,6 +15,14 @@ import { setProgress } from './editorProgress.js';
 
 let isRendering = false;
 
+// Binaires fournis par les packages installer (Render n'a pas ffmpeg/ffprobe
+// système). setFfprobePath est CRITIQUE : sans lui, checkAudio échoue ET
+// fluent-ffmpeg ne peut pas calculer la durée → l'event `progress` n'émet
+// jamais de `percent` → la jauge reste figée.
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+ffmpeg.setFfprobePath(ffprobeInstaller.path);
+logger.info(`FFmpeg: ${ffmpegInstaller.path} | FFprobe: ${ffprobeInstaller.path}`);
+
 const checkAudio = (filePath) => new Promise((resolve) => {
   ffmpeg.ffprobe(filePath, (err, metadata) => {
     if (err || !metadata || !metadata.streams) return resolve(false);
@@ -21,15 +30,7 @@ const checkAudio = (filePath) => new Promise((resolve) => {
   });
 });
 
-// Enregistre le binaire ffmpeg fourni par @ffmpeg-installer (sinon
-// fluent-ffmpeg ne trouve pas ffmpeg sur Render → crash "Cannot find ffmpeg").
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Use bundled ffmpeg binary — works locally and on Render without system install
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
-logger.info(`FFmpeg binary path: ${ffmpegInstaller.path}`);
 
 // Bundled font — used for all drawtext overlays.
 const FONT_PATH = path.join(__dirname, '../../fonts/Inter.ttf')
