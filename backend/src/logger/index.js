@@ -84,13 +84,21 @@ if (isDev) {
   );
 }
 
-const logger = winston.createLogger({
+const loggerOptions = {
   level: isDev ? 'debug' : 'info',
   format: customFormat,
   transports,
-  exceptionHandlers,
-  rejectionHandlers,
-});
+  exitOnError: false,
+};
+
+if (exceptionHandlers.length > 0) {
+  loggerOptions.exceptionHandlers = exceptionHandlers;
+}
+if (rejectionHandlers.length > 0) {
+  loggerOptions.rejectionHandlers = rejectionHandlers;
+}
+
+const logger = winston.createLogger(loggerOptions);
 
 // Ajouter des raccourcis pour les logs courants
 logger.uploadReceived = (weekId, countryId, filename, size) => {
