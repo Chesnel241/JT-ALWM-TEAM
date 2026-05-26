@@ -5,11 +5,23 @@ import { v4 as uuidv4 } from 'uuid';
 import { uploadsDir } from '../lib/upload.js';
 import logger from '../logger/index.js';
 
-export async function concatenateVideos(videoFilenames) {
+/**
+ * Concatenate and optionally trim a list of video clips.
+ * @param {Array<{filename: string, inPoint?: number, outPoint?: number}>} clips
+ *   - filename: the file stored in uploadsDir
+ *   - inPoint:  start trim in seconds (default: 0 = keep from beginning)
+ *   - outPoint: end trim in seconds (default: null = keep until end)
+ */
+export async function concatenateVideos(clips) {
   return new Promise((resolve, reject) => {
-    if (!videoFilenames || videoFilenames.length === 0) {
+    if (!clips || clips.length === 0) {
       return reject(new Error('Aucune vidéo fournie pour le montage.'));
     }
+
+    // Support legacy API: if clips is an array of strings, convert to objects.
+    const normalizedClips = clips.map((c) =>
+      typeof c === 'string' ? { filename: c } : c
+    );
 
     const exportsDir = path.join(uploadsDir, 'exports');
     if (!fs.existsSync(exportsDir)) {
@@ -23,42 +35,74 @@ export async function concatenateVideos(videoFilenames) {
     const filterGraph = [];
     let concatInputs = '';
 
-    videoFilenames.forEach((filename, i) => {
+    for (let i = 0; i < normalizedClips.length; i++) {
+      const { filename, inPoint, outPoint } = normalizedClips[i];
       const filePath = path.join(uploadsDir, filename);
+
       if (!fs.existsSync(filePath)) {
-        return reject(new Error(`Le fichier ${filename} n'existe pas sur le serveur.`));
+        return reject(new Error(`Le fichier "${filename}" n'existe pas sur le serveur.`));
       }
-      
+
       command.input(filePath);
 
-      // Force 1920x1080 30fps with black padding for vertical/odd videos
-      filterGraph.push(`[${i}:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30[v${i}]`);
-      
-      // Standardize audio to 48kHz stereo to avoid concat errors
-      filterGraph.push(`[${i}:a]aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[a${i}]`);
-      
-      concatInputs += `[v${i}][a${i}]`;
-    });
+      // Build video filter chain for this clip
+      const videoFilters = [];
 
-    filterGraph.push(`${concatInputs}concat=n=${videoFilenames.length}:v=1:a=1[outv][outa]`);
+      // 1. Apply trim if requested
+      if (inPoint != null || outPoint != null) {
+        const trimIn  = inPoint  != null ? inPoint  : 0;
+        const trimOut = outPoint != null ? outPoint : 9999999;
+        videoFilters.push(`trim=${trimIn}:${trimOut},setpts=PTS-STARTPTS`);
+      }
+
+      // 2. Scale to 1920x1080 with black bars (letterbox) to handle any format
+      videoFilters.push(
+        'scale=1920:1080:force_original_aspect_ratio=decrease',
+        'pad=1920:1080:(ow-iw)/2:(oh-ih)/2',
+        'setsar=1',
+        'fps=30'
+      );
+
+      filterGraph.push(`[${i}:v]${videoFilters.join(',')}[v${i}]`);
+
+      // Build audio filter chain for this clip
+      const audioFilters = [];
+
+      if (inPoint != null || outPoint != null) {
+        const trimIn  = inPoint  != null ? inPoint  : 0;
+        const trimOut = outPoint != null ? outPoint : 9999999;
+        audioFilters.push(`atrim=${trimIn}:${trimOut},asetpts=PTS-STARTPTS`);
+      }
+
+      audioFilters.push(
+        'aresample=48000',
+        'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'
+      );
+
+      filterGraph.push(`[${i}:a]${audioFilters.join(',')}[a${i}]`);
+
+      concatInputs += `[v${i}][a${i}]`;
+    }
+
+    filterGraph.push(
+      `${concatInputs}concat=n=${normalizedClips.length}:v=1:a=1[outv][outa]`
+    );
 
     command
       .complexFilter(filterGraph, ['outv', 'outa'])
       .outputOptions([
         '-c:v libx264',
         '-crf 23',
-        '-preset fast', // 'fast' for quicker rendering
+        '-preset fast',
         '-c:a aac',
         '-b:a 192k',
-        '-movflags +faststart'
+        '-movflags +faststart',
       ])
       .on('start', (cmd) => {
         logger.info('Démarrage de la concaténation vidéo', { command: cmd });
       })
       .on('progress', (progress) => {
-        // En conditions réelles, on pourrait émettre cela via WebSocket ou SSE.
-        // Ici, on le log simplement.
-        logger.debug('Progression de l\'export...', { percent: progress.percent });
+        logger.debug("Progression de l'export...", { percent: progress.percent });
       })
       .on('end', () => {
         logger.info('Concaténation vidéo terminée avec succès', { outputFilename });
@@ -71,3 +115,4 @@ export async function concatenateVideos(videoFilenames) {
       .save(outputPath);
   });
 }
+

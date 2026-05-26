@@ -8,7 +8,21 @@ const router = express.Router();
 router.post(
   '/concat',
   [
-    body('videoFilenames').isArray({ min: 1 }).withMessage('videoFilenames doit être un tableau non vide contenant les noms des fichiers à monter.')
+    body('clips')
+      .isArray({ min: 1 })
+      .withMessage('clips doit être un tableau non vide.'),
+    body('clips.*.filename')
+      .isString()
+      .notEmpty()
+      .withMessage('Chaque clip doit avoir un filename valide.'),
+    body('clips.*.inPoint')
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage('inPoint doit être un nombre positif (en secondes).'),
+    body('clips.*.outPoint')
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage('outPoint doit être un nombre positif (en secondes).'),
   ],
   async (req, res, next) => {
     try {
@@ -17,15 +31,12 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { videoFilenames } = req.body;
+      const { clips } = req.body;
 
-      logger.info('Demande de concaténation reçue', { videosCount: videoFilenames.length });
+      logger.info('Demande de concaténation reçue', { clipsCount: clips.length });
 
-      // On lance le traitement de manière synchrone car le frontend attend
-      // Le timeout Express (REQUEST_TIMEOUT_MS) devrait couvrir cela s'il est suffisamment élevé.
-      const exportPath = await concatenateVideos(videoFilenames);
+      const exportPath = await concatenateVideos(clips);
 
-      // On retourne le chemin relatif qui peut être lu via GET /uploads/exports/nomdufichier.mp4
       res.status(200).json({
         message: 'Montage terminé avec succès.',
         exportUrl: `/uploads/${exportPath}`

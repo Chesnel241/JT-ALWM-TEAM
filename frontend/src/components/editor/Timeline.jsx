@@ -15,9 +15,9 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Video, Trash2, Play, GripVertical } from 'lucide-react';
+import { Video, Trash2, Play, GripVertical, Scissors, Pencil } from 'lucide-react';
 
-function SortableClip({ clip, onRemove }) {
+function SortableClip({ clip, onRemove, onTrim }) {
   const {
     attributes,
     listeners,
@@ -37,34 +37,51 @@ function SortableClip({ clip, onRemove }) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative flex items-center gap-2 bg-[var(--paper)] border ${
+      className={`relative flex flex-col gap-1 bg-[var(--paper)] border ${
         isDragging ? 'border-[var(--accent)] shadow-xl' : 'border-[var(--border)] shadow-sm'
       } rounded-xl p-2 min-w-[200px] shrink-0`}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1 text-[color:var(--muted)] hover:text-[color:var(--ink)]"
-      >
-        <GripVertical size={16} />
+      <div className="flex items-center gap-2">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 text-[color:var(--muted)] hover:text-[color:var(--ink)]"
+        >
+          <GripVertical size={16} />
+        </div>
+        <div className="w-10 h-7 bg-black/10 rounded flex items-center justify-center shrink-0">
+          <Video size={13} className="text-[color:var(--muted)]" />
+        </div>
+        <div className="flex-1 truncate text-xs font-semibold text-[color:var(--ink)]" title={clip.name}>
+          {clip.name}
+        </div>
+        <button
+          onClick={() => onTrim(clip)}
+          className="p-1.5 text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-lg transition-colors"
+          title="Modifier le Trim"
+        >
+          <Pencil size={13} />
+        </button>
+        <button
+          onClick={() => onRemove(clip.id)}
+          className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
+          title="Retirer de la Timeline"
+        >
+          <Trash2 size={13} />
+        </button>
       </div>
-      <div className="w-12 h-8 bg-black/10 rounded flex items-center justify-center shrink-0">
-        <Video size={14} className="text-[color:var(--muted)]" />
-      </div>
-      <div className="flex-1 truncate text-xs font-semibold text-[color:var(--ink)]" title={clip.name}>
-        {clip.name}
-      </div>
-      <button
-        onClick={() => onRemove(clip.id)}
-        className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
-      >
-        <Trash2 size={14} />
-      </button>
+      {/* Trim badge */}
+      {clip.trimLabel && (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-[var(--accent)]/10 rounded text-[10px] text-[color:var(--accent)] font-mono font-medium">
+          <Scissors size={10} />
+          {clip.trimLabel}
+        </div>
+      )}
     </div>
   );
 }
 
-export default function Timeline({ clips, setClips, onGenerate, isGenerating }) {
+export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -94,6 +111,9 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating }) 
         <h3 className="font-bold text-[color:var(--ink)] flex items-center gap-2">
           <Play size={18} className="text-[var(--accent)]" />
           Timeline de Montage
+          {clips.length > 0 && (
+            <span className="text-xs font-normal text-[color:var(--muted)] ml-1">({clips.length} clip{clips.length > 1 ? 's' : ''})</span>
+          )}
         </h3>
         <button
           onClick={onGenerate}
@@ -116,7 +136,7 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating }) 
       <div className="bg-[var(--app-bg)] rounded-xl border border-[var(--border)] p-4 min-h-[100px] flex items-center overflow-x-auto overflow-y-hidden">
         {clips.length === 0 ? (
           <p className="text-sm text-[color:var(--muted)] italic text-center w-full">
-            Cliquez sur le bouton "Ajouter à la Timeline" sur les vidéos ci-dessus pour les ajouter ici.
+            Cliquez sur "Trim & Ajouter" sur les vidéos ci-dessus pour les ajouter ici.
           </p>
         ) : (
           <DndContext
@@ -130,7 +150,12 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating }) 
             >
               <div className="flex gap-2">
                 {clips.map((clip) => (
-                  <SortableClip key={clip.id} clip={clip} onRemove={removeClip} />
+                  <SortableClip
+                    key={clip.id}
+                    clip={clip}
+                    onRemove={removeClip}
+                    onTrim={onTrimClip}
+                  />
                 ))}
               </div>
             </SortableContext>

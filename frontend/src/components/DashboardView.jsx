@@ -10,6 +10,7 @@ import AIChecklist from './AIChecklist.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import AdminUploadDialog from './AdminUploadDialog.jsx';
 import Timeline from './editor/Timeline.jsx';
+import TrimModal from './editor/TrimModal.jsx';
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
   const [content, setContent] = useState('');
@@ -152,6 +153,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [timelineClips, setTimelineClips] = useState([]);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
+  const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
 
   useEffect(() => {
     if (!deleteDialogOpen && !feedbackDialogOpen && !downloadDialogOpen) {
@@ -184,10 +186,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
         },
+        credentials: 'include',
         body: JSON.stringify({
-          videoFilenames: timelineClips.map(clip => clip.filename)
+          clips: timelineClips.map(clip => ({
+            filename: clip.filename,
+            inPoint: clip.inPoint,
+            outPoint: clip.outPoint,
+          }))
         })
       });
       
@@ -462,15 +468,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </div>
           {isVideo && (
             <button
-              onClick={() => {
-                if (!timelineClips.some(c => c.id === file.id)) {
-                  setTimelineClips([...timelineClips, file]);
-                  addToast('Ajouté à la timeline', 'success', 2000);
-                }
-              }}
-              className="mt-1 w-full text-xs py-1 rounded bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-transparent transition-colors shadow-sm"
+              onClick={() => setTrimTarget(file)}
+              className="mt-1 w-full text-xs py-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-transparent transition-colors shadow-sm flex items-center justify-center gap-1"
             >
-              + Ajouter à la Timeline
+              ✂️ Trim & Ajouter
             </button>
           )}
         </div>
@@ -754,6 +755,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             setClips={setTimelineClips} 
             onGenerate={handleGenerateVideo}
             isGenerating={isGeneratingVideo}
+            onTrimClip={(file) => setTrimTarget(file)}
           />
         </main>
       </div>
@@ -857,6 +859,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedBin={selectedBin}
         adminPassword={localStorage.getItem('app-password')}
       />
+
+      {/* Trim Modal */}
+      {trimTarget && (
+        <TrimModal
+          file={trimTarget}
+          onClose={() => setTrimTarget(null)}
+          onConfirm={(trimmedClip) => {
+            setTimelineClips((prev) => {
+              // If already in timeline, update its trim data
+              const exists = prev.find((c) => c.id === trimmedClip.id);
+              if (exists) {
+                return prev.map((c) => (c.id === trimmedClip.id ? trimmedClip : c));
+              }
+              return [...prev, trimmedClip];
+            });
+            addToast('Clip ajouté à la timeline', 'success', 2000);
+          }}
+        />
+      )}
 
       {selectedBin && (
         <AdminUploadDialog
