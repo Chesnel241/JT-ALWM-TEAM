@@ -33,7 +33,7 @@ export default function AIAssistant({ currentPage }) {
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
     
     // Update step index as the user navigates
-    if (type === 'step:after' || type === 'target:not_found') {
+    if (type === 'step:after' || type === 'error:target_not_found') {
       setStepIndex(index + (action === 'prev' ? -1 : 1));
     }
     // Handle tour finish

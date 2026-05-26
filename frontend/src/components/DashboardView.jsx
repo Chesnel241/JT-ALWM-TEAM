@@ -480,7 +480,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         {/* Main Content Area */}
         <main id="tour-editing-grid" className="flex-1 flex flex-col min-w-0 bg-[var(--paper)]">
           {/* Top Toolbar */}
-          <header className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex justify-between items-center z-10 shrink-0 relative">
+          <header id="tour-dashboard-header" className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex justify-between items-center z-10 shrink-0 relative">
             <div className="flex items-center gap-3">
               <button 
                 className="md:hidden p-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] shrink-0" 

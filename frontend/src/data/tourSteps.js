@@ -73,19 +73,14 @@ export const getTourSteps = (t) => ({
       disableBeacon: true,
     },
     {
-      target: '#tour-editing-sidebar',
-      content: t.aiAssistant.tourDashboard.sidebar,
-      placement: 'right',
-    },
-    {
-      target: '#dashboard-week',
-      content: t.aiAssistant.tourDashboard.weekSelector,
+      target: '#tour-dashboard-header',
+      content: t.aiAssistant.tourDashboard.header,
       placement: 'bottom',
     },
     {
       target: '#tour-editing-grid',
       content: t.aiAssistant.tourDashboard.grid,
-      placement: 'left',
+      placement: 'top',
     }
   ],
   delivery: [
@@ -114,6 +109,24 @@ export const getTourSteps = (t) => ({
       target: '#tour-delivery-whatsapp',
       content: t.aiAssistant.tourDelivery.whatsapp,
       placement: 'top',
+    }
+  ],
+  voixoff: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourVoixOff.welcome,
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-voixoff-country',
+      content: t.aiAssistant.tourVoixOff.country,
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-voixoff-studio',
+      content: t.aiAssistant.tourVoixOff.studio,
+      placement: 'left',
     }
   ]
 });

@@ -221,8 +221,7 @@ export const translations = {
       },
       tourDashboard: {
         welcome: "Si vous êtes ici, c'est que vous êtes monteur du JT ! Si ce n'est pas le cas, pas nécessaire de continuer. Cet espace vous permet de récupérer les rushs des journalistes.",
-        sidebar: "Sélectionnez le pays dont vous voulez récupérer les images. Les chiffres indiquent le nombre de fichiers déposés.",
-        weekSelector: "Choisissez la semaine sur laquelle vous souhaitez travailler.",
+        header: "Utilisez la barre du haut pour changer de semaine ou de pays. Sur mobile, cliquez sur l'icône de dossier pour afficher les chutiers.",
         grid: "Ici, vous pouvez prévisualiser, lire les scripts, et télécharger les vidéos/audios d'un simple clic."
       },
       tourDelivery: {
@@ -231,6 +230,11 @@ export const translations = {
         dropzone: "Monteurs, c'est ici que vous déposez le rendu vidéo final (ou audio/zip) de l'émission !",
         list: "Les journaux publiés seront listés ici, prêts à être téléchargés.",
         whatsapp: "Une fois uploadé, un simple clic ici permet de notifier instantanément toute l'équipe sur WhatsApp !"
+      },
+      tourVoixOff: {
+        welcome: "Bienvenue dans le Studio Voix Off ! Cet espace vous permet d'enregistrer votre voix en qualité studio directement depuis le navigateur.",
+        country: "Commencez par sélectionner le pays pour lequel vous enregistrez.",
+        studio: "Écrivez votre texte à gauche pour activer le téléprompteur, puis cliquez sur 'Commencer l'enregistrement' ! Votre voix sera compressée et optimisée automatiquement."
       },
       suggestedQuestions: {
         q1: "Comment uploader un fichier ?",
@@ -465,8 +469,7 @@ export const translations = {
       },
       tourDashboard: {
         welcome: "If you are here, it means you are a newscast editor! If not, there is no need to continue. This space allows you to retrieve journalists' rushes.",
-        sidebar: "Select the country you want to get footage from. The numbers indicate how many files were uploaded.",
-        weekSelector: "Choose the week you want to work on.",
+        header: "Use the top bar to change weeks or countries. On mobile, click the folder icon to show the bins.",
         grid: "Here, you can preview, read scripts, and download videos/audios with a single click."
       },
       tourDelivery: {
@@ -475,6 +478,11 @@ export const translations = {
         dropzone: "Editors, this is where you drop the final video render (or audio/zip) of the show!",
         list: "The published newscasts will be listed here, ready to be downloaded.",
         whatsapp: "Once uploaded, a single click here allows you to instantly notify the whole team on WhatsApp!"
+      },
+      tourVoixOff: {
+        welcome: "Welcome to the Voice-Over Studio! This space allows you to record your voice in studio quality directly from the browser.",
+        country: "Start by selecting the country you are recording for.",
+        studio: "Write your text on the left to activate the teleprompter, then click 'Start Recording'! Your voice will be compressed and optimized automatically."
       },
       suggestedQuestions: {
         q1: "How to upload a file?",

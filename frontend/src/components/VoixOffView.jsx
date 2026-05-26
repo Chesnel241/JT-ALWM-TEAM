@@ -235,7 +235,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
       {/* Country Selection - Horizontal Scroll */}
       <div className="mb-8">
         <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3">1. Sélectionnez le pays</h3>
-        <div className="flex overflow-x-auto pb-4 gap-3 snap-x">
+        <div id="tour-voixoff-country" className="flex overflow-x-auto pb-4 gap-3 snap-x">
           {selectableCountries.map(c => (
             <button
               key={c.id}
@@ -284,7 +284,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
           </div>
 
           {/* Right Column: Dark Studio Recording */}
-          <div className="bg-[var(--ink)] rounded-3xl p-6 shadow-2xl border border-gray-800 flex flex-col relative overflow-hidden">
+          <div id="tour-voixoff-studio" className="bg-[var(--ink)] rounded-3xl p-6 shadow-2xl border border-gray-800 flex flex-col relative overflow-hidden">
             <h3 className="text-sm uppercase tracking-widest text-gray-500 font-mono mb-4 flex items-center justify-between">
               <span>3. Studio d'enregistrement</span>
               {isRecording && (
