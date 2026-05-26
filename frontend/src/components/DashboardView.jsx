@@ -154,6 +154,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [timelineClips, setTimelineClips] = useState([]);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportPhase, setExportPhase] = useState('');
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
   const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
 
@@ -183,15 +185,36 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (timelineClips.length === 0) return;
     setIsGeneratingVideo(true);
     setGeneratedVideoUrl(null);
+    setExportProgress(0);
+    setExportPhase('downloading');
+
+    // Job ID partagé entre le flux SSE de progression et la requête concat.
+    const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const token = localStorage.getItem('app-password') || '';
+    let es;
     try {
+      // Ouvre le flux de progression réel (téléchargement → encodage → upload).
+      es = new EventSource(
+        `${API_BASE}/api/editor/progress/${jobId}?pwd=${encodeURIComponent(token)}`
+      );
+      es.onmessage = (e) => {
+        try {
+          const { percent, status } = JSON.parse(e.data);
+          if (typeof percent === 'number') setExportProgress(percent);
+          if (status) setExportPhase(status);
+        } catch { /* ignore */ }
+      };
+      es.onerror = () => { try { es.close(); } catch { /* ignore */ } };
+
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-App-Password': localStorage.getItem('app-password') || '',
+          'X-App-Password': token,
         },
         credentials: 'include',
         body: JSON.stringify({
+          jobId,
           clips: timelineClips.map(clip => ({
             filename: clip.filename,
             inPoint: clip.inPoint,
@@ -206,16 +229,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         throw new Error(data.errors?.[0]?.msg || data.message || 'Erreur lors du montage vidéo');
       }
 
-      // exportUrl = URL R2 absolue (prod) ou chemin relatif (dev).
       const exportUrl = /^https?:\/\//.test(data.exportUrl)
         ? data.exportUrl
         : `${API_BASE}${data.exportUrl}`;
+      setExportProgress(100);
+      setExportPhase('done');
       setGeneratedVideoUrl(exportUrl);
       addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
     } catch (err) {
       console.error(err);
       addToast(err.message, 'error', 5000);
     } finally {
+      try { es?.close(); } catch { /* ignore */ }
       setIsGeneratingVideo(false);
     }
   };
@@ -732,6 +757,28 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </div>
             )}
             
+            {/* EXPORT PROGRESS (réel : download → encodage → upload) */}
+            {isGeneratingVideo && (
+              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium text-[color:var(--ink)]">
+                    {exportPhase === 'downloading' && 'Récupération des rushes…'}
+                    {exportPhase === 'encoding' && 'Encodage du montage…'}
+                    {exportPhase === 'uploading' && 'Finalisation…'}
+                    {(exportPhase === '' || exportPhase === 'pending') && 'Préparation…'}
+                    {exportPhase === 'done' && 'Terminé'}
+                  </span>
+                  <span className="text-[color:var(--accent-deep)] tabular-nums">{Math.round(exportProgress)}%</span>
+                </div>
+                <div className="w-full bg-[var(--paper-2)] rounded-full h-2.5">
+                  <div
+                    className="h-2.5 rounded-full bg-[color:var(--accent)] transition-all duration-300"
+                    style={{ width: `${exportProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* GENERATED VIDEO PREVIEW */}
             {generatedVideoUrl && (
               <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-4">

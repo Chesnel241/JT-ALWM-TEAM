@@ -9,6 +9,7 @@ import { uploadsDir } from '../lib/upload.js';
 import { HAS_R2, getR2ReadStream, uploadToR2, getR2PresignedUrl } from '../lib/s3.js';
 import logger from '../logger/index.js';
 import { getTemplate } from '../data/overlayTemplates.js';
+import { setProgress } from './editorProgress.js';
 
 // Enregistre le binaire ffmpeg fourni par @ffmpeg-installer (sinon
 // fluent-ffmpeg ne trouve pas ffmpeg sur Render → crash "Cannot find ffmpeg").
@@ -55,7 +56,7 @@ async function resolveClipPath(filename, workDir) {
  * Concatène et trim une liste de clips, applique les overlays.
  * Retourne { url } : URL présignée R2 (prod) ou chemin relatif (dev).
  */
-export async function concatenateVideos(clips) {
+export async function concatenateVideos(clips, jobId = null) {
   if (!clips || clips.length === 0) {
     throw new Error('Aucune vidéo fournie pour le montage.');
   }
@@ -72,13 +73,18 @@ export async function concatenateVideos(clips) {
   const outputPath = path.join(workDir, outputFilename);
 
   try {
-    // Télécharge/résout tous les clips AVANT de lancer ffmpeg.
+    // Phase 1 (0→20%) : téléchargement/résolution des clips.
     const localPaths = [];
-    for (const clip of normalizedClips) {
-      localPaths.push(await resolveClipPath(clip.filename, workDir));
+    for (let i = 0; i < normalizedClips.length; i++) {
+      localPaths.push(await resolveClipPath(normalizedClips[i].filename, workDir));
+      setProgress(jobId, ((i + 1) / normalizedClips.length) * 20, 'downloading');
     }
 
-    await runFfmpeg(normalizedClips, localPaths, outputPath);
+    // Phase 2 (20→90%) : encodage ffmpeg.
+    await runFfmpeg(normalizedClips, localPaths, outputPath, (pct) => {
+      setProgress(jobId, 20 + (pct / 100) * 70, 'encoding');
+    });
+    setProgress(jobId, 90, 'uploading');
 
     // Mode R2 : push le rendu sur R2 + URL présignée 24h.
     if (HAS_R2) {
@@ -101,7 +107,7 @@ export async function concatenateVideos(clips) {
 /**
  * Lance ffmpeg : trim + scale/letterbox + overlays + concat.
  */
-function runFfmpeg(normalizedClips, localPaths, outputPath) {
+function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
   return new Promise((resolve, reject) => {
     const command = ffmpeg();
     const filterGraph = [];
@@ -184,7 +190,12 @@ function runFfmpeg(normalizedClips, localPaths, outputPath) {
         '-movflags +faststart',
       ])
       .on('start', (cmd) => logger.info('Démarrage de la concaténation vidéo', { command: cmd }))
-      .on('progress', (p) => logger.debug("Progression de l'export...", { percent: p.percent }))
+      .on('progress', (p) => {
+        logger.debug("Progression de l'export...", { percent: p.percent });
+        if (typeof onProgress === 'function' && p.percent != null) {
+          onProgress(Math.max(0, Math.min(100, p.percent)));
+        }
+      })
       .on('end', () => {
         logger.info('Concaténation vidéo terminée avec succès');
         resolve();
