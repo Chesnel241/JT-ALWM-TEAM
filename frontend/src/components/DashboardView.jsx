@@ -9,6 +9,7 @@ import SkeletonCard from './SkeletonCard.jsx';
 import AIChecklist from './AIChecklist.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import AdminUploadDialog from './AdminUploadDialog.jsx';
+import Timeline from './editor/Timeline.jsx';
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
   const [content, setContent] = useState('');
@@ -147,6 +148,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
+  // Editor State
+  const [timelineClips, setTimelineClips] = useState([]);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
+
   useEffect(() => {
     if (!deleteDialogOpen && !feedbackDialogOpen && !downloadDialogOpen) {
       setAdminPassword('');
@@ -156,6 +162,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   useEffect(() => {
     if (!selectedWeek) return;
     setLoading(true);
+    // Reset editor state on week change
+    setTimelineClips([]);
+    setGeneratedVideoUrl(null);
+    
     api.getDashboard(selectedWeek)
       .then(setDashboard)
       .catch((err) => {
@@ -164,6 +174,37 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       })
       .finally(() => setLoading(false));
   }, [selectedWeek, addToast, t.uploader.errorPrefix]);
+
+  const handleGenerateVideo = async () => {
+    if (timelineClips.length === 0) return;
+    setIsGeneratingVideo(true);
+    setGeneratedVideoUrl(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/editor/concat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify({
+          videoFilenames: timelineClips.map(clip => clip.filename)
+        })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.errors?.[0]?.msg || data.message || 'Erreur lors du montage vidéo');
+      }
+      
+      setGeneratedVideoUrl(`${API_BASE}${data.exportUrl}`);
+      addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
+    } catch (err) {
+      console.error(err);
+      addToast(err.message, 'error', 5000);
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
 
   const openDeleteDialog = (countryId, fileId) => {
     const file = dashboard[countryId]?.find(f => f.id === fileId);
@@ -412,13 +453,26 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         </div>
         
         {/* Footer Meta */}
-        <div className="px-1 mt-1">
+        <div className="px-1 mt-1 flex flex-col gap-1">
           <div className="text-[13px] font-semibold text-[color:var(--ink)] truncate w-full" title={file.name}>
             {file.name}
           </div>
-          <div className="text-[10px] text-[color:var(--muted)] mt-0.5 truncate" title={file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}>
+          <div className="text-[10px] text-[color:var(--muted)] truncate" title={file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}>
             {file.uploadedAt ? formatRelative(file.uploadedAt, lang) : ''}
           </div>
+          {isVideo && (
+            <button
+              onClick={() => {
+                if (!timelineClips.some(c => c.id === file.id)) {
+                  setTimelineClips([...timelineClips, file]);
+                  addToast('Ajouté à la timeline', 'success', 2000);
+                }
+              }}
+              className="mt-1 w-full text-xs py-1 rounded bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-transparent transition-colors shadow-sm"
+            >
+              + Ajouter à la Timeline
+            </button>
+          )}
         </div>
       </div>
     );
@@ -668,7 +722,39 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 })()}
               </div>
             )}
+            
+            {/* GENERATED VIDEO PREVIEW */}
+            {generatedVideoUrl && (
+              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+                <h3 className="text-lg font-bold text-[color:var(--ink)] mb-3 flex items-center gap-2">
+                  <CheckCircle className="text-[var(--accent)]" /> Vidéo Assemblée
+                </h3>
+                <video 
+                  src={generatedVideoUrl} 
+                  controls 
+                  className="w-full max-h-[400px] bg-black rounded-xl"
+                />
+                <div className="mt-4 flex justify-end">
+                  <a 
+                    href={generatedVideoUrl} 
+                    download={`Assemblage_JT_${selectedWeek}.mp4`}
+                    className="btn btn-primary flex items-center gap-2"
+                  >
+                    <Download size={18} /> Télécharger l'export (MP4)
+                  </a>
+                </div>
+              </div>
+            )}
+
           </div>
+
+          {/* TIMELINE (Éditeur Vidéo) */}
+          <Timeline 
+            clips={timelineClips} 
+            setClips={setTimelineClips} 
+            onGenerate={handleGenerateVideo}
+            isGenerating={isGeneratingVideo}
+          />
         </main>
       </div>
 

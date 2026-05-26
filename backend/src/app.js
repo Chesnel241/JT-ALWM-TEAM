@@ -13,6 +13,7 @@ import deliveriesRouter from './routes/deliveries.js';
 import notificationsRouter from './routes/notifications.js';
 import analyticsRouter from './routes/analytics.js';
 import authRouter from './routes/auth.js';
+import editorRouter from './routes/editor.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
 import { HAS_R2, getR2PresignedUrl, checkR2Exists } from './lib/s3.js';
 import { requireAuth } from './middleware/auth.js';
@@ -134,6 +135,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);
   app.use('/api/deliveries', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), deliveriesRouter);
+  app.use('/api/editor', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), editorRouter);
 
   app.use(notFoundMiddleware);
   if (enableMonitoring) {

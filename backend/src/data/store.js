@@ -405,6 +405,30 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
     }
   }
 
+  // 6. Cleanup Editor Exports (older than 48h)
+  try {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const exportsDir = path.join(uploadsDir, 'exports');
+    if (existsSync(exportsDir)) {
+      const exportFiles = await fs.readdir(exportsDir);
+      const fortyEightHoursAgo = now.getTime() - (48 * 60 * 60 * 1000);
+      
+      for (const file of exportFiles) {
+        if (file === '.gitkeep') continue;
+        const filePath = path.join(exportsDir, file);
+        const stats = await fs.stat(filePath);
+        if (stats.mtime.getTime() < fortyEightHoursAgo) {
+          await fs.unlink(filePath);
+          logger.info(`Deleted expired export file: ${file}`);
+        }
+      }
+    }
+  } catch (err) {
+    logger.error('Error during exports cleanup', { error: err.message });
+    details.errors.push({ phase: 'exports_cleanup', error: err.message });
+  }
+
   if (removedCount > 0 || removedFromDb > 0) {
     try {
       persistDb();
