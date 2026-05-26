@@ -135,11 +135,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // Nouveaux états pour le mot de passe admin (sécurisation)
   const [adminPassword, setAdminPassword] = useState('');
 
-  useEffect(() => {
-    if (!deleteDialogOpen && !feedbackDialogOpen && !downloadDialogOpen) {
-      setAdminPassword('');
-    }
-  }, [deleteDialogOpen, feedbackDialogOpen, downloadDialogOpen]);
 
   // Download State
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
@@ -151,6 +146,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [feedbackStatus, setFeedbackStatus] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+  useEffect(() => {
+    if (!deleteDialogOpen && !feedbackDialogOpen && !downloadDialogOpen) {
+      setAdminPassword('');
+    }
+  }, [deleteDialogOpen, feedbackDialogOpen, downloadDialogOpen]);
 
   useEffect(() => {
     if (!selectedWeek) return;
