@@ -1,4 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg';
+import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,8 +9,12 @@ import logger from '../logger/index.js';
 import { getTemplate } from '../data/overlayTemplates.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Use bundled ffmpeg binary — works locally and on Render without system install
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+logger.info(`FFmpeg binary path: ${ffmpegInstaller.path}`);
+
 // Bundled font — used for all drawtext overlays.
-// On Linux (Render) the backend root is process.cwd().
 const FONT_PATH = path.join(__dirname, '../../fonts/Inter.ttf')
   .replace(/\\/g, '/'); // FFmpeg always wants forward slashes
 
