@@ -8,3 +8,10 @@ logs/
 coverage/
 .DS_Store
 backend/src/data/store.json
+
+# Junk/temp
+test_run_ffmpeg.js
+test_live.js
+test_req.js
+test-flags.html
+frontend/test-results/
