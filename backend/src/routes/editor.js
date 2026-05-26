@@ -59,13 +59,18 @@ router.post(
 
       logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId });
 
-      const { url } = await concatenateVideos(clips, jobId);
-      finishJob(jobId, 'done');
+      // Run async to prevent Render 100s timeout on HTTP request
+      concatenateVideos(clips, jobId)
+        .then(({ url }) => {
+          finishJob(jobId, 'done', url);
+        })
+        .catch((err) => {
+          logger.error('Erreur lors du montage vidéo en arrière-plan', { error: err.message });
+          finishJob(jobId, 'error');
+        });
 
-      res.status(200).json({
-        message: 'Montage terminé avec succès.',
-        // url = presigned R2 absolue (prod) ou chemin relatif /uploads/... (dev)
-        exportUrl: url,
+      res.status(202).json({
+        message: 'Montage démarré avec succès en arrière-plan.',
       });
     } catch (err) {
       logger.error('Erreur lors du montage vidéo via /editor/concat', { error: err.message });

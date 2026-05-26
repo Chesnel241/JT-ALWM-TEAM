@@ -26,12 +26,12 @@ export function setProgress(jobId, percent, status = 'processing') {
   }
 }
 
-export function finishJob(jobId, status = 'done') {
+export function finishJob(jobId, status = 'done', url = null) {
   if (!jobId) return;
   const job = ensure(jobId);
   job.percent = status === 'done' ? 100 : job.percent;
   job.status = status;
-  const payload = `data: ${JSON.stringify({ percent: job.percent, status })}\n\n`;
+  const payload = `data: ${JSON.stringify({ percent: job.percent, status, url })}\n\n`;
   for (const res of job.listeners) {
     try { res.write(payload); res.end(); } catch { /* ignore */ }
   }

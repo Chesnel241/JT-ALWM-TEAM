@@ -207,10 +207,27 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       );
       es.onmessage = (e) => {
         try {
-          const { percent, status } = JSON.parse(e.data);
+          const { percent, status, url } = JSON.parse(e.data);
           if (typeof percent === 'number') setExportProgress(percent);
           if (status) setExportPhase(status);
-        } catch { /* ignore */ }
+
+          if (status === 'done' && url) {
+            const finalUrl = /^https?:\/\//.test(url) ? url : `${API_BASE}${url}`;
+            setExportProgress(100);
+            setExportPhase('done');
+            setGeneratedVideoUrl(finalUrl);
+            addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
+            setIsGeneratingVideo(false);
+            es.close();
+          } else if (status === 'error') {
+            throw new Error('Erreur serveur lors du montage');
+          }
+        } catch (err) {
+          console.error(err);
+          addToast(err.message, 'error', 5000);
+          setIsGeneratingVideo(false);
+          es.close();
+        }
       };
       es.onerror = () => { try { es.close(); } catch { /* ignore */ } };
 
@@ -237,19 +254,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         throw new Error(data.errors?.[0]?.msg || data.message || 'Erreur lors du montage vidéo');
       }
 
-      const exportUrl = /^https?:\/\//.test(data.exportUrl)
-        ? data.exportUrl
-        : `${API_BASE}${data.exportUrl}`;
-      setExportProgress(100);
-      setExportPhase('done');
-      setGeneratedVideoUrl(exportUrl);
-      addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
+      // La vidéo se génère en arrière-plan. Le SSE (EventSource) s'occupera 
+      // de mettre à jour l'UI et de fermer la connexion.
     } catch (err) {
       console.error(err);
       addToast(err.message, 'error', 5000);
-    } finally {
-      try { es?.close(); } catch { /* ignore */ }
       setIsGeneratingVideo(false);
+      if (es) try { es.close(); } catch { /* ignore */ }
     }
   };
 
