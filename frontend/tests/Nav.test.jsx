@@ -19,7 +19,7 @@ beforeEach(() => {
 describe('Nav', () => {
   it('renders all navigation buttons (FR by default)', () => {
     renderWith();
-    expect(screen.getByText('Espace Correspondants')).toBeInTheDocument();
+    expect(screen.getByText('Espace Reportages')).toBeInTheDocument();
     expect(screen.getByText('Espace Montage')).toBeInTheDocument();
     expect(screen.getByText('JT Prêt')).toBeInTheDocument();
   });
@@ -53,7 +53,7 @@ describe('Nav', () => {
   it('switches to English when EN is clicked', () => {
     renderWith();
     fireEvent.click(screen.getByRole('button', { name: 'EN' }));
-    expect(screen.getByText('Correspondents')).toBeInTheDocument();
+    expect(screen.getByText('Reports Space')).toBeInTheDocument();
     expect(screen.getByText('Editing Room')).toBeInTheDocument();
   });
 });
