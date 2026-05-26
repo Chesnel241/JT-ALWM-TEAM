@@ -39,7 +39,7 @@ export default function TrimModal({ file, onClose, onConfirm }) {
     }
   };
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
     if (isPlaying) {
       videoRef.current.pause();
@@ -51,7 +51,19 @@ export default function TrimModal({ file, onClose, onConfirm }) {
       videoRef.current.play();
     }
     setIsPlaying((v) => !v);
-  };
+  }, [isPlaying, outPoint, inPoint]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlay]);
+
 
   const seekTo = (t) => {
     if (videoRef.current) {

@@ -2,6 +2,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import fs from 'fs';
 import os from 'os';
+import { pipeline } from 'stream/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,13 +30,8 @@ const HAS_FONT = fs.existsSync(FONT_PATH);
 // Télécharge un fichier R2 vers un chemin local. Retourne destPath.
 async function downloadFromR2(r2Key, destPath) {
   const stream = await getR2ReadStream(r2Key);
-  await new Promise((resolve, reject) => {
-    const out = fs.createWriteStream(destPath);
-    stream.on('error', reject);
-    out.on('error', reject);
-    out.on('finish', resolve);
-    stream.pipe(out);
-  });
+  const out = fs.createWriteStream(destPath);
+  await pipeline(stream, out);
   return destPath;
 }
 
@@ -187,7 +183,8 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
         '-c:a aac',
         '-b:a 192k',
         '-movflags +faststart',
-        '-threads 1' // Memory footprint ultra minimal par clip
+        '-threads 1', // Memory footprint ultra minimal par clip
+        '-max_muxing_queue_size 1024'
       ]);
       
       command
@@ -209,7 +206,7 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
   // Phase 2 : Concaténation rapide (0 RAM, juste de la copie de flux)
   logger.info('Assemblage final avec le concat demuxer...');
   const listPath = path.join(workDir, 'list.txt');
-  const listContent = normPaths.map(p => `file '${p.replace(/'/g, "'\\''")}'`).join('\n');
+  const listContent = normPaths.map(p => `file '${p.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n');
   fs.writeFileSync(listPath, listContent);
 
   await new Promise((resolve, reject) => {
