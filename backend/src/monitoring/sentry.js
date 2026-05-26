@@ -10,24 +10,25 @@ export function initSentry(app) {
     return;
   }
 
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV || 'development',
-    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-    integrations: [
-      new Sentry.Integrations.Http({ tracing: true }),
-      new Sentry.Integrations.OnUncaughtException(),
-      new Sentry.Integrations.OnUnhandledRejection(),
-    ],
-  });
+  try {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV || 'development',
+      tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    });
 
-  // Sentry request handler middleware (should be early)
-  app.use(Sentry.Handlers.requestHandler());
-
-  // Sentry tracing middleware
-  app.use(Sentry.Handlers.tracingHandler());
-
-  console.log('✅ Sentry initialized');
+    if (Sentry.setupExpressErrorHandler) {
+      // Sentry v8+
+      Sentry.setupExpressErrorHandler(app);
+    } else if (Sentry.Handlers) {
+      // Sentry v7
+      app.use(Sentry.Handlers.requestHandler());
+      app.use(Sentry.Handlers.tracingHandler());
+    }
+    console.log('✅ Sentry initialized');
+  } catch (err) {
+    console.error('⚠️ Sentry init failed:', err.message);
+  }
 }
 
 /**
@@ -61,7 +62,10 @@ export function captureMessage(message, level = 'info', context = {}) {
  * Get Sentry error handler middleware for Express
  */
 export function getSentryErrorHandler() {
-  return Sentry.Handlers.errorHandler();
+  if (Sentry.Handlers && Sentry.Handlers.errorHandler) {
+    return Sentry.Handlers.errorHandler();
+  }
+  return (err, req, res, next) => next(err);
 }
 
 export default { initSentry, captureException, captureMessage, getSentryErrorHandler };
