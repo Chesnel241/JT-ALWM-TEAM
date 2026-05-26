@@ -63,9 +63,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const handleFiles = (filesList, reportageName) => {
     Array.from(filesList).forEach((file) => {
       const tempId = Math.random().toString(36).slice(2);
+      const isVideo = /\.(mp4|mov|webm)$/i.test(file.name);
       setUploading((prev) => [
         ...prev,
-        { id: tempId, name: file.name, progress: 0, status: 'uploading', reportage: reportageName },
+        { id: tempId, name: file.name, progress: 0, status: 'uploading', phase: 'uploading', isVideo, reportage: reportageName },
       ]);
 
       api
@@ -78,11 +79,21 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               )
             );
           },
+          // Octets envoyés → serveur compresse/traite. Message clair.
+          onPhase: (phase) => {
+            setUploading((prev) =>
+              prev.map((f) =>
+                f.id === tempId
+                  ? { ...f, phase, progress: phase === 'processing' ? 99 : f.progress }
+                  : f
+              )
+            );
+          },
         })
         .then((result) => {
           setUploading((prev) =>
             prev.map((f) =>
-              f.id === tempId ? { ...f, progress: 100, status: 'completed' } : f
+              f.id === tempId ? { ...f, progress: 100, status: 'completed', phase: 'done' } : f
             )
           );
           setUploads((prev) => [...prev, result]);
@@ -351,20 +362,24 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                     <div className="space-y-4">
                       {repUploading.map((f) => (
                         <div key={f.id} className="bg-[var(--paper)] p-3 rounded-2xl border border-[var(--border)]">
-                          <div className="flex justify-between text-sm mb-2">
+                          <div className="flex justify-between text-sm mb-2 gap-2">
                             <span className="font-medium text-[color:var(--ink)] truncate pr-4">{f.name}</span>
                             {f.status === 'completed' && (
-                              <span className="text-[var(--accent)] flex items-center gap-1">
-                                <CheckCircle size={14} /> {t.uploader.done}
+                              <span className="text-[var(--accent)] flex items-center gap-1 shrink-0">
+                                <CheckCircle size={14} /> {t.uploader.phaseDone}
                               </span>
                             )}
                             {f.status === 'error' && (
-                              <span className="text-[var(--signal)] flex items-center gap-1">
+                              <span className="text-[var(--signal)] flex items-center gap-1 shrink-0">
                                 <AlertCircle size={14} /> {f.error}
                               </span>
                             )}
                             {f.status === 'uploading' && (
-                              <span className="text-[color:var(--accent-deep)]">{Math.round(f.progress)}%</span>
+                              <span className="text-[color:var(--accent-deep)] shrink-0 text-xs sm:text-sm">
+                                {f.phase === 'processing'
+                                  ? (f.isVideo ? t.uploader.phaseCompressing : t.uploader.phaseProcessing)
+                                  : `${t.uploader.phaseUploading} ${Math.round(f.progress)}%`}
+                              </span>
                             )}
                           </div>
                           <div className="w-full bg-[var(--paper-2)] rounded-full h-2">
@@ -375,7 +390,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                                   : f.status === 'error'
                                   ? 'bg-[var(--signal)]'
                                   : 'bg-[color:var(--accent)]'
-                              }`}
+                              } ${f.status === 'uploading' && f.phase === 'processing' ? 'animate-pulse' : ''}`}
                               style={{ width: `${f.progress}%` }}
                             />
                           </div>
