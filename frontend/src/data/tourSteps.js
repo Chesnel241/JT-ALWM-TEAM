@@ -10,26 +10,31 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourHome.welcome,
       placement: 'center',
       disableBeacon: true,
+      disableBeacon: true,
     },
     {
       target: '#tour-country-list',
       content: t.aiAssistant.tourHome.countryList,
-      placement: 'top',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-add-country',
       content: t.aiAssistant.tourHome.addCountry,
-      placement: 'bottom',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-nav-editing',
       content: t.aiAssistant.tourHome.navEditing,
-      placement: 'bottom',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-nav-delivery',
       content: t.aiAssistant.tourHome.navDelivery,
-      placement: 'bottom',
+      placement: 'auto',
+      disableBeacon: true,
     }
   ],
   uploader: [
@@ -38,31 +43,37 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourUploader.welcome,
       placement: 'center',
       disableBeacon: true,
+      disableBeacon: true,
     },
     {
       target: '#tour-countdown',
       content: t.aiAssistant.tourUploader.countdown,
-      placement: 'right',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-week-selector',
       content: t.aiAssistant.tourUploader.weekSelector,
-      placement: 'bottom',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-dropzone',
       content: t.aiAssistant.tourUploader.dropzone,
-      placement: 'top',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-script-box',
       content: t.aiAssistant.tourUploader.scriptBox,
-      placement: 'top',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-upload-list',
       content: t.aiAssistant.tourUploader.uploadList,
-      placement: 'left',
+      placement: 'auto',
+      disableBeacon: true,
     }
   ],
   dashboard: [
@@ -71,16 +82,19 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourDashboard.welcome,
       placement: 'center',
       disableBeacon: true,
+      disableBeacon: true,
     },
     {
       target: '#tour-dashboard-header',
       content: t.aiAssistant.tourDashboard.header,
-      placement: 'bottom',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-editing-grid',
       content: t.aiAssistant.tourDashboard.grid,
-      placement: 'top',
+      placement: 'auto',
+      disableBeacon: true,
     }
   ],
   delivery: [
@@ -89,26 +103,31 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourDelivery.welcome,
       placement: 'center',
       disableBeacon: true,
+      disableBeacon: true,
     },
     {
       target: '#delivery-week',
       content: t.aiAssistant.tourDelivery.weekSelector,
-      placement: 'bottom',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-delivery-dropzone',
       content: t.aiAssistant.tourDelivery.dropzone,
-      placement: 'top',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-delivery-list',
       content: t.aiAssistant.tourDelivery.list,
-      placement: 'left',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-delivery-whatsapp',
       content: t.aiAssistant.tourDelivery.whatsapp,
-      placement: 'top',
+      placement: 'auto',
+      disableBeacon: true,
     }
   ],
   voixoff: [
@@ -117,16 +136,19 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourVoixOff.welcome,
       placement: 'center',
       disableBeacon: true,
+      disableBeacon: true,
     },
     {
       target: '#tour-voixoff-country',
       content: t.aiAssistant.tourVoixOff.country,
-      placement: 'bottom',
+      placement: 'auto',
+      disableBeacon: true,
     },
     {
       target: '#tour-voixoff-studio',
       content: t.aiAssistant.tourVoixOff.studio,
-      placement: 'left',
+      placement: 'auto',
+      disableBeacon: true,
     }
   ]
 });

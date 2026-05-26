@@ -28,14 +28,11 @@ export default function AIAssistant({ currentPage }) {
 
   const handleJoyrideCallback = (data) => {
     const { status, type, index, action } = data;
+    console.error(`JOYRIDE CALLBACK: type=${type}, status=${status}, action=${action}, index=${index}`);
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
     
-    // Update step index as the user navigates
-    if (type === 'step:after' || type === 'error:target_not_found') {
-      setStepIndex(index + (action === 'prev' ? -1 : 1));
-    }
     // Handle tour finish
-    else if (finishedStatuses.includes(status)) {
+    if (finishedStatuses.includes(status)) {
       setRunTour(false);
       setStepIndex(0);
     }
@@ -62,15 +59,15 @@ export default function AIAssistant({ currentPage }) {
   return (
     <>
       {/* react-joyride Tour Component */}
-      {Joyride && (
+      {Joyride && runTour && (
         <Joyride
           steps={steps}
           run={runTour}
-          stepIndex={stepIndex}
           continuous={true}
           showProgress={true}
           showSkipButton={true}
           callback={handleJoyrideCallback}
+          disableScrolling={true}
           styles={{
             options: {
               primaryColor: 'var(--ink)',

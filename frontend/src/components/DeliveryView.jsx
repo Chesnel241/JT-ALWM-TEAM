@@ -307,12 +307,12 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
           )}
 
           {/* WhatsApp Notifier Buttons */}
-          {deliveries.length > 0 && subscriptions.length > 0 && (
-            <div id="tour-delivery-whatsapp" className="mt-8 pt-6 border-t border-[var(--border)]">
-              <h4 className="font-semibold text-sm text-[color:var(--ink)] mb-3 flex items-center gap-2">
-                <MessageCircle size={16} className="text-[#25D366]" />
-                {t.delivery.notifyAll ? t.delivery.notifyAll(subscriptions.length) : `Notifier ${subscriptions.length} journaliste(s)`}
-              </h4>
+          <div id="tour-delivery-whatsapp" className="mt-8 pt-6 border-t border-[var(--border)]">
+            <h4 className="font-semibold text-sm text-[color:var(--ink)] mb-3 flex items-center gap-2">
+              <MessageCircle size={16} className="text-[#25D366]" />
+              {t.delivery.notifyAll ? t.delivery.notifyAll(subscriptions.length || 0) : `Notifier ${subscriptions.length || 0} journaliste(s)`}
+            </h4>
+            {deliveries.length > 0 && subscriptions.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {subscriptions.map((sub, idx) => (
                   <a
@@ -327,8 +327,10 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                   </a>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-xs text-[color:var(--muted)]">Les boutons de notification apparaîtront ici lorsqu'un reportage sera publié et que des journalistes seront abonnés.</p>
+            )}
+          </div>
         </div>
       </div>
 

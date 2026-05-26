@@ -7,7 +7,7 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
   const { t } = useI18n();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navButtons = (
+  const renderNavButtons = (isMobile) => (
     <>
       <LanguageSwitcher />
       <button
@@ -26,7 +26,7 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
         {t.nav.correspondents}
       </button>
       <button
-        id="tour-nav-editing"
+        id={!isMobile ? "tour-nav-editing" : undefined}
         onClick={() => {
           setCurrentView('dashboard');
           setIsMobileMenuOpen(false);
@@ -64,7 +64,7 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
         Voix Off
       </button>
       <button
-        id="tour-nav-delivery"
+        id={!isMobile ? "tour-nav-delivery" : undefined}
         onClick={() => {
           setCurrentView('delivery');
           setIsMobileMenuOpen(false);
@@ -112,14 +112,14 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
 
         {/* Desktop nav */}
         <div className="hidden sm:flex flex-wrap items-center gap-2 sm:gap-3">
-          {navButtons}
+          {renderNavButtons(false)}
         </div>
       </div>
 
       {/* Mobile nav */}
       {isMobileMenuOpen && (
         <div className="sm:hidden border-t border-[var(--border)] bg-[var(--paper)] px-4 py-4 flex flex-col gap-3">
-          {navButtons}
+          {renderNavButtons(true)}
         </div>
       )}
     </nav>

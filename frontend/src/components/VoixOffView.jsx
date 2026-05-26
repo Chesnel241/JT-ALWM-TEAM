@@ -254,8 +254,14 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
       </div>
 
       {/* Form & Studio Grid */}
-      {selectedCountry && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
+        {!selectedCountry && (
+          <div className="absolute inset-0 z-10 bg-[var(--app-bg)]/60 backdrop-blur-sm flex items-center justify-center rounded-3xl">
+            <p className="text-lg font-medium text-[color:var(--ink)] bg-[var(--paper)] px-6 py-3 rounded-full shadow-lg border border-[var(--border)]">
+              Veuillez sélectionner un pays pour activer le studio
+            </p>
+          </div>
+        )}
           
           {/* Left Column: Form */}
           <div className="space-y-4">
@@ -366,9 +372,8 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
               )}
             </div>
 
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
