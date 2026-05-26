@@ -67,4 +67,15 @@ router.get('/check', (req, res) => {
   return res.json({ authenticated: true });
 });
 
+// GET /api/auth/check-admin — vérifier si le mot de passe admin est valide
+router.get('/check-admin', (req, res) => {
+  const token = req.headers['x-admin-password'];
+  if (!token) return res.status(401).json({ authenticated: false });
+  
+  if (!process.env.ADMIN_PASSWORD) return res.json({ authenticated: true });
+  if (!safeEqual(token, process.env.ADMIN_PASSWORD)) return res.status(401).json({ authenticated: false });
+  
+  return res.json({ authenticated: true });
+});
+
 export default router;

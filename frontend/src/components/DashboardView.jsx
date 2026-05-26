@@ -135,10 +135,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [adminUploadOpen, setAdminUploadOpen] = useState(false);
   const [isUploadingAdmin, setIsUploadingAdmin] = useState(false);
 
-  // Nouveaux états pour le mot de passe admin (sécurisation)
-  const [adminPassword, setAdminPassword] = useState('');
+  const [authenticatedAdminPassword, setAuthenticatedAdminPassword] = useState('');
+  const [isAuthenticatedAdmin, setIsAuthenticatedAdmin] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authError, setAuthError] = useState('');
 
-
+  // Delivery Upload State
+  const [deliveryUploading, setDeliveryUploading] = useState([]);
+  const [deliveryDragActive, setDeliveryDragActive] = useState(false);
+  const [deliveries, setDeliveries] = useState([]);
   // Download State
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [fileToDownload, setFileToDownload] = useState(null);
@@ -159,11 +164,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
   const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
 
-  useEffect(() => {
-    if (!deleteDialogOpen && !feedbackDialogOpen && !downloadDialogOpen) {
-      setAdminPassword('');
-    }
-  }, [deleteDialogOpen, feedbackDialogOpen, downloadDialogOpen]);
+  // Supression de l'effacement du mot de passe (le mot de passe est gardé en mémoire pour la session)
 
   // Reset editor state ONLY on week change
   useEffect(() => {
@@ -176,9 +177,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       .then(setDashboard)
       .catch((err) => {
         console.error(err);
-        addToast(err.message || t.uploader.errorPrefix, 'error', 3000);
+        addToast(err.message || t.uploader.errorPrefix, 'error');
       })
       .finally(() => setLoading(false));
+
+    api.getDeliveries(selectedWeek)
+      .then(setDeliveries)
+      .catch(console.error);
   }, [selectedWeek, addToast, t.uploader.errorPrefix]);
 
   // Refresh dashboard quietly when becoming active
@@ -186,6 +191,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (!selectedWeek || !isActive) return;
     api.getDashboard(selectedWeek)
       .then(setDashboard)
+      .catch(console.error);
+    api.getDeliveries(selectedWeek)
+      .then(setDeliveries)
       .catch(console.error);
   }, [isActive, selectedWeek]);
 
@@ -264,6 +272,64 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }
   };
 
+  const handleDeliveryFiles = (filesList) => {
+    Array.from(filesList).forEach((file) => {
+      const tempId = Math.random().toString(36).slice(2);
+      setDeliveryUploading((prev) => [
+        ...prev,
+        { id: tempId, name: file.name, progress: 0, status: 'uploading', phase: 'uploading' },
+      ]);
+
+      api.uploadDelivery(selectedWeek, file, {
+        onProgress: (pct) =>
+          setDeliveryUploading((prev) =>
+            prev.map((f) => (f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f))
+          ),
+        onPhase: (phase) =>
+          setDeliveryUploading((prev) =>
+            prev.map((f) => (f.id === tempId ? { ...f, phase, progress: phase === 'processing' ? 99 : f.progress } : f))
+          ),
+      })
+        .then((result) => {
+          setDeliveryUploading((prev) =>
+            prev.map((f) => (f.id === tempId ? { ...f, progress: 100, status: 'completed', phase: 'done' } : f))
+          );
+          setDeliveries((prev) => [...prev, result]);
+          addToast(t.delivery.uploadSuccess(result.name), 'success');
+        })
+        .catch((err) => {
+          setDeliveryUploading((prev) =>
+            prev.map((f) => (f.id === tempId ? { ...f, progress: 0, status: 'error', error: err.message } : f))
+          );
+          addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error');
+        });
+    });
+  };
+
+  const handleDeliveryDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeliveryDragActive(e.type === 'dragenter' || e.type === 'dragover');
+  };
+
+  const handleDeliveryDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeliveryDragActive(false);
+    if (e.dataTransfer.files?.[0]) handleDeliveryFiles(e.dataTransfer.files);
+  };
+  
+  const handleDeleteDelivery = async (fileId, fileName) => {
+    if(!window.confirm(`Supprimer ${fileName} ?`)) return;
+    try {
+      await api.deleteDelivery(selectedWeek, fileId);
+      setDeliveries((prev) => prev.filter((f) => f.id !== fileId));
+      addToast(t.delivery.deleteSuccess(fileName), 'success');
+    } catch (err) {
+      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error');
+    }
+  };
+
   const openDeleteDialog = (countryId, fileId) => {
     const file = dashboard[countryId]?.find(f => f.id === fileId);
     if (file) {
@@ -280,35 +346,39 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const handleConfirmDownload = () => {
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
-    const url = isArchive 
-      ? `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}&pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`
-      : `${API_BASE}/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(adminPassword)}`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileToDownload.name || fileToDownload.filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+       let dlUrl = `${API_BASE}/uploads/${fileToDownload.filename}`;
+    if (selectedBin === 'mj') {
+      dlUrl = `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}&pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`;
+    } else {
+      dlUrl = `${API_BASE}/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}`;
+    }
+    
+    // Déclenche le téléchargement
+    const link = document.createElement('a');
+    link.href = dlUrl;
+    link.download = fileToDownload.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
     setDownloadDialogOpen(false);
     setFileToDownload(null);
-    setAdminPassword('');
   };
 
   const handleConfirmDelete = async () => {
     if (!fileToDelete) return;
     setIsDeleting(true);
     try {
-      await api.deleteFile(selectedWeek, fileToDelete.countryId, fileToDelete.fileId, adminPassword);
+      await api.deleteFile(selectedWeek, fileToDelete.countryId, fileToDelete.fileId, authenticatedAdminPassword);
       setDashboard((prev) => ({
         ...prev,
         [fileToDelete.countryId]: prev[fileToDelete.countryId].filter((f) => f.id !== fileToDelete.fileId),
       }));
-      addToast(t.uploader.deleted(fileToDelete.fileName), 'success', 3000);
+      addToast(t.dashboard.deleted(fileToDelete.name), 'success');
       setDeleteDialogOpen(false);
       setFileToDelete(null);
-      setAdminPassword('');
     } catch (err) {
-      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
+      addToast(`${t.dashboard.deleteError} : ${err.message}`, 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -328,20 +398,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (!fileToFeedback) return;
     setIsSubmittingFeedback(true);
     try {
-      await api.updateFileStatus(selectedWeek, fileToFeedback.fileId, feedbackStatus, feedbackText, adminPassword);
-      setDashboard((prev) => ({
-        ...prev,
-        [fileToFeedback.countryId]: prev[fileToFeedback.countryId].map((f) => 
-          f.id === fileToFeedback.fileId ? { ...f, status: feedbackStatus, feedback: feedbackText } : f
-        ),
-      }));
-      addToast(`Statut mis à jour`, 'success', 3000);
+      await api.updateFileStatus(selectedWeek, fileToFeedback.fileId, feedbackStatus, feedbackText, authenticatedAdminPassword);
+      setDashboard(prev => {
+        const binFiles = prev[selectedBin] || [];
+        const updatedFiles = binFiles.map(f => {
+          if (f.id === fileToFeedback.fileId) {
+            return { ...f, status: feedbackStatus, adminFeedback: feedbackText };
+          }
+          return f;
+        });
+        return { ...prev, [selectedBin]: updatedFiles };
+      });
+      addToast('Statut mis à jour avec succès', 'success');
       setFeedbackDialogOpen(false);
       setFileToFeedback(null);
+      setFeedbackStatus('');
       setFeedbackText('');
-      setAdminPassword('');
     } catch (err) {
-      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
+      console.error(err);
+      addToast(`Erreur : ${err.message}`, 'error');
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -531,6 +606,53 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     );
   };
 
+  const handleAdminLogin = async (e) => {
+    e.preventDefault();
+    setIsAuthenticating(true);
+    setAuthError('');
+    try {
+      const ok = await api.checkAdminPassword(authenticatedAdminPassword);
+      if (ok) {
+        setIsAuthenticatedAdmin(true);
+      } else {
+        setAuthError('Mot de passe incorrect');
+      }
+    } catch (err) {
+      setAuthError('Erreur de connexion');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  if (!isAuthenticatedAdmin) {
+    return (
+      <div className="max-w-md mx-auto mt-20 p-6 bg-[var(--paper)] rounded-2xl shadow-sm border border-[var(--border)]">
+        <h2 className="text-2xl font-bold text-center mb-6 text-[color:var(--ink)]">Espace Montage Sécurisé</h2>
+        <form onSubmit={handleAdminLogin} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[color:var(--ink)]">Mot de passe équipe montage</label>
+            <input
+              type="password"
+              className="w-full bg-[var(--paper-2)] border border-[var(--border)] rounded-lg px-4 py-2 focus:ring-2 focus:ring-[var(--accent)] text-[color:var(--ink)]"
+              value={authenticatedAdminPassword}
+              onChange={(e) => setAuthenticatedAdminPassword(e.target.value)}
+              placeholder="••••••••"
+              autoFocus
+            />
+          </div>
+          {authError && <p className="text-red-500 text-sm text-center">{authError}</p>}
+          <button
+            type="submit"
+            disabled={isAuthenticating}
+            className="w-full btn btn-primary flex justify-center py-2"
+          >
+            {isAuthenticating ? 'Vérification...' : 'Déverrouiller'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 md:h-screen min-h-screen flex flex-col">
       <div className="flex flex-col md:flex-row flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
@@ -581,6 +703,23 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 })}
               </div>
             )}
+            
+            <div className="mt-6 px-2">
+              <h3 className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider mb-2">Opérations</h3>
+              <button
+                onClick={() => setSelectedBin('delivery')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all border ${
+                  selectedBin === 'delivery'
+                    ? 'bg-[var(--accent)] text-white font-semibold border-transparent shadow-md'
+                    : 'bg-[var(--paper)] border-[var(--border)] text-[color:var(--muted)] hover:bg-[var(--paper-2)] hover:text-[color:var(--ink)]'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <UploadCloud size={16} className={selectedBin === 'delivery' ? 'opacity-70' : ''} />
+                  <span className="text-sm">Livraison JT</span>
+                </div>
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -597,9 +736,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </button>
               {selectedBin ? (
                 <>
-                  <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-8 h-8" />
+                  {selectedBin === 'delivery' ? (
+                    <UploadCloud className="w-6 h-6 text-[color:var(--accent)]" />
+                  ) : (
+                    <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-8 h-8" />
+                  )}
                   <h2 className="text-lg font-semibold text-[color:var(--ink)]">
-                    {countries.find(c => c.id === selectedBin)?.name}
+                    {selectedBin === 'delivery' ? 'Livraison JT' : countries.find(c => c.id === selectedBin)?.name || selectedBin}
                   </h2>
                 </>
               ) : (
@@ -715,6 +858,129 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <div className="h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] pb-20 pt-10">
                 <Video size={48} className="mb-4 opacity-20" />
                 <p>Sélectionnez un chutier pour voir les médias</p>
+              </div>
+            ) : selectedBin === 'delivery' ? (
+              <div className="flex flex-col gap-8 h-full pb-10">
+                <div
+                  className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center transition-colors ${
+                    deliveryDragActive
+                      ? 'border-[color:var(--accent)] bg-[var(--accent)]/10'
+                      : 'border-[var(--border)] bg-[var(--paper)] hover:border-[color:var(--accent)]'
+                  }`}
+                  onDragEnter={handleDeliveryDrag}
+                  onDragLeave={handleDeliveryDrag}
+                  onDragOver={handleDeliveryDrag}
+                  onDrop={handleDeliveryDrop}
+                >
+                  <UploadCloud className={`mx-auto h-14 w-14 mb-4 transition-transform duration-200 ${
+                    deliveryDragActive ? 'text-[color:var(--accent-deep)] scale-[1.05]' : 'text-[color:var(--muted)]'
+                  }`} />
+                  <h3 className="text-lg font-semibold text-[color:var(--ink)] mb-2">
+                    {t.delivery.dropTitle}
+                  </h3>
+                  <p className="text-[color:var(--muted)] text-sm mb-6">
+                    {t.delivery.dropHint}
+                  </p>
+                  <div className="flex gap-4 justify-center">
+                    <label className="btn btn-primary cursor-pointer">
+                      {t.delivery.browse}
+                      <input
+                        type="file"
+                        className="hidden"
+                        aria-label={t.delivery.browseAria}
+                        multiple
+                        onChange={(e) => e.target.files && handleDeliveryFiles(e.target.files)}
+                      />
+                    </label>
+                  </div>
+                </div>
+                {deliveryUploading.length > 0 && (
+                  <div className="panel p-6">
+                    <h3 className="font-semibold text-[color:var(--ink)] mb-4">{t.delivery.transfers}</h3>
+                    <div className="space-y-4">
+                      {deliveryUploading.map((f) => (
+                        <div key={f.id} className="bg-[var(--paper)] p-3 rounded-2xl border border-[var(--border)]">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="font-medium text-[color:var(--ink)] truncate pr-4">{f.name}</span>
+                            {f.status === 'completed' && (
+                              <span className="text-[var(--accent)] flex items-center gap-1">
+                                <CheckCircle size={14} /> {t.delivery.done}
+                              </span>
+                            )}
+                            {f.status === 'error' && (
+                              <span className="text-red-500 flex items-center gap-1">
+                                <AlertCircle size={14} /> {f.error}
+                              </span>
+                            )}
+                            {f.status === 'uploading' && (
+                              <span className="text-[color:var(--accent-deep)] text-xs sm:text-sm">
+                                {f.phase === 'processing'
+                                  ? t.uploader.phaseProcessing
+                                  : `${t.uploader.phaseUploading} ${Math.round(f.progress)}%`}
+                              </span>
+                            )}
+                          </div>
+                          <div className="w-full bg-[var(--paper-2)] rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                f.status === 'completed'
+                                  ? 'bg-[var(--accent)]'
+                                  : f.status === 'error'
+                                  ? 'bg-[var(--signal)]'
+                                  : 'bg-[color:var(--accent)]'
+                              }`}
+                              style={{ width: `${f.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {deliveries.length > 0 && (
+                  <div className="panel p-6">
+                    <h3 className="font-semibold text-[color:var(--ink)] mb-4">Fichiers uploadés</h3>
+                    <ul className="space-y-3">
+                      {deliveries.map((file) => (
+                        <li key={file.id} className="group bg-[var(--paper-2)] border border-[var(--border)] hover:border-[var(--accent)] rounded-xl p-3 sm:p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all">
+                          <div className="flex items-center gap-3 w-full md:w-auto">
+                            <div className={`p-2 rounded-lg bg-blue-100 text-blue-500 shrink-0`}>
+                              <Video size={20} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-semibold text-[color:var(--ink)] text-sm md:text-base truncate" title={file.name}>
+                                {file.name}
+                              </h4>
+                              <p className="text-xs text-[color:var(--muted)] flex items-center gap-1.5 mt-0.5">
+                                <span>{file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}</span>
+                                <span>•</span>
+                                <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`${API_BASE}/api/deliveries/${file.filename}`}
+                              download={file.name}
+                              className="p-1.5 md:p-2 rounded-lg text-gray-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+                              title={t.delivery.download}
+                            >
+                              <Download size={16} />
+                            </a>
+                            <button
+                              onClick={() => handleDeleteDelivery(file.id, file.name)}
+                              type="button"
+                              className="text-[color:var(--muted)] hover:text-red-500 p-1.5 rounded-lg"
+                              title={t.delivery.delete}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="mt-4 flex flex-col gap-8">
@@ -841,14 +1107,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         title={t.uploader.deleteTitle}
         message={
           <div className="mt-2 text-left">
-            <p className="text-[color:var(--muted)] mb-4">{t.uploader.deleteMsg(fileToDelete?.fileName || '')}</p>
-            <input
-              type="password"
-              placeholder="Mot de passe Administrateur"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
-            />
+            <p className="text-[color:var(--muted)] mb-4">{t.uploader.deleteMsg(fileToDelete?.name || '')}</p>
           </div>
         }
         confirmText={t.uploader.deleteConfirm}
@@ -859,7 +1118,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         onCancel={() => {
           setDeleteDialogOpen(false);
           setFileToDelete(null);
-          setAdminPassword('');
         }}
       />
 
@@ -879,13 +1137,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all min-h-[100px] mb-4"
               />
             )}
-            <input
-              type="password"
-              placeholder="Mot de passe Administrateur"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
-            />
           </div>
         }
         confirmText={feedbackStatus === 'approved' ? 'Approuver' : 'Rejeter & Notifier'}
@@ -897,42 +1148,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           setFeedbackDialogOpen(false);
           setFileToFeedback(null);
           setFeedbackText('');
-          setAdminPassword('');
         }}
       />
 
-      <ConfirmDialog
-        isOpen={downloadDialogOpen}
-        title="Télécharger ce fichier"
-        message={
-          <div className="mt-2 text-left">
-            <p className="text-[color:var(--muted)] mb-4">Entrez le mot de passe Administrateur pour télécharger "{fileToDownload?.name}".</p>
-            <input
-              type="password"
-              placeholder="Mot de passe Administrateur"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
-            />
-          </div>
-        }
-        confirmText="Télécharger"
-        cancelText={t.uploader.cancel}
-        variant="primary"
-        onConfirm={handleConfirmDownload}
-        onCancel={() => {
-          setDownloadDialogOpen(false);
-          setFileToDownload(null);
-          setAdminPassword('');
-        }}
-      />
+
       {/* Script Viewer Modal */}
       <ScriptViewerModal 
         file={viewingScript} 
         onClose={() => setViewingScript(null)}
         selectedWeek={selectedWeek}
         selectedBin={selectedBin}
-        adminPassword={localStorage.getItem('app-password')}
+        adminPassword={authenticatedAdminPassword}
       />
 
       {/* Overlay Panel */}

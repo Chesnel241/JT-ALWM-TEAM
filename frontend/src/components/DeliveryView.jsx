@@ -20,13 +20,8 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
   const { t, lang } = useI18n();
   const { addToast } = useToast();
   const [deliveries, setDeliveries] = useState([]);
-  const [uploading, setUploading] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState([]);
-  const [dragActive, setDragActive] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [fileToDelete, setFileToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!selectedWeek) return;
@@ -45,74 +40,6 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
   }, [selectedWeek, addToast, t.uploader.errorPrefix]);
 
   const whatsappMessage = t.delivery.whatsappMessage || 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme.';
-
-  const handleFiles = (filesList) => {
-    Array.from(filesList).forEach((file) => {
-      const tempId = Math.random().toString(36).slice(2);
-      setUploading((prev) => [
-        ...prev,
-        { id: tempId, name: file.name, progress: 0, status: 'uploading', phase: 'uploading' },
-      ]);
-
-      api.uploadDelivery(selectedWeek, file, {
-        onProgress: (pct) =>
-          setUploading((prev) =>
-            prev.map((f) => (f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f))
-          ),
-        onPhase: (phase) =>
-          setUploading((prev) =>
-            prev.map((f) => (f.id === tempId ? { ...f, phase, progress: phase === 'processing' ? 99 : f.progress } : f))
-          ),
-      })
-        .then((result) => {
-          setUploading((prev) =>
-            prev.map((f) => (f.id === tempId ? { ...f, progress: 100, status: 'completed', phase: 'done' } : f))
-          );
-          setDeliveries((prev) => [...prev, result]);
-          addToast(t.delivery.uploadSuccess(result.name), 'success', 3000);
-        })
-        .catch((err) => {
-          setUploading((prev) =>
-            prev.map((f) => (f.id === tempId ? { ...f, progress: 0, status: 'error', error: err.message } : f))
-          );
-          addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
-        });
-    });
-  };
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files?.[0]) handleFiles(e.dataTransfer.files);
-  };
-
-  const openDeleteDialog = (file) => {
-    setFileToDelete(file);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!fileToDelete) return;
-    setIsDeleting(true);
-    try {
-      await api.deleteDelivery(selectedWeek, fileToDelete.id);
-      setDeliveries((prev) => prev.filter((f) => f.id !== fileToDelete.id));
-      addToast(t.delivery.deleted(fileToDelete.name), 'success', 3000);
-      setDeleteDialogOpen(false);
-      setFileToDelete(null);
-    } catch (err) {
-      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   const week = weeks.find((w) => w.id === selectedWeek);
 
@@ -147,101 +74,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-8">
-        {/* Zone d'upload */}
-        <div className="space-y-6">
-          <div
-            id="tour-delivery-dropzone"
-            className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center transition-colors ${
-              dragActive
-                ? 'border-[color:var(--accent)] bg-[var(--accent)]/10'
-                : 'border-[var(--border)] bg-[var(--paper)] hover:border-[color:var(--accent)]'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            <UploadCloud className={`mx-auto h-14 w-14 mb-4 transition-transform duration-200 ${
-              dragActive ? 'text-[color:var(--accent-deep)] scale-[1.05]' : 'text-[color:var(--muted)]'
-            }`} />
-            <h3 className="text-lg font-semibold text-[color:var(--ink)] mb-2">
-              {t.delivery.dropTitle}
-            </h3>
-            <p className="text-[color:var(--muted)] text-sm mb-6">
-              {t.delivery.dropHint}
-            </p>
-            <div className="flex gap-4 justify-center">
-              <label className="btn btn-primary cursor-pointer">
-                {t.delivery.browse}
-                <input
-                  type="file"
-                  className="hidden"
-                  aria-label={t.delivery.browseAria}
-                  multiple
-                  onChange={(e) => e.target.files && handleFiles(e.target.files)}
-                />
-              </label>
-              <label className="btn btn-primary cursor-pointer">
-                {t.delivery.browseFolder}
-                <input
-                  type="file"
-                  className="hidden"
-                  aria-label={t.delivery.browseFolderAria}
-                  multiple
-                  webkitdirectory="true"
-                  directory="true"
-                  onChange={(e) => e.target.files && handleFiles(e.target.files)}
-                />
-              </label>
-            </div>
-          </div>
-
-          {uploading.length > 0 && (
-            <div className="panel p-6">
-              <h3 className="font-semibold text-[color:var(--ink)] mb-4">{t.delivery.transfers}</h3>
-              <div className="space-y-4">
-                {uploading.map((f) => (
-                  <div key={f.id} className="bg-[var(--paper)] p-3 rounded-2xl border border-[var(--border)]">
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="font-medium text-[color:var(--ink)] truncate pr-4">{f.name}</span>
-                      {f.status === 'completed' && (
-                        <span className="text-[var(--accent)] flex items-center gap-1">
-                          <CheckCircle size={14} /> {t.delivery.done}
-                        </span>
-                      )}
-                      {f.status === 'error' && (
-                        <span className="text-red-500 flex items-center gap-1">
-                          <AlertCircle size={14} /> {f.error}
-                        </span>
-                      )}
-                      {f.status === 'uploading' && (
-                        <span className="text-[color:var(--accent-deep)] text-xs sm:text-sm">
-                          {f.phase === 'processing'
-                            ? t.uploader.phaseProcessing
-                            : `${t.uploader.phaseUploading} ${Math.round(f.progress)}%`}
-                        </span>
-                      )}
-                    </div>
-                    <div className="w-full bg-[var(--paper-2)] rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          f.status === 'completed'
-                            ? 'bg-[var(--accent)]'
-                            : f.status === 'error'
-                            ? 'bg-[var(--signal)]'
-                            : 'bg-[color:var(--accent)]'
-                        }`}
-                        style={{ width: `${f.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)] gap-8">
         {/* Liste des deliveries */}
         <div id="tour-delivery-list" className="panel p-6 h-fit">
           <div className="flex items-center justify-between gap-2 mb-6">
@@ -299,14 +132,6 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                       >
                         <Download size={16} />
                       </a>
-                      <button
-                        onClick={() => openDeleteDialog(file)}
-                        type="button"
-                        className="text-[color:var(--muted)] hover:text-red-500 p-1.5 rounded-lg"
-                        title={t.delivery.delete}
-                      >
-                        <Trash2 size={16} />
-                      </button>
                     </div>
                   </li>
                 );
@@ -341,21 +166,6 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
           </div>
         </div>
       </div>
-
-      <ConfirmDialog
-        isOpen={deleteDialogOpen}
-        title={t.delivery.deleteTitle}
-        message={t.delivery.deleteMsg(fileToDelete?.name || '')}
-        confirmText={t.uploader.deleteConfirm}
-        cancelText={t.uploader.cancel}
-        variant="danger"
-        isLoading={isDeleting}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => {
-          setDeleteDialogOpen(false);
-          setFileToDelete(null);
-        }}
-      />
     </div>
   );
 }

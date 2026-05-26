@@ -41,6 +41,8 @@ export const api = {
   },
   checkAuth: () =>
     fetch(`${BASE}/auth/check`, { headers: { 'X-App-Password': localStorage.getItem('app-password') || '' } }).then((r) => r.ok),
+  checkAdminPassword: (adminPassword) =>
+    fetch(`${BASE}/auth/check-admin`, { headers: { 'X-Admin-Password': adminPassword } }).then((r) => r.ok),
 
   // === Métier ===
   getCountries: async () => {
