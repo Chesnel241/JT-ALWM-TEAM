@@ -47,7 +47,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
             <h3 className="text-lg font-semibold text-[color:var(--ink)]">{t.home.sectionTitle}</h3>
             <span className="badge bg-[var(--paper)] text-[color:var(--muted)]">{t.home.countCount(countries.length)}</span>
           </div>
-          <div className="space-y-2">
+          <div id="tour-country-list" className="space-y-2">
             {countries.map((country, index) => (
               <button
                 key={country.id}
@@ -72,6 +72,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
             ))}
 
             <button
+              id="tour-add-country"
               onClick={() => setAddOpen(true)}
               type="button"
               aria-label={t.home.addCountryAria}

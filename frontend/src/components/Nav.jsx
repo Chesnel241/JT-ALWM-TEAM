@@ -26,6 +26,7 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
         {t.nav.correspondents}
       </button>
       <button
+        id="tour-nav-editing"
         onClick={() => {
           setCurrentView('dashboard');
           setIsMobileMenuOpen(false);
@@ -63,6 +64,7 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
         Voix Off
       </button>
       <button
+        id="tour-nav-delivery"
         onClick={() => {
           setCurrentView('delivery');
           setIsMobileMenuOpen(false);

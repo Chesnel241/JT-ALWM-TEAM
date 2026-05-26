@@ -37,7 +37,7 @@ export default function CountdownTimer({ week }) {
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className={`panel p-6 sm:p-8 mb-8 flex flex-col md:flex-row items-center gap-6 sm:gap-10 transition-all ${isLate ? '!border-2 !border-red-500/50 !bg-red-50 dark:!bg-red-950/20' : 'bg-gradient-to-br from-[var(--paper)] to-[var(--paper-2)]'}`}>
+    <div id="tour-countdown" className={`panel p-6 sm:p-8 mb-8 flex flex-col md:flex-row items-center gap-6 sm:gap-10 transition-all ${isLate ? '!border-2 !border-red-500/50 !bg-red-50 dark:!bg-red-950/20' : 'bg-gradient-to-br from-[var(--paper)] to-[var(--paper-2)]'}`}>
       <div className="relative flex items-center justify-center flex-shrink-0">
         <svg className="transform -rotate-90 w-36 h-36">
           <circle

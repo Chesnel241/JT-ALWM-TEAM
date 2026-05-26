@@ -191,6 +191,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           <p className="text-sm text-[color:var(--muted)]">{t.uploader.weekSubtitle}</p>
         </div>
         <select
+          id="tour-week-selector"
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
           className="w-full sm:w-auto bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-full px-4 py-2.5 sm:py-2 font-medium"
@@ -295,6 +296,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8">
               <div className="space-y-4 sm:space-y-6">
                 <div
+                  id={i === 0 ? 'tour-dropzone' : undefined}
                   className={`relative border-2 border-dashed rounded-[1.5rem] p-6 sm:p-10 text-center transition-all ${
                     isLocked
                       ? 'border-[var(--border)] bg-[var(--paper-2)] opacity-50 cursor-not-allowed'
@@ -383,7 +385,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   </div>
                 )}
 
-                <div className="panel p-6">
+                <div id={i === 0 ? 'tour-script-box' : undefined} className="panel p-6">
                   <h3 className="font-semibold text-[color:var(--ink)] mb-3 flex items-center gap-2">
                     <FileText size={18} className="text-[color:var(--signal)]" />
                     {t.uploader.scriptTitle}
@@ -416,7 +418,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 </div>
               </div>
 
-              <div className="panel p-6 h-fit bg-[var(--paper)]">
+              <div id={i === 0 ? 'tour-upload-list' : undefined} className="panel p-6 h-fit bg-[var(--paper)]">
                 <div className="flex items-center gap-2 mb-6">
                   <Folder className="text-[color:var(--muted)]" />
                   <h3 className="font-semibold text-[color:var(--ink)]">

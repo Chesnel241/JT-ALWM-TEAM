@@ -4,6 +4,7 @@ import ToastContainer from './components/Toast.jsx';
 import HelpButton from './components/HelpButton.jsx';
 import { ToastProvider, useToast } from './hooks/useToast.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import AIAssistant from './components/AIAssistant.jsx';
 import { I18nProvider, useI18n } from './i18n/I18nContext.jsx';
 import { api } from './api/index.js';
 import SkeletonCard from './components/SkeletonCard.jsx';
@@ -173,6 +174,7 @@ function AppShell() {
 
       <ToastContainer />
       <HelpButton />
+      <AIAssistant currentPage={currentView} />
     </div>
   );
 }
