@@ -141,29 +141,32 @@ router.delete('/:weekId/:fileId', requireAdmin, asyncHandler(async (req, res, ne
   if (!isValidWeek(weekId)) return next(createErrors.notFound('Week'));
   if (!isValidUUID(fileId)) return next(createErrors.badRequest('fileId doit être un UUID valide'));
 
-  const removed = deleteDelivery(weekId, fileId);
-  if (!removed) return next(createErrors.notFound('Fichier'));
+  const deliveryFile = getDelivery(weekId).find(d => d.id === fileId);
+  if (!deliveryFile) return next(createErrors.notFound('Fichier'));
 
-  if (removed.filename) {
+  if (deliveryFile.filename) {
     if (HAS_R2) {
-      try { await deleteFromR2(`uploads/${removed.filename}`); }
+      try { await deleteFromR2(`uploads/${deliveryFile.filename}`); }
       catch (err) {
-        logger.warn(`Failed to delete delivery file from R2: ${removed.filename}`, {
+        logger.warn(`Failed to delete delivery file from R2: ${deliveryFile.filename}`, {
           error: err.message, context: { weekId, fileId },
         });
       }
     } else {
-      const filePath = path.join(uploadsDir, removed.filename);
+      const filePath = path.join(uploadsDir, deliveryFile.filename);
       if (existsSync(filePath)) {
         try { unlinkSync(filePath); }
         catch (err) {
-          logger.warn(`Failed to delete delivery file locally: ${removed.filename}`, {
+          logger.warn(`Failed to delete delivery file locally: ${deliveryFile.filename}`, {
             error: err.message, context: { weekId, fileId },
           });
         }
       }
     }
   }
+
+  const removed = deleteDelivery(weekId, fileId);
+  if (!removed) return next(createErrors.notFound('Fichier (déjà supprimé)'));
 
   audit('delivery.delete', req, { weekId, fileId, filename: removed.filename });
   logger.info('Delivery deleted', { context: { weekId, fileId, filename: removed.filename } });

@@ -154,7 +154,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [feedbackStatus, setFeedbackStatus] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-
+  
   // Editor State
   const [timelineClips, setTimelineClips] = useState([]);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
@@ -163,6 +163,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [exportPhase, setExportPhase] = useState('');
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
   const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
+  const sseRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (sseRef.current) {
+        try { sseRef.current.close(); } catch { /* ignore */ }
+      }
+    };
+  }, []);
 
   // Supression de l'effacement du mot de passe (le mot de passe est gardé en mémoire pour la session)
 
@@ -207,12 +216,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // Job ID partagé entre le flux SSE de progression et la requête concat.
     const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const token = localStorage.getItem('app-password') || '';
-    let es;
     try {
       // Ouvre le flux de progression réel (téléchargement → encodage → upload).
-      es = new EventSource(
+      const es = new EventSource(
         `${API_BASE}/api/editor/progress/${jobId}?pwd=${encodeURIComponent(token)}`
       );
+      sseRef.current = es;
       es.onmessage = (e) => {
         try {
           const { percent, status, url } = JSON.parse(e.data);
@@ -227,6 +236,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
             setIsGeneratingVideo(false);
             es.close();
+            sseRef.current = null;
           } else if (status === 'error') {
             throw new Error('Erreur serveur lors du montage');
           }
@@ -235,9 +245,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           addToast(err.message, 'error', 5000);
           setIsGeneratingVideo(false);
           es.close();
+          sseRef.current = null;
         }
       };
-      es.onerror = () => { try { es.close(); } catch { /* ignore */ } };
+      es.onerror = () => { try { es.close(); sseRef.current = null; } catch { /* ignore */ } };
 
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
         method: 'POST',
@@ -786,7 +797,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     </button>
                   ) : (
                     <a
-                      href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
+                      href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive`}
                       download={`uploads_${selectedWeek}_${selectedBin}.zip`}
                       className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
                     >
@@ -833,7 +844,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       </button>
                     ) : (
                       <a
-                        href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive?pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`}
+                        href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive`}
                         download={`uploads_${selectedWeek}_${selectedBin}.zip`}
                         className="w-full btn btn-primary py-2 px-3 text-sm flex items-center justify-center gap-2 text-center"
                       >
@@ -1184,10 +1195,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             setTimelineClips((prev) => {
               // If already in timeline, update its trim data
               const exists = prev.find((c) => c.id === trimmedClip.id);
-              if (exists) {
-                return prev.map((c) => (c.id === trimmedClip.id ? trimmedClip : c));
+              if (exists && exists.instanceId === trimmedClip.instanceId) {
+                return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
               }
-              return [...prev, trimmedClip];
+              // If it's a new addition (from the top section), give it a unique instanceId
+              const newClip = { ...trimmedClip, instanceId: trimmedClip.instanceId || crypto.randomUUID() };
+              return [...prev, newClip];
             });
             addToast('Clip ajouté à la timeline', 'success', 2000);
           }}

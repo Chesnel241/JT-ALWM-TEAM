@@ -25,7 +25,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay }) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: clip.id });
+  } = useSortable({ id: clip.instanceId || clip.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -70,7 +70,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay }) {
           <Layers size={13} />
         </button>
         <button
-          onClick={() => onRemove(clip.id)}
+          onClick={() => onRemove(clip.instanceId || clip.id)}
           className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
           title="Retirer de la Timeline"
         >
@@ -107,15 +107,15 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
 
     if (active.id !== over.id) {
       setClips((items) => {
-        const oldIndex = items.findIndex((i) => i.id === active.id);
-        const newIndex = items.findIndex((i) => i.id === over.id);
+        const oldIndex = items.findIndex((i) => (i.instanceId || i.id) === active.id);
+        const newIndex = items.findIndex((i) => (i.instanceId || i.id) === over.id);
         return arrayMove(items, oldIndex, newIndex);
       });
     }
   };
 
-  const removeClip = (id) => {
-    setClips(clips.filter((c) => c.id !== id));
+  const removeClip = (instanceId) => {
+    setClips(clips.filter((c) => (c.instanceId || c.id) !== instanceId));
   };
 
   return (
@@ -128,22 +128,36 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
             <span className="text-xs font-normal text-[color:var(--muted)] ml-1">({clips.length} clip{clips.length > 1 ? 's' : ''})</span>
           )}
         </h3>
-        <button
-          onClick={onGenerate}
-          disabled={clips.length === 0 || isGenerating}
-          className="btn btn-primary py-2 px-4 text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isGenerating ? (
-            <span className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Assemblage en cours...
-            </span>
-          ) : (
-            <>
-              <Video size={16} /> Générer la vidéo
-            </>
+        <div className="flex items-center gap-3">
+          {clips.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm("Voulez-vous vraiment vider la timeline ?")) {
+                  setClips([]);
+                }
+              }}
+              className="text-sm text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={16} /> Vider la timeline
+            </button>
           )}
-        </button>
+          <button
+            onClick={onGenerate}
+            disabled={clips.length === 0 || isGenerating}
+            className="btn btn-primary py-2 px-4 text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGenerating ? (
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Assemblage en cours...
+              </span>
+            ) : (
+              <>
+                <Video size={16} /> Générer la vidéo
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="bg-[var(--app-bg)] rounded-xl border border-[var(--border)] p-4 min-h-[100px] flex items-center overflow-x-auto overflow-y-hidden">
@@ -158,13 +172,13 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={clips.map((c) => c.id)}
+              items={clips.map((c) => c.instanceId || c.id)}
               strategy={horizontalListSortingStrategy}
             >
               <div className="flex gap-2">
                 {clips.map((clip) => (
                   <SortableClip
-                    key={clip.id}
+                    key={clip.instanceId || clip.id}
                     clip={clip}
                     onRemove={removeClip}
                     onTrim={onTrimClip}

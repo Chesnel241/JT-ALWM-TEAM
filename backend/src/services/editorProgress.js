@@ -6,11 +6,16 @@
  * Mono-instance only (Map en mémoire) — cohérent avec scaling=1.
  */
 
-const jobs = new Map(); // jobId -> { percent, status, listeners:Set<res> }
+const jobs = new Map(); // jobId -> { percent, status, listeners:Set<res>, timeout: NodeJS.Timeout }
+
+const JOB_TTL_MS = 60 * 60 * 1000; // 1 hour max duration per job
 
 function ensure(jobId) {
   if (!jobs.has(jobId)) {
-    jobs.set(jobId, { percent: 0, status: 'pending', listeners: new Set() });
+    const timeout = setTimeout(() => {
+      finishJob(jobId, 'error');
+    }, JOB_TTL_MS);
+    jobs.set(jobId, { percent: 0, status: 'pending', listeners: new Set(), timeout });
   }
   return jobs.get(jobId);
 }
@@ -29,6 +34,7 @@ export function setProgress(jobId, percent, status = 'processing') {
 export function finishJob(jobId, status = 'done', url = null) {
   if (!jobId) return;
   const job = ensure(jobId);
+  if (job.timeout) clearTimeout(job.timeout);
   job.percent = status === 'done' ? 100 : job.percent;
   job.status = status;
   const payload = `data: ${JSON.stringify({ percent: job.percent, status, url })}\n\n`;
