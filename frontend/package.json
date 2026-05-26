@@ -16,6 +16,7 @@
     "react-joyride": "^3.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@types/react": "18.3.3",
