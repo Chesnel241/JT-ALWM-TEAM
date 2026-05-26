@@ -51,10 +51,10 @@ describe('sanitizeParams', () => {
     expect(out.name).toBe('trimmed');
   });
 
-  it('drops non-primitive values', () => {
+  it('preserves nested primitive values', () => {
     const out = sanitizeParams({ obj: { nested: true }, arr: [1, 2], n: 42, b: true });
-    expect(out).not.toHaveProperty('obj');
-    expect(out).not.toHaveProperty('arr');
+    expect(out.obj).toEqual({ nested: true });
+    expect(out.arr).toEqual([1, 2]);
     expect(out.n).toBe(42);
     expect(out.b).toBe(true);
   });
