@@ -70,8 +70,12 @@ export function validateUUIDParam(paramName = 'id') {
  * @returns {Object} - Paramètres sanitisés
  */
 export function sanitizeParams(params) {
-  if (!params || typeof params !== 'object') {
-    return {};
+  if (params === null || typeof params !== 'object') {
+    return params;
+  }
+
+  if (Array.isArray(params)) {
+    return params.map(item => sanitizeParams(item));
   }
 
   const sanitized = {};
@@ -81,14 +85,21 @@ export function sanitizeParams(params) {
       continue;
     }
 
-    if (typeof value === 'string') {
+    if (Array.isArray(value)) {
+      sanitized[key] = value.map(item => sanitizeParams(item));
+    } else if (value !== null && typeof value === 'object') {
+      sanitized[key] = sanitizeParams(value);
+    } else if (typeof value === 'string') {
       // Trim, strip HTML, et limiter la longueur (50k)
       let cleanString = value.replace(/[<>]/g, '');
       sanitized[key] = cleanString.trim().substring(0, 50000);
     } else if (typeof value === 'number' || typeof value === 'boolean') {
       sanitized[key] = value;
     }
-    // Ignorer les autres types
+    // Conserver null
+    else if (value === null) {
+      sanitized[key] = null;
+    }
   }
 
   return sanitized;
