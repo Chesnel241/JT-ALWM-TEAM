@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import * as JoyrideModule from 'react-joyride';
-const Joyride = JoyrideModule.default ? (JoyrideModule.default.default || JoyrideModule.default) : JoyrideModule;
+const Joyride = JoyrideModule.Joyride || (JoyrideModule.default ? (JoyrideModule.default.default || JoyrideModule.default) : null);
 const STATUS = JoyrideModule.STATUS || { FINISHED: 'finished', SKIPPED: 'skipped' };
 import { MessageSquare, X, Send, Bot, User, HelpCircle } from 'lucide-react';
 import { tourSteps } from '../data/tourSteps';
@@ -70,8 +70,9 @@ export default function AIAssistant({ currentPage }) {
   return (
     <>
       {/* react-joyride Tour Component */}
-      <Joyride
-        steps={steps}
+      {Joyride && (
+        <Joyride
+          steps={steps}
         run={runTour}
         continuous={true}
         showProgress={true}
@@ -94,6 +95,7 @@ export default function AIAssistant({ currentPage }) {
           skip: 'Passer le guide'
         }}
       />
+      )}
 
       {/* Floating Button */}
       <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
