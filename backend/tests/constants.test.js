@@ -23,8 +23,11 @@ describe('COUNTRIES env override', () => {
       { id: 'bf', name: 'Burkina Faso', code: 'BF' },
     ]);
     const { COUNTRIES } = await loadConstants();
-    expect(COUNTRIES).toHaveLength(2);
-    expect(COUNTRIES[0].id).toBe('bj');
+    // 'tj' (Titres & Rappels JT) est toujours injecté en tête → 2 + 1.
+    expect(COUNTRIES).toHaveLength(3);
+    expect(COUNTRIES.find((c) => c.id === 'tj')).toBeDefined();
+    expect(COUNTRIES.find((c) => c.id === 'bj')).toBeDefined();
+    expect(COUNTRIES.find((c) => c.id === 'bf')).toBeDefined();
   });
 
   it('falls back to default when COUNTRIES_JSON is malformed JSON', async () => {
