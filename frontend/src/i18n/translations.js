@@ -219,6 +219,19 @@ export const translations = {
         scriptBox: "Vous n'avez pas le temps de faire un fichier Word ? Tapez ou collez directement le texte de votre voix off ou vos instructions pour le monteur ici.",
         uploadList: "Tous les fichiers que vous avez envoyés pour cette semaine apparaîtront ici. Vous pouvez les supprimer si vous avez fait une erreur."
       },
+      tourDashboard: {
+        welcome: "Si vous êtes ici, c'est que vous êtes monteur du JT ! Si ce n'est pas le cas, pas nécessaire de continuer. Cet espace vous permet de récupérer les rushs des journalistes.",
+        sidebar: "Sélectionnez le pays dont vous voulez récupérer les images. Les chiffres indiquent le nombre de fichiers déposés.",
+        weekSelector: "Choisissez la semaine sur laquelle vous souhaitez travailler.",
+        grid: "Ici, vous pouvez prévisualiser, lire les scripts, et télécharger les vidéos/audios d'un simple clic."
+      },
+      tourDelivery: {
+        welcome: "L'espace 'JT Prêt' est l'endroit où le JT final est déposé, pour que tout le monde puisse le récupérer.",
+        weekSelector: "Choisissez la semaine de diffusion correspondante.",
+        dropzone: "Monteurs, c'est ici que vous déposez le rendu vidéo final (ou audio/zip) de l'émission !",
+        list: "Les journaux publiés seront listés ici, prêts à être téléchargés.",
+        whatsapp: "Une fois uploadé, un simple clic ici permet de notifier instantanément toute l'équipe sur WhatsApp !"
+      },
       suggestedQuestions: {
         q1: "Comment uploader un fichier ?",
         q2: "Quelle est l'heure limite d'envoi ?",
@@ -449,6 +462,19 @@ export const translations = {
         dropzone: "Simply drag and drop your videos, images, or audios in this big frame! You can send multiple files at the same time.",
         scriptBox: "No time to make a Word file? Type or paste the text for your voice-over or your instructions for the editor directly here.",
         uploadList: "All the files you sent for this week will appear here. You can delete them if you made a mistake."
+      },
+      tourDashboard: {
+        welcome: "If you are here, it means you are a newscast editor! If not, there is no need to continue. This space allows you to retrieve journalists' rushes.",
+        sidebar: "Select the country you want to get footage from. The numbers indicate how many files were uploaded.",
+        weekSelector: "Choose the week you want to work on.",
+        grid: "Here, you can preview, read scripts, and download videos/audios with a single click."
+      },
+      tourDelivery: {
+        welcome: "The 'Final Cut' space is where the finished newscast is deposited, so everyone can get it.",
+        weekSelector: "Choose the corresponding broadcast week.",
+        dropzone: "Editors, this is where you drop the final video render (or audio/zip) of the show!",
+        list: "The published newscasts will be listed here, ready to be downloaded.",
+        whatsapp: "Once uploaded, a single click here allows you to instantly notify the whole team on WhatsApp!"
       },
       suggestedQuestions: {
         q1: "How to upload a file?",

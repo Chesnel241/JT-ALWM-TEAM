@@ -429,7 +429,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       <div className="flex flex-col md:flex-row flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
         
         {/* Sidebar Bins (Mobile Collapsible) */}
-        <aside className={`w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 ${isMobileSidebarOpen ? 'block' : 'hidden md:flex'}`}>
+        <aside id="tour-editing-sidebar" className={`w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 ${isMobileSidebarOpen ? 'block' : 'hidden md:flex'}`}>
           <div className="p-3 md:p-4 border-b border-[var(--border)] bg-[var(--paper)] hidden md:block">
             <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-2 inline-block">{t.nav.editing}</div>
             <h2 className="text-xl font-bold text-[color:var(--ink)]">{t.dashboard.title}</h2>
@@ -478,7 +478,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[var(--paper)]">
+        <main id="tour-editing-grid" className="flex-1 flex flex-col min-w-0 bg-[var(--paper)]">
           {/* Top Toolbar */}
           <header className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex justify-between items-center z-10 shrink-0 relative">
             <div className="flex items-center gap-3">

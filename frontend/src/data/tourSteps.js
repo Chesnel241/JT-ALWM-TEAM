@@ -64,5 +64,56 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourUploader.uploadList,
       placement: 'left',
     }
+  ],
+  dashboard: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourDashboard.welcome,
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-editing-sidebar',
+      content: t.aiAssistant.tourDashboard.sidebar,
+      placement: 'right',
+    },
+    {
+      target: '#dashboard-week',
+      content: t.aiAssistant.tourDashboard.weekSelector,
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-editing-grid',
+      content: t.aiAssistant.tourDashboard.grid,
+      placement: 'left',
+    }
+  ],
+  delivery: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourDelivery.welcome,
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#delivery-week',
+      content: t.aiAssistant.tourDelivery.weekSelector,
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-delivery-dropzone',
+      content: t.aiAssistant.tourDelivery.dropzone,
+      placement: 'top',
+    },
+    {
+      target: '#tour-delivery-list',
+      content: t.aiAssistant.tourDelivery.list,
+      placement: 'left',
+    },
+    {
+      target: '#tour-delivery-whatsapp',
+      content: t.aiAssistant.tourDelivery.whatsapp,
+      placement: 'top',
+    }
   ]
 });

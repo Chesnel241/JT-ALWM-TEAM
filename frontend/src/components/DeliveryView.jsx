@@ -147,6 +147,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
         {/* Zone d'upload */}
         <div className="space-y-6">
           <div
+            id="tour-delivery-dropzone"
             className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center transition-colors ${
               dragActive
                 ? 'border-[color:var(--accent)] bg-[var(--accent)]/10'
@@ -234,7 +235,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
         </div>
 
         {/* Liste des deliveries */}
-        <div className="panel p-6 h-fit">
+        <div id="tour-delivery-list" className="panel p-6 h-fit">
           <div className="flex items-center justify-between gap-2 mb-6">
             <h3 className="font-semibold text-[color:var(--ink)] flex items-center gap-2">
               <Sparkles size={18} className="text-[color:var(--accent-deep)]" />
@@ -307,7 +308,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
 
           {/* WhatsApp Notifier Buttons */}
           {deliveries.length > 0 && subscriptions.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-[var(--border)]">
+            <div id="tour-delivery-whatsapp" className="mt-8 pt-6 border-t border-[var(--border)]">
               <h4 className="font-semibold text-sm text-[color:var(--ink)] mb-3 flex items-center gap-2">
                 <MessageCircle size={16} className="text-[#25D366]" />
                 {t.delivery.notifyAll ? t.delivery.notifyAll(subscriptions.length) : `Notifier ${subscriptions.length} journaliste(s)`}
