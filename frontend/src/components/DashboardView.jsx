@@ -11,6 +11,7 @@ import CountryAvatar from './CountryAvatar.jsx';
 import AdminUploadDialog from './AdminUploadDialog.jsx';
 import Timeline from './editor/Timeline.jsx';
 import TrimModal from './editor/TrimModal.jsx';
+import OverlayPanel from './editor/OverlayPanel.jsx';
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
   const [content, setContent] = useState('');
@@ -154,6 +155,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
+  const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
 
   useEffect(() => {
     if (!deleteDialogOpen && !feedbackDialogOpen && !downloadDialogOpen) {
@@ -193,6 +195,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             filename: clip.filename,
             inPoint: clip.inPoint,
             outPoint: clip.outPoint,
+            overlays: clip.overlays || [],
           }))
         })
       });
@@ -756,6 +759,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             onGenerate={handleGenerateVideo}
             isGenerating={isGeneratingVideo}
             onTrimClip={(file) => setTrimTarget(file)}
+            onOverlayClip={(clip) => setOverlayTarget(clip)}
           />
         </main>
       </div>
@@ -859,6 +863,20 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedBin={selectedBin}
         adminPassword={localStorage.getItem('app-password')}
       />
+
+      {/* Overlay Panel */}
+      {overlayTarget && (
+        <OverlayPanel
+          clip={overlayTarget}
+          onClose={() => setOverlayTarget(null)}
+          onSave={(updatedClip) => {
+            setTimelineClips((prev) =>
+              prev.map((c) => (c.id === updatedClip.id ? updatedClip : c))
+            );
+            addToast('Animations mises à jour', 'success', 2000);
+          }}
+        />
+      )}
 
       {/* Trim Modal */}
       {trimTarget && (

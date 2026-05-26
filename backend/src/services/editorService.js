@@ -1,9 +1,17 @@
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadsDir } from '../lib/upload.js';
 import logger from '../logger/index.js';
+import { getTemplate } from '../data/overlayTemplates.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Bundled font — used for all drawtext overlays.
+// On Linux (Render) the backend root is process.cwd().
+const FONT_PATH = path.join(__dirname, '../../fonts/Inter.ttf')
+  .replace(/\\/g, '/'); // FFmpeg always wants forward slashes
 
 /**
  * Concatenate and optionally trim a list of video clips.
@@ -36,7 +44,7 @@ export async function concatenateVideos(clips) {
     let concatInputs = '';
 
     for (let i = 0; i < normalizedClips.length; i++) {
-      const { filename, inPoint, outPoint } = normalizedClips[i];
+      const { filename, inPoint, outPoint, overlays = [] } = normalizedClips[i];
       const filePath = path.join(uploadsDir, filename);
 
       if (!fs.existsSync(filePath)) {
@@ -62,6 +70,31 @@ export async function concatenateVideos(clips) {
         'setsar=1',
         'fps=30'
       );
+
+      // 3. Apply text overlays (drawtext + drawbox) for each annotation
+      for (const overlay of overlays) {
+        const template = getTemplate(overlay.templateId);
+        if (!template) continue;
+        try {
+          const drawtextFilters = template.build(overlay.fields || {}, FONT_PATH);
+          // Enable/disable overlay based on timing (if specified)
+          const startSec = overlay.startTime ?? 0;
+          const durSec   = overlay.duration  ?? null;
+          
+          for (const filter of drawtextFilters) {
+            // Wrap filter with enable expression if timing is set
+            if (durSec != null) {
+              const filterName = filter.split('=')[0]; // drawtext or drawbox
+              const rest = filter.slice(filterName.length + 1);
+              videoFilters.push(`${filterName}=enable='between(t,${startSec},${startSec + durSec})':${rest}`);
+            } else {
+              videoFilters.push(filter);
+            }
+          }
+        } catch (err) {
+          logger.warn(`Overlay skipped (template error): ${err.message}`);
+        }
+      }
 
       filterGraph.push(`[${i}:v]${videoFilters.join(',')}[v${i}]`);
 

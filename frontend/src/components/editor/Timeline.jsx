@@ -15,9 +15,9 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Video, Trash2, Play, GripVertical, Scissors, Pencil } from 'lucide-react';
+import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers } from 'lucide-react';
 
-function SortableClip({ clip, onRemove, onTrim }) {
+function SortableClip({ clip, onRemove, onTrim, onOverlay }) {
   const {
     attributes,
     listeners,
@@ -63,6 +63,13 @@ function SortableClip({ clip, onRemove, onTrim }) {
           <Pencil size={13} />
         </button>
         <button
+          onClick={() => onOverlay(clip)}
+          className={`p-1.5 rounded-lg transition-colors ${(clip.overlays?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
+          title="Animations & Habillage"
+        >
+          <Layers size={13} />
+        </button>
+        <button
           onClick={() => onRemove(clip.id)}
           className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
           title="Retirer de la Timeline"
@@ -77,11 +84,17 @@ function SortableClip({ clip, onRemove, onTrim }) {
           {clip.trimLabel}
         </div>
       )}
+      {(clip.overlays?.length ?? 0) > 0 && (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/10 rounded text-[10px] text-purple-500 font-medium">
+          <Layers size={10} />
+          {clip.overlays.length} animation{clip.overlays.length > 1 ? 's' : ''}
+        </div>
+      )}
     </div>
   );
 }
 
-export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip }) {
+export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -155,6 +168,7 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
                     clip={clip}
                     onRemove={removeClip}
                     onTrim={onTrimClip}
+                    onOverlay={onOverlayClip}
                   />
                 ))}
               </div>

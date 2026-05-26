@@ -23,6 +23,14 @@ router.post(
       .optional()
       .isFloat({ min: 0 })
       .withMessage('outPoint doit être un nombre positif (en secondes).'),
+    body('clips.*.overlays')
+      .optional()
+      .isArray()
+      .withMessage('overlays doit être un tableau.'),
+    body('clips.*.overlays.*.templateId')
+      .optional()
+      .isString()
+      .withMessage('Chaque overlay doit avoir un templateId valide.'),
   ],
   async (req, res, next) => {
     try {
