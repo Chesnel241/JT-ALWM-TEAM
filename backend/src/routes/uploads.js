@@ -309,7 +309,6 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
       return next(createErrors.fileTypeError(validation.error));
     }
 
-    }
 
     const isScript = file.mimetype.startsWith('text/') || file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     const isImage = file.mimetype.startsWith('image/');
@@ -394,6 +393,7 @@ router.post('/:weekId/:countryId', asyncHandler(async (req, res, next) => {
 
       logger.uploadFailed(weekId, countryId, file.originalname, storeErr);
       return next(createErrors.internalError('Erreur lors de la sauvegarde des métadonnées'));
+    }
     } catch (e) {
       return next(e);
     }
