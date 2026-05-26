@@ -525,7 +525,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 Assemblé
               </div>
             )}
-            {file.status !== 'pending' && (
+            {/* Badge UNIQUEMENT pour les décisions explicites de la team
+                montage. Tout autre statut (pending/completed/legacy) =
+                neutre, pas de "Rejeté" par défaut. */}
+            {(file.status === 'approved' || file.status === 'rejected') && (
               <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white ${
                 file.status === 'approved' ? 'bg-[var(--accent)]' : 'bg-[var(--signal)]'
               }`}>

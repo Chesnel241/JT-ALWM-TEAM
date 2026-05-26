@@ -328,7 +328,9 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
       filename: file.filename,
       type: isScript ? 'script' : isImage ? 'image' : isAudio ? 'audio' : 'video',
       size: `${(finalSize / (1024 * 1024)).toFixed(1)} MB`,
-      status: 'completed',
+      // 'pending' = en attente de revue par l'équipe montage.
+      // (Avant: 'completed' → l'UI l'affichait à tort comme "Rejeté".)
+      status: 'pending',
       reportage,
       uploadedAt: new Date().toISOString(),
     };
@@ -462,7 +464,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
     name: `Script_${Date.now()}.txt`,
     type: 'script',
     size: `${Buffer.byteLength(content, 'utf-8')} octets`,
-    status: 'completed',
+    status: 'pending',
     content,
     filename,
     reportage: reportage || null,
