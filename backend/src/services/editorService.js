@@ -112,16 +112,18 @@ export async function concatenateVideos(clips, jobId = null) {
 /**
  * Lance ffmpeg : trim + scale/letterbox + overlays + concat.
  */
-function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
-  return new Promise((resolve, reject) => {
-    const command = ffmpeg();
-    const filterGraph = [];
-    let concatInputs = '';
+async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
+  const workDir = path.dirname(outputPath);
+  const normPaths = [];
+  
+  // Phase 1 : Normalisation séquentielle de chaque clip
+  for (let i = 0; i < normalizedClips.length; i++) {
+    const { inPoint, outPoint, overlays = [] } = normalizedClips[i];
+    const normPath = path.join(workDir, `norm_${i}.mp4`);
+    normPaths.push(normPath);
 
-    for (let i = 0; i < normalizedClips.length; i++) {
-      const { inPoint, outPoint, overlays = [] } = normalizedClips[i];
-      command.input(localPaths[i]);
-
+    await new Promise((resolve, reject) => {
+      const command = ffmpeg(localPaths[i]);
       const videoFilters = [];
 
       if (inPoint != null || outPoint != null) {
@@ -137,7 +139,7 @@ function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
         'fps=30'
       );
 
-      // Overlays drawtext/drawbox — seulement si la police est présente.
+      // Overlays
       if (HAS_FONT) {
         for (const overlay of overlays) {
           const template = getTemplate(overlay.templateId);
@@ -156,14 +158,14 @@ function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
               }
             }
           } catch (err) {
-            logger.warn(`Overlay skipped (template error): ${err.message}`);
+             logger.warn(`Overlay skipped: ${err.message}`);
           }
         }
       } else if (overlays.length > 0) {
         logger.warn('Overlays ignorés : police Inter.ttf introuvable');
       }
 
-      filterGraph.push(`[${i}:v]${videoFilters.join(',')}[v${i}]`);
+      command.videoFilters(videoFilters);
 
       const audioFilters = [];
       if (inPoint != null || outPoint != null) {
@@ -175,40 +177,54 @@ function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
         'aresample=48000',
         'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'
       );
-      filterGraph.push(`[${i}:a]${audioFilters.join(',')}[a${i}]`);
-
-      concatInputs += `[v${i}][a${i}]`;
-    }
-
-    filterGraph.push(
-      `${concatInputs}concat=n=${normalizedClips.length}:v=1:a=1[outv][outa]`
-    );
-
-    command
-      .complexFilter(filterGraph, ['outv', 'outa'])
-      .outputOptions([
+      
+      command.audioFilters(audioFilters);
+      
+      command.outputOptions([
         '-c:v libx264',
         '-crf 23',
         '-preset ultrafast',
         '-c:a aac',
         '-b:a 192k',
         '-movflags +faststart',
-        '-threads 2',
-        '-max_muxing_queue_size 1024'
-      ])
-      .on('start', (cmd) => logger.info('Démarrage de la concaténation vidéo', { command: cmd }))
-      .on('progress', (p) => {
-        logger.debug("Progression de l'export...", { percent: p.percent });
-        if (typeof onProgress === 'function' && p.percent != null) {
-          onProgress(Math.max(0, Math.min(100, p.percent)));
-        }
-      })
+        '-threads 1' // Memory footprint ultra minimal par clip
+      ]);
+      
+      command
+        .on('start', (cmd) => logger.info(`Normalisation du clip ${i + 1}/${normalizedClips.length}`, { command: cmd }))
+        .on('progress', (p) => {
+           // On répartit la progression sur 90% (Pass 1)
+           const baseProgress = (i / normalizedClips.length) * 90;
+           const clipProgress = (Math.max(0, Math.min(100, p.percent || 0)) / 100) * (90 / normalizedClips.length);
+           if (typeof onProgress === 'function') {
+             onProgress(baseProgress + clipProgress);
+           }
+        })
+        .on('end', resolve)
+        .on('error', reject)
+        .save(normPath);
+    });
+  }
+
+  // Phase 2 : Concaténation rapide (0 RAM, juste de la copie de flux)
+  logger.info('Assemblage final avec le concat demuxer...');
+  const listPath = path.join(workDir, 'list.txt');
+  const listContent = normPaths.map(p => `file '${p.replace(/'/g, "'\\''")}'`).join('\n');
+  fs.writeFileSync(listPath, listContent);
+
+  await new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(listPath)
+      .inputOptions(['-f concat', '-safe 0'])
+      .outputOptions(['-c copy'])
+      .on('start', (cmd) => logger.info('Démarrage concat rapide', { command: cmd }))
       .on('end', () => {
+        if (typeof onProgress === 'function') onProgress(100);
         logger.info('Concaténation vidéo terminée avec succès');
         resolve();
       })
       .on('error', (err) => {
-        logger.error('Erreur lors de la concaténation FFmpeg', { error: err.message });
+        logger.error('Erreur lors de la concat rapide FFmpeg', { error: err.message });
         reject(err);
       })
       .save(outputPath);
