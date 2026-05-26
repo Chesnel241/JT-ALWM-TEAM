@@ -10,6 +10,113 @@ import AIChecklist from './AIChecklist.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import AdminUploadDialog from './AdminUploadDialog.jsx';
 
+function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let url = `${API_BASE}/uploads/${file.filename}?proxy=true`;
+    if (selectedBin === 'mj' && adminPassword) {
+      url += `&adminPassword=${encodeURIComponent(adminPassword)}`;
+    }
+
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error('Impossible de charger le contenu. (Peut-être protégé ?)');
+        return res.text();
+      })
+      .then(text => {
+        setContent(text);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [file, selectedBin, adminPassword]);
+
+  if (loading) return <div className="flex justify-center items-center h-full text-[color:var(--muted)]">Chargement du texte...</div>;
+  if (error) return <div className="text-[var(--signal)] font-medium text-center mt-10 flex flex-col items-center gap-2"><AlertCircle /> {error}</div>;
+
+  return (
+    <pre className="whitespace-pre-wrap font-sans text-[color:var(--ink)] text-base leading-relaxed max-w-none">
+      {content}
+    </pre>
+  );
+}
+
+function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword }) {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!file) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+      if (e.key === 'Tab') {
+        if (!dialogRef.current) return;
+        const focusableElements = dialogRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    if (dialogRef.current) {
+      const closeBtn = dialogRef.current.querySelector('button');
+      if (closeBtn) closeBtn.focus();
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [file, onClose]);
+
+  if (!file) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
+      <div ref={dialogRef} className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
+          <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
+            <FileText className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
+            {file.name}
+          </h3>
+          <button 
+            onClick={onClose}
+            aria-label="Fermer le lecteur de script"
+            className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--border)] rounded-lg transition-colors focus-ring focus:outline-none"
+          >
+            <XCircle size={20} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative">
+          <ScriptViewerContent file={file} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={adminPassword} />
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries }) {
   const { t, lang } = useI18n();
   const { addToast } = useToast();
@@ -675,110 +782,3 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   );
 }
 
-function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword }) {
-  const dialogRef = useRef(null);
-
-  useEffect(() => {
-    if (!file) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-      if (e.key === 'Tab') {
-        if (!dialogRef.current) return;
-        const focusableElements = dialogRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) return;
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    if (dialogRef.current) {
-      const closeBtn = dialogRef.current.querySelector('button');
-      if (closeBtn) closeBtn.focus();
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [file, onClose]);
-
-  if (!file) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
-      <div ref={dialogRef} className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
-        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
-          <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
-            <FileText className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
-            {file.name}
-          </h3>
-          <button 
-            onClick={onClose}
-            aria-label="Fermer le lecteur de script"
-            className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--border)] rounded-lg transition-colors focus-ring focus:outline-none"
-          >
-            <XCircle size={20} aria-hidden="true" />
-          </button>
-        </div>
-        <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative">
-          <ScriptViewerContent file={file} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={adminPassword} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
-  const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    let url = `${API_BASE}/uploads/${file.filename}?proxy=true`;
-    if (selectedBin === 'mj' && adminPassword) {
-      url += `&adminPassword=${encodeURIComponent(adminPassword)}`;
-    }
-
-    fetch(url)
-      .then(res => {
-        if (!res.ok) throw new Error('Impossible de charger le contenu. (Peut-être protégé ?)');
-        return res.text();
-      })
-      .then(text => {
-        setContent(text);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [file, selectedBin, adminPassword]);
-
-  if (loading) return <div className="flex justify-center items-center h-full text-[color:var(--muted)]">Chargement du texte...</div>;
-  if (error) return <div className="text-[var(--signal)] font-medium text-center mt-10 flex flex-col items-center gap-2"><AlertCircle /> {error}</div>;
-
-  return (
-    <pre className="whitespace-pre-wrap font-sans text-[color:var(--ink)] text-base leading-relaxed max-w-none">
-      {content}
-    </pre>
-  );
-}
