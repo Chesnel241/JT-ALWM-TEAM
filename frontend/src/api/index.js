@@ -85,12 +85,12 @@ export const api = {
 
   // XMLHttpRequest pour exposer la progression d'upload (fetch n'a pas
   // d'événement progress sur les requêtes en envoi).
-  uploadFile: (weekId, countryId, file, { onProgress, signal, reportage, adminPassword } = {}) => {
+  uploadFile: (weekId, countryId, file, { onProgress, onPhase, signal, reportage, adminPassword } = {}) => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const url = `${BASE}/uploads/${weekId}/${countryId}${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`;
       xhr.open('POST', url);
-      
+
       const token = localStorage.getItem('app-password');
       if (token) {
         xhr.setRequestHeader('X-App-Password', token);
@@ -103,6 +103,10 @@ export const api = {
         if (e.lengthComputable && typeof onProgress === 'function') {
           onProgress((e.loaded / e.total) * 100);
         }
+      });
+      // Octets entièrement envoyés → le serveur traite/compresse désormais.
+      xhr.upload.addEventListener('load', () => {
+        if (typeof onPhase === 'function') onPhase('processing');
       });
 
       xhr.addEventListener('load', () => {
@@ -144,20 +148,23 @@ export const api = {
   // === JT Prêt (deliveries) ===
   getDeliveries: (weekId) => request(`/deliveries/${weekId}`),
 
-  uploadDelivery: (weekId, file, { onProgress, signal } = {}) => {
+  uploadDelivery: (weekId, file, { onProgress, onPhase, signal } = {}) => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${BASE}/deliveries/${weekId}`);
-      
+
       const token = localStorage.getItem('app-password');
       if (token) {
         xhr.setRequestHeader('X-App-Password', token);
       }
-      
+
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && typeof onProgress === 'function') {
           onProgress((e.loaded / e.total) * 100);
         }
+      });
+      xhr.upload.addEventListener('load', () => {
+        if (typeof onPhase === 'function') onPhase('processing');
       });
       xhr.addEventListener('load', () => {
         let body = null;

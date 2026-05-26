@@ -15,9 +15,27 @@ export default function AIAssistant({ currentPage }) {
   
   const [runTour, setRunTour] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [steps, setSteps] = useState([]);
   const allTourSteps = getTourSteps(t);
-  const steps = allTourSteps[currentPage] || [];
   const messagesEndRef = useRef(null);
+
+  // Démarre le tour en ne gardant que les étapes dont la cible existe
+  // réellement dans le DOM. Sur mobile, les boutons nav (#tour-nav-*)
+  // sont derrière le menu hamburger → absents → react-joyride hang.
+  // On filtre pour éviter le blocage.
+  const startTour = () => {
+    const pageSteps = allTourSteps[currentPage] || [];
+    const visible = pageSteps.filter(
+      (s) => s.target === 'body' || document.querySelector(s.target)
+    );
+    if (visible.length === 0) return;
+    setSteps(visible);
+    setIsChatOpen(false);
+    setStepIndex(0);
+    setRunTour(true);
+  };
+
+  const hasTour = (allTourSteps[currentPage] || []).length > 0;
 
   useEffect(() => {
     // Scroll to bottom of chat when new message arrives
@@ -27,10 +45,9 @@ export default function AIAssistant({ currentPage }) {
   }, [messages]);
 
   const handleJoyrideCallback = (data) => {
-    const { status, type, index, action } = data;
-    console.error(`JOYRIDE CALLBACK: type=${type}, status=${status}, action=${action}, index=${index}`);
+    const { status } = data;
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
-    
+
     // Handle tour finish
     if (finishedStatuses.includes(status)) {
       setRunTour(false);
@@ -99,18 +116,19 @@ export default function AIAssistant({ currentPage }) {
 
         {/* The Chat Window */}
         {isChatOpen && (
-          <div className="mb-4 w-80 sm:w-96 bg-[var(--paper)] rounded-2xl shadow-2xl border border-[var(--border)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
+          <div className="mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-[var(--paper)] rounded-2xl shadow-2xl border border-[var(--border)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
             {/* Header */}
             <div className="p-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2 text-[color:var(--ink)] font-semibold">
                 <Bot className="w-5 h-5" />
                 {t.aiAssistant.botName}
               </div>
-              <button 
+              <button
                 onClick={() => setIsChatOpen(false)}
-                className="text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
+                aria-label={t.aiAssistant.joyride.close}
+                className="text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors p-2 -mr-2 rounded-lg"
               >
-                <X size={20} />
+                <X size={22} />
               </button>
             </div>
 
@@ -129,15 +147,11 @@ export default function AIAssistant({ currentPage }) {
               <div ref={messagesEndRef} />
               
               {/* Visual Guide Trigger */}
-              {steps.length > 0 && (
+              {hasTour && (
                 <div className="p-3 bg-[var(--paper-2)] rounded-lg text-center mx-4 mt-2 shrink-0">
-                  <button 
-                    onClick={() => {
-                      setIsChatOpen(false);
-                      setStepIndex(0);
-                      setRunTour(true);
-                    }}
-                    className="flex items-center justify-center gap-2 w-full py-2 bg-[var(--ink)] text-[color:var(--paper)] rounded-lg font-medium hover:opacity-90 transition-opacity"
+                  <button
+                    onClick={startTour}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-[var(--ink)] text-[color:var(--paper)] rounded-lg font-medium hover:opacity-90 transition-opacity"
                   >
                     <HelpCircle className="w-4 h-4" />
                     {t.aiAssistant.startTour}
@@ -173,10 +187,11 @@ export default function AIAssistant({ currentPage }) {
                 placeholder={t.aiAssistant.inputPlaceholder}
                 className="flex-1 bg-transparent border-none outline-none text-sm text-[color:var(--ink)] placeholder-[color:var(--muted)]"
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={!inputValue.trim()}
-                className="bg-[var(--accent)] text-white p-2 rounded-xl disabled:opacity-50 transition-opacity"
+                aria-label={t.aiAssistant.joyride.next}
+                className="bg-[var(--accent)] text-white p-3 rounded-xl disabled:opacity-50 transition-opacity shrink-0"
               >
                 <Send size={18} />
               </button>

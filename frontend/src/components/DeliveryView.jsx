@@ -51,7 +51,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
       const tempId = Math.random().toString(36).slice(2);
       setUploading((prev) => [
         ...prev,
-        { id: tempId, name: file.name, progress: 0, status: 'uploading' },
+        { id: tempId, name: file.name, progress: 0, status: 'uploading', phase: 'uploading' },
       ]);
 
       api.uploadDelivery(selectedWeek, file, {
@@ -59,10 +59,14 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
           setUploading((prev) =>
             prev.map((f) => (f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f))
           ),
+        onPhase: (phase) =>
+          setUploading((prev) =>
+            prev.map((f) => (f.id === tempId ? { ...f, phase, progress: phase === 'processing' ? 99 : f.progress } : f))
+          ),
       })
         .then((result) => {
           setUploading((prev) =>
-            prev.map((f) => (f.id === tempId ? { ...f, progress: 100, status: 'completed' } : f))
+            prev.map((f) => (f.id === tempId ? { ...f, progress: 100, status: 'completed', phase: 'done' } : f))
           );
           setDeliveries((prev) => [...prev, result]);
           addToast(t.delivery.uploadSuccess(result.name), 'success', 3000);
@@ -212,7 +216,11 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                         </span>
                       )}
                       {f.status === 'uploading' && (
-                        <span className="text-[color:var(--accent-deep)]">{Math.round(f.progress)}%</span>
+                        <span className="text-[color:var(--accent-deep)] text-xs sm:text-sm">
+                          {f.phase === 'processing'
+                            ? t.uploader.phaseProcessing
+                            : `${t.uploader.phaseUploading} ${Math.round(f.progress)}%`}
+                        </span>
                       )}
                     </div>
                     <div className="w-full bg-[var(--paper-2)] rounded-full h-2">

@@ -1,5 +1,5 @@
 import { existsSync } from 'fs';
-import { readFile, writeFile, unlink, readdir, rename } from 'fs/promises';
+import { readFile, writeFile, unlink, readdir, rename, mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
@@ -67,6 +67,7 @@ export async function initDb() {
 // multi-instance il faudrait migrer vers une vraie DB.
 async function persistDbLocal() {
   try {
+    await mkdir(dirname(DB_PATH), { recursive: true });
     const tmpPath = `${DB_PATH}.${process.pid}.tmp`;
     await writeFile(tmpPath, JSON.stringify(db, null, 2));
     await rename(tmpPath, DB_PATH);

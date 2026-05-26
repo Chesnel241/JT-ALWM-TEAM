@@ -16,7 +16,7 @@ export default function HelpButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={aria}
-      className="fixed bottom-5 right-5 z-50 group flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white pl-4 pr-5 py-3 rounded-full shadow-lg hover:shadow-xl transition-all"
+      className="fixed bottom-5 left-5 z-50 group flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white pl-4 pr-5 py-3 rounded-full shadow-lg hover:shadow-xl transition-all"
     >
       <MessageCircle size={22} className="flex-shrink-0" />
       <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">
