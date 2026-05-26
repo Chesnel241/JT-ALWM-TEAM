@@ -120,7 +120,7 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
     </div>
   );
 }
-export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries }) {
+export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries, isActive = true }) {
   const { t, lang } = useI18n();
   const { addToast } = useToast();
   const [dashboard, setDashboard] = useState({});
@@ -165,10 +165,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }
   }, [deleteDialogOpen, feedbackDialogOpen, downloadDialogOpen]);
 
+  // Reset editor state ONLY on week change
   useEffect(() => {
     if (!selectedWeek) return;
     setLoading(true);
-    // Reset editor state on week change
     setTimelineClips([]);
     setGeneratedVideoUrl(null);
     
@@ -180,6 +180,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       })
       .finally(() => setLoading(false));
   }, [selectedWeek, addToast, t.uploader.errorPrefix]);
+
+  // Refresh dashboard quietly when becoming active
+  useEffect(() => {
+    if (!selectedWeek || !isActive) return;
+    api.getDashboard(selectedWeek)
+      .then(setDashboard)
+      .catch(console.error);
+  }, [isActive, selectedWeek]);
 
   const handleGenerateVideo = async () => {
     if (timelineClips.length === 0) return;

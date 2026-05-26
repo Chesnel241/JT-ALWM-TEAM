@@ -122,45 +122,51 @@ function AppShell() {
           <LoadingFallback />
         ) : (
           <Suspense fallback={<LoadingFallback />}>
-            {currentView === 'home' && (
+            <div className={currentView === 'home' ? 'block' : 'hidden'}>
               <HomeView
                 countries={countries}
                 onSelectCountry={handleSelectCountry}
                 onCountryAdded={(c) => setCountries((prev) => [...prev, c])}
               />
+            </div>
+            {selectedCountry && (
+              <div className={currentView === 'uploader' ? 'block' : 'hidden'}>
+                <UploaderView
+                  country={selectedCountry}
+                  weeks={weeks}
+                  selectedWeek={selectedWeek}
+                  setSelectedWeek={setSelectedWeek}
+                  onBack={() => setCurrentView('home')}
+                  isActive={currentView === 'uploader'}
+                />
+              </div>
             )}
-            {currentView === 'uploader' && selectedCountry && (
-              <UploaderView
-                country={selectedCountry}
-                weeks={weeks}
-                selectedWeek={selectedWeek}
-                setSelectedWeek={setSelectedWeek}
-                onBack={() => setCurrentView('home')}
-              />
-            )}
-            {currentView === 'dashboard' && (
+            <div className={currentView === 'dashboard' ? 'block' : 'hidden'}>
               <DashboardView
                 weeks={weeks}
                 selectedWeek={selectedWeek}
                 setSelectedWeek={setSelectedWeek}
                 countries={countries}
+                isActive={currentView === 'dashboard'}
               />
-            )}
-            {currentView === 'delivery' && (
+            </div>
+            <div className={currentView === 'delivery' ? 'block' : 'hidden'}>
               <DeliveryView
                 weeks={weeks}
                 selectedWeek={selectedWeek}
                 setSelectedWeek={setSelectedWeek}
+                isActive={currentView === 'delivery'}
               />
-            )}
-            {currentView === 'voixoff' && (
+            </div>
+            <div className={currentView === 'voixoff' ? 'block' : 'hidden'}>
               <VoixOffView
                 weeks={weeks}
                 selectedWeek={selectedWeek}
                 setSelectedWeek={setSelectedWeek}
                 countries={countries}
+                isActive={currentView === 'voixoff'}
               />
-            )}
+            </div>
           </Suspense>
         )}
       </main>
