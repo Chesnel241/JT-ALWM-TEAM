@@ -11,8 +11,9 @@ COPY package*.json ./
 # Install dependencies (including devDependencies if needed for build)
 RUN npm ci --only=production
 
-# Copy source code
+# Copy source code + bundled fonts (libass overlays need them at render time)
 COPY src ./src
+COPY fonts ./fonts
 
 # Verify the app structure
 RUN ls -la
@@ -30,6 +31,7 @@ RUN apk add --no-cache dumb-init
 # Copy node_modules and source from builder stage
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
+COPY --from=builder /app/fonts ./fonts
 COPY --from=builder /app/package*.json ./
 
 # Create uploads directory with proper permissions
