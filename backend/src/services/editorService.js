@@ -32,10 +32,12 @@ const checkAudio = (filePath) => new Promise((resolve) => {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Bundled font — used for all drawtext overlays.
-const FONT_PATH = path.join(__dirname, '../../fonts/Inter.ttf')
-  .replace(/\\/g, '/'); // FFmpeg always wants forward slashes
-const HAS_FONT = fs.existsSync(FONT_PATH);
+// Dossier des polices bundlées (Inter, Bebas Neue, Anton, Archivo Black,
+// Barlow). Passé au filtre `ass` via fontsdir — INDISPENSABLE sur Render
+// (conteneur sans polices système : sans ça libass substitue la police et
+// le texte n'apparaît pas). FFmpeg veut des slashes avant.
+const FONTS_DIR = path.join(__dirname, '../../fonts').replace(/\\/g, '/');
+const HAS_FONTS = fs.existsSync(FONTS_DIR);
 
 // Télécharge un fichier R2 vers un chemin local. Retourne destPath.
 async function downloadFromR2(r2Key, destPath) {
@@ -156,12 +158,18 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
         'format=yuv420p'
       );
 
-      // Overlays using ASS
+      // Overlays via libass. On passe filename + fontsdir en objet pour que
+      // fluent-ffmpeg gère l'échappement, et fontsdir pour résoudre les
+      // polices bundlées (sinon texte invisible en prod).
       if (overlays && overlays.length > 0) {
         try {
           const assPath = generateAssFile(overlays, workDir);
-          const escapedAssPath = assPath.replace(/\\/g, '/').replace(/:/g, '\\\\:');
-          videoFilters.push(`ass='${escapedAssPath}'`);
+          videoFilters.push({
+            filter: 'ass',
+            options: HAS_FONTS
+              ? { filename: assPath, fontsdir: FONTS_DIR }
+              : { filename: assPath },
+          });
         } catch (err) {
           logger.warn(`Overlays skipped: ${err.message}`);
         }
@@ -194,14 +202,20 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
         ]);
       }
       
+      // veryfast bat ultrafast ici : plus rapide ET ~3x plus petit à
+      // -threads 1. ref/rc-lookahead réduits = moins de RAM (Render 512 Mo).
       command.outputOptions([
         '-c:v libx264',
+        '-preset veryfast',
         '-crf 23',
-        '-preset ultrafast',
+        '-pix_fmt yuv420p',
+        '-x264-params', 'rc-lookahead=10:ref=2:sliced-threads=0',
+        '-g 60',
         '-c:a aac',
-        '-b:a 192k',
+        '-b:a 128k',
+        '-ar 48000',
         '-movflags +faststart',
-        '-threads 1', // Memory footprint ultra minimal par clip
+        '-threads 1', // Empreinte mémoire minimale par clip
         '-max_muxing_queue_size 1024'
       ]);
       
