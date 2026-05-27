@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { uploadsDir } from '../lib/upload.js';
 import { HAS_R2, getR2ReadStream, uploadToR2, getR2PresignedUrl } from '../lib/s3.js';
 import logger from '../logger/index.js';
-import { getTemplate } from '../data/overlayTemplates.js';
+import { generateAssFile } from '../data/overlayTemplates.js';
 import { setProgress } from './editorProgress.js';
 
 let isRendering = false;
@@ -152,33 +152,19 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
         'scale=1920:1080:force_original_aspect_ratio=decrease',
         'pad=1920:1080:(ow-iw)/2:(oh-ih)/2',
         'setsar=1',
-        'fps=30'
+        'fps=30',
+        'format=yuv420p'
       );
 
-      // Overlays
-      if (HAS_FONT) {
-        for (const overlay of overlays) {
-          const template = getTemplate(overlay.templateId);
-          if (!template) continue;
-          try {
-            const drawtextFilters = template.build(overlay.fields || {}, FONT_PATH);
-            const startSec = overlay.startTime ?? 0;
-            const durSec = overlay.duration ?? null;
-            for (const filter of drawtextFilters) {
-              if (durSec != null) {
-                const filterName = filter.split('=')[0];
-                const rest = filter.slice(filterName.length + 1);
-                videoFilters.push(`${filterName}=enable='between(t,${startSec},${startSec + durSec})':${rest}`);
-              } else {
-                videoFilters.push(filter);
-              }
-            }
-          } catch (err) {
-             logger.warn(`Overlay skipped: ${err.message}`);
-          }
+      // Overlays using ASS
+      if (overlays && overlays.length > 0) {
+        try {
+          const assPath = generateAssFile(overlays, workDir);
+          const escapedAssPath = assPath.replace(/\\/g, '/').replace(/:/g, '\\\\:');
+          videoFilters.push(`ass='${escapedAssPath}'`);
+        } catch (err) {
+          logger.warn(`Overlays skipped: ${err.message}`);
         }
-      } else if (overlays.length > 0) {
-        logger.warn('Overlays ignorés : police Inter.ttf introuvable');
       }
 
       command.videoFilters(videoFilters);
@@ -195,6 +181,10 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
           'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'
         );
         command.audioFilters(audioFilters);
+        command.outputOptions([
+          '-map 0:v:0',
+          '-map 0:a:0?'
+        ]);
       } else {
         command.input('anullsrc=r=48000:cl=stereo').inputFormat('lavfi');
         command.outputOptions([
