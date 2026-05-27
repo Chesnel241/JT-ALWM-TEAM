@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { concatenateVideos } from '../services/editorService.js';
-import { addListener, removeListener, finishJob } from '../services/editorProgress.js';
+import { addListener, removeListener, finishJob, getJobState } from '../services/editorProgress.js';
 import logger from '../logger/index.js';
 
 const router = express.Router();
@@ -19,6 +19,15 @@ router.get('/progress/:jobId', (req, res) => {
   const { jobId } = req.params;
   addListener(jobId, res);
   req.on('close', () => removeListener(jobId, res));
+});
+
+// GET /api/editor/result/:jobId — état du job en polling. Fallback robuste
+// quand le SSE est coupé par un proxy : le frontend récupère ainsi le
+// résultat (url) même si la connexion temps réel a sauté pendant le rendu.
+router.get('/result/:jobId', (req, res) => {
+  const state = getJobState(req.params.jobId);
+  if (!state) return res.status(404).json({ status: 'unknown' });
+  res.json(state);
 });
 
 router.post(
