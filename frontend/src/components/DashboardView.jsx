@@ -12,6 +12,7 @@ import AdminUploadDialog from './AdminUploadDialog.jsx';
 import Timeline from './editor/Timeline.jsx';
 import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
+import ActionSheet from './ActionSheet.jsx';
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
   const [content, setContent] = useState('');
@@ -130,6 +131,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [actionSheetFile, setActionSheetFile] = useState(null);
   
   // Admin Upload State
   const [adminUploadOpen, setAdminUploadOpen] = useState(false);
@@ -551,69 +553,26 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             {file.size}
           </div>
 
-          {/* Hover Overlay with Action Toolbar */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center backdrop-blur-[2px] z-10 p-2">
-            {isVideo && (
-              <div className="w-10 h-10 mb-2 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center text-white shadow-lg pointer-events-none">
+          {/* Hover Play Button for Video */}
+          {isVideo && (
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none z-10">
+              <div className="w-10 h-10 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center text-white shadow-lg">
                 <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1"></div>
               </div>
-            )}
-            {!isVideo && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setViewingScript(file); }}
-                className="w-10 h-10 mb-2 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur-md flex items-center justify-center text-white shadow-lg transition-colors"
-                title={isAudio ? "Écouter / Voir détails" : "Lire le script"}
-              >
-                {isAudio ? <Mic size={18} /> : <FileText size={18} />}
-              </button>
-            )}
-            
-            {/* Hover Toolbar */}
-            <div className="flex items-center gap-1 bg-[var(--paper)]/95 rounded-lg p-1 shadow-lg" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => openFeedbackDialog(selectedBin, file.id, 'approved')}
-                className={`p-1.5 rounded-lg transition-colors ${file.status === 'approved' ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
-                title="Approuver"
-              >
-                <CheckCircle size={16} />
-              </button>
-              <button
-                onClick={() => openFeedbackDialog(selectedBin, file.id, 'rejected')}
-                className={`p-1.5 rounded-lg transition-colors ${file.status === 'rejected' ? 'text-[var(--signal)] bg-[var(--signal)]/10' : 'text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10'}`}
-                title="Rejeter (Commentaire)"
-              >
-                <XCircle size={16} />
-              </button>
-              
-              {selectedBin === 'mj' ? (
-                <button
-                  onClick={() => openDownloadDialog(file)}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors"
-                  title={t.dashboard.downloadFile}
-                >
-                  <Download size={16} />
-                </button>
-              ) : (
-                <a
-                  href={`${API_BASE}/uploads/${file.filename}`}
-                  download={file.name}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 transition-colors block"
-                  title={t.dashboard.downloadFile}
-                >
-                  <Download size={16} />
-                </a>
-              )}
-              
-              <button
-                onClick={() => openDeleteDialog(selectedBin, file.id)}
-                type="button"
-                className="p-1.5 rounded-lg text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 transition-colors"
-                title={t.dashboard.delete}
-              >
-                <Trash2 size={16} />
-              </button>
             </div>
-          </div>
+          )}
+
+          {/* More actions button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActionSheetFile(file);
+            }}
+            className="absolute top-2 left-2 p-1.5 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 transition-colors z-30"
+            title="Options"
+          >
+            <MoreVertical size={16} />
+          </button>
         </div>
         
         {/* Footer Meta */}
@@ -1236,6 +1195,20 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           countryName={countries.find(c => c.id === selectedBin)?.name || selectedBin}
         />
       )}
+
+      <ActionSheet
+        isOpen={!!actionSheetFile}
+        onClose={() => setActionSheetFile(null)}
+        file={actionSheetFile}
+        isAudio={actionSheetFile?.type === 'audio' || !!actionSheetFile?.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i)}
+        isVideo={actionSheetFile?.type === 'video' || !!actionSheetFile?.name.match(/\.(mp4|mov|avi|mkv)$/i)}
+        onApprove={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'approved')}
+        onReject={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'rejected')}
+        onDownload={() => selectedBin === 'mj' ? openDownloadDialog(actionSheetFile) : null}
+        onDownloadHref={selectedBin !== 'mj' && actionSheetFile ? `${API_BASE}/uploads/${actionSheetFile.filename}` : null}
+        onDelete={() => openDeleteDialog(selectedBin, actionSheetFile?.id)}
+        onViewScript={(f) => setViewingScript(f)}
+      />
     </div>
   );
 }
