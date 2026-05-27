@@ -163,20 +163,33 @@ async function downloadFromR2(r2Key, destPath) {  const stream = await getR2Read
   return destPath;
 }
 
+// Réduit un nom de fichier reçu du client à son basename et rejette toute
+// tentative de traversée (`..`, séparateurs). Empêche de lire/écrire hors des
+// dossiers uploads/workDir via /concat.
+function safeFilename(filename) {
+  const base = path.basename(String(filename || ''));
+  if (!base || base === '.' || base === '..' || base.includes('/') || base.includes('\\')) {
+    throw new Error('Nom de fichier invalide.');
+  }
+  return base;
+}
+
 /**
  * Résout le chemin local d'un clip. En mode R2, télécharge le fichier
  * dans workDir et retourne ce chemin temporaire. Sinon, retourne le
  * chemin local sous uploadsDir.
  */
 async function resolveClipPath(filename, workDir) {
+  const base = safeFilename(filename);
   if (HAS_R2) {
-    const dest = path.join(workDir, filename);
-    await downloadFromR2(`uploads/${filename}`, dest);
+    const dest = path.join(workDir, base);
+    // Timeout : un download R2 qui pend ne doit pas bloquer le verrou isRendering.
+    await withTimeout(downloadFromR2(`uploads/${base}`, dest), IO_TIMEOUT_MS, `Téléchargement R2 ${base}`);
     return dest;
   }
-  const local = path.join(uploadsDir, filename);
+  const local = path.join(uploadsDir, base);
   if (!fs.existsSync(local)) {
-    throw new Error(`Le fichier "${filename}" n'existe pas sur le serveur.`);
+    throw new Error(`Le fichier "${base}" n'existe pas sur le serveur.`);
   }
   return local;
 }

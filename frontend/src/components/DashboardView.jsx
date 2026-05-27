@@ -25,12 +25,12 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword })
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let url = `${API_BASE}/uploads/${file.filename}?proxy=true`;
-    if (selectedBin === 'mj' && adminPassword) {
-      url += `&adminPassword=${encodeURIComponent(adminPassword)}`;
-    }
+    const url = `${API_BASE}/uploads/${file.filename}?proxy=true`;
+    // Mot de passe admin en en-tête (jamais en query : fuite dans logs/historique).
+    const headers = {};
+    if (selectedBin === 'mj' && adminPassword) headers['X-Admin-Password'] = adminPassword;
 
-    fetch(url)
+    fetch(url, { headers })
       .then(res => {
         if (!res.ok) throw new Error('Impossible de charger le contenu. (Peut-être protégé ?)');
         return res.text();
@@ -434,26 +434,40 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setDownloadDialogOpen(true);
   };
 
-  const handleConfirmDownload = () => {
+  const handleConfirmDownload = async () => {
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
-       let dlUrl = `${API_BASE}/uploads/${fileToDownload.filename}`;
-    if (selectedBin === 'mj') {
-      dlUrl = `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}&pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`;
-    } else {
-      dlUrl = `${API_BASE}/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}`;
+    const isMj = selectedBin === 'mj';
+    const token = localStorage.getItem('app-password') || '';
+    // Les archives passent par /api (requireAuth) ; les fichiers bruts par
+    // /uploads (public, sauf mj admin-gated). Identifiants en EN-TÊTES, jamais
+    // dans l'URL (fuite logs/historique). Téléchargement via blob.
+    const base = isArchive
+      ? `${API_BASE}/api/uploads/${fileToDownload.filename}`
+      : `${API_BASE}/uploads/${fileToDownload.filename}`;
+    const headers = {};
+    if (isArchive) headers['X-App-Password'] = token;
+    if (isMj) headers['X-Admin-Password'] = authenticatedAdminPassword;
+
+    let blobUrl;
+    try {
+      const res = await fetch(base, { headers, credentials: 'include' });
+      if (!res.ok) throw new Error('Téléchargement refusé par le serveur.');
+      const blob = await res.blob();
+      blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileToDownload.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      addToast(err.message || 'Téléchargement échoué', 'error', 5000);
+    } finally {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      setDownloadDialogOpen(false);
+      setFileToDownload(null);
     }
-    
-    // Déclenche le téléchargement
-    const link = document.createElement('a');
-    link.href = dlUrl;
-    link.download = fileToDownload.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    setDownloadDialogOpen(false);
-    setFileToDownload(null);
   };
 
   const handleConfirmDelete = async () => {
@@ -546,14 +560,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // d'upload s'ouvrait puis se refermait en quelques ms.
   const SPECIAL_BINS = ['delivery', 'mj', 'tj'];
 
+  const binIsValid = (bin) =>
+    bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
+
   useEffect(() => {
-    const valid =
-      selectedBin &&
-      (SPECIAL_BINS.includes(selectedBin) || countriesWithUploads.includes(selectedBin));
-    if (!valid && countriesWithUploads.length > 0) {
-      setSelectedBin(countriesWithUploads[0]);
+    if (binIsValid(selectedBin)) return;
+    // Restaure le dernier chutier choisi (survit refresh/onglet) s'il est
+    // encore valide, sinon premier pays disponible.
+    const saved = selectedWeek ? localStorage.getItem(`jt-bin-${selectedWeek}`) : null;
+    if (binIsValid(saved)) setSelectedBin(saved);
+    else if (countriesWithUploads.length > 0) setSelectedBin(countriesWithUploads[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBin, countriesWithUploads, selectedWeek]);
+
+  // Persiste le chutier sélectionné.
+  useEffect(() => {
+    if (selectedBin && selectedWeek) {
+      try { localStorage.setItem(`jt-bin-${selectedWeek}`, selectedBin); } catch { /* ignore */ }
     }
-  }, [selectedBin, countriesWithUploads]);
+  }, [selectedBin, selectedWeek]);
 
   const renderUploadMeta = (file) => (
     <span
@@ -739,7 +764,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <div className="flex overflow-x-auto pb-1 md:pb-0 gap-2 md:space-y-1 md:flex-col md:gap-0 snap-x scrollbar-hide -mx-2 px-2 md:mx-0 md:px-0">
                 {countriesWithUploads.map(countryId => {
                   const country = countries.find((c) => c.id === countryId);
-                  const fileCount = dashboard[countryId].length;
+                  const fileCount = dashboard[countryId]?.length ?? 0;
                   const isActive = selectedBin === countryId;
                   return (
                     <button 
@@ -845,13 +870,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
                     </button>
                   ) : (
-                    <a
-                      href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive`}
-                      download={`uploads_${selectedWeek}_${selectedBin}.zip`}
+                    <button
+                      onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
                       className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
                     >
                       <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
-                    </a>
+                    </button>
                   )}
                 </>
               )}
@@ -892,13 +916,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}</span>
                       </button>
                     ) : (
-                      <a
-                        href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive`}
-                        download={`uploads_${selectedWeek}_${selectedBin}.zip`}
+                      <button
+                        onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
                         className="w-full btn btn-primary py-2 px-3 text-sm flex items-center justify-center gap-2 text-center"
                       >
                         <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}</span>
-                      </a>
+                      </button>
                     )}
                   </>
                 )}
@@ -1045,7 +1068,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             ) : (
               <div className="mt-4 flex flex-col gap-8">
                 {(() => {
-                  const allFiles = dashboard[selectedBin] || [];
+                  const allFiles = Array.isArray(dashboard[selectedBin]) ? dashboard[selectedBin] : [];
                   if (allFiles.length === 0) {
                     return (
                       <div className="h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] py-20">
