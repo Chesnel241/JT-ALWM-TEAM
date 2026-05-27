@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Upload } from '@aws-sdk/lib-storage';
 import { createReadStream } from 'fs';
@@ -193,5 +193,20 @@ export async function checkR2Exists(r2Key) {
     if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) return false;
     throw err;
   }
+}
+
+/**
+ * Génère une URL temporaire (presigned URL) pour uploader un fichier directement vers R2
+ */
+export async function getUploadPresignedUrl(r2Key, contentType, expiresIn = 3600) {
+  if (!HAS_R2) throw new Error('R2 not configured');
+
+  const command = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: r2Key,
+    ContentType: contentType,
+  });
+
+  return await getSignedUrl(s3, command, { expiresIn });
 }
 

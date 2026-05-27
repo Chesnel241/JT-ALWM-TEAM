@@ -24,7 +24,7 @@ import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { audit } from '../logger/audit.js';
 import { deliveryUpload, uploadsDir, DELIVERY_MAX_FILE_SIZE } from '../lib/upload.js';
-import { HAS_R2, uploadToR2, deleteFromR2 } from '../lib/s3.js';
+import { HAS_R2, uploadToR2, deleteFromR2, checkR2Exists } from '../lib/s3.js';
 import { broadcastNotification } from './webpush.js';
 const router = Router();
 
@@ -138,6 +138,58 @@ router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
       next(e);
     }
   });
+}));
+
+// POST /api/deliveries/:weekId/finalize — finalisation d'upload direct (presigned)
+router.post('/:weekId/finalize', requireAdmin, asyncHandler(async (req, res, next) => {
+  const { weekId } = req.params;
+  const { name, filename, size, type } = req.body;
+
+  if (!isValidWeek(weekId)) {
+    logger.warn('Finalize delivery attempt with invalid week', { context: { weekId, ip: req.ip } });
+    return next(createErrors.notFound('Week'));
+  }
+
+  if (!name || !filename || !size || !type) {
+    return next(createErrors.badRequest('Paramètres manquants: name, filename, size, type'));
+  }
+
+  if (HAS_R2) {
+    const r2Key = `uploads/${filename}`;
+    const exists = await checkR2Exists(r2Key);
+    if (!exists) {
+      return next(createErrors.badRequest(`Le fichier n'existe pas sur R2.`));
+    }
+  }
+
+  const fileData = {
+    id: uuidv4(),
+    name,
+    filename,
+    type,
+    size,
+    status: 'completed',
+    uploadedAt: new Date().toISOString(),
+  };
+
+  try {
+    const result = addDelivery(weekId, fileData);
+    recordUpload(0, true);
+    audit('delivery.finalize', req, { weekId, fileId: fileData.id, filename, size });
+    logger.info('Delivery finalized via presigned', { context: { weekId, fileId: fileData.id, filename, durationMs: 0 } });
+    
+    broadcastNotification({
+      title: '🚨 NOUVEAU JT PRÊT !',
+      body: `Le JT de la semaine ${weekId} est prêt et disponible au téléchargement.`,
+      url: `/?week=${weekId}`
+    }).catch(err => logger.error('Push notification failed', { error: err.message }));
+
+    return res.status(201).json(result);
+  } catch (storeErr) {
+    recordUpload(0, false);
+    logger.error(`Delivery store error: ${storeErr.message}`, { error: storeErr.message, context: { weekId } });
+    return next(createErrors.internalError('Erreur lors de la sauvegarde'));
+  }
 }));
 
 // DELETE /api/deliveries/:weekId/:fileId

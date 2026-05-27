@@ -408,6 +408,59 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
   });
 }));
 
+// POST /api/uploads/:weekId/:countryId/finalize — finalisation d'upload direct R2
+router.post('/:weekId/:countryId/finalize', uploadMiddleware, asyncHandler(async (req, res, next) => {
+  const { weekId, countryId } = req.params;
+  const { name, filename, size, type, reportage } = req.body;
+
+  if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
+    logger.warn('Finalize attempt with invalid week or country', { context: { weekId, countryId, ip: req.ip } });
+    return next(createErrors.notFound('Week ou Country'));
+  }
+
+  if (!name || !filename || !size || !type) {
+    return next(createErrors.badRequest('Paramètres manquants: name, filename, size, type'));
+  }
+
+  if (HAS_R2) {
+    const r2Key = `uploads/${filename}`;
+    const exists = await checkR2Exists(r2Key);
+    if (!exists) {
+      return next(createErrors.badRequest(`Le fichier n'existe pas sur R2.`));
+    }
+  }
+
+  const fileData = {
+    id: uuidv4(),
+    name,
+    filename,
+    type,
+    size,
+    status: 'pending',
+    reportage: reportage || null,
+    uploadedAt: new Date().toISOString(),
+  };
+
+  try {
+    const result = addUpload(weekId, countryId, fileData);
+    recordUpload(0, true);
+    logger.uploadReceived(weekId, countryId, name, size);
+    audit('upload.finalize', req, { weekId, countryId, fileId: fileData.id, filename, size });
+
+    broadcastNotification({
+      title: 'Nouveau fichier reçu',
+      body: `Un fichier a été envoyé par ${countryId} pour la semaine ${weekId}.`,
+      url: `/?week=${weekId}`
+    }).catch(err => logger.error('Push notification failed', { error: err.message }));
+
+    return res.status(201).json(result);
+  } catch (storeErr) {
+    recordUpload(0, false);
+    logger.uploadFailed(weekId, countryId, name, storeErr);
+    return next(createErrors.internalError('Erreur lors de la sauvegarde des métadonnées'));
+  }
+}));
+
 // POST /api/uploads/:weekId/:countryId/script — saisie manuelle de script
 router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
