@@ -20,16 +20,22 @@ function probeDuration(url) {
 
 const COL = { navy: '#14143C', gold: '#FFD700', red: '#D81818', blue: '#0046C0', ink: '#1A1A1A', dark: '#1A1A2E' };
 
-// Classe d'animation d'entrée selon overlay.animation.
+// Classe d'animation d'entrée selon overlay.animation (mappe les presets ASS).
 const animClass = (a) => ({
-  slide: 'pv-slideL', scale: 'pv-scale', sweep: 'pv-fade', typewriter: 'pv-fade', fade: 'pv-fade',
+  fade: 'pv-fade', scale: 'pv-scale', pop: 'pv-pop', bounce: 'pv-bounce',
+  blurin: 'pv-blur', rotate: 'pv-rotate', slide: 'pv-slideL',
+  sweep: 'pv-fade', typewriter: 'pv-fade',
 }[a] || 'pv-fade');
 
+// Famille de police (override overlay.font) sinon défaut du modèle.
+const ff = (font, fallback) => (font ? `'${font}', ${fallback}` : fallback);
+
 // Rendu CSS approximatif d'un overlay (par templateId).
-function OverlayChip({ templateId, fields = {}, animation }) {
+function OverlayChip({ templateId, fields = {}, animation, font }) {
   const f = fields;
   const ac = animClass(animation);
-  const base = { position: 'absolute', fontFamily: 'Inter, system-ui, sans-serif', lineHeight: 1.1, whiteSpace: 'nowrap' };
+  const FF = (fallback) => ff(font, fallback);
+  const base = { position: 'absolute', fontFamily: FF('Inter, system-ui, sans-serif'), lineHeight: 1.1, whiteSpace: 'nowrap' };
   switch (templateId) {
     case 'lower_third':
       return (
@@ -173,12 +179,29 @@ export default function PreviewModal({ clips, branding, onClose }) {
     }
   }, [segs, idx, total]);
 
+  // Playhead fluide via requestAnimationFrame (timeupdate est trop lent →
+  // overlays/ticker/sous-titres saccadés).
+  useEffect(() => {
+    if (!playing) return undefined;
+    let raf = 0;
+    const tick = () => {
+      const v = videoRef.current;
+      const s = segs?.[idx];
+      if (v && s) {
+        setT(s.start + Math.max(0, v.currentTime - s.in));
+        if (v.currentTime >= s.out - 0.04) advance();
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, idx, segs, advance]);
+
   const onTimeUpdate = () => {
+    if (playing) return; // géré par le rAF
     const v = videoRef.current;
     const s = segs?.[idx];
-    if (!v || !s) return;
-    setT(s.start + Math.max(0, v.currentTime - s.in));
-    if (v.currentTime >= s.out - 0.04) advance();
+    if (v && s) setT(s.start + Math.max(0, v.currentTime - s.in));
   };
 
   const toggle = () => {
@@ -224,12 +247,20 @@ export default function PreviewModal({ clips, branding, onClose }) {
         @keyframes pvSlideL{from{transform:translateX(-120%);opacity:0}to{transform:translateX(0);opacity:1}}
         @keyframes pvScale{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
         @keyframes pvDrop{from{transform:translateY(-130%);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes pvPop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.12);opacity:1}100%{transform:scale(1)}}
+        @keyframes pvBounce{0%{transform:translateY(-60%) scaleY(.6);opacity:0}40%{transform:translateY(8%) scaleY(1.06);opacity:1}65%{transform:translateY(-6%)}100%{transform:translateY(0) scaleY(1)}}
+        @keyframes pvBlur{from{filter:blur(8px);opacity:0}to{filter:blur(0);opacity:1}}
+        @keyframes pvRotate{from{transform:rotate(-12deg) translateY(6px);opacity:0}to{transform:rotate(0) translateY(0);opacity:1}}
         @keyframes pvTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
         @keyframes pvPulse{0%,100%{opacity:1}50%{opacity:.5}}
         .pv-fade{animation:pvFade .35s ease both}
-        .pv-slideL{animation:pvSlideL .45s ease both}
-        .pv-scale{animation:pvScale .4s ease both}
-        .pv-drop{animation:pvDrop .4s ease both}
+        .pv-slideL{animation:pvSlideL .5s cubic-bezier(.34,1.56,.64,1) both}
+        .pv-scale{animation:pvScale .42s cubic-bezier(.34,1.56,.64,1) both}
+        .pv-pop{animation:pvPop .5s cubic-bezier(.34,1.56,.64,1) both}
+        .pv-bounce{animation:pvBounce .7s cubic-bezier(.28,1.4,.5,1) both}
+        .pv-blur{animation:pvBlur .5s ease both}
+        .pv-rotate{animation:pvRotate .5s cubic-bezier(.34,1.56,.64,1) both}
+        .pv-drop{animation:pvDrop .4s cubic-bezier(.34,1.56,.64,1) both}
       `}</style>
       <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-[var(--paper-2)]">
@@ -251,15 +282,19 @@ export default function PreviewModal({ clips, branding, onClose }) {
 
           {/* Overlays du clip */}
           {activeOverlays.map((o, i) => (
-            <OverlayChip key={`${o.id || o.templateId}-${i}-${idx}`} templateId={o.templateId} fields={o.fields} animation={o.animation} />
+            <OverlayChip key={`${o.id || o.templateId}-${i}-${idx}`} templateId={o.templateId} fields={o.fields} animation={o.animation} font={o.font} />
           ))}
 
-          {/* Sous-titre */}
-          {activeSub && (
-            <div style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', ...subPos }}>
-              <span style={{ background: 'rgba(0,0,0,.6)', color: '#fff', fontWeight: 600, fontSize: '1.2em', padding: '4px 14px', textShadow: '0 1px 2px #000' }}>{activeSub.text}</span>
-            </div>
-          )}
+          {/* Sous-titre (police/taille du style) */}
+          {activeSub && (() => {
+            const st = seg?.clip.subtitleStyle || {};
+            const size = { S: '1.05em', M: '1.25em', L: '1.5em' }[st.size] || '1.25em';
+            return (
+              <div style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', ...subPos }}>
+                <span className="pv-fade" style={{ background: 'rgba(0,0,0,.6)', color: '#fff', fontFamily: ff(st.font, 'Inter, system-ui, sans-serif'), fontWeight: 600, fontSize: size, padding: '4px 14px', textShadow: '0 1px 2px #000' }}>{activeSub.text}</span>
+              </div>
+            );
+          })()}
 
           {/* Habillage global */}
           {live && (
@@ -267,9 +302,16 @@ export default function PreviewModal({ clips, branding, onClose }) {
               <span style={{ width: 8, height: 8, background: '#fff', borderRadius: '50%' }} /> {live.label || 'LIVE'}
             </div>
           )}
-          {branding?.logo && (
-            <img src="/logo-lwm.png" alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', right: '3%', bottom: '14%', height: '12%', opacity: 0.9 }} />
-          )}
+          {branding?.logo && (() => {
+            const lp = branding.logoPosition || 'br';
+            const bottom = tk ? '14%' : '4%'; // au-dessus du ticker si présent
+            const pos = {
+              tl: { left: '3%', top: '4%' }, tr: { right: '3%', top: '4%' },
+              bl: { left: '3%', bottom }, br: { right: '3%', bottom },
+              center: { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' },
+            }[lp] || { right: '3%', bottom };
+            return <img src="/logo-lwm.png" alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', height: '12%', opacity: 0.9, ...pos }} />;
+          })()}
           {tk && (
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '11%', background: 'rgba(10,26,47,.95)', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
               {tk.categorie && <span style={{ background: COL.red, color: '#fff', fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', flexShrink: 0 }}>{tk.categorie}</span>}
