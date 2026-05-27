@@ -20,7 +20,15 @@ async function request(url, options = {}) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(err.message || err.error || tStatic().errors.serverError);
   }
-  return res.status === 204 ? null : res.json();
+  
+  if (res.status === 204) return null;
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return text;
+  }
 }
 
 export const api = {
