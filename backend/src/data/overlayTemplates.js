@@ -30,6 +30,18 @@ const COL_BLUE = '&HC04600&'; // bleu info (#0046C0)
 const COL_INK = '&H1A1A1A&'; // texte sombre sur fond clair
 const COL_TICKER = '&H2F1A0A&'; // fond bandeau ticker (#0A1A2F)
 
+// Familles de polices disponibles (doivent matcher les TTF de backend/fonts,
+// nom name-table ID-1). Sert d'allowlist pour l'override \fn par overlay.
+export const FONT_FAMILIES = [
+  'Inter', 'Bebas Neue', 'Anton', 'Archivo Black', 'Barlow',
+  'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
+];
+
+// Tag \fn si la police demandée est valide, sinon vide (garde le défaut du modèle).
+function fontTag(font) {
+  return font && FONT_FAMILIES.includes(font) ? `\\fn${font}` : '';
+}
+
 // Neutralise ASS control characters so user text can never break the
 // override-tag syntax or inject tags.
 function safe(s) {
@@ -46,21 +58,22 @@ function safe(s) {
 //   scale      — apparition par zoom
 //   sweep      — balayage couleur (or → blanc)
 //   typewriter — révélation lettre par lettre (karaoké, secondaire invisible)
-function renderText(raw, animation) {
+function renderText(raw, animation, font) {
   const s = safe(raw);
+  const fn = fontTag(font); // override police (placé après le \fn du modèle → gagne)
   switch (animation) {
     case 'scale':
-      return { prefix: '\\fscx40\\fscy40\\fad(150,150)\\t(0,400,\\fscx100\\fscy100)', body: s };
+      return { prefix: `${fn}\\fscx40\\fscy40\\fad(150,150)\\t(0,400,\\fscx100\\fscy100)`, body: s };
     case 'sweep':
-      return { prefix: `\\1c${COL_GOLD}\\fad(200,200)\\t(0,600,\\1c${COL_WHITE})`, body: s };
+      return { prefix: `${fn}\\1c${COL_GOLD}\\fad(200,200)\\t(0,600,\\1c${COL_WHITE})`, body: s };
     case 'typewriter':
       return {
-        prefix: '\\2a&HFF&',
+        prefix: `${fn}\\2a&HFF&`,
         body: [...s].map((c) => `{\\k3}${c === ' ' ? '\\h' : c}`).join(''),
       };
     case 'fade':
     default:
-      return { prefix: '\\fad(300,250)', body: s };
+      return { prefix: `${fn}\\fad(300,250)`, body: s };
   }
 }
 
@@ -126,7 +139,7 @@ export const OVERLAY_TEMPLATES = [
     buildAss(overlay, start, end) {
       const { name, title } = overlay.fields || {};
       const slide = '\\move(-1100,0,0,0,0,450)';
-      const n = renderText(name, overlay.animation);
+      const n = renderText(name, overlay.animation, overlay.font);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${COL_NAVY}\\1a&H22&\\bord0\\shad0\\p1}m 0 0 l 1060 0 1060 130 0 130{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 130 0 130{\\p0}`,
@@ -150,9 +163,9 @@ export const OVERLAY_TEMPLATES = [
       const useReveal = !overlay.animation || overlay.animation === 'fade';
       const titleAnim = useReveal
         ? '\\fad(200,250)\\clip(0,0,0,1080)\\t(0,550,\\clip(0,0,1920,1080))'
-        : renderText(title, overlay.animation).prefix;
+        : renderText(title, overlay.animation, overlay.font).prefix;
       const titleBody = overlay.animation === 'typewriter'
-        ? renderText(title, overlay.animation).body
+        ? renderText(title, overlay.animation, overlay.font).body
         : safe(title);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,448)\\1c${COL_BLACK}\\1a&H40&\\bord0\\shad0\\fad(300,300)\\p1}m 0 0 l 1920 0 1920 184 0 184{\\p0}`,
@@ -172,7 +185,7 @@ export const OVERLAY_TEMPLATES = [
     buildAss(overlay, start, end) {
       const { pays } = overlay.fields || {};
       const drop = '\\move(1660,-74,1660,20,0,400)';
-      const p = renderText(pays, overlay.animation);
+      const p = renderText(pays, overlay.animation, overlay.font);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7${drop}\\1c${COL_RED}\\bord0\\shad0\\p1}m 0 0 l 260 0 260 64 0 64{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7${drop}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 64 l 260 64 260 70 0 70{\\p0}`,
@@ -191,7 +204,7 @@ export const OVERLAY_TEMPLATES = [
     buildAss(overlay, start, end) {
       const { sujet } = overlay.fields || {};
       const rise = '\\move(0,180,0,0,0,420)';
-      const s = renderText(sujet, overlay.animation);
+      const s = renderText(sujet, overlay.animation, overlay.font);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${COL_DARK}\\1a&H18&\\bord0\\shad0\\p1}m 0 0 l 1920 0 1920 80 0 80{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 80 0 80{\\p0}`,
@@ -209,7 +222,7 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { texte } = overlay.fields || {};
-      const x = renderText(texte, overlay.animation);
+      const x = renderText(texte, overlay.animation, overlay.font);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${COL_RED}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 1920 0 1920 72 0 72{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${COL_BLACK}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 230 0 230 72 0 72{\\p0}`,
@@ -247,7 +260,7 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { texte } = overlay.fields || {};
-      const x = renderText(texte, overlay.animation);
+      const x = renderText(texte, overlay.animation, overlay.font);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1010)\\1c${COL_BLACK}\\1a&H40&\\bord0\\shad0\\fad(200,200)\\p1}m -760 -42 l 760 -42 760 42 -760 42{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1014)\\fnInter\\fs40\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`,

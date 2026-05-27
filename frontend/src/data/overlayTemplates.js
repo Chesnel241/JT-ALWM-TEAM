@@ -138,6 +138,12 @@ export const OVERLAY_TEMPLATES = [
 export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'global');
 export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'global');
 
+// Polices disponibles (miroir backend FONT_FAMILIES).
+export const FONT_FAMILIES = [
+  'Inter', 'Bebas Neue', 'Anton', 'Archivo Black', 'Barlow',
+  'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
+];
+
 // Animations d'entrée du texte (doit matcher renderText() côté backend).
 export const TEXT_ANIMATIONS = [
   { id: 'fade', label: 'Fondu' },

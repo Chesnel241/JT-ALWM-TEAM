@@ -15,7 +15,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn, Newspaper } from 'lucide-react';
+import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn, Newspaper, Eye } from 'lucide-react';
 
 const KEN_BURNS_LABEL = { in: 'Zoom avant', out: 'Zoom arrière' };
 
@@ -24,13 +24,32 @@ const TRANSITIONS = [
   { id: 'none', label: 'Coupe' },
   { id: 'fade', label: 'Fondu' },
   { id: 'fadeblack', label: 'Fondu noir' },
+  { id: 'fadewhite', label: 'Fondu blanc' },
+  { id: 'fadegrays', label: 'Fondu gris' },
   { id: 'dissolve', label: 'Dissoudre' },
+  { id: 'pixelize', label: 'Pixels' },
   { id: 'wipeleft', label: 'Volet ←' },
   { id: 'wiperight', label: 'Volet →' },
+  { id: 'wipeup', label: 'Volet ↑' },
+  { id: 'wipedown', label: 'Volet ↓' },
   { id: 'slideleft', label: 'Glisse ←' },
   { id: 'slideright', label: 'Glisse →' },
-  { id: 'circleopen', label: 'Iris' },
-  { id: 'pixelize', label: 'Pixels' },
+  { id: 'slideup', label: 'Glisse ↑' },
+  { id: 'slidedown', label: 'Glisse ↓' },
+  { id: 'smoothleft', label: 'Doux ←' },
+  { id: 'smoothright', label: 'Doux →' },
+  { id: 'circleopen', label: 'Iris ouvert' },
+  { id: 'circleclose', label: 'Iris fermé' },
+  { id: 'circlecrop', label: 'Cercle' },
+  { id: 'radial', label: 'Radial' },
+  { id: 'zoomin', label: 'Zoom' },
+  { id: 'squeezev', label: 'Pli vertical' },
+  { id: 'diagtl', label: 'Diagonale ↖' },
+  { id: 'diagbr', label: 'Diagonale ↘' },
+  { id: 'coverleft', label: 'Couvre ←' },
+  { id: 'coverright', label: 'Couvre →' },
+  { id: 'revealleft', label: 'Révèle ←' },
+  { id: 'revealright', label: 'Révèle →' },
 ];
 
 // Sélecteur de transition inséré entre deux clips.
@@ -144,7 +163,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns }) {
   );
 }
 
-export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive }) {
+export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -196,6 +215,15 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
           )}
         </h3>
         <div className="flex items-center gap-3">
+          {onPreview && clips.length > 0 && (
+            <button
+              onClick={onPreview}
+              className="text-sm px-3 py-2 rounded-lg border border-[var(--border)] text-[color:var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors flex items-center gap-2"
+              title="Aperçu temps réel avant l'assemblage"
+            >
+              <Eye size={16} /> Aperçu
+            </button>
+          )}
           {onGlobalLayer && (
             <button
               onClick={onGlobalLayer}

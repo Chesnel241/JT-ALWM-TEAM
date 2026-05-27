@@ -6,7 +6,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import ffmpegStatic from 'ffmpeg-static';
-import { generateAssFile, OVERLAY_TEMPLATES } from '../src/data/overlayTemplates.js';
+import { generateAssFile, OVERLAY_TEMPLATES, FONT_FAMILIES } from '../src/data/overlayTemplates.js';
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -100,6 +100,36 @@ describe('editor overlay fonts', () => {
     }
     expect(fs.existsSync(outPng)).toBe(true);
 
+    fs.rmSync(workDir, { recursive: true, force: true });
+  }, 30000);
+
+  // Préfixes TTF attendus par famille (override \fn) — pas de substitution.
+  const FAMILY_TTF = {
+    Inter: 'Inter', Anton: 'Anton', 'Bebas Neue': 'BebasNeue', 'Archivo Black': 'ArchivoBlack',
+    Barlow: 'Barlow', 'Fjalla One': 'FjallaOne', 'PT Serif': 'PTSerif', 'PT Sans': 'PTSans',
+    'Titillium Web': 'TitilliumWeb',
+  };
+
+  it('résout chaque police bundlée via l\'override font (aucune substitution)', async () => {
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-font-'));
+    const overlays = FONT_FAMILIES.map((f, i) => ({
+      id: `f${i}`, templateId: 'lower_third', font: f,
+      fields: { name: `Test ${f}`, title: 'x' }, startTime: 0, duration: 3,
+    }));
+    const assPath = generateAssFile(overlays, workDir);
+    const outPng = path.join(workDir, 'frame.png');
+    const { stderr } = await execFileAsync(ffmpegStatic, [
+      '-hide_banner', '-loglevel', 'verbose',
+      '-f', 'lavfi', '-i', 'color=c=navy:s=1920x1080:d=1',
+      '-vf', `ass=filename=${assPath}:fontsdir=${FONTS_DIR}`,
+      '-frames:v', '1', '-y', outPng,
+    ]);
+    const lines = stderr.split('\n').filter((l) => l.includes('fontselect'));
+    for (const [family, ttf] of Object.entries(FAMILY_TTF)) {
+      const line = lines.find((l) => l.includes(`(${family},`));
+      expect(line, `${family} demandée`).toBeTruthy();
+      expect(line, `${family} substituée (${line})`).toContain(ttf);
+    }
     fs.rmSync(workDir, { recursive: true, force: true });
   }, 30000);
 });
