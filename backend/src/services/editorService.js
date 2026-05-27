@@ -1,6 +1,4 @@
-import ffmpeg from 'fluent-ffmpeg';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
-import ffprobeInstaller from '@ffprobe-installer/ffprobe';
+import ffmpeg from '../lib/ffmpeg.js';
 import fs from 'fs';
 import os from 'os';
 import { pipeline } from 'stream/promises';
@@ -15,14 +13,8 @@ import { setProgress } from './editorProgress.js';
 
 let isRendering = false;
 
-// Binaires fournis par les packages installer (Render n'a pas ffmpeg/ffprobe
-// système). setFfprobePath est CRITIQUE : sans lui, checkAudio échoue ET
-// fluent-ffmpeg ne peut pas calculer la durée → l'event `progress` n'émet
-// jamais de `percent` → la jauge reste figée.
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
-ffmpeg.setFfprobePath(ffprobeInstaller.path);
-logger.info(`FFmpeg: ${ffmpegInstaller.path} | FFprobe: ${ffprobeInstaller.path}`);
-
+// ffmpeg/ffprobe configurés dans ../lib/ffmpeg.js (ffmpeg 7.x via ffmpeg-static
+// pour les transitions xfade ; ffprobe via @ffprobe-installer).
 const checkAudio = (filePath) => new Promise((resolve) => {
   ffmpeg.ffprobe(filePath, (err, metadata) => {
     if (err || !metadata || !metadata.streams) return resolve(false);
@@ -109,9 +101,63 @@ function runFfmpegStep(command, label, { onStart, onProgress } = {}) {
   });
 }
 
+// Transitions xfade autorisées (vidéo) — `acrossfade` côté audio.
+const XFADE_TRANSITIONS = new Set([
+  'fade', 'fadeblack', 'wipeleft', 'wiperight', 'slideleft', 'slideright',
+  'dissolve', 'circleopen', 'circleclose', 'pixelize',
+]);
+// Au-delà, on retombe sur le concat copy (le filtergraph xfade ouvre tous les
+// clips à la fois → on borne la RAM sur Render free).
+const MAX_XFADE_CLIPS = Number(process.env.EDITOR_MAX_XFADE_CLIPS) || 12;
+const KEN_BURNS_MODES = new Set(['in', 'out']);
+const IMAGE_EXT = /\.(jpe?g|png|webp|gif|bmp)$/i;
+const KEN_BURNS_IMG_DEFAULT_SEC = 5;
+
+// Valide/normalise une transition reçue du frontend. null si absente/invalide.
+function parseTransition(t) {
+  if (!t || typeof t !== 'object') return null;
+  const type = String(t.type || '').trim();
+  if (!XFADE_TRANSITIONS.has(type)) return null;
+  let d = Number(t.duration);
+  if (!isFinite(d)) d = 0.5;
+  d = Math.min(2, Math.max(0.2, d));
+  return { type, duration: d };
+}
+
+function parseKenBurns(kb) {
+  if (!kb || typeof kb !== 'object') return null;
+  const mode = String(kb.mode || '').trim();
+  if (!KEN_BURNS_MODES.has(mode)) return null;
+  return { mode };
+}
+
+// Durée (s) d'un fichier média via ffprobe.
+function getDuration(filePath) {
+  return new Promise((resolve) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      const d = metadata?.format?.duration;
+      resolve(err || !isFinite(d) ? 0 : Number(d));
+    });
+  });
+}
+
+// Filtres Ken Burns (zoom lent centré) pour un clip de durée `durSec`. Pré-scale
+// 2x pour un zoom net. Incrément linéaire (pas de min/max → pas de virgule qui
+// casserait la chaîne). Retourne des strings (filtergraph).
+function kenBurnsFilters(mode, durSec) {
+  const frames = Math.max(1, Math.round((durSec || KEN_BURNS_IMG_DEFAULT_SEC) * OUT_FPS));
+  const inc = (0.25 / frames).toFixed(6); // zoom max ~1.25
+  const z = mode === 'out' ? `1.25-on*${inc}` : `1.0+on*${inc}`;
+  return [
+    `scale=${OUT_W * 2}:${OUT_H * 2}:force_original_aspect_ratio=increase`,
+    `crop=${OUT_W * 2}:${OUT_H * 2}`,
+    `zoompan=z=${z}:d=1:x=iw/2-(iw/zoom/2):y=ih/2-(ih/zoom/2):s=${OUT_W}x${OUT_H}:fps=${OUT_FPS}`,
+    'setsar=1',
+  ];
+}
+
 // Télécharge un fichier R2 vers un chemin local. Retourne destPath.
-async function downloadFromR2(r2Key, destPath) {
-  const stream = await getR2ReadStream(r2Key);
+async function downloadFromR2(r2Key, destPath) {  const stream = await getR2ReadStream(r2Key);
   const out = fs.createWriteStream(destPath);
   await pipeline(stream, out);
   return destPath;
@@ -208,79 +254,84 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
   
   // Phase 1 : Normalisation séquentielle de chaque clip
   for (let i = 0; i < normalizedClips.length; i++) {
-    const { inPoint, outPoint, overlays = [] } = normalizedClips[i];
+    const { inPoint, outPoint, overlays = [], kenBurns } = normalizedClips[i];
     const normPath = path.join(workDir, `norm_${i}.mp4`);
     normPaths.push(normPath);
 
-    const hasAudio = await checkAudio(localPaths[i]);
+    const isImage = IMAGE_EXT.test(normalizedClips[i].filename || '');
+    const kb = parseKenBurns(kenBurns);
+    const hasAudio = !isImage && await checkAudio(localPaths[i]);
 
     const command = ffmpeg(localPaths[i]);
-    const videoFilters = [];
+    const trimIn = inPoint != null ? inPoint : 0;
+    const trimOut = outPoint != null ? outPoint : 9999999;
+    const hasTrim = !isImage && (inPoint != null || outPoint != null);
 
-    if (inPoint != null || outPoint != null) {
-      const trimIn = inPoint != null ? inPoint : 0;
-      const trimOut = outPoint != null ? outPoint : 9999999;
-      videoFilters.push(`trim=${trimIn}:${trimOut},setpts=PTS-STARTPTS`);
+    // Image fixe → boucle sur une durée donnée pour produire un segment vidéo.
+    let imgDur = 0;
+    if (isImage) {
+      imgDur = outPoint != null ? outPoint : (Number(normalizedClips[i].duration) || KEN_BURNS_IMG_DEFAULT_SEC);
+      // -r OUT_FPS sur l'entrée image : sinon le loop tourne à 25 fps par défaut
+      // et la durée de sortie (à 30 fps) ne correspond pas.
+      command.inputOptions(['-loop 1', `-r ${OUT_FPS}`, `-t ${imgDur}`]);
     }
 
-    // 720p par défaut : ~2,2x moins de pixels que le 1080p → encodage bien
-    // plus rapide et moins de RAM sur Render free (CPU partagé). Les overlays
-    // ASS restent en PlayRes 1920x1080 et sont mis à l'échelle par libass.
-    videoFilters.push(
-      `scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease`,
-      `pad=${OUT_W}:${OUT_H}:(ow-iw)/2:(oh-ih)/2`,
-      'setsar=1',
-      `fps=${OUT_FPS}`,
-      'format=yuv420p'
-    );
+    // On assemble TOUT en filter_complex (string) : ça évite l'entrée
+    // `-f lavfi` que fluent-ffmpeg rejette sous ffmpeg 7 (lavfi = device). Le
+    // son muet des clips sans audio est généré par la SOURCE anullsrc.
+    const vParts = [];
+    if (hasTrim) vParts.push(`trim=${trimIn}:${trimOut}`, 'setpts=PTS-STARTPTS');
 
-    // Overlays via libass. On passe filename + fontsdir en objet pour que
-    // fluent-ffmpeg gère l'échappement, et fontsdir pour résoudre les
-    // polices bundlées (sinon texte invisible en prod).
+    if (kb) {
+      // Calibre la vitesse du zoom sur la durée du segment.
+      let durSec = imgDur;
+      if (!durSec) {
+        durSec = (inPoint != null || outPoint != null)
+          ? (outPoint != null ? outPoint : await getDuration(localPaths[i])) - (inPoint || 0)
+          : await getDuration(localPaths[i]);
+      }
+      vParts.push(...kenBurnsFilters(kb.mode, durSec));
+    } else {
+      // 720p par défaut : ~2,2x moins de pixels que le 1080p → encodage bien
+      // plus rapide et moins de RAM sur Render free. Les overlays ASS restent
+      // en PlayRes 1920x1080 et sont mis à l'échelle par libass.
+      vParts.push(
+        `scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease`,
+        `pad=${OUT_W}:${OUT_H}:(ow-iw)/2:(oh-ih)/2`,
+        'setsar=1',
+        `fps=${OUT_FPS}`
+      );
+    }
+    vParts.push('format=yuv420p');
+
+    // Overlays libass. Chemins sans espaces/`:` côté serveur → insertion directe.
     if (overlays && overlays.length > 0) {
       try {
         const assPath = generateAssFile(overlays, workDir);
-        videoFilters.push({
-          filter: 'ass',
-          options: HAS_FONTS
-            ? { filename: assPath, fontsdir: FONTS_DIR }
-            : { filename: assPath },
-        });
+        vParts.push(HAS_FONTS
+          ? `ass=filename=${assPath}:fontsdir=${FONTS_DIR}`
+          : `ass=filename=${assPath}`);
       } catch (err) {
         logger.warn(`Overlays skipped: ${err.message}`);
       }
     }
 
-    command.videoFilters(videoFilters);
-
-    const audioFilters = [];
+    const filters = [`[0:v]${vParts.join(',')}[v]`];
     if (hasAudio) {
-      if (inPoint != null || outPoint != null) {
-        const trimIn = inPoint != null ? inPoint : 0;
-        const trimOut = outPoint != null ? outPoint : 9999999;
-        audioFilters.push(`atrim=${trimIn}:${trimOut},asetpts=PTS-STARTPTS`);
-      }
-      audioFilters.push(
-        'aresample=48000',
-        'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'
-      );
-      command.audioFilters(audioFilters);
-      command.outputOptions([
-        '-map 0:v:0',
-        '-map 0:a:0?'
-      ]);
+      const aParts = [];
+      if (hasTrim) aParts.push(`atrim=${trimIn}:${trimOut}`, 'asetpts=PTS-STARTPTS');
+      aParts.push('aresample=48000', 'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo');
+      filters.push(`[0:a]${aParts.join(',')}[a]`);
     } else {
-      command.input('anullsrc=r=48000:cl=stereo').inputFormat('lavfi');
-      command.outputOptions([
-        '-map 0:v:0',
-        '-map 1:a:0',
-        '-shortest'
-      ]);
+      // Source de silence (filtre lavfi, pas d'entrée -f lavfi).
+      filters.push('anullsrc=r=48000:cl=stereo[a]');
     }
+
+    command.complexFilter(filters, ['v', 'a']);
 
     // veryfast bat ultrafast ici : plus rapide ET ~3x plus petit à
     // -threads 1. ref/rc-lookahead réduits = moins de RAM (Render 512 Mo).
-    command.outputOptions([
+    const outOpts = [
       '-c:v libx264',
       `-preset ${PRESET}`,
       '-crf 23',
@@ -292,8 +343,10 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
       '-ar 48000',
       '-movflags +faststart',
       '-threads 1', // Empreinte mémoire minimale par clip
-      '-max_muxing_queue_size 1024'
-    ]);
+      '-max_muxing_queue_size 1024',
+    ];
+    if (!hasAudio) outOpts.push('-shortest'); // anullsrc infini → calé sur la vidéo
+    command.outputOptions(outOpts);
 
     // Watchdog branché AVANT save() pour ne manquer aucun event.
     const stepPromise = runFfmpegStep(command, `Normalisation clip ${i + 1}/${normalizedClips.length}`, {
@@ -311,8 +364,27 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
     await stepPromise;
   }
 
-  // Phase 2 : Concaténation rapide (0 RAM, juste de la copie de flux)
+  // Phase 2 : assemblage. Transitions xfade si demandées (et nombre de clips
+  // raisonnable), sinon concat demuxer rapide (0 ré-encodage).
+  const transitions = normalizedClips.slice(0, -1).map((c) => parseTransition(c.transition));
+  const wantsTransitions = transitions.some(Boolean);
+  const useXfade = normPaths.length >= 2 && normPaths.length <= MAX_XFADE_CLIPS && wantsTransitions;
+
+  if (useXfade) {
+    await assembleWithTransitions(normPaths, transitions, outputPath, onProgress);
+  } else {
+    if (wantsTransitions && normPaths.length > MAX_XFADE_CLIPS) {
+      logger.warn(`Trop de clips (${normPaths.length} > ${MAX_XFADE_CLIPS}) — transitions ignorées, concat simple.`);
+    }
+    await assembleWithConcat(normPaths, outputPath, onProgress);
+  }
+}
+
+// Assemblage rapide par concat demuxer : copie de flux, ~0 RAM. Tous les
+// norm_i sont déjà uniformes (720p/30/aac) donc la copie est sûre.
+async function assembleWithConcat(normPaths, outputPath, onProgress) {
   logger.info('Assemblage final avec le concat demuxer...');
+  const workDir = path.dirname(outputPath);
   const listPath = path.join(workDir, 'list.txt');
   const listContent = normPaths.map(p => `file '${p.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n');
   fs.writeFileSync(listPath, listContent);
@@ -329,4 +401,60 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
   await concatPromise;
   if (typeof onProgress === 'function') onProgress(100);
   logger.info('Concaténation vidéo terminée avec succès');
+}
+
+// Assemblage avec transitions xfade (vidéo) + acrossfade (audio) en une passe
+// filter_complex. Offset cumulatif standard : offset_k = Σdurées − Σtransitions.
+async function assembleWithTransitions(normPaths, transitions, outputPath, onProgress) {
+  const durations = [];
+  for (const p of normPaths) durations.push(await getDuration(p));
+
+  const cmd = ffmpeg();
+  normPaths.forEach((p) => cmd.input(p));
+
+  const vf = [];
+  const af = [];
+  let lastV = '0:v';
+  let lastA = '0:a';
+  let accLen = durations[0];
+  for (let i = 1; i < normPaths.length; i++) {
+    const t = transitions[i - 1] || { type: 'fade', duration: 0.5 };
+    const off = Math.max(0.1, accLen - t.duration).toFixed(3);
+    const last = i === normPaths.length - 1;
+    const vOut = last ? 'vout' : `vx${i}`;
+    const aOut = last ? 'aout' : `ax${i}`;
+    vf.push(`[${lastV}][${i}:v]xfade=transition=${t.type}:duration=${t.duration}:offset=${off}[${vOut}]`);
+    af.push(`[${lastA}][${i}:a]acrossfade=d=${t.duration}[${aOut}]`);
+    lastV = vOut;
+    lastA = aOut;
+    accLen = accLen + durations[i] - t.duration;
+  }
+
+  logger.info('Assemblage avec transitions xfade...', { context: { clips: normPaths.length } });
+  cmd.complexFilter([...vf, ...af], [lastV, lastA]);
+  cmd.outputOptions([
+    '-c:v libx264',
+    `-preset ${PRESET}`,
+    '-crf 23',
+    '-pix_fmt yuv420p',
+    '-x264-params', 'rc-lookahead=10:ref=2:sliced-threads=0',
+    '-g 60',
+    '-c:a aac',
+    '-b:a 128k',
+    '-ar 48000',
+    '-movflags +faststart',
+    '-threads 1',
+    '-max_muxing_queue_size 1024',
+  ]);
+
+  const pr = runFfmpegStep(cmd, 'Assemblage transitions', {
+    onStart: (c) => logger.info('Démarrage xfade', { command: c }),
+    onProgress: (p) => {
+      if (typeof onProgress === 'function') onProgress(Math.max(0, Math.min(100, p.percent || 0)));
+    },
+  });
+  cmd.save(outputPath);
+  await pr;
+  if (typeof onProgress === 'function') onProgress(100);
+  logger.info('Assemblage transitions terminé avec succès');
 }

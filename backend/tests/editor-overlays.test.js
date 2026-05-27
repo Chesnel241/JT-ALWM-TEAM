@@ -27,6 +27,41 @@ const SAMPLE_FIELDS = {
   sujet: 'Elections au Benin', texte: 'EDITION SPECIALE',
 };
 
+describe('overlay animations & templates', () => {
+  const read = (overlays) => {
+    const wd = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-anim-'));
+    const p = generateAssFile(overlays, wd);
+    const content = fs.readFileSync(p, 'utf8');
+    fs.rmSync(wd, { recursive: true, force: true });
+    return content;
+  };
+
+  it('expose les nouveaux modèles JT', () => {
+    const ids = OVERLAY_TEMPLATES.map((t) => t.id);
+    expect(ids).toEqual(expect.arrayContaining(['titre_karaoke', 'sous_titre', 'score_resultat', 'horloge_date']));
+  });
+
+  it('génère les tags d\'animation attendus', () => {
+    const scale = read([{ templateId: 'lower_third', fields: { name: 'Marie' }, animation: 'scale' }]);
+    expect(scale).toContain('\\fscx40');
+    expect(scale).toContain('\\t(0,400');
+
+    const tw = read([{ templateId: 'sous_titre', fields: { texte: 'AB' }, animation: 'typewriter' }]);
+    expect(tw).toContain('\\k3'); // karaoké par caractère
+    expect(tw).toContain('\\2a&HFF&'); // secondaire invisible
+
+    const sweep = read([{ templateId: 'titre_reportage', fields: { sujet: 'X' }, animation: 'sweep' }]);
+    expect(sweep).toMatch(/\\t\(0,600,\\1c/);
+  });
+
+  it('échappe les caractères de contrôle ASS dans le texte', () => {
+    // 'a{b}\\c' (= a{b}\c) → \ devient /, accolades supprimées → 'ab/c'.
+    const c = read([{ templateId: 'flash_info', fields: { texte: 'a{b}\\c' }, animation: 'fade' }]);
+    expect(c).toContain('ab/c');
+    expect(c).not.toContain('{b}');
+  });
+});
+
 describe('editor overlay fonts', () => {
   it('bundles the broadcast TTF fonts used by the templates', () => {
     const files = fs.readdirSync(FONTS_DIR);

@@ -50,4 +50,51 @@ export const OVERLAY_TEMPLATES = [
       { key: 'texte', label: 'Texte de l\'alerte', placeholder: 'Ex: ÉDITION SPÉCIALE' },
     ],
   },
+  {
+    id: 'titre_karaoke',
+    label: 'Titre Karaoké',
+    emoji: '🎤',
+    preview: 'Grand titre révélé lettre par lettre (machine à écrire)',
+    fields: [
+      { key: 'title', label: 'Titre', placeholder: 'Ex: LE GRAND JOURNAL' },
+    ],
+  },
+  {
+    id: 'sous_titre',
+    label: 'Sous-titre Interview',
+    emoji: '💬',
+    preview: 'Sous-titre de parole, bas centré, fond sombre',
+    fields: [
+      { key: 'texte', label: 'Texte', placeholder: 'Ex: « Nous attendons les résultats… »' },
+    ],
+  },
+  {
+    id: 'score_resultat',
+    label: 'Score / Résultat',
+    emoji: '🏆',
+    preview: 'Encadré résultat (deux camps + score)',
+    fields: [
+      { key: 'gauche', label: 'Camp gauche', placeholder: 'Ex: OUI' },
+      { key: 'score',  label: 'Score / valeur', placeholder: 'Ex: 54% - 46%' },
+      { key: 'droite', label: 'Camp droite', placeholder: 'Ex: NON' },
+    ],
+  },
+  {
+    id: 'horloge_date',
+    label: 'Horloge / Date',
+    emoji: '🕐',
+    preview: 'Heure et date en coin haut-gauche',
+    fields: [
+      { key: 'heure', label: 'Heure', placeholder: 'Ex: 20:00' },
+      { key: 'date',  label: 'Date',  placeholder: 'Ex: Lun. 26 Mai' },
+    ],
+  },
+];
+
+// Animations d'entrée du texte (doit matcher renderText() côté backend).
+export const TEXT_ANIMATIONS = [
+  { id: 'fade', label: 'Fondu' },
+  { id: 'scale', label: 'Zoom' },
+  { id: 'sweep', label: 'Balayage couleur' },
+  { id: 'typewriter', label: 'Machine à écrire' },
 ];

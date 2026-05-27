@@ -364,6 +364,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             inPoint: clip.inPoint,
             outPoint: clip.outPoint,
             overlays: clip.overlays || [],
+            transition: clip.transition,
+            kenBurns: clip.kenBurns,
           }))
         })
       });
