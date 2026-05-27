@@ -19,6 +19,7 @@ export default function TrimModal({ file, onClose, onConfirm }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [inPoint, setInPoint] = useState(0);
   const [outPoint, setOutPoint] = useState(null); // null = end of video
+  const [dragging, setDragging] = useState(false);
 
   // Load video metadata
   useEffect(() => {
@@ -77,9 +78,31 @@ export default function TrimModal({ file, onClose, onConfirm }) {
 
 
   const seekTo = (t) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(0, Math.min(t, duration));
-    }
+    const v = videoRef.current;
+    if (!v || !duration) return;
+    const ct = Math.max(0, Math.min(t, duration));
+    v.currentTime = ct;
+    setCurrentTime(ct); // maj immédiate de la jauge (même en pause)
+  };
+
+  // Scrub : drag au pointeur sur la barre (clic + glisser).
+  const scrubFromEvent = useCallback((clientX) => {
+    if (!progressRef.current || !duration) return;
+    const rect = progressRef.current.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    seekTo(ratio * duration);
+  }, [duration]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onScrubDown = (e) => {
+    if (!duration) return;
+    setDragging(true);
+    try { progressRef.current.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    scrubFromEvent(e.clientX);
+  };
+  const onScrubMove = (e) => { if (dragging) scrubFromEvent(e.clientX); };
+  const onScrubUp = (e) => {
+    setDragging(false);
+    try { progressRef.current.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   };
 
   const setIn = () => {
@@ -97,17 +120,6 @@ export default function TrimModal({ file, onClose, onConfirm }) {
     }
     setOutPoint(t);
   };
-
-  // Click on progress bar → seek
-  const handleProgressClick = useCallback(
-    (e) => {
-      if (!progressRef.current || !duration) return;
-      const rect = progressRef.current.getBoundingClientRect();
-      const ratio = (e.clientX - rect.left) / rect.width;
-      seekTo(ratio * duration);
-    },
-    [duration]
-  );
 
   const handleConfirm = () => {
     onConfirm({
@@ -159,6 +171,7 @@ export default function TrimModal({ file, onClose, onConfirm }) {
             className="w-full max-h-[320px] object-contain"
             onLoadedMetadata={handleLoadedMetadata}
             onTimeUpdate={handleTimeUpdate}
+            onSeeked={() => videoRef.current && setCurrentTime(videoRef.current.currentTime)}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             preload="metadata"
@@ -172,8 +185,10 @@ export default function TrimModal({ file, onClose, onConfirm }) {
           <div className="flex flex-col gap-1">
             <div
               ref={progressRef}
-              onClick={handleProgressClick}
-              className="relative h-8 bg-[var(--paper-2)] rounded-lg cursor-pointer border border-[var(--border)] overflow-hidden select-none"
+              onPointerDown={onScrubDown}
+              onPointerMove={onScrubMove}
+              onPointerUp={onScrubUp}
+              className="relative h-8 bg-[var(--paper-2)] rounded-lg cursor-pointer border border-[var(--border)] overflow-hidden select-none touch-none"
             >
               {/* Selected range (IN→OUT) */}
               <div

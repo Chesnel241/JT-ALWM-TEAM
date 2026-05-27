@@ -1,4 +1,29 @@
-import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload } from 'lucide-react';
+
+// Bouton d'upload d'un asset (musique/voix-off/image) → uploadAsset → {filename,name}.
+function UploadBtn({ accept, label, uploadAsset, onUploaded }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <label className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-dashed border-[var(--border)] text-xs cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] ${busy ? 'opacity-60 pointer-events-none' : 'text-[color:var(--muted)]'}`}>
+      <Upload size={14} /> {busy ? 'Envoi…' : label}
+      <input
+        type="file"
+        accept={accept}
+        className="hidden"
+        disabled={busy || !uploadAsset}
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          setBusy(true);
+          try { const r = await uploadAsset(f); if (r) onUploaded(r); }
+          catch (err) { alert(`Échec de l'upload : ${err.message}`); }
+          finally { setBusy(false); e.target.value = ''; }
+        }}
+      />
+    </label>
+  );
+}
 
 const POSITIONS = [
   { id: 'tl', label: 'Haut gauche' }, { id: 'tr', label: 'Haut droite' },
@@ -11,7 +36,7 @@ const POSITIONS = [
  * incrustations images. Les fichiers audio/image proviennent des uploads de la
  * semaine (props audioFiles / imageFiles : [{filename, name}]).
  */
-export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [] }) {
+export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [], uploadAsset }) {
   const v = value;
   const setTicker = (p) => onChange({ ...v, ticker: { ...v.ticker, ...p } });
   const setLive = (p) => onChange({ ...v, live: { ...v.live, ...p } });
@@ -77,10 +102,13 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
             {head(<Music size={15} />, 'Fond sonore (musique)', v.music.enabled, (c) => setMusic({ enabled: c }))}
             {v.music.enabled && (
               <>
-                <select className={field} value={v.music.filename} onChange={(e) => setMusic({ filename: e.target.value })}>
-                  <option value="">— Choisir un fichier audio —</option>
-                  {audioFiles.map((f) => <option key={f.filename} value={f.filename}>{f.name}</option>)}
-                </select>
+                <div className="flex gap-2">
+                  <select className={field} value={v.music.filename} onChange={(e) => setMusic({ filename: e.target.value })}>
+                    <option value="">— Choisir un fichier audio —</option>
+                    {audioFiles.map((f) => <option key={f.filename} value={f.filename}>{f.name}</option>)}
+                  </select>
+                  <UploadBtn accept="audio/*" label="Uploader" uploadAsset={uploadAsset} onUploaded={(r) => setMusic({ filename: r.filename })} />
+                </div>
                 <label className="text-xs text-[color:var(--muted)]">Volume : {Math.round((v.music.volume ?? 0.2) * 100)}%</label>
                 <input type="range" min="0" max="1" step="0.05" value={v.music.volume ?? 0.2} onChange={(e) => setMusic({ volume: parseFloat(e.target.value) })} className="w-full accent-[var(--accent)]" />
                 <label className="flex items-center gap-2 text-sm text-[color:var(--ink)]">
@@ -96,10 +124,13 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
             {head(<Mic size={15} />, 'Voix-off', v.voiceover.enabled, (c) => setVoice({ enabled: c }))}
             {v.voiceover.enabled && (
               <>
-                <select className={field} value={v.voiceover.filename} onChange={(e) => setVoice({ filename: e.target.value })}>
-                  <option value="">— Choisir un fichier audio —</option>
-                  {audioFiles.map((f) => <option key={f.filename} value={f.filename}>{f.name}</option>)}
-                </select>
+                <div className="flex gap-2">
+                  <select className={field} value={v.voiceover.filename} onChange={(e) => setVoice({ filename: e.target.value })}>
+                    <option value="">— Choisir un fichier audio —</option>
+                    {audioFiles.map((f) => <option key={f.filename} value={f.filename}>{f.name}</option>)}
+                  </select>
+                  <UploadBtn accept="audio/*" label="Uploader" uploadAsset={uploadAsset} onUploaded={(r) => setVoice({ filename: r.filename })} />
+                </div>
                 <label className="text-xs text-[color:var(--muted)]">Départ (s)</label>
                 <input className={field} type="number" min="0" step="0.5" value={v.voiceover.startTime ?? 0} onChange={(e) => setVoice({ startTime: parseFloat(e.target.value) || 0 })} />
               </>
@@ -126,13 +157,19 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                 </div>
               </div>
             ))}
-            {imageFiles.length === 0 ? (
-              <p className="text-xs text-[color:var(--muted)] italic">Aucune image uploadée cette semaine.</p>
-            ) : (
-              <button onClick={addImage} className="flex items-center justify-center gap-2 py-2 border-2 border-dashed border-[var(--border)] rounded-lg text-sm text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                <Plus size={15} /> Ajouter une image
-              </button>
-            )}
+            <div className="flex gap-2">
+              {imageFiles.length > 0 && (
+                <button onClick={addImage} className="flex-1 flex items-center justify-center gap-2 py-2 border-2 border-dashed border-[var(--border)] rounded-lg text-sm text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                  <Plus size={15} /> Image existante
+                </button>
+              )}
+              <UploadBtn
+                accept="image/*"
+                label="Uploader une image"
+                uploadAsset={uploadAsset}
+                onUploaded={(r) => setImages([...(v.imageOverlays || []), { filename: r.filename, position: 'tr', scale: 0.25, opacity: 1, startTime: 0 }])}
+              />
+            </div>
           </section>
         </div>
 
