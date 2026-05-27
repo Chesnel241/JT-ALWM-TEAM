@@ -6,6 +6,23 @@ import CountryAvatar from './CountryAvatar.jsx';
 import { formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
 
+const getSupportedMimeType = () => {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4', // Safari iOS
+    'audio/aac',
+    'audio/ogg'
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return '';
+};
+
 export default function VoixOffView({ countries, selectedWeek, weeks, setSelectedWeek }) {
   const { addToast } = useToast();
   const { lang } = useI18n();
@@ -111,13 +128,21 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
       // Setup Visualizer
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       audioContextRef.current = new AudioContext();
+      
+      // Fix for iOS Safari AudioContext suspension
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
       analyserRef.current = audioContextRef.current.createAnalyser();
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       analyserRef.current.fftSize = 256;
       
       // Setup Recorder
-      const mediaRecorder = new MediaRecorder(stream);
+      const mimeType = getSupportedMimeType();
+      const options = mimeType ? { mimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
@@ -126,8 +151,8 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
       };
       
       mediaRecorder.onstop = () => {
-        const mimeType = mediaRecorderRef.current.mimeType || '';
-        const blob = new Blob(audioChunksRef.current, mimeType ? { type: mimeType } : undefined);
+        const type = mimeType || mediaRecorderRef.current.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type });
         setAudioBlob(blob);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -165,8 +190,16 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
     if (!audioBlob || !selectedCountry || !selectedWeek || !reportageTitle.trim()) return;
     
     setIsUploading(true);
+    
+    // Determine the correct extension based on Blob type
+    const blobType = audioBlob.type || '';
+    let ext = 'webm';
+    if (blobType.includes('mp4')) ext = 'mp4';
+    else if (blobType.includes('ogg')) ext = 'ogg';
+    else if (blobType.includes('aac')) ext = 'aac';
+
     const formData = new FormData();
-    formData.append('audio', audioBlob, `voix-${Date.now()}.webm`);
+    formData.append('audio', audioBlob, `voix-${Date.now()}.${ext}`);
     formData.append('reportageTitle', reportageTitle.trim());
     formData.append('script', script);
 
