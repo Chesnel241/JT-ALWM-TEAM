@@ -758,7 +758,7 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     if (scriptPath && existsSync(scriptPath)) {
       unlinkSync(scriptPath);
     }
-    return next(createErrors.serverError('Erreur lors du traitement de la voix: ' + error.message));
+    return next(createErrors.internalError('Erreur lors du traitement de la voix: ' + error.message));
   }
 }));
 

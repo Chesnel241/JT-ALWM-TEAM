@@ -31,7 +31,7 @@ export function processVoiceover(inputPath, outputPath) {
       "highpass=f=80",
       "agate=threshold=0.04:ratio=4:attack=2:release=100",
       "acompressor=threshold=0.1:ratio=4:attack=5:release=100",
-      "treble=g=2:f=4000:w=0.5t",
+      "treble=g=2:f=4000",
       "loudnorm=I=-14:TP=-1.5:LRA=11"
     ].join(',');
 
