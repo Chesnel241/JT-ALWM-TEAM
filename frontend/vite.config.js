@@ -12,7 +12,11 @@ export default defineConfig({
       filename: 'custom-sw.js',
       registerType: 'autoUpdate',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Ne pas précacher les gros chunks chargés à la demande (Whisper/ONNX,
+        // Remotion) : ils restent récupérés au runtime, le SW reste léger.
+        globIgnores: ['**/transformers*', '**/ort*', '**/onnx*', '**/remotion*', '**/*whisper*'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       includeAssets: ['favicon.ico', 'logo-lwm.png'],
       manifest: {
