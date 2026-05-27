@@ -166,12 +166,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
   const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
   const sseRef = useRef(null);
+  const pollRef = useRef(null);
+  const safetyRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (sseRef.current) {
         try { sseRef.current.close(); } catch { /* ignore */ }
       }
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (safetyRef.current) clearTimeout(safetyRef.current);
     };
   }, []);
 
@@ -219,53 +223,73 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // Job ID partagé entre le flux SSE de progression et la requête concat.
     const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const token = localStorage.getItem('app-password') || '';
+
+    // Le rendu tourne en arrière-plan côté serveur. On suit la progression
+    // via SSE (temps réel) ET un polling de secours : si le SSE est coupé par
+    // un proxy pendant l'encodage, le polling récupère quand même le résultat.
+    let settled = false;
+
+    const stop = () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      if (safetyRef.current) { clearTimeout(safetyRef.current); safetyRef.current = null; }
+      if (sseRef.current) { try { sseRef.current.close(); } catch { /* ignore */ } sseRef.current = null; }
+    };
+    const succeed = (url) => {
+      if (settled) return;
+      settled = true;
+      stop();
+      const finalUrl = /^https?:\/\//.test(url) ? url : `${API_BASE}${url}`;
+      setExportProgress(100);
+      setExportPhase('done');
+      setGeneratedVideoUrl(finalUrl);
+      addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
+      setIsGeneratingVideo(false);
+    };
+    const fail = (msg) => {
+      if (settled) return;
+      settled = true;
+      stop();
+      setIsGeneratingVideo(false);
+      addToast(msg, 'error', 6000);
+    };
+    const handleState = ({ percent, status, url }) => {
+      if (typeof percent === 'number') setExportProgress(percent);
+      if (status && status !== 'unknown') setExportPhase(status);
+      if (status === 'done' && url) succeed(url);
+      else if (status === 'error') fail('Erreur serveur lors du montage.');
+    };
+
     try {
-      if (sseRef.current) {
-        try { sseRef.current.close(); } catch { /* ignore */ }
-      }
-      // Ouvre le flux de progression réel (téléchargement → encodage → upload).
+      if (sseRef.current) { try { sseRef.current.close(); } catch { /* ignore */ } }
+
+      // Flux SSE temps réel. onerror n'est PAS fatal : EventSource se
+      // reconnecte seul et le polling sert de filet de sécurité.
       const es = new EventSource(
         `${API_BASE}/api/editor/progress/${jobId}?pwd=${encodeURIComponent(token)}`
       );
       sseRef.current = es;
       es.onmessage = (e) => {
-        try {
-          const { percent, status, url } = JSON.parse(e.data);
-          if (typeof percent === 'number') setExportProgress(percent);
-          if (status) setExportPhase(status);
+        try { handleState(JSON.parse(e.data)); } catch { /* ligne ignorée */ }
+      };
+      es.onerror = () => { /* laisser EventSource se reconnecter ; polling prend le relais */ };
 
-          if (status === 'done' && url) {
-            const finalUrl = /^https?:\/\//.test(url) ? url : `${API_BASE}${url}`;
-            setExportProgress(100);
-            setExportPhase('done');
-            setGeneratedVideoUrl(finalUrl);
-            addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
-            setIsGeneratingVideo(false);
-            es.close();
-            sseRef.current = null;
-          } else if (status === 'error') {
-            throw new Error('Erreur serveur lors du montage');
-          }
-        } catch (err) {
-          console.error(err);
-          addToast(err.message, 'error', 5000);
-          setIsGeneratingVideo(false);
-          es.close();
-          sseRef.current = null;
-        }
-      };
-      es.onerror = () => { 
-        try { es.close(); sseRef.current = null; } catch { /* ignore */ } 
-        setIsGeneratingVideo(false);
-        addToast("Connexion au serveur perdue pendant le montage.", "error");
-      };
+      // Polling de secours toutes les 4 s.
+      pollRef.current = setInterval(async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/editor/result/${jobId}`, {
+            headers: { 'X-App-Password': token },
+            credentials: 'include',
+          });
+          if (r.ok) handleState(await r.json());
+        } catch { /* réseau instable, on réessaiera */ }
+      }, 4000);
+
+      // Filet de sécurité absolu : abandon de l'UI après 20 min.
+      safetyRef.current = setTimeout(() => fail("Le montage prend trop de temps. Réessayez ou vérifiez la connexion."), 20 * 60 * 1000);
 
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-App-Password': token,
-        },
+        headers: { 'Content-Type': 'application/json', 'X-App-Password': token },
         credentials: 'include',
         body: JSON.stringify({
           jobId,
@@ -278,18 +302,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         })
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(data.errors?.[0]?.msg || data.message || 'Erreur lors du montage vidéo');
       }
-
-      // La vidéo se génère en arrière-plan. Le SSE (EventSource) s'occupera 
-      // de mettre à jour l'UI et de fermer la connexion.
+      // Succès : le suivi (SSE + polling) met à jour l'UI jusqu'au résultat.
     } catch (err) {
       console.error(err);
-      addToast(err.message, 'error', 5000);
-      setIsGeneratingVideo(false);
-      if (es) try { es.close(); } catch { /* ignore */ }
+      fail(err.message);
     }
   };
 
