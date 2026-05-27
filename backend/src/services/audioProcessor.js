@@ -1,12 +1,6 @@
-import ffmpeg from 'fluent-ffmpeg';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
-import ffprobeInstaller from '@ffprobe-installer/ffprobe';
+import ffmpeg from '../lib/ffmpeg.js';
 import path from 'path';
 import fs from 'fs';
-
-// Configure ffmpeg + ffprobe (binaires statiques, Render n'a pas de système)
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
-ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
 /**
  * Process an uploaded voiceover audio file to apply "Studio TV" effects:

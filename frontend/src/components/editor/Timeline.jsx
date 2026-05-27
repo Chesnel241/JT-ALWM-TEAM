@@ -15,9 +15,46 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers } from 'lucide-react';
+import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn } from 'lucide-react';
 
-function SortableClip({ clip, onRemove, onTrim, onOverlay }) {
+const KEN_BURNS_LABEL = { in: 'Zoom avant', out: 'Zoom arrière' };
+
+// Transitions xfade (doit matcher l'allowlist backend).
+const TRANSITIONS = [
+  { id: 'none', label: 'Coupe' },
+  { id: 'fade', label: 'Fondu' },
+  { id: 'fadeblack', label: 'Fondu noir' },
+  { id: 'dissolve', label: 'Dissoudre' },
+  { id: 'wipeleft', label: 'Volet ←' },
+  { id: 'wiperight', label: 'Volet →' },
+  { id: 'slideleft', label: 'Glisse ←' },
+  { id: 'slideright', label: 'Glisse →' },
+  { id: 'circleopen', label: 'Iris' },
+  { id: 'pixelize', label: 'Pixels' },
+];
+
+// Sélecteur de transition inséré entre deux clips.
+function TransitionPicker({ value, onChange }) {
+  const active = value && value !== 'none';
+  return (
+    <div className="flex flex-col items-center gap-1 shrink-0" title="Transition vers le clip suivant">
+      <ChevronRight size={16} className={active ? 'text-[var(--accent)]' : 'text-[color:var(--muted)]'} />
+      <select
+        value={value || 'none'}
+        onChange={(e) => onChange(e.target.value)}
+        className={`text-[10px] rounded-md border px-1 py-1 bg-[var(--paper)] focus:outline-none ${
+          active ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--border)] text-[color:var(--muted)]'
+        }`}
+      >
+        {TRANSITIONS.map((t) => (
+          <option key={t.id} value={t.id}>{t.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns }) {
   const {
     attributes,
     listeners,
@@ -70,6 +107,13 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay }) {
           <Layers size={13} />
         </button>
         <button
+          onClick={() => onKenBurns(clip.instanceId || clip.id)}
+          className={`p-1.5 rounded-lg transition-colors ${clip.kenBurns?.mode ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
+          title="Zoom lent (Ken Burns) — clic pour changer"
+        >
+          <ZoomIn size={13} />
+        </button>
+        <button
           onClick={() => onRemove(clip.instanceId || clip.id)}
           className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
           title="Retirer de la Timeline"
@@ -88,6 +132,12 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay }) {
         <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/10 rounded text-[10px] text-purple-500 font-medium">
           <Layers size={10} />
           {clip.overlays.length} animation{clip.overlays.length > 1 ? 's' : ''}
+        </div>
+      )}
+      {clip.kenBurns?.mode && (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-[var(--accent)]/10 rounded text-[10px] text-[var(--accent)] font-medium">
+          <ZoomIn size={10} />
+          {KEN_BURNS_LABEL[clip.kenBurns.mode]}
         </div>
       )}
     </div>
@@ -116,6 +166,23 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
 
   const removeClip = (instanceId) => {
     setClips(clips.filter((c) => (c.instanceId || c.id) !== instanceId));
+  };
+
+  const cycleKenBurns = (instanceId) => {
+    setClips(clips.map((c) => {
+      if ((c.instanceId || c.id) !== instanceId) return c;
+      const cur = c.kenBurns?.mode;
+      const next = cur === 'in' ? 'out' : cur === 'out' ? undefined : 'in';
+      return { ...c, kenBurns: next ? { mode: next } : undefined };
+    }));
+  };
+
+  const setTransition = (idx, type) => {
+    setClips(clips.map((c, i) =>
+      i === idx
+        ? { ...c, transition: type === 'none' ? undefined : { type, duration: c.transition?.duration ?? 0.5 } }
+        : c
+    ));
   };
 
   return (
@@ -175,15 +242,23 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
               items={clips.map((c) => c.instanceId || c.id)}
               strategy={horizontalListSortingStrategy}
             >
-              <div className="flex gap-2">
-                {clips.map((clip) => (
-                  <SortableClip
-                    key={clip.instanceId || clip.id}
-                    clip={clip}
-                    onRemove={removeClip}
-                    onTrim={onTrimClip}
-                    onOverlay={onOverlayClip}
-                  />
+              <div className="flex gap-2 items-center">
+                {clips.map((clip, idx) => (
+                  <React.Fragment key={clip.instanceId || clip.id}>
+                    <SortableClip
+                      clip={clip}
+                      onRemove={removeClip}
+                      onTrim={onTrimClip}
+                      onOverlay={onOverlayClip}
+                      onKenBurns={cycleKenBurns}
+                    />
+                    {idx < clips.length - 1 && (
+                      <TransitionPicker
+                        value={clip.transition?.type}
+                        onChange={(t) => setTransition(idx, t)}
+                      />
+                    )}
+                  </React.Fragment>
                 ))}
               </div>
             </SortableContext>

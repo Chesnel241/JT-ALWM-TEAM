@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Plus, Trash2, Layers, Clock } from 'lucide-react';
-import { OVERLAY_TEMPLATES } from '../../data/overlayTemplates.js';
+import { OVERLAY_TEMPLATES, TEXT_ANIMATIONS } from '../../data/overlayTemplates.js';
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -45,6 +45,20 @@ function OverlayEditor({ overlay, onChange, onRemove }) {
           />
         </div>
       ))}
+
+      {/* Animation d'entrée */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-[color:var(--muted)]">Animation d'entrée</label>
+        <select
+          value={overlay.animation || 'fade'}
+          onChange={(e) => onChange({ ...overlay, animation: e.target.value })}
+          className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+        >
+          {TEXT_ANIMATIONS.map((a) => (
+            <option key={a.id} value={a.id}>{a.label}</option>
+          ))}
+        </select>
+      </div>
 
       {/* Timing controls */}
       <div className="grid grid-cols-2 gap-3">
@@ -92,6 +106,7 @@ export default function OverlayPanel({ clip, onClose, onSave }) {
         id: `${templateId}-${Date.now()}`,
         templateId,
         fields: {},
+        animation: 'fade',
         startTime: 0,
         duration: null,
       },

@@ -75,6 +75,22 @@ router.post(
       .optional()
       .isString()
       .withMessage('Chaque overlay doit avoir un templateId valide.'),
+    body('clips.*.overlays.*.animation')
+      .optional()
+      .isIn(['fade', 'slide', 'scale', 'sweep', 'typewriter'])
+      .withMessage('animation invalide.'),
+    body('clips.*.transition.type')
+      .optional()
+      .isIn(['fade', 'fadeblack', 'wipeleft', 'wiperight', 'slideleft', 'slideright', 'dissolve', 'circleopen', 'circleclose', 'pixelize'])
+      .withMessage('Type de transition invalide.'),
+    body('clips.*.transition.duration')
+      .optional()
+      .isFloat({ min: 0.2, max: 2 })
+      .withMessage('Durée de transition entre 0.2 et 2 s.'),
+    body('clips.*.kenBurns.mode')
+      .optional()
+      .isIn(['in', 'out'])
+      .withMessage('Mode Ken Burns invalide.'),
   ],
   async (req, res, next) => {
     try {
