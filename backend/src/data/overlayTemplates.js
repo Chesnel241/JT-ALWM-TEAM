@@ -26,6 +26,9 @@ const COL_GOLD = '&H00D7FF&'; // #FFD700
 const COL_NAVY = '&H3C1414&'; // deep blue band
 const COL_RED = '&H1818D8&'; // alert red
 const COL_DARK = '&H1A1A2E&'; // near-black band
+const COL_BLUE = '&HC04600&'; // bleu info (#0046C0)
+const COL_INK = '&H1A1A1A&'; // texte sombre sur fond clair
+const COL_TICKER = '&H2F1A0A&'; // fond bandeau ticker (#0A1A2F)
 
 // Neutralise ASS control characters so user text can never break the
 // override-tag syntax or inject tags.
@@ -69,7 +72,7 @@ function formatAssTime(seconds) {
   return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
 }
 
-export function generateAssFile(overlays, workDir) {
+export function generateAssFile(overlays, workDir, ctx = {}) {
   const assFilename = `overlays_${Date.now()}_${Math.floor(Math.random() * 1000)}.ass`;
   const absoluteAssPath = path.join(workDir, assFilename);
 
@@ -100,7 +103,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const startTimeStr = formatAssTime(startSec);
     const endTimeStr = formatAssTime(endSec);
 
-    const dialogues = template.buildAss(overlay, startTimeStr, endTimeStr);
+    const dialogues = template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec });
     for (const d of dialogues) {
       assContent += d + '\n';
     }
@@ -288,6 +291,123 @@ export const OVERLAY_TEMPLATES = [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(20,20)${slide}\\1c${COL_RED}\\bord0\\shad0\\p1}m 0 0 l 300 0 300 70 0 70{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an4\\pos(36,55)${slide}\\fnBebas Neue\\fs48\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1}${safe(heure)}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an4\\pos(150,52)${slide}\\fnInter\\fs26\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1}${safe(date)}`,
+      ];
+    },
+  },
+  {
+    id: 'lower_third_pro',
+    label: 'Lower-Third Pro (2 lignes)',
+    emoji: '🟦',
+    scope: 'clip',
+    preview: 'Style France 24 : titre gras + sous-titre coloré, bas-gauche',
+    fields: [
+      { key: 'titre', label: 'Titre (gras)', placeholder: 'Ex: LE MAROC ACCROCHÉ' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Ex: Les Lions concèdent le nul (1-1)' },
+    ],
+    buildAss(overlay, start, end) {
+      const { titre, sous_titre } = overlay.fields || {};
+      const slideT = '\\move(-1100,892,72,892,0,380)';
+      const slideS = '\\move(-1100,958,72,958,0,460)';
+      return [
+        // Barre titre blanche.
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,892)${slideT}\\1c${COL_WHITE}\\bord0\\shad3\\p1}m 0 0 l 980 0 980 64 0 64{\\p0}`,
+        // Liseré bleu gauche.
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,892)${slideT}\\1c${COL_BLUE}\\bord0\\p1}m 0 0 l 14 0 14 64 0 64{\\p0}`,
+        // Titre (Archivo Black, sombre).
+        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(100,902)\\fnArchivo Black\\fs44\\1c${COL_INK}\\bord0\\fad(420,250)}${safe(titre)}`,
+        // Barre sous-titre bleue.
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,958)${slideS}\\1c${COL_BLUE}\\bord0\\shad2\\p1}m 0 0 l 820 0 820 52 0 52{\\p0}`,
+        // Sous-titre (Inter, blanc).
+        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(92,968)\\fnInter\\b1\\fs30\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord0\\fad(500,250)}${safe(sous_titre)}`,
+      ];
+    },
+  },
+  {
+    id: 'breaking_news',
+    label: 'Breaking News',
+    emoji: '🚨',
+    scope: 'clip',
+    preview: 'Bandeau rouge slanté « DERNIÈRE MINUTE » + sujet',
+    fields: [
+      { key: 'titre', label: 'Mention', placeholder: 'Ex: DERNIÈRE MINUTE' },
+      { key: 'sujet', label: 'Sujet', placeholder: 'Ex: Coup d\'État au Gabon' },
+    ],
+    buildAss(overlay, start, end) {
+      const { titre, sujet } = overlay.fields || {};
+      const t = (titre && titre.trim()) || 'DERNIÈRE MINUTE';
+      return [
+        // Bandeau rouge slanté (parallélogramme).
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(120,150)\\1c${COL_RED}\\bord0\\shad5\\fad(220,0)\\p1}m 60 0 l 900 0 840 132 0 132{\\p0}`,
+        // Mention (Anton, blanc, italique léger).
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(180,168)\\fnAnton\\fs66\\1c${COL_WHITE}\\bord0\\shad2\\fad(260,0)}${safe(t)}`,
+        // Bandeau sujet blanc sous le rouge.
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(120,290)\\1c${COL_WHITE}\\bord0\\shad3\\fad(380,0)\\clip(120,290,120,420)\\t(0,500,\\clip(120,290,1300,420))\\p1}m 0 0 l 1100 0 1100 70 0 70{\\p0}`,
+        // Sujet (Inter gras, sombre).
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(150,302)\\fnInter\\b1\\fs40\\1c${COL_INK}\\bord0\\fad(560,250)}${safe(sujet)}`,
+      ];
+    },
+  },
+  {
+    id: 'ticker',
+    label: 'Bande défilante (ticker)',
+    emoji: '📰',
+    scope: 'global',
+    preview: 'Bandeau d\'infos qui défile en continu en bas, sur tout le JT',
+    fields: [
+      { key: 'categorie', label: 'Catégorie (tag)', placeholder: 'Ex: ALERTE' },
+      { key: 'texte', label: 'Texte défilant', placeholder: 'Ex: Sommet à Libreville • Élections au Bénin • …' },
+    ],
+    buildAss(overlay, start, end, ctx = {}) {
+      const { categorie, texte } = overlay.fields || {};
+      const durSec = Math.max(2, ctx.durSec || 30);
+      const SPEED = 170; // px/s
+      const FS = 32;
+      const CHAR_W = 16;
+      const sep = '       •       ';
+      const unit = (safe(texte) || ' ') + sep;
+      const unitW = unit.length * CHAR_W;
+      const needW = SPEED * durSec + 1920;
+      const repeats = Math.min(400, Math.max(1, Math.ceil(needW / Math.max(1, unitW))));
+      const full = unit.repeat(repeats);
+      const fullW = repeats * unitW;
+      const durMs = Math.round(durSec * 1000);
+      const tagW = 230;
+      const lines = [
+        // Fond de barre.
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1012)\\1c${COL_TICKER}\\1a&H0A&\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 1920 0 1920 68 0 68{\\p0}`,
+        // Texte défilant (clip à droite du tag).
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an4\\move(1920,1046,${-Math.round(fullW)},1046,0,${durMs})\\clip(${tagW + 4},1010,1920,1080)\\fnInter\\fs${FS}\\1c${COL_WHITE}\\bord0\\shad0}${full}`,
+      ];
+      // Tag catégorie (rouge) par-dessus, à gauche.
+      const tag = safe(categorie);
+      if (tag) {
+        lines.push(
+          `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1012)\\1c${COL_RED}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l ${tagW} 0 ${tagW} 68 0 68{\\p0}`,
+          `Dialogue: 3,${start},${end},Default,,0,0,0,,{\\an4\\pos(26,1046)\\fnInter\\b1\\fs30\\1c${COL_WHITE}\\bord0\\fad(250,250)}${tag}`
+        );
+      }
+      return lines;
+    },
+  },
+  {
+    id: 'live_badge',
+    label: 'Badge LIVE / DIRECT',
+    emoji: '🔴',
+    scope: 'global',
+    preview: 'Pastille LIVE/DIRECT en haut à droite, sur tout le JT',
+    fields: [
+      { key: 'label', label: 'Texte', placeholder: 'Ex: DIRECT' },
+    ],
+    buildAss(overlay, start, end) {
+      const label = (safe(overlay.fields?.label) || 'LIVE').toUpperCase();
+      const w = 70 + label.length * 26;
+      return [
+        // Pastille rouge (clignote légèrement au début).
+        `Dialogue: 6,${start},${end},Default,,0,0,0,,{\\an9\\pos(1900,30)\\1c${COL_RED}\\bord0\\shad2\\fad(200,0)\\t(0,700,\\1a&H40&)\\t(700,1400,\\1a&H00&)\\p1}m ${-w} 0 l 0 0 0 56 ${-w} 56{\\p0}`,
+        // Point blanc.
+        `Dialogue: 7,${start},${end},Default,,0,0,0,,{\\an5\\pos(${1900 - w + 30},58)\\1c${COL_WHITE}\\bord0\\p1}m 0 0 l 14 0 14 14 0 14{\\p0}`,
+        // Label.
+        `Dialogue: 7,${start},${end},Default,,0,0,0,,{\\an5\\pos(${1900 - w / 2 + 16},58)\\fnInter\\b1\\fs34\\1c${COL_WHITE}\\bord0\\fad(200,0)}${label}`,
       ];
     },
   },

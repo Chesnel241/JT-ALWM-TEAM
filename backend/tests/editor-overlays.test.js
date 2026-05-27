@@ -5,7 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
 import { generateAssFile, OVERLAY_TEMPLATES } from '../src/data/overlayTemplates.js';
 
 const execFileAsync = promisify(execFile);
@@ -82,7 +82,7 @@ describe('editor overlay fonts', () => {
     const outPng = path.join(workDir, 'frame.png');
 
     // libass logue "fontselect: (Family, ...) -> File" sur stderr en verbose.
-    const { stderr } = await execFileAsync(ffmpegInstaller.path, [
+    const { stderr } = await execFileAsync(ffmpegStatic, [
       '-hide_banner', '-loglevel', 'verbose',
       '-f', 'lavfi', '-i', 'color=c=navy:s=1920x1080:d=1',
       '-vf', `ass=filename=${assPath}:fontsdir=${FONTS_DIR}`,

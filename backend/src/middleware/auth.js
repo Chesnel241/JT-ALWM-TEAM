@@ -6,7 +6,9 @@ const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD;
 const IS_TEST = process.env.NODE_ENV === 'test';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-function safeEqual(a, b) {
+// Comparaison à temps constant (anti-timing-attack). Exportée pour les
+// vérifications admin hors middleware (app.js, routes/uploads.js).
+export function safeEqual(a, b) {
   if (!a || !b) return false;
   const bufA = Buffer.from(String(a));
   const bufB = Buffer.from(String(b));

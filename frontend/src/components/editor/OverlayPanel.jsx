@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Plus, Trash2, Layers, Clock } from 'lucide-react';
-import { OVERLAY_TEMPLATES, TEXT_ANIMATIONS } from '../../data/overlayTemplates.js';
+import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, TEXT_ANIMATIONS } from '../../data/overlayTemplates.js';
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -176,7 +176,7 @@ export default function OverlayPanel({ clip, onClose, onSave }) {
           {picking ? (
             <div className="border border-[var(--accent)]/40 rounded-xl p-4 bg-[var(--accent)]/5 flex flex-col gap-2">
               <p className="text-xs font-semibold text-[color:var(--accent)] mb-1">Choisissez un modèle :</p>
-              {OVERLAY_TEMPLATES.map((t) => (
+              {CLIP_TEMPLATES.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => addOverlay(t.id)}

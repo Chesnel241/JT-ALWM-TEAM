@@ -12,12 +12,19 @@ import AdminUploadDialog from './AdminUploadDialog.jsx';
 import Timeline from './editor/Timeline.jsx';
 import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
+import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import ActionSheet from './ActionSheet.jsx';
 
 // Clés localStorage : la timeline et le job de montage en cours survivent au
 // refresh/changement d'onglet (le rendu continue côté serveur).
 const JOB_STORE_KEY = 'jt-editor-job';
 const timelineKey = (weekId) => `jt-timeline-${weekId}`;
+const brandingKey = (weekId) => `jt-branding-${weekId}`;
+const DEFAULT_BRANDING = {
+  ticker: { enabled: false, categorie: 'ALERTE', texte: '' },
+  live: { enabled: false, label: 'DIRECT' },
+  logo: false,
+};
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
   const [content, setContent] = useState('');
@@ -25,12 +32,12 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword })
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let url = `${API_BASE}/uploads/${file.filename}?proxy=true`;
-    if (selectedBin === 'mj' && adminPassword) {
-      url += `&adminPassword=${encodeURIComponent(adminPassword)}`;
-    }
+    const url = `${API_BASE}/uploads/${file.filename}?proxy=true`;
+    // Mot de passe admin en en-tête (jamais en query : fuite dans logs/historique).
+    const headers = {};
+    if (selectedBin === 'mj' && adminPassword) headers['X-Admin-Password'] = adminPassword;
 
-    fetch(url)
+    fetch(url, { headers })
       .then(res => {
         if (!res.ok) throw new Error('Impossible de charger le contenu. (Peut-être protégé ?)');
         return res.text();
@@ -182,6 +189,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   
   // Editor State
   const [timelineClips, setTimelineClips] = useState([]);
+  const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  const [showGlobalPanel, setShowGlobalPanel] = useState(false);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
   const [exportProgress, setExportProgress] = useState(0);
@@ -215,6 +224,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       const saved = localStorage.getItem(timelineKey(selectedWeek));
       setTimelineClips(saved ? JSON.parse(saved) : []);
     } catch { setTimelineClips([]); }
+    try {
+      const b = localStorage.getItem(brandingKey(selectedWeek));
+      setBranding(b ? { ...DEFAULT_BRANDING, ...JSON.parse(b) } : DEFAULT_BRANDING);
+    } catch { setBranding(DEFAULT_BRANDING); }
 
     api.getDashboard(selectedWeek)
       .then(setDashboard)
@@ -238,6 +251,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       else localStorage.removeItem(timelineKey(selectedWeek));
     } catch { /* quota / mode privé : on ignore */ }
   }, [timelineClips, selectedWeek]);
+
+  // Persiste l'habillage global du JT.
+  useEffect(() => {
+    if (!selectedWeek) return;
+    try { localStorage.setItem(brandingKey(selectedWeek), JSON.stringify(branding)); } catch { /* ignore */ }
+  }, [branding, selectedWeek]);
 
   // Reprend le suivi d'un montage en cours après un refresh/onglet : le rendu
   // continue côté serveur, on récupère sa progression et son résultat.
@@ -352,6 +371,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const token = localStorage.getItem('app-password') || '';
     const tracker = trackJob(jobId);
 
+    // Habillage global → overlays appliqués à tout le master.
+    const globalOverlays = [];
+    if (branding.ticker.enabled && branding.ticker.texte.trim()) {
+      globalOverlays.push({ templateId: 'ticker', fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte } });
+    }
+    if (branding.live.enabled) {
+      globalOverlays.push({ templateId: 'live_badge', fields: { label: branding.live.label } });
+    }
+
     try {
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
         method: 'POST',
@@ -366,7 +394,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             overlays: clip.overlays || [],
             transition: clip.transition,
             kenBurns: clip.kenBurns,
-          }))
+          })),
+          globalOverlays,
+          logo: branding.logo,
         })
       });
 
@@ -452,26 +482,40 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setDownloadDialogOpen(true);
   };
 
-  const handleConfirmDownload = () => {
+  const handleConfirmDownload = async () => {
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
-       let dlUrl = `${API_BASE}/uploads/${fileToDownload.filename}`;
-    if (selectedBin === 'mj') {
-      dlUrl = `${API_BASE}/api/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}&pwd=${encodeURIComponent(localStorage.getItem('app-password') || '')}`;
-    } else {
-      dlUrl = `${API_BASE}/uploads/${fileToDownload.filename}?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}`;
+    const isMj = selectedBin === 'mj';
+    const token = localStorage.getItem('app-password') || '';
+    // Les archives passent par /api (requireAuth) ; les fichiers bruts par
+    // /uploads (public, sauf mj admin-gated). Identifiants en EN-TÊTES, jamais
+    // dans l'URL (fuite logs/historique). Téléchargement via blob.
+    const base = isArchive
+      ? `${API_BASE}/api/uploads/${fileToDownload.filename}`
+      : `${API_BASE}/uploads/${fileToDownload.filename}`;
+    const headers = {};
+    if (isArchive) headers['X-App-Password'] = token;
+    if (isMj) headers['X-Admin-Password'] = authenticatedAdminPassword;
+
+    let blobUrl;
+    try {
+      const res = await fetch(base, { headers, credentials: 'include' });
+      if (!res.ok) throw new Error('Téléchargement refusé par le serveur.');
+      const blob = await res.blob();
+      blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileToDownload.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      addToast(err.message || 'Téléchargement échoué', 'error', 5000);
+    } finally {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      setDownloadDialogOpen(false);
+      setFileToDownload(null);
     }
-    
-    // Déclenche le téléchargement
-    const link = document.createElement('a');
-    link.href = dlUrl;
-    link.download = fileToDownload.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    setDownloadDialogOpen(false);
-    setFileToDownload(null);
   };
 
   const handleConfirmDelete = async () => {
@@ -564,14 +608,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // d'upload s'ouvrait puis se refermait en quelques ms.
   const SPECIAL_BINS = ['delivery', 'mj', 'tj'];
 
+  const binIsValid = (bin) =>
+    bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
+
   useEffect(() => {
-    const valid =
-      selectedBin &&
-      (SPECIAL_BINS.includes(selectedBin) || countriesWithUploads.includes(selectedBin));
-    if (!valid && countriesWithUploads.length > 0) {
-      setSelectedBin(countriesWithUploads[0]);
+    if (binIsValid(selectedBin)) return;
+    // Restaure le dernier chutier choisi (survit refresh/onglet) s'il est
+    // encore valide, sinon premier pays disponible.
+    const saved = selectedWeek ? localStorage.getItem(`jt-bin-${selectedWeek}`) : null;
+    if (binIsValid(saved)) setSelectedBin(saved);
+    else if (countriesWithUploads.length > 0) setSelectedBin(countriesWithUploads[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBin, countriesWithUploads, selectedWeek]);
+
+  // Persiste le chutier sélectionné.
+  useEffect(() => {
+    if (selectedBin && selectedWeek) {
+      try { localStorage.setItem(`jt-bin-${selectedWeek}`, selectedBin); } catch { /* ignore */ }
     }
-  }, [selectedBin, countriesWithUploads]);
+  }, [selectedBin, selectedWeek]);
 
   const renderUploadMeta = (file) => (
     <span
@@ -775,7 +830,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <div className="flex overflow-x-auto pb-1 md:pb-0 gap-2 md:space-y-1 md:flex-col md:gap-0 snap-x scrollbar-hide -mx-2 px-2 md:mx-0 md:px-0">
                 {countriesWithUploads.map(countryId => {
                   const country = countries.find((c) => c.id === countryId);
-                  const fileCount = dashboard[countryId].length;
+                  const fileCount = dashboard[countryId]?.length ?? 0;
                   const isActive = selectedBin === countryId;
                   return (
                     <button 
@@ -881,13 +936,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
                     </button>
                   ) : (
-                    <a
-                      href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive`}
-                      download={`uploads_${selectedWeek}_${selectedBin}.zip`}
+                    <button
+                      onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
                       className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
                     >
                       <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
-                    </a>
+                    </button>
                   )}
                 </>
               )}
@@ -928,13 +982,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}</span>
                       </button>
                     ) : (
-                      <a
-                        href={`${API_BASE}/api/uploads/${selectedWeek}/${selectedBin}/archive`}
-                        download={`uploads_${selectedWeek}_${selectedBin}.zip`}
+                      <button
+                        onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
                         className="w-full btn btn-primary py-2 px-3 text-sm flex items-center justify-center gap-2 text-center"
                       >
                         <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}</span>
-                      </a>
+                      </button>
                     )}
                   </>
                 )}
@@ -1081,7 +1134,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             ) : (
               <div className="mt-4 flex flex-col gap-8">
                 {(() => {
-                  const allFiles = dashboard[selectedBin] || [];
+                  const allFiles = Array.isArray(dashboard[selectedBin]) ? dashboard[selectedBin] : [];
                   if (allFiles.length === 0) {
                     return (
                       <div className="h-full flex flex-col items-center justify-center text-center text-[color:var(--muted)] py-20">
@@ -1186,13 +1239,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </div>
 
           {/* TIMELINE (Éditeur Vidéo) */}
-          <Timeline 
-            clips={timelineClips} 
-            setClips={setTimelineClips} 
+          <Timeline
+            clips={timelineClips}
+            setClips={setTimelineClips}
             onGenerate={handleGenerateVideo}
             isGenerating={isGeneratingVideo}
             onTrimClip={(file) => setTrimTarget(file)}
             onOverlayClip={(clip) => setOverlayTarget(clip)}
+            onGlobalLayer={() => setShowGlobalPanel(true)}
+            brandingActive={branding.ticker.enabled || branding.live.enabled || branding.logo}
           />
         </main>
       </div>
@@ -1256,6 +1311,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedBin={selectedBin}
         adminPassword={authenticatedAdminPassword}
       />
+
+      {/* Habillage JT global */}
+      {showGlobalPanel && (
+        <GlobalLayerPanel
+          value={branding}
+          onChange={setBranding}
+          onClose={() => setShowGlobalPanel(false)}
+        />
+      )}
 
       {/* Overlay Panel */}
       {overlayTarget && (

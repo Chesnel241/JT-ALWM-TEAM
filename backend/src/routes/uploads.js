@@ -12,7 +12,7 @@ import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { requireAdmin, safeEqual } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
@@ -109,7 +109,7 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
   // Sécurisation spécifique pour MOT DU JT
   if (countryId === 'mj') {
     const providedToken = req.query.adminPassword || req.header('x-admin-password');
-    if (ADMIN_PASSWORD && providedToken !== ADMIN_PASSWORD) {
+    if (!safeEqual(providedToken, ADMIN_PASSWORD)) {
       return res.status(403).json({ error: 'Accès protégé : mot de passe administrateur requis pour cette rubrique.' });
     }
   }
@@ -212,7 +212,7 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
 const uploadMiddleware = (req, res, next) => {
   const { weekId, countryId } = req.params;
   const providedToken = req.query.adminPassword || req.header('x-admin-password');
-  const isAdmin = ADMIN_PASSWORD && providedToken === ADMIN_PASSWORD;
+  const isAdmin = safeEqual(providedToken, ADMIN_PASSWORD);
 
   if (!isAdmin) {
     const cutoffErr = checkUploadCutoff(weekId);
@@ -239,7 +239,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
   }
 
   const providedToken = req.query.adminPassword || req.header('x-admin-password');
-  const isAdmin = ADMIN_PASSWORD && providedToken === ADMIN_PASSWORD;
+  const isAdmin = safeEqual(providedToken, ADMIN_PASSWORD);
 
   return upload.single('file')(req, res, async (err) => {
     try {
@@ -698,7 +698,7 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
   }
 
   const providedToken = req.body.adminPassword || req.header('x-admin-password');
-  const ignoreCutoff = ADMIN_PASSWORD && providedToken === ADMIN_PASSWORD;
+  const ignoreCutoff = safeEqual(providedToken, ADMIN_PASSWORD);
   
   if (!ignoreCutoff) {
     const cutoffErr = checkUploadCutoff(weekId);

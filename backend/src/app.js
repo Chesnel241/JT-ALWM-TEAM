@@ -18,7 +18,7 @@ import webpushRouter from './routes/webpush.js';
 import presignedRouter from './routes/presigned.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
 import { HAS_R2, getR2PresignedUrl, checkR2Exists } from './lib/s3.js';
-import { requireAuth } from './middleware/auth.js';
+import { requireAuth, safeEqual } from './middleware/auth.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter } from './middleware/rateLimiter.js';
@@ -92,7 +92,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     if (metadata && metadata.countryId === 'mj') {
       const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
       const providedToken = req.query.adminPassword || req.header('x-admin-password');
-      if (ADMIN_PASSWORD && providedToken !== ADMIN_PASSWORD) {
+      if (ADMIN_PASSWORD && !safeEqual(providedToken, ADMIN_PASSWORD)) {
         return res.status(403).send('Accès protégé : mot de passe administrateur requis pour cette rubrique.');
       }
     }
