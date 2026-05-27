@@ -13,6 +13,7 @@ import Timeline from './editor/Timeline.jsx';
 import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
+import PreviewModal from './editor/PreviewModal.jsx';
 import ActionSheet from './ActionSheet.jsx';
 
 // Clés localStorage : la timeline et le job de montage en cours survivent au
@@ -176,6 +177,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [timelineClips, setTimelineClips] = useState([]);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [showGlobalPanel, setShowGlobalPanel] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
   const [exportProgress, setExportProgress] = useState(0);
@@ -1241,6 +1243,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             onOverlayClip={(clip) => setOverlayTarget(clip)}
             onGlobalLayer={() => setShowGlobalPanel(true)}
             brandingActive={branding.ticker.enabled || branding.live.enabled || branding.logo}
+            onPreview={() => setShowPreview(true)}
           />
         </main>
       </div>
@@ -1304,6 +1307,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedBin={selectedBin}
         adminPassword={authenticatedAdminPassword}
       />
+
+      {/* Aperçu temps réel */}
+      {showPreview && (
+        <PreviewModal
+          clips={timelineClips}
+          branding={branding}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
 
       {/* Habillage JT global */}
       {showGlobalPanel && (

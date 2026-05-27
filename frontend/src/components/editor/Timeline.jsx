@@ -15,7 +15,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn, Newspaper } from 'lucide-react';
+import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn, Newspaper, Eye } from 'lucide-react';
 
 const KEN_BURNS_LABEL = { in: 'Zoom avant', out: 'Zoom arrière' };
 
@@ -163,7 +163,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns }) {
   );
 }
 
-export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive }) {
+export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -215,6 +215,15 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
           )}
         </h3>
         <div className="flex items-center gap-3">
+          {onPreview && clips.length > 0 && (
+            <button
+              onClick={onPreview}
+              className="text-sm px-3 py-2 rounded-lg border border-[var(--border)] text-[color:var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors flex items-center gap-2"
+              title="Aperçu temps réel avant l'assemblage"
+            >
+              <Eye size={16} /> Aperçu
+            </button>
+          )}
           {onGlobalLayer && (
             <button
               onClick={onGlobalLayer}
