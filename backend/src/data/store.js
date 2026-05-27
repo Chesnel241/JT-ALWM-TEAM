@@ -68,7 +68,8 @@ export async function initDb() {
 async function persistDbLocal() {
   try {
     await mkdir(dirname(DB_PATH), { recursive: true });
-    const tmpPath = `${DB_PATH}.${process.pid}.tmp`;
+    // Use a unique tmp path for each concurrent write to prevent ENOENT during rename
+    const tmpPath = `${DB_PATH}.${process.pid}.${Date.now()}.${Math.floor(Math.random() * 10000)}.tmp`;
     await writeFile(tmpPath, JSON.stringify(db, null, 2));
     await rename(tmpPath, DB_PATH);
   } catch (err) {
