@@ -1,4 +1,5 @@
 import { tStatic } from '../i18n/runtime.js';
+import axios from 'axios';
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const BASE = `${API_BASE}/api`;
@@ -85,53 +86,51 @@ export const api = {
   getSubscriptions: (weekId) =>
     request(`/notifications/${weekId}`),
 
-  // XMLHttpRequest pour exposer la progression d'upload (fetch n'a pas
-  // d'événement progress sur les requêtes en envoi).
-  uploadFile: (weekId, countryId, file, { onProgress, onPhase, signal, reportage, adminPassword } = {}) => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      const url = `${BASE}/uploads/${weekId}/${countryId}${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`;
-      xhr.open('POST', url);
-
-      const token = localStorage.getItem('app-password');
-      if (token) {
-        xhr.setRequestHeader('X-App-Password', token);
-      }
-      if (adminPassword) {
-        xhr.setRequestHeader('X-Admin-Password', adminPassword);
-      }
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable && typeof onProgress === 'function') {
-          onProgress((e.loaded / e.total) * 100);
-        }
-      });
-      // Octets entièrement envoyés → le serveur traite/compresse désormais.
-      xhr.upload.addEventListener('load', () => {
-        if (typeof onPhase === 'function') onPhase('processing');
-      });
-
-      xhr.addEventListener('load', () => {
-        let body = null;
-        try { body = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { /* ignore */ }
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(body);
-        } else {
-          reject(new Error((body && body.message) || (body && body.error) || xhr.statusText || tStatic().errors.serverError));
-        }
-      });
-
-      xhr.addEventListener('error', () => reject(new Error(tStatic().errors.networkError)));
-      xhr.addEventListener('abort', () => reject(new Error(tStatic().errors.uploadCancelled)));
-
-      if (signal) {
-        signal.addEventListener('abort', () => xhr.abort(), { once: true });
-      }
-
-      const form = new FormData();
-      form.append('file', file);
-      xhr.send(form);
+  uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, adminPassword } = {}) => {
+    // 1. GET presigned url
+    const presignedRes = await request(`/presigned/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`, {
+      method: 'GET',
+      adminPassword
     });
+    const { url, r2Key, filename } = presignedRes;
+
+    // 2. PUT to Cloudflare using axios
+    try {
+      await axios.put(url, file, {
+        headers: { 'Content-Type': file.type },
+        onUploadProgress: (e) => {
+          if (e.lengthComputable && typeof onProgress === 'function') {
+            onProgress((e.loaded / e.total) * 100);
+          }
+        },
+        signal,
+      });
+    } catch (err) {
+      if (axios.isCancel(err)) throw new Error(tStatic().errors.uploadCancelled);
+      throw new Error(tStatic().errors.networkError);
+    }
+    
+    if (typeof onPhase === 'function') onPhase('processing');
+
+    // 3. POST finalize
+    let type = 'document';
+    if (file.type.startsWith('video/') || file.name.match(/\.(mp4|mov|avi|webm|mkv)$/i)) type = 'video';
+    else if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|ogg|m4a)$/i)) type = 'audio';
+    else if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) type = 'image';
+
+    const finalizeRes = await request(`/uploads/${weekId}/${countryId}/finalize${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: file.name,
+        filename: filename,
+        size: file.size,
+        type: type,
+      }),
+      adminPassword
+    });
+
+    return finalizeRes;
   },
 
   submitScript: (weekId, countryId, content, reportage) =>
@@ -150,37 +149,49 @@ export const api = {
   // === JT Prêt (deliveries) ===
   getDeliveries: (weekId) => request(`/deliveries/${weekId}`),
 
-  uploadDelivery: (weekId, file, { onProgress, onPhase, signal } = {}) => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${BASE}/deliveries/${weekId}`);
-
-      const token = localStorage.getItem('app-password');
-      if (token) {
-        xhr.setRequestHeader('X-App-Password', token);
-      }
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable && typeof onProgress === 'function') {
-          onProgress((e.loaded / e.total) * 100);
-        }
-      });
-      xhr.upload.addEventListener('load', () => {
-        if (typeof onPhase === 'function') onPhase('processing');
-      });
-      xhr.addEventListener('load', () => {
-        let body = null;
-        try { body = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { /* ignore */ }
-        if (xhr.status >= 200 && xhr.status < 300) resolve(body);
-        else reject(new Error((body && body.message) || (body && body.error) || xhr.statusText || tStatic().errors.serverError));
-      });
-      xhr.addEventListener('error', () => reject(new Error(tStatic().errors.networkError)));
-      xhr.addEventListener('abort', () => reject(new Error(tStatic().errors.uploadCancelled)));
-      if (signal) signal.addEventListener('abort', () => xhr.abort(), { once: true });
-      const form = new FormData();
-      form.append('file', file);
-      xhr.send(form);
+  uploadDelivery: async (weekId, file, { onProgress, onPhase, signal } = {}) => {
+    // 1. GET presigned url
+    const presignedRes = await request(`/presigned/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`, {
+      method: 'GET'
     });
+    const { url, r2Key, filename } = presignedRes;
+
+    // 2. PUT using axios
+    try {
+      await axios.put(url, file, {
+        headers: { 'Content-Type': file.type },
+        onUploadProgress: (e) => {
+          if (e.lengthComputable && typeof onProgress === 'function') {
+            onProgress((e.loaded / e.total) * 100);
+          }
+        },
+        signal,
+      });
+    } catch (err) {
+      if (axios.isCancel(err)) throw new Error(tStatic().errors.uploadCancelled);
+      throw new Error(tStatic().errors.networkError);
+    }
+
+    if (typeof onPhase === 'function') onPhase('processing');
+
+    // 3. POST finalize
+    let type = 'document';
+    if (file.type.startsWith('video/') || file.name.match(/\.(mp4|mov|avi|webm|mkv)$/i)) type = 'video';
+    else if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|ogg|m4a)$/i)) type = 'audio';
+    else if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) type = 'image';
+
+    const finalizeRes = await request(`/deliveries/${weekId}/finalize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: file.name,
+        filename: filename,
+        size: file.size,
+        type: type,
+      })
+    });
+
+    return finalizeRes;
   },
 
   deleteDelivery: (weekId, fileId) =>
