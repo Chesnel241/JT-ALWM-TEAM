@@ -47,6 +47,12 @@ const STEP_STALL_MS = Number(process.env.EDITOR_STALL_MS) || 4 * 60 * 1000;
 const STEP_MAX_MS = Number(process.env.EDITOR_STEP_MAX_MS) || 12 * 60 * 1000;
 const IO_TIMEOUT_MS = Number(process.env.EDITOR_IO_TIMEOUT_MS) || 5 * 60 * 1000;
 
+// Résolution/preset de sortie, surchargeables sans redéploiement de code.
+const OUT_W = Number(process.env.EDITOR_WIDTH) || 1280;
+const OUT_H = Number(process.env.EDITOR_HEIGHT) || 720;
+const OUT_FPS = Number(process.env.EDITOR_FPS) || 30;
+const PRESET = process.env.EDITOR_PRESET || 'veryfast';
+
 // Rejette si `promise` ne se règle pas dans `ms` (protège les I/O R2 qui
 // peuvent pendre indéfiniment sur coupure réseau).
 function withTimeout(promise, ms, label) {
@@ -207,11 +213,14 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
       videoFilters.push(`trim=${trimIn}:${trimOut},setpts=PTS-STARTPTS`);
     }
 
+    // 720p par défaut : ~2,2x moins de pixels que le 1080p → encodage bien
+    // plus rapide et moins de RAM sur Render free (CPU partagé). Les overlays
+    // ASS restent en PlayRes 1920x1080 et sont mis à l'échelle par libass.
     videoFilters.push(
-      'scale=1920:1080:force_original_aspect_ratio=decrease',
-      'pad=1920:1080:(ow-iw)/2:(oh-ih)/2',
+      `scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease`,
+      `pad=${OUT_W}:${OUT_H}:(ow-iw)/2:(oh-ih)/2`,
       'setsar=1',
-      'fps=30',
+      `fps=${OUT_FPS}`,
       'format=yuv420p'
     );
 
@@ -263,7 +272,7 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
     // -threads 1. ref/rc-lookahead réduits = moins de RAM (Render 512 Mo).
     command.outputOptions([
       '-c:v libx264',
-      '-preset veryfast',
+      `-preset ${PRESET}`,
       '-crf 23',
       '-pix_fmt yuv420p',
       '-x264-params', 'rc-lookahead=10:ref=2:sliced-threads=0',

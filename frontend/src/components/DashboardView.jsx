@@ -14,6 +14,11 @@ import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
 import ActionSheet from './ActionSheet.jsx';
 
+// Clés localStorage : la timeline et le job de montage en cours survivent au
+// refresh/changement d'onglet (le rendu continue côté serveur).
+const JOB_STORE_KEY = 'jt-editor-job';
+const timelineKey = (weekId) => `jt-timeline-${weekId}`;
+
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -181,13 +186,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   // Supression de l'effacement du mot de passe (le mot de passe est gardé en mémoire pour la session)
 
-  // Reset editor state ONLY on week change
+  // Charge le dashboard + restaure la timeline persistée à chaque changement
+  // de semaine. (Dépend UNIQUEMENT de selectedWeek : inclure addToast/t la
+  // ferait se relancer à chaque render et viderait la timeline.)
   useEffect(() => {
     if (!selectedWeek) return;
     setLoading(true);
-    setTimelineClips([]);
     setGeneratedVideoUrl(null);
-    
+    try {
+      const saved = localStorage.getItem(timelineKey(selectedWeek));
+      setTimelineClips(saved ? JSON.parse(saved) : []);
+    } catch { setTimelineClips([]); }
+
     api.getDashboard(selectedWeek)
       .then(setDashboard)
       .catch((err) => {
@@ -199,7 +209,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     api.getDeliveries(selectedWeek)
       .then(setDeliveries)
       .catch(console.error);
-  }, [selectedWeek, addToast, t.uploader.errorPrefix]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWeek]);
+
+  // Persiste la timeline (survit refresh / changement d'onglet).
+  useEffect(() => {
+    if (!selectedWeek) return;
+    try {
+      if (timelineClips.length) localStorage.setItem(timelineKey(selectedWeek), JSON.stringify(timelineClips));
+      else localStorage.removeItem(timelineKey(selectedWeek));
+    } catch { /* quota / mode privé : on ignore */ }
+  }, [timelineClips, selectedWeek]);
+
+  // Reprend le suivi d'un montage en cours après un refresh/onglet : le rendu
+  // continue côté serveur, on récupère sa progression et son résultat.
+  useEffect(() => {
+    const jobId = localStorage.getItem(JOB_STORE_KEY);
+    if (jobId) trackJob(jobId, { resume: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Refresh dashboard quietly when becoming active
   useEffect(() => {
@@ -212,21 +240,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       .catch(console.error);
   }, [isActive, selectedWeek]);
 
-  const handleGenerateVideo = async () => {
-    if (timelineClips.length === 0) return;
-    if (isGeneratingVideo) return;
-    setIsGeneratingVideo(true);
-    setGeneratedVideoUrl(null);
-    setExportProgress(0);
-    setExportPhase('downloading');
-
-    // Job ID partagé entre le flux SSE de progression et la requête concat.
-    const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // Suit un job de montage (SSE temps réel + polling de secours). Réutilisé
+  // pour démarrer un montage ET pour reprendre le suivi après refresh/onglet
+  // (le rendu continue côté serveur, on récupère son résultat).
+  const trackJob = (jobId, { resume = false } = {}) => {
     const token = localStorage.getItem('app-password') || '';
-
-    // Le rendu tourne en arrière-plan côté serveur. On suit la progression
-    // via SSE (temps réel) ET un polling de secours : si le SSE est coupé par
-    // un proxy pendant l'encodage, le polling récupère quand même le résultat.
     let settled = false;
 
     const stop = () => {
@@ -238,6 +256,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       if (settled) return;
       settled = true;
       stop();
+      localStorage.removeItem(JOB_STORE_KEY);
       const finalUrl = /^https?:\/\//.test(url) ? url : `${API_BASE}${url}`;
       setExportProgress(100);
       setExportPhase('done');
@@ -245,12 +264,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
       setIsGeneratingVideo(false);
     };
-    const fail = (msg) => {
+    const fail = (msg, silent = false) => {
       if (settled) return;
       settled = true;
       stop();
+      localStorage.removeItem(JOB_STORE_KEY);
       setIsGeneratingVideo(false);
-      addToast(msg, 'error', 6000);
+      if (!silent) addToast(msg, 'error', 6000);
     };
     const handleState = ({ percent, status, url }) => {
       if (typeof percent === 'number') setExportProgress(percent);
@@ -259,34 +279,62 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       else if (status === 'error') fail('Erreur serveur lors du montage.');
     };
 
+    setIsGeneratingVideo(true);
+    localStorage.setItem(JOB_STORE_KEY, jobId);
+    if (!resume) {
+      setGeneratedVideoUrl(null);
+      setExportProgress(0);
+      setExportPhase('downloading');
+    }
+
+    if (sseRef.current) { try { sseRef.current.close(); } catch { /* ignore */ } }
+
+    // Flux SSE temps réel. onerror n'est PAS fatal : EventSource se reconnecte
+    // seul et le polling sert de filet de sécurité (Render free coupe souvent
+    // les connexions pendant l'encodage CPU-intensif).
+    const es = new EventSource(
+      `${API_BASE}/api/editor/progress/${jobId}?pwd=${encodeURIComponent(token)}`
+    );
+    sseRef.current = es;
+    es.onmessage = (e) => {
+      try { handleState(JSON.parse(e.data)); } catch { /* ligne ignorée */ }
+    };
+    es.onerror = () => { /* laisser EventSource se reconnecter ; polling prend le relais */ };
+
+    // Polling de secours toutes les 4 s. À la reprise, un 404 signifie que le
+    // job a expiré/été purgé → on abandonne silencieusement.
+    let misses = 0;
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/editor/result/${jobId}`, {
+          headers: { 'X-App-Password': token },
+          credentials: 'include',
+        });
+        if (r.ok) { misses = 0; handleState(await r.json()); }
+        else if (r.status === 404 && resume && ++misses >= 2) {
+          fail('Job de montage expiré.', true);
+        }
+      } catch { /* réseau instable, on réessaiera */ }
+    }, 4000);
+
+    // Filet de sécurité absolu : abandon de l'UI après 20 min.
+    safetyRef.current = setTimeout(
+      () => fail('Le montage prend trop de temps. Réessayez ou vérifiez la connexion.'),
+      20 * 60 * 1000
+    );
+
+    return { fail };
+  };
+
+  const handleGenerateVideo = async () => {
+    if (timelineClips.length === 0) return;
+    if (isGeneratingVideo) return;
+
+    const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const token = localStorage.getItem('app-password') || '';
+    const tracker = trackJob(jobId);
+
     try {
-      if (sseRef.current) { try { sseRef.current.close(); } catch { /* ignore */ } }
-
-      // Flux SSE temps réel. onerror n'est PAS fatal : EventSource se
-      // reconnecte seul et le polling sert de filet de sécurité.
-      const es = new EventSource(
-        `${API_BASE}/api/editor/progress/${jobId}?pwd=${encodeURIComponent(token)}`
-      );
-      sseRef.current = es;
-      es.onmessage = (e) => {
-        try { handleState(JSON.parse(e.data)); } catch { /* ligne ignorée */ }
-      };
-      es.onerror = () => { /* laisser EventSource se reconnecter ; polling prend le relais */ };
-
-      // Polling de secours toutes les 4 s.
-      pollRef.current = setInterval(async () => {
-        try {
-          const r = await fetch(`${API_BASE}/api/editor/result/${jobId}`, {
-            headers: { 'X-App-Password': token },
-            credentials: 'include',
-          });
-          if (r.ok) handleState(await r.json());
-        } catch { /* réseau instable, on réessaiera */ }
-      }, 4000);
-
-      // Filet de sécurité absolu : abandon de l'UI après 20 min.
-      safetyRef.current = setTimeout(() => fail("Le montage prend trop de temps. Réessayez ou vérifiez la connexion."), 20 * 60 * 1000);
-
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-App-Password': token },
@@ -309,7 +357,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       // Succès : le suivi (SSE + polling) met à jour l'UI jusqu'au résultat.
     } catch (err) {
       console.error(err);
-      fail(err.message);
+      tracker.fail(err.message);
     }
   };
 
