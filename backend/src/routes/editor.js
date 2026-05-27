@@ -79,6 +79,10 @@ router.post(
       .optional()
       .isIn(['fade', 'slide', 'scale', 'sweep', 'typewriter'])
       .withMessage('animation invalide.'),
+    body('clips.*.overlays.*.font')
+      .optional()
+      .isString().isLength({ max: 40 })
+      .withMessage('font invalide.'),
     body('clips.*.transition.type')
       .optional()
       .isIn(['fade', 'fadeblack', 'wipeleft', 'wiperight', 'slideleft', 'slideright', 'dissolve', 'circleopen', 'circleclose', 'pixelize'])
@@ -103,6 +107,18 @@ router.post(
       .optional()
       .isBoolean()
       .withMessage('logo doit être un booléen.'),
+    body('globalOverlays.*.font').optional().isString().isLength({ max: 40 }),
+    body('music.filename').optional().isString().notEmpty(),
+    body('music.volume').optional().isFloat({ min: 0, max: 1 }),
+    body('voiceover.filename').optional().isString().notEmpty(),
+    body('voiceover.volume').optional().isFloat({ min: 0, max: 2 }),
+    body('voiceover.startTime').optional().isFloat({ min: 0 }),
+    body('imageOverlays').optional().isArray(),
+    body('imageOverlays.*.filename').optional().isString().notEmpty(),
+    body('imageOverlays.*.scale').optional().isFloat({ min: 0.05, max: 1 }),
+    body('imageOverlays.*.opacity').optional().isFloat({ min: 0, max: 1 }),
+    body('imageOverlays.*.startTime').optional().isFloat({ min: 0 }),
+    body('imageOverlays.*.duration').optional().isFloat({ min: 0.1 }),
   ],
   async (req, res, next) => {
     try {
@@ -111,12 +127,12 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { clips, jobId, globalOverlays, logo } = req.body;
+      const { clips, jobId, globalOverlays, logo, music, voiceover, imageOverlays } = req.body;
 
-      logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo });
+      logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo, music: !!(music && music.filename), voiceover: !!(voiceover && voiceover.filename), images: Array.isArray(imageOverlays) ? imageOverlays.length : 0 });
 
       // Run async to prevent Render 100s timeout on HTTP request
-      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo })
+      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, music, voiceover, imageOverlays })
         .then(({ url }) => {
           finishJob(jobId, 'done', url);
         })

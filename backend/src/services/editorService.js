@@ -58,6 +58,7 @@ const OUT_W = Number(process.env.EDITOR_WIDTH) || 1280;
 const OUT_H = Number(process.env.EDITOR_HEIGHT) || 720;
 const OUT_FPS = Number(process.env.EDITOR_FPS) || 30;
 const PRESET = process.env.EDITOR_PRESET || 'veryfast';
+const THREADS = Number(process.env.EDITOR_THREADS) || 1; // 1 = RAM mini (512 Mo)
 
 // Rejette si `promise` ne se règle pas dans `ms` (protège les I/O R2 qui
 // peuvent pendre indéfiniment sur coupure réseau).
@@ -107,8 +108,15 @@ function runFfmpegStep(command, label, { onStart, onProgress } = {}) {
 
 // Transitions xfade autorisées (vidéo) — `acrossfade` côté audio.
 const XFADE_TRANSITIONS = new Set([
-  'fade', 'fadeblack', 'wipeleft', 'wiperight', 'slideleft', 'slideright',
-  'dissolve', 'circleopen', 'circleclose', 'pixelize',
+  'fade', 'fadeblack', 'fadewhite', 'fadegrays', 'wipeleft', 'wiperight',
+  'wipeup', 'wipedown', 'slideleft', 'slideright', 'slideup', 'slidedown',
+  'dissolve', 'pixelize', 'circleopen', 'circleclose', 'circlecrop', 'radial',
+  'smoothleft', 'smoothright', 'smoothup', 'smoothdown',
+  'diagtl', 'diagtr', 'diagbl', 'diagbr',
+  'wipetl', 'wipetr', 'wipebl', 'wipebr',
+  'squeezeh', 'squeezev', 'zoomin',
+  'coverleft', 'coverright', 'coverup', 'coverdown',
+  'revealleft', 'revealright', 'revealup', 'revealdown',
 ]);
 // Au-delà, on retombe sur le concat copy (le filtergraph xfade ouvre tous les
 // clips à la fois → on borne la RAM sur Render free).
@@ -233,14 +241,14 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
       setProgress(jobId, ((i + 1) / normalizedClips.length) * 20, 'downloading');
     }
 
-    // Phase 2 (20→75%) : montage des clips.
-    await runFfmpeg(normalizedClips, localPaths, outputPath, (pct) => {
-      setProgress(jobId, 20 + (pct / 100) * 55, 'encoding');
+    // Phase 2 (20→70%) : normalisation des clips.
+    const normPaths = await runFfmpeg(normalizedClips, localPaths, outputPath, (pct) => {
+      setProgress(jobId, 20 + (pct / 100) * 50, 'encoding');
     });
 
-    // Phase 3 (75→90%) : habillage global (ticker, LIVE, logo) sur le master.
-    const finalPath = await applyGlobalLayer(outputPath, workDir, opts, (pct) => {
-      setProgress(jobId, 75 + (pct / 100) * 15, 'encoding');
+    // Phase 3 (70→90%) : assemblage + habillage + mix audio en UNE passe.
+    const finalPath = await assembleMaster(normPaths, normalizedClips, opts, outputPath, workDir, (pct) => {
+      setProgress(jobId, 70 + (pct / 100) * 20, 'encoding');
     });
     setProgress(jobId, 90, 'uploading');
 
@@ -386,154 +394,187 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
     await stepPromise;
   }
 
-  // Phase 2 : assemblage. Transitions xfade si demandées (et nombre de clips
-  // raisonnable), sinon concat demuxer rapide (0 ré-encodage).
-  const transitions = normalizedClips.slice(0, -1).map((c) => parseTransition(c.transition));
-  const wantsTransitions = transitions.some(Boolean);
-  const useXfade = normPaths.length >= 2 && normPaths.length <= MAX_XFADE_CLIPS && wantsTransitions;
-
-  if (useXfade) {
-    await assembleWithTransitions(normPaths, transitions, outputPath, onProgress);
-  } else {
-    if (wantsTransitions && normPaths.length > MAX_XFADE_CLIPS) {
-      logger.warn(`Trop de clips (${normPaths.length} > ${MAX_XFADE_CLIPS}) — transitions ignorées, concat simple.`);
-    }
-    await assembleWithConcat(normPaths, outputPath, onProgress);
-  }
+  return normPaths;
 }
 
-// Assemblage rapide par concat demuxer : copie de flux, ~0 RAM. Tous les
-// norm_i sont déjà uniformes (720p/30/aac) donc la copie est sûre.
-async function assembleWithConcat(normPaths, outputPath, onProgress) {
-  logger.info('Assemblage final avec le concat demuxer...');
+// Positions de coin pour le logo / les incrustations images.
+const OVERLAY_POS = {
+  tl: '34:34', tr: 'W-w-34:34', bl: '34:H-h-34',
+  br: 'W-w-34:H-h-104', center: '(W-w)/2:(H-h)/2',
+};
+
+// Concat demuxer copy (rapide, ~0 RAM) quand aucun ré-encodage n'est requis.
+async function assembleConcatCopy(normPaths, outputPath, onProgress) {
+  logger.info('Assemblage final avec le concat demuxer (copy)...');
   const workDir = path.dirname(outputPath);
   const listPath = path.join(workDir, 'list.txt');
-  const listContent = normPaths.map(p => `file '${p.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n');
+  const listContent = normPaths.map((p) => `file '${p.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n');
   fs.writeFileSync(listPath, listContent);
-
-  const concatCmd = ffmpeg()
-    .input(listPath)
-    .inputOptions(['-f concat', '-safe 0'])
-    .outputOptions(['-c copy']);
-
-  const concatPromise = runFfmpegStep(concatCmd, 'Concaténation finale', {
-    onStart: (cmd) => logger.info('Démarrage concat rapide', { command: cmd }),
-  });
-  concatCmd.save(outputPath);
-  await concatPromise;
-  if (typeof onProgress === 'function') onProgress(100);
-  logger.info('Concaténation vidéo terminée avec succès');
-}
-
-// Assemblage avec transitions xfade (vidéo) + acrossfade (audio) en une passe
-// filter_complex. Offset cumulatif standard : offset_k = Σdurées − Σtransitions.
-async function assembleWithTransitions(normPaths, transitions, outputPath, onProgress) {
-  const durations = [];
-  for (const p of normPaths) durations.push(await getDuration(p));
-
-  const cmd = ffmpeg();
-  normPaths.forEach((p) => cmd.input(p));
-
-  const vf = [];
-  const af = [];
-  let lastV = '0:v';
-  let lastA = '0:a';
-  let accLen = durations[0];
-  for (let i = 1; i < normPaths.length; i++) {
-    const t = transitions[i - 1] || { type: 'fade', duration: 0.5 };
-    const off = Math.max(0.1, accLen - t.duration).toFixed(3);
-    const last = i === normPaths.length - 1;
-    const vOut = last ? 'vout' : `vx${i}`;
-    const aOut = last ? 'aout' : `ax${i}`;
-    vf.push(`[${lastV}][${i}:v]xfade=transition=${t.type}:duration=${t.duration}:offset=${off}[${vOut}]`);
-    af.push(`[${lastA}][${i}:a]acrossfade=d=${t.duration}[${aOut}]`);
-    lastV = vOut;
-    lastA = aOut;
-    accLen = accLen + durations[i] - t.duration;
-  }
-
-  logger.info('Assemblage avec transitions xfade...', { context: { clips: normPaths.length } });
-  cmd.complexFilter([...vf, ...af], [lastV, lastA]);
-  cmd.outputOptions([
-    '-c:v libx264',
-    `-preset ${PRESET}`,
-    '-crf 23',
-    '-pix_fmt yuv420p',
-    '-x264-params', 'rc-lookahead=10:ref=2:sliced-threads=0',
-    '-g 60',
-    '-c:a aac',
-    '-b:a 128k',
-    '-ar 48000',
-    '-movflags +faststart',
-    '-threads 1',
-    '-max_muxing_queue_size 1024',
-  ]);
-
-  const pr = runFfmpegStep(cmd, 'Assemblage transitions', {
-    onStart: (c) => logger.info('Démarrage xfade', { command: c }),
-    onProgress: (p) => {
-      if (typeof onProgress === 'function') onProgress(Math.max(0, Math.min(100, p.percent || 0)));
-    },
+  const cmd = ffmpeg().input(listPath).inputOptions(['-f concat', '-safe 0']).outputOptions(['-c copy']);
+  const pr = runFfmpegStep(cmd, 'Concaténation finale', {
+    onStart: (c) => logger.info('Démarrage concat rapide', { command: c }),
   });
   cmd.save(outputPath);
   await pr;
   if (typeof onProgress === 'function') onProgress(100);
-  logger.info('Assemblage transitions terminé avec succès');
+  logger.info('Concaténation vidéo terminée avec succès');
 }
 
 /**
- * Habillage global appliqué au master assemblé : bande défilante (ticker),
- * badge LIVE/DIRECT (overlays ASS calés sur toute la durée) + logo chaîne
- * (incrustation PNG). Une seule passe ; audio copié (pas de ré-encodage son).
- * Retourne le chemin du fichier habillé, ou `masterPath` si rien à faire.
+ * Assemble le master en UNE passe (perf) : montage (concat filter ou xfade) +
+ * habillage global ASS + logo + incrustations images + mix audio (musique avec
+ * ducking, voix-off). Chemin rapide concat-copy conservé quand aucun
+ * ré-encodage n'est nécessaire. Écrit dans outputPath, le retourne.
  */
-async function applyGlobalLayer(masterPath, workDir, opts = {}, onProgress) {
+async function assembleMaster(normPaths, normalizedClips, opts, outputPath, workDir, onProgress) {
+  const transitions = normalizedClips.slice(0, -1).map((c) => parseTransition(c.transition));
+  const wantsTransitions = normPaths.length >= 2 && normPaths.length <= MAX_XFADE_CLIPS && transitions.some(Boolean);
+  if (transitions.some(Boolean) && normPaths.length > MAX_XFADE_CLIPS) {
+    logger.warn(`Trop de clips (${normPaths.length} > ${MAX_XFADE_CLIPS}) — transitions ignorées.`);
+  }
+
   const globalOverlays = Array.isArray(opts.globalOverlays) ? opts.globalOverlays : [];
   const useLogo = !!opts.logo && HAS_LOGO;
-  if (globalOverlays.length === 0 && !useLogo) return masterPath;
+  const music = opts.music && opts.music.filename ? opts.music : null;
+  const voiceover = opts.voiceover && opts.voiceover.filename ? opts.voiceover : null;
+  const imageOverlays = (Array.isArray(opts.imageOverlays) ? opts.imageOverlays : [])
+    .filter((o) => o && o.filename).slice(0, 6);
+  const needsFinalize = globalOverlays.length > 0 || useLogo || music || voiceover || imageOverlays.length > 0;
 
-  const masterDur = await getDuration(masterPath);
-  const outPath = path.join(workDir, `branded_${path.basename(masterPath)}`);
-  const cmd = ffmpeg(masterPath);
+  // Chemin rapide : ni transition ni incrustation → concat demuxer copy.
+  if (!wantsTransitions && !needsFinalize) {
+    await assembleConcatCopy(normPaths, outputPath, onProgress);
+    return outputPath;
+  }
+
+  const durations = [];
+  for (const p of normPaths) durations.push(await getDuration(p));
+  const n = normPaths.length;
+
+  const cmd = ffmpeg();
+  normPaths.forEach((p) => cmd.input(p)); // inputs 0..n-1
+  let nextInput = n;
   const filters = [];
-  let vlabel = '0:v';
 
+  // 1) Assemblage vidéo + audio.
+  let vlabel; let alabel; let masterDur;
+  if (wantsTransitions) {
+    let lastV = '0:v'; let lastA = '0:a'; let accLen = durations[0];
+    for (let i = 1; i < n; i++) {
+      const t = transitions[i - 1] || { type: 'fade', duration: 0.5 };
+      const off = Math.max(0.1, accLen - t.duration).toFixed(3);
+      const vO = `vx${i}`; const aO = `ax${i}`;
+      filters.push(`[${lastV}][${i}:v]xfade=transition=${t.type}:duration=${t.duration}:offset=${off}[${vO}]`);
+      filters.push(`[${lastA}][${i}:a]acrossfade=d=${t.duration}[${aO}]`);
+      lastV = vO; lastA = aO;
+      accLen = accLen + durations[i] - t.duration;
+    }
+    vlabel = lastV; alabel = lastA; masterDur = accLen;
+  } else if (n > 1) {
+    const ins = Array.from({ length: n }, (_, i) => `[${i}:v][${i}:a]`).join('');
+    filters.push(`${ins}concat=n=${n}:v=1:a=1[vcat][acat]`);
+    vlabel = 'vcat'; alabel = 'acat';
+    masterDur = durations.reduce((s, d) => s + d, 0);
+  } else {
+    vlabel = '0:v'; alabel = '0:a'; masterDur = durations[0] || 0;
+  }
+
+  // 2) Habillage global ASS (ticker / LIVE) sur toute la durée.
   if (globalOverlays.length > 0) {
-    // Les overlays globaux couvrent toute la durée du master.
     const mapped = globalOverlays.map((o) => ({ ...o, startTime: 0, duration: masterDur }));
     const assPath = generateAssFile(mapped, workDir, { durSec: masterDur });
     filters.push(`[${vlabel}]ass=filename=${assPath}${HAS_FONTS ? `:fontsdir=${FONTS_DIR}` : ''}[vass]`);
     vlabel = 'vass';
   }
+
+  // 3) Logo + incrustations images (overlay, opacité + timing).
+  const imgs = [];
   if (useLogo) {
     cmd.input(LOGO_PATH);
-    filters.push(`[1:v]scale=-1:64[lg]`, `[${vlabel}][lg]overlay=W-w-34:H-h-104[vout]`);
-    vlabel = 'vout';
+    imgs.push({ idx: nextInput++, scaleH: 64, pos: OVERLAY_POS.br, start: 0, dur: masterDur, opacity: 1 });
+  }
+  for (const ov of imageOverlays) {
+    cmd.input(await resolveClipPath(ov.filename, workDir));
+    const scale = Math.min(1, Math.max(0.05, Number(ov.scale) || 0.25));
+    const pos = (ov.position && typeof ov.position === 'object')
+      ? `${Math.round(Number(ov.position.x) || 0)}:${Math.round(Number(ov.position.y) || 0)}`
+      : (OVERLAY_POS[ov.position] || OVERLAY_POS.tr);
+    imgs.push({
+      idx: nextInput++, scaleW: Math.round(scale * OUT_W), pos,
+      start: Number(ov.startTime) || 0,
+      dur: ov.duration != null ? Number(ov.duration) : masterDur,
+      opacity: ov.opacity != null ? Math.min(1, Math.max(0, Number(ov.opacity))) : 1,
+    });
+  }
+  for (const im of imgs) {
+    const sz = im.scaleH ? `-1:${im.scaleH}` : `${im.scaleW}:-1`;
+    const op = im.opacity < 1 ? `,format=rgba,colorchannelmixer=aa=${im.opacity}` : '';
+    const lbl = `ov${im.idx}`;
+    filters.push(`[${im.idx}:v]scale=${sz}${op}[${lbl}]`);
+    const start = im.start.toFixed(2);
+    const end = (im.start + im.dur).toFixed(2);
+    const outL = `vo${im.idx}`;
+    filters.push(`[${vlabel}][${lbl}]overlay=${im.pos}:enable='between(t,${start},${end})'[${outL}]`);
+    vlabel = outL;
   }
 
-  cmd.complexFilter(filters, [vlabel]);
-  cmd.outputOptions([
-    '-map', '0:a?',
-    '-c:v', 'libx264',
-    '-preset', PRESET,
-    '-crf', '23',
-    '-pix_fmt', 'yuv420p',
-    '-x264-params', 'rc-lookahead=10:ref=2:sliced-threads=0',
-    '-g', '60',
-    '-c:a', 'copy',
-    '-movflags', '+faststart',
-    '-threads', '1',
-    '-max_muxing_queue_size', '1024',
-  ]);
+  // 4) Mix audio : musique (ducking) + voix-off.
+  const AFMT = 'aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo';
+  const extraMix = [];
+  let baseAudio = alabel;
+  if (music) {
+    const midx = nextInput++;
+    cmd.input(await resolveClipPath(music.filename, workDir));
+    cmd.inputOptions(['-stream_loop', '-1']); // boucle la musique (entrée précédente)
+    const mvol = music.volume != null ? Math.min(1, Math.max(0, Number(music.volume))) : 0.2;
+    const fIn = Number(music.fadeIn) || 0;
+    const fOut = Number(music.fadeOut) || 0;
+    let mchain = `[${midx}:a]volume=${mvol},${AFMT}`;
+    if (fIn) mchain += `,afade=t=in:st=0:d=${fIn}`;
+    if (fOut) mchain += `,afade=t=out:st=${Math.max(0, masterDur - fOut).toFixed(2)}:d=${fOut}`;
+    filters.push(`${mchain}[mraw]`);
+    if (music.duck) {
+      filters.push(`[${baseAudio}]asplit=2[amain][aside]`);
+      filters.push(`[mraw][aside]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=350[mduck]`);
+      baseAudio = 'amain';
+      extraMix.push('mduck');
+    } else {
+      extraMix.push('mraw');
+    }
+  }
+  if (voiceover) {
+    const vidx = nextInput++;
+    cmd.input(await resolveClipPath(voiceover.filename, workDir));
+    const vvol = voiceover.volume != null ? Math.min(2, Math.max(0, Number(voiceover.volume))) : 1;
+    const delayMs = Math.round((Number(voiceover.startTime) || 0) * 1000);
+    filters.push(`[${vidx}:a]adelay=${delayMs}|${delayMs},volume=${vvol},${AFMT}[vo]`);
+    extraMix.push('vo');
+  }
+  if (extraMix.length > 0) {
+    const ins = [baseAudio, ...extraMix].map((l) => `[${l}]`).join('');
+    filters.push(`${ins}amix=inputs=${extraMix.length + 1}:duration=first:normalize=0[aout]`);
+    alabel = 'aout';
+  } else {
+    alabel = baseAudio;
+  }
 
-  const pr = runFfmpegStep(cmd, 'Habillage global', {
-    onStart: (c) => logger.info('Démarrage habillage global', { command: c }),
-    onProgress: (p) => {
-      if (typeof onProgress === 'function') onProgress(Math.max(0, Math.min(100, p.percent || 0)));
-    },
+  logger.info('Assemblage master (passe unique)', {
+    context: { clips: n, transitions: wantsTransitions, globals: globalOverlays.length, images: imgs.length, music: !!music, voiceover: !!voiceover },
   });
-  cmd.save(outPath);
+  cmd.complexFilter(filters, [vlabel, alabel]);
+  cmd.outputOptions([
+    '-c:v', 'libx264', '-preset', PRESET, '-crf', '23', '-pix_fmt', 'yuv420p',
+    '-x264-params', 'rc-lookahead=10:ref=2:sliced-threads=0', '-g', '60',
+    '-c:a', 'aac', '-b:a', '128k', '-ar', '48000',
+    '-movflags', '+faststart', '-threads', String(THREADS), '-max_muxing_queue_size', '1024',
+  ]);
+  const pr = runFfmpegStep(cmd, 'Assemblage master', {
+    onStart: (c) => logger.info('Démarrage assemblage master', { command: c }),
+    onProgress: (p) => { if (typeof onProgress === 'function') onProgress(Math.max(0, Math.min(100, p.percent || 0))); },
+  });
+  cmd.save(outputPath);
   await pr;
-  logger.info('Habillage global terminé avec succès');
-  return outPath;
+  if (typeof onProgress === 'function') onProgress(100);
+  logger.info('Assemblage master terminé avec succès');
+  return outputPath;
 }

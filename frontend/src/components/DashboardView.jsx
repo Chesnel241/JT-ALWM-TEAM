@@ -24,6 +24,9 @@ const DEFAULT_BRANDING = {
   ticker: { enabled: false, categorie: 'ALERTE', texte: '' },
   live: { enabled: false, label: 'DIRECT' },
   logo: false,
+  music: { enabled: false, filename: '', volume: 0.2, duck: true },
+  voiceover: { enabled: false, filename: '', startTime: 0, volume: 1 },
+  imageOverlays: [],
 };
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
@@ -361,6 +364,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (branding.live.enabled) {
       globalOverlays.push({ templateId: 'live_badge', fields: { label: branding.live.label } });
     }
+    const music = branding.music.enabled && branding.music.filename
+      ? { filename: branding.music.filename, volume: branding.music.volume, duck: branding.music.duck }
+      : undefined;
+    const voiceover = branding.voiceover.enabled && branding.voiceover.filename
+      ? { filename: branding.voiceover.filename, volume: branding.voiceover.volume, startTime: branding.voiceover.startTime }
+      : undefined;
+    const imageOverlays = (branding.imageOverlays || []).filter((o) => o.filename);
 
     try {
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
@@ -379,6 +389,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           })),
           globalOverlays,
           logo: branding.logo,
+          music,
+          voiceover,
+          imageOverlays,
         })
       });
 
@@ -574,6 +587,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       setIsUploadingAdmin(false);
     }
   };
+
+  // Fichiers audio / image de la semaine (tous chutiers) pour l'habillage global.
+  const { weekAudioFiles, weekImageFiles } = useMemo(() => {
+    const audio = [];
+    const image = [];
+    Object.values(dashboard || {}).forEach((list) => {
+      if (!Array.isArray(list)) return;
+      list.forEach((f) => {
+        if (!f || !f.filename) return;
+        const entry = { filename: f.filename, name: f.name || f.filename };
+        if (/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.filename) || f.type === 'image') image.push(entry);
+        else if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(f.filename) || f.type === 'audio') audio.push(entry);
+      });
+    });
+    return { weekAudioFiles: audio, weekImageFiles: image };
+  }, [dashboard]);
 
   const countriesWithUploads = useMemo(() => {
     return Object.keys(dashboard).filter(
@@ -1282,6 +1311,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           value={branding}
           onChange={setBranding}
           onClose={() => setShowGlobalPanel(false)}
+          audioFiles={weekAudioFiles}
+          imageFiles={weekImageFiles}
         />
       )}
 
