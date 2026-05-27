@@ -25,7 +25,7 @@ import { requireAdmin } from '../middleware/auth.js';
 import { audit } from '../logger/audit.js';
 import { deliveryUpload, uploadsDir, DELIVERY_MAX_FILE_SIZE } from '../lib/upload.js';
 import { HAS_R2, uploadToR2, deleteFromR2 } from '../lib/s3.js';
-
+import { broadcastNotification } from './webpush.js';
 const router = Router();
 
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
@@ -115,8 +115,6 @@ router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
         logger.info('Delivery uploaded', {
           context: { weekId, fileId: fileData.id, filename: file.originalname, durationMs },
         });
-        import { broadcastNotification } from './webpush.js';
-        
         broadcastNotification({
           title: '🚨 NOUVEAU JT PRÊT !',
           body: `Le JT de la semaine ${weekId} est prêt et disponible au téléchargement.`,

@@ -20,7 +20,7 @@ import { compressTo720 } from '../services/videoCompress.js';
 import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2, checkR2Exists } from '../lib/s3.js';
 import { Readable } from 'stream';
 import { processVoiceover } from '../services/audioProcessor.js';
-
+import { broadcastNotification } from './webpush.js';
 function createLazyStream(factory) {
   let stream = null;
   let initiating = false;
@@ -379,8 +379,6 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
           durationMs: uploadDurationMs,
         },
       });
-      
-      import { broadcastNotification } from './webpush.js';
       
       // Trigger push notification in background
       broadcastNotification({
@@ -749,8 +747,6 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     const uploadDurationMs = Date.now() - uploadStartTime;
     recordUpload(uploadDurationMs, true);
 
-      import { broadcastNotification } from './webpush.js';
-      
       broadcastNotification({
         title: 'Nouvelle Voix Off Studio',
         body: `Une voix off "${reportageTitle}" a été générée pour la semaine ${weekId}.`,
