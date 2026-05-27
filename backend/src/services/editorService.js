@@ -39,6 +39,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FONTS_DIR = path.join(__dirname, '../../fonts').replace(/\\/g, '/');
 const HAS_FONTS = fs.existsSync(FONTS_DIR);
 
+// Trace les polices au démarrage : permet de diagnostiquer depuis les logs
+// Render pourquoi le texte n'apparaît pas (dossier absent → libass substitue
+// → texte invisible sur conteneur sans polices système).
+if (HAS_FONTS) {
+  const fontFiles = fs.readdirSync(FONTS_DIR).filter((f) => /\.(ttf|otf)$/i.test(f));
+  logger.info(`Polices overlays chargées (${FONTS_DIR})`, { context: { fonts: fontFiles } });
+} else {
+  logger.error(`Dossier polices INTROUVABLE: ${FONTS_DIR} — overlays sans texte ! Vérifier que backend/fonts est bien déployé.`);
+}
+
 // Garde-fous anti-blocage. Si ffmpeg cale (aucune progression) ou dépasse la
 // limite absolue, on tue le process : sinon la promesse ne se résout jamais,
 // le bloc finally ne s'exécute pas et le verrou isRendering reste bloqué à
