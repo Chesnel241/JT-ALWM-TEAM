@@ -16,7 +16,6 @@ import { requireAdmin } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
-import { compressTo720 } from '../services/videoCompress.js';
 import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2, checkR2Exists } from '../lib/s3.js';
 import { Readable } from 'stream';
 import { processVoiceover } from '../services/audioProcessor.js';
@@ -313,14 +312,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
     const isAudio = file.mimetype.startsWith('audio/');
     const reportage = req.query.reportage || null;
 
-    // Compression auto des vidéos > 720p (réduit le poids quand beaucoup
-    // de rushes s'accumulent). Sans effet sur audio/scripts/images.
     let finalSize = file.size;
-    if (!isScript && !isImage && !isAudio) {
-      const ext = path.extname(file.originalname).toLowerCase();
-      const { newSize } = await compressTo720(path.join(uploadsDir, file.filename), ext);
-      finalSize = newSize;
-    }
 
     const fileData = {
       id: uuidv4(),
