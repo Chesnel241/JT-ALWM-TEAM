@@ -17,8 +17,11 @@ const app = createApp({ uploadsDir, corsOrigins });
 
 startAlertMonitoring(uploadsDir);
 
+import { initWebPushDb } from './data/webpushSubscriptions.js';
+
 // Ensure DB is loaded (from Redis or local) before cleanup + listen
 await initDb();
+await initWebPushDb();
 
 logger.info('Initializing cleanup scheduler', {
   context: { interval: '1 hour', uploadsDir },

@@ -2,6 +2,7 @@ import { LayoutDashboard, Sparkles, Mic, Menu, X } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { useState } from 'react';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
+import NotificationToggle from './NotificationToggle.jsx';
 
 export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
   const { t } = useI18n();
@@ -9,6 +10,7 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount }) {
 
   const renderNavButtons = (isMobile) => (
     <>
+      <NotificationToggle />
       <LanguageSwitcher />
       <button
         onClick={() => {

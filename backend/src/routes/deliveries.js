@@ -115,6 +115,14 @@ router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
         logger.info('Delivery uploaded', {
           context: { weekId, fileId: fileData.id, filename: file.originalname, durationMs },
         });
+        import { broadcastNotification } from './webpush.js';
+        
+        broadcastNotification({
+          title: '🚨 NOUVEAU JT PRÊT !',
+          body: `Le JT de la semaine ${weekId} est prêt et disponible au téléchargement.`,
+          url: `/?week=${weekId}`
+        }).catch(err => logger.error('Push notification failed', { error: err.message }));
+
         return res.status(201).json(result);
       } catch (storeErr) {
         recordUpload(Date.now() - startTime, false);

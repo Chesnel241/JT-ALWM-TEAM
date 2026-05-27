@@ -380,6 +380,15 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
         },
       });
       
+      import { broadcastNotification } from './webpush.js';
+      
+      // Trigger push notification in background
+      broadcastNotification({
+        title: 'Nouveau fichier reçu',
+        body: `Un fichier a été envoyé par ${countryId} pour la semaine ${weekId}.`,
+        url: `/?week=${weekId}`
+      }).catch(err => logger.error('Push notification failed', { error: err.message }));
+      
       return res.status(201).json(result);
     } catch (storeErr) {
       const uploadDurationMs = Date.now() - uploadStartTime;
@@ -739,6 +748,14 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
 
     const uploadDurationMs = Date.now() - uploadStartTime;
     recordUpload(uploadDurationMs, true);
+
+      import { broadcastNotification } from './webpush.js';
+      
+      broadcastNotification({
+        title: 'Nouvelle Voix Off Studio',
+        body: `Une voix off "${reportageTitle}" a été générée pour la semaine ${weekId}.`,
+        url: `/?week=${weekId}`
+      }).catch(err => logger.error('Push notification failed', { error: err.message }));
 
     res.status(201).json({
       message: 'Voix traitée et enregistrée avec succès',
