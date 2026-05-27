@@ -15,7 +15,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn } from 'lucide-react';
+import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn, Newspaper } from 'lucide-react';
 
 const KEN_BURNS_LABEL = { in: 'Zoom avant', out: 'Zoom arrière' };
 
@@ -144,7 +144,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns }) {
   );
 }
 
-export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip }) {
+export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -196,6 +196,15 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
           )}
         </h3>
         <div className="flex items-center gap-3">
+          {onGlobalLayer && (
+            <button
+              onClick={onGlobalLayer}
+              className={`text-sm px-3 py-2 rounded-lg transition-colors flex items-center gap-2 border ${brandingActive ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border)] text-[color:var(--muted)] hover:text-[var(--accent)]'}`}
+              title="Habillage JT (ticker, LIVE, logo)"
+            >
+              <Newspaper size={16} /> Habillage JT
+            </button>
+          )}
           {clips.length > 0 && (
             <button
               onClick={() => {

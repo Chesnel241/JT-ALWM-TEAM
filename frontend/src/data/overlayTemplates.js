@@ -89,7 +89,54 @@ export const OVERLAY_TEMPLATES = [
       { key: 'date',  label: 'Date',  placeholder: 'Ex: Lun. 26 Mai' },
     ],
   },
+  {
+    id: 'lower_third_pro',
+    label: 'Lower-Third Pro (2 lignes)',
+    emoji: '🟦',
+    scope: 'clip',
+    preview: 'Style France 24 : titre gras + sous-titre coloré, bas-gauche',
+    fields: [
+      { key: 'titre', label: 'Titre (gras)', placeholder: 'Ex: LE MAROC ACCROCHÉ' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Ex: Les Lions concèdent le nul (1-1)' },
+    ],
+  },
+  {
+    id: 'breaking_news',
+    label: 'Breaking News',
+    emoji: '🚨',
+    scope: 'clip',
+    preview: 'Bandeau rouge slanté « DERNIÈRE MINUTE » + sujet',
+    fields: [
+      { key: 'titre', label: 'Mention', placeholder: 'Ex: DERNIÈRE MINUTE' },
+      { key: 'sujet', label: 'Sujet', placeholder: 'Ex: Coup d\'État au Gabon' },
+    ],
+  },
+  {
+    id: 'ticker',
+    label: 'Bande défilante (ticker)',
+    emoji: '📰',
+    scope: 'global',
+    preview: 'Infos défilant en continu en bas, sur tout le JT',
+    fields: [
+      { key: 'categorie', label: 'Catégorie (tag)', placeholder: 'Ex: ALERTE' },
+      { key: 'texte', label: 'Texte défilant', placeholder: 'Ex: Sommet à Libreville • Élections au Bénin • …' },
+    ],
+  },
+  {
+    id: 'live_badge',
+    label: 'Badge LIVE / DIRECT',
+    emoji: '🔴',
+    scope: 'global',
+    preview: 'Pastille LIVE/DIRECT en haut à droite, sur tout le JT',
+    fields: [
+      { key: 'label', label: 'Texte', placeholder: 'Ex: DIRECT' },
+    ],
+  },
 ];
+
+// Modèles par clip (liés à un intervenant/plan) vs habillage global (tout le JT).
+export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'global');
+export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'global');
 
 // Animations d'entrée du texte (doit matcher renderText() côté backend).
 export const TEXT_ANIMATIONS = [

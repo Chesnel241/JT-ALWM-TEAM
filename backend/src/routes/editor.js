@@ -91,6 +91,18 @@ router.post(
       .optional()
       .isIn(['in', 'out'])
       .withMessage('Mode Ken Burns invalide.'),
+    body('globalOverlays')
+      .optional()
+      .isArray()
+      .withMessage('globalOverlays doit être un tableau.'),
+    body('globalOverlays.*.templateId')
+      .optional()
+      .isString()
+      .withMessage('templateId global invalide.'),
+    body('logo')
+      .optional()
+      .isBoolean()
+      .withMessage('logo doit être un booléen.'),
   ],
   async (req, res, next) => {
     try {
@@ -99,12 +111,12 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { clips, jobId } = req.body;
+      const { clips, jobId, globalOverlays, logo } = req.body;
 
-      logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId });
+      logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo });
 
       // Run async to prevent Render 100s timeout on HTTP request
-      concatenateVideos(clips, jobId)
+      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo })
         .then(({ url }) => {
           finishJob(jobId, 'done', url);
         })

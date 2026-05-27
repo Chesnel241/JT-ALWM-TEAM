@@ -31,6 +31,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FONTS_DIR = path.join(__dirname, '../../fonts').replace(/\\/g, '/');
 const HAS_FONTS = fs.existsSync(FONTS_DIR);
 
+// Logo chaîne incrusté (bug) en habillage global.
+const LOGO_PATH = path.join(__dirname, '../../assets/logo.png').replace(/\\/g, '/');
+const HAS_LOGO = fs.existsSync(LOGO_PATH);
+
 // Trace les polices au démarrage : permet de diagnostiquer depuis les logs
 // Render pourquoi le texte n'apparaît pas (dossier absent → libass substitue
 // → texte invisible sur conteneur sans polices système).
@@ -198,7 +202,7 @@ async function resolveClipPath(filename, workDir) {
  * Concatène et trim une liste de clips, applique les overlays.
  * Retourne { url } : URL présignée R2 (prod) ou chemin relatif (dev).
  */
-export async function concatenateVideos(clips, jobId = null) {
+export async function concatenateVideos(clips, jobId = null, opts = {}) {
   if (!clips || clips.length === 0) {
     throw new Error('Aucune vidéo fournie pour le montage.');
   }
@@ -229,9 +233,14 @@ export async function concatenateVideos(clips, jobId = null) {
       setProgress(jobId, ((i + 1) / normalizedClips.length) * 20, 'downloading');
     }
 
-    // Phase 2 (20→90%) : encodage ffmpeg.
+    // Phase 2 (20→75%) : montage des clips.
     await runFfmpeg(normalizedClips, localPaths, outputPath, (pct) => {
-      setProgress(jobId, 20 + (pct / 100) * 70, 'encoding');
+      setProgress(jobId, 20 + (pct / 100) * 55, 'encoding');
+    });
+
+    // Phase 3 (75→90%) : habillage global (ticker, LIVE, logo) sur le master.
+    const finalPath = await applyGlobalLayer(outputPath, workDir, opts, (pct) => {
+      setProgress(jobId, 75 + (pct / 100) * 15, 'encoding');
     });
     setProgress(jobId, 90, 'uploading');
 
@@ -241,7 +250,7 @@ export async function concatenateVideos(clips, jobId = null) {
     if (HAS_R2) {
       const r2Key = `exports/${outputFilename}`;
       logger.info('Upload du master vers R2', { r2Key });
-      await withTimeout(uploadToR2(outputPath, r2Key, 'video/mp4'), IO_TIMEOUT_MS, 'Upload R2 du master');
+      await withTimeout(uploadToR2(finalPath, r2Key, 'video/mp4'), IO_TIMEOUT_MS, 'Upload R2 du master');
       const url = await withTimeout(getR2PresignedUrl(r2Key, 60 * 60 * 24), 30 * 1000, 'URL présignée R2');
       logger.info('Master uploadé sur R2 avec succès', { r2Key });
       return { url };
@@ -250,7 +259,7 @@ export async function concatenateVideos(clips, jobId = null) {
     // Mode local (dev) : déplace le rendu dans uploadsDir/exports.
     const exportsDir = path.join(uploadsDir, 'exports');
     fs.mkdirSync(exportsDir, { recursive: true });
-    fs.copyFileSync(outputPath, path.join(exportsDir, outputFilename));
+    fs.copyFileSync(finalPath, path.join(exportsDir, outputFilename));
     return { url: `/uploads/exports/${outputFilename}` };
   } finally {
     isRendering = false;
@@ -470,4 +479,61 @@ async function assembleWithTransitions(normPaths, transitions, outputPath, onPro
   await pr;
   if (typeof onProgress === 'function') onProgress(100);
   logger.info('Assemblage transitions terminé avec succès');
+}
+
+/**
+ * Habillage global appliqué au master assemblé : bande défilante (ticker),
+ * badge LIVE/DIRECT (overlays ASS calés sur toute la durée) + logo chaîne
+ * (incrustation PNG). Une seule passe ; audio copié (pas de ré-encodage son).
+ * Retourne le chemin du fichier habillé, ou `masterPath` si rien à faire.
+ */
+async function applyGlobalLayer(masterPath, workDir, opts = {}, onProgress) {
+  const globalOverlays = Array.isArray(opts.globalOverlays) ? opts.globalOverlays : [];
+  const useLogo = !!opts.logo && HAS_LOGO;
+  if (globalOverlays.length === 0 && !useLogo) return masterPath;
+
+  const masterDur = await getDuration(masterPath);
+  const outPath = path.join(workDir, `branded_${path.basename(masterPath)}`);
+  const cmd = ffmpeg(masterPath);
+  const filters = [];
+  let vlabel = '0:v';
+
+  if (globalOverlays.length > 0) {
+    // Les overlays globaux couvrent toute la durée du master.
+    const mapped = globalOverlays.map((o) => ({ ...o, startTime: 0, duration: masterDur }));
+    const assPath = generateAssFile(mapped, workDir, { durSec: masterDur });
+    filters.push(`[${vlabel}]ass=filename=${assPath}${HAS_FONTS ? `:fontsdir=${FONTS_DIR}` : ''}[vass]`);
+    vlabel = 'vass';
+  }
+  if (useLogo) {
+    cmd.input(LOGO_PATH);
+    filters.push(`[1:v]scale=-1:64[lg]`, `[${vlabel}][lg]overlay=W-w-34:H-h-104[vout]`);
+    vlabel = 'vout';
+  }
+
+  cmd.complexFilter(filters, [vlabel]);
+  cmd.outputOptions([
+    '-map', '0:a?',
+    '-c:v', 'libx264',
+    '-preset', PRESET,
+    '-crf', '23',
+    '-pix_fmt', 'yuv420p',
+    '-x264-params', 'rc-lookahead=10:ref=2:sliced-threads=0',
+    '-g', '60',
+    '-c:a', 'copy',
+    '-movflags', '+faststart',
+    '-threads', '1',
+    '-max_muxing_queue_size', '1024',
+  ]);
+
+  const pr = runFfmpegStep(cmd, 'Habillage global', {
+    onStart: (c) => logger.info('Démarrage habillage global', { command: c }),
+    onProgress: (p) => {
+      if (typeof onProgress === 'function') onProgress(Math.max(0, Math.min(100, p.percent || 0)));
+    },
+  });
+  cmd.save(outPath);
+  await pr;
+  logger.info('Habillage global terminé avec succès');
+  return outPath;
 }

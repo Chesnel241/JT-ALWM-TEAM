@@ -12,12 +12,19 @@ import AdminUploadDialog from './AdminUploadDialog.jsx';
 import Timeline from './editor/Timeline.jsx';
 import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
+import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import ActionSheet from './ActionSheet.jsx';
 
 // Clés localStorage : la timeline et le job de montage en cours survivent au
 // refresh/changement d'onglet (le rendu continue côté serveur).
 const JOB_STORE_KEY = 'jt-editor-job';
 const timelineKey = (weekId) => `jt-timeline-${weekId}`;
+const brandingKey = (weekId) => `jt-branding-${weekId}`;
+const DEFAULT_BRANDING = {
+  ticker: { enabled: false, categorie: 'ALERTE', texte: '' },
+  live: { enabled: false, label: 'DIRECT' },
+  logo: false,
+};
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
   const [content, setContent] = useState('');
@@ -164,6 +171,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   
   // Editor State
   const [timelineClips, setTimelineClips] = useState([]);
+  const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  const [showGlobalPanel, setShowGlobalPanel] = useState(false);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
   const [exportProgress, setExportProgress] = useState(0);
@@ -197,6 +206,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       const saved = localStorage.getItem(timelineKey(selectedWeek));
       setTimelineClips(saved ? JSON.parse(saved) : []);
     } catch { setTimelineClips([]); }
+    try {
+      const b = localStorage.getItem(brandingKey(selectedWeek));
+      setBranding(b ? { ...DEFAULT_BRANDING, ...JSON.parse(b) } : DEFAULT_BRANDING);
+    } catch { setBranding(DEFAULT_BRANDING); }
 
     api.getDashboard(selectedWeek)
       .then(setDashboard)
@@ -220,6 +233,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       else localStorage.removeItem(timelineKey(selectedWeek));
     } catch { /* quota / mode privé : on ignore */ }
   }, [timelineClips, selectedWeek]);
+
+  // Persiste l'habillage global du JT.
+  useEffect(() => {
+    if (!selectedWeek) return;
+    try { localStorage.setItem(brandingKey(selectedWeek), JSON.stringify(branding)); } catch { /* ignore */ }
+  }, [branding, selectedWeek]);
 
   // Reprend le suivi d'un montage en cours après un refresh/onglet : le rendu
   // continue côté serveur, on récupère sa progression et son résultat.
@@ -334,6 +353,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const token = localStorage.getItem('app-password') || '';
     const tracker = trackJob(jobId);
 
+    // Habillage global → overlays appliqués à tout le master.
+    const globalOverlays = [];
+    if (branding.ticker.enabled && branding.ticker.texte.trim()) {
+      globalOverlays.push({ templateId: 'ticker', fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte } });
+    }
+    if (branding.live.enabled) {
+      globalOverlays.push({ templateId: 'live_badge', fields: { label: branding.live.label } });
+    }
+
     try {
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
         method: 'POST',
@@ -348,7 +376,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             overlays: clip.overlays || [],
             transition: clip.transition,
             kenBurns: clip.kenBurns,
-          }))
+          })),
+          globalOverlays,
+          logo: branding.logo,
         })
       });
 
@@ -1173,13 +1203,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </div>
 
           {/* TIMELINE (Éditeur Vidéo) */}
-          <Timeline 
-            clips={timelineClips} 
-            setClips={setTimelineClips} 
+          <Timeline
+            clips={timelineClips}
+            setClips={setTimelineClips}
             onGenerate={handleGenerateVideo}
             isGenerating={isGeneratingVideo}
             onTrimClip={(file) => setTrimTarget(file)}
             onOverlayClip={(clip) => setOverlayTarget(clip)}
+            onGlobalLayer={() => setShowGlobalPanel(true)}
+            brandingActive={branding.ticker.enabled || branding.live.enabled || branding.logo}
           />
         </main>
       </div>
@@ -1243,6 +1275,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedBin={selectedBin}
         adminPassword={authenticatedAdminPassword}
       />
+
+      {/* Habillage JT global */}
+      {showGlobalPanel && (
+        <GlobalLayerPanel
+          value={branding}
+          onChange={setBranding}
+          onClose={() => setShowGlobalPanel(false)}
+        />
+      )}
 
       {/* Overlay Panel */}
       {overlayTarget && (
