@@ -103,8 +103,14 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
       <div ref={dialogRef} className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
           <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
-            <FileText className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
-            {file.name}
+            {file.type === 'video' || !!file.name.match(/\.(mp4|mov|avi|mkv)$/i) ? (
+              <Video className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
+            ) : file.type === 'audio' || !!file.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i) ? (
+              <Mic className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
+            ) : (
+              <FileText className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
+            )}
+            <span className="truncate max-w-[250px] sm:max-w-md">{file.name}</span>
           </h3>
           <button 
             onClick={onClose}
@@ -114,8 +120,20 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
             <XCircle size={20} aria-hidden="true" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative">
-          <ScriptViewerContent file={file} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={adminPassword} />
+        <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative flex flex-col items-center justify-center">
+          {(() => {
+            const isVideo = file.type === 'video' || !!file.name.match(/\.(mp4|mov|avi|mkv)$/i);
+            const isAudio = file.type === 'audio' || !!file.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
+            const url = `${API_BASE}/uploads/${file.filename}`;
+            
+            if (isVideo) {
+              return <video src={url} controls autoPlay className="max-w-full max-h-[60vh] rounded shadow-lg" playsInline />;
+            } else if (isAudio) {
+              return <audio src={url} controls autoPlay className="w-full mt-4" />;
+            } else {
+              return <ScriptViewerContent file={file} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={adminPassword} />;
+            }
+          })()}
         </div>
       </div>
     </div>
@@ -504,7 +522,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     return (
       <div key={file.id} className="group flex flex-col gap-2 shrink-0 w-64 md:w-auto snap-start relative">
         {/* Thumbnail Box */}
-        <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] border border-[var(--border)] shadow-sm cursor-pointer flex items-center justify-center">
+        <div 
+          onClick={() => setViewingScript(file)}
+          onMouseEnter={(e) => {
+            if (isVideo) {
+              const video = e.currentTarget.querySelector('video');
+              if (video) video.play().catch(() => {});
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (isVideo) {
+              const video = e.currentTarget.querySelector('video');
+              if (video) {
+                video.pause();
+                video.currentTime = 0.1;
+              }
+            }
+          }}
+          className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] border border-[var(--border)] shadow-sm cursor-pointer flex items-center justify-center"
+        >
           
           {isVideo ? (
             <>
