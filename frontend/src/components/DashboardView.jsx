@@ -590,6 +590,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }
   };
 
+  // Upload d'un asset d'habillage (musique/voix-off/image) vers le chutier
+  // "tj" (Titres & Rappels). adminPassword → contourne la deadline d'upload.
+  // Rafraîchit le dashboard puis retourne le fichier ajouté { filename, name }.
+  const uploadAsset = async (fileObj) => {
+    await api.uploadFile(selectedWeek, 'tj', fileObj, { adminPassword: authenticatedAdminPassword });
+    const fresh = await api.getDashboard(selectedWeek);
+    setDashboard(fresh);
+    const list = Array.isArray(fresh?.tj) ? fresh.tj : [];
+    const match = [...list].reverse().find((f) => f.name === fileObj.name) || list[list.length - 1];
+    return match ? { filename: match.filename, name: match.name } : null;
+  };
+
   // Fichiers audio / image de la semaine (tous chutiers) pour l'habillage global.
   const { weekAudioFiles, weekImageFiles } = useMemo(() => {
     const audio = [];
@@ -1325,6 +1337,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           onClose={() => setShowGlobalPanel(false)}
           audioFiles={weekAudioFiles}
           imageFiles={weekImageFiles}
+          uploadAsset={uploadAsset}
         />
       )}
 
