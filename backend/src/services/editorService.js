@@ -284,7 +284,7 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
   
   // Phase 1 : Normalisation séquentielle de chaque clip
   for (let i = 0; i < normalizedClips.length; i++) {
-    const { inPoint, outPoint, overlays = [], kenBurns } = normalizedClips[i];
+    const { inPoint, outPoint, overlays = [], kenBurns, subtitles, subtitleStyle } = normalizedClips[i];
     const normPath = path.join(workDir, `norm_${i}.mp4`);
     normPaths.push(normPath);
 
@@ -334,15 +334,26 @@ async function runFfmpeg(normalizedClips, localPaths, outputPath, onProgress) {
     }
     vParts.push('format=yuv420p');
 
-    // Overlays libass. Chemins sans espaces/`:` côté serveur → insertion directe.
-    if (overlays && overlays.length > 0) {
+    // Sous-titres (relatifs au fichier d'origine) → calés sur le clip trimé :
+    // décalés de -trimIn, filtrés hors [trimIn, trimOut].
+    let subs = null;
+    if (Array.isArray(subtitles) && subtitles.length > 0) {
+      const inP = trimIn;
+      const outP = outPoint != null ? outPoint : Infinity;
+      subs = subtitles
+        .filter((s) => s && s.text && s.end > inP && s.start < outP)
+        .map((s) => ({ start: Math.max(0, s.start - inP), end: s.end - inP, text: s.text }));
+    }
+
+    // Overlays + sous-titres libass dans un seul fichier ASS (un seul filtre).
+    if ((overlays && overlays.length > 0) || (subs && subs.length > 0)) {
       try {
-        const assPath = generateAssFile(overlays, workDir);
+        const assPath = generateAssFile(overlays, workDir, {}, subs, subtitleStyle);
         vParts.push(HAS_FONTS
           ? `ass=filename=${assPath}:fontsdir=${FONTS_DIR}`
           : `ass=filename=${assPath}`);
       } catch (err) {
-        logger.warn(`Overlays skipped: ${err.message}`);
+        logger.warn(`Overlays/sous-titres ignorés: ${err.message}`);
       }
     }
 
@@ -491,7 +502,15 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
   const imgs = [];
   if (useLogo) {
     cmd.input(LOGO_PATH);
-    imgs.push({ idx: nextInput++, scaleH: 64, pos: OVERLAY_POS.br, start: 0, dur: masterDur, opacity: 1 });
+    // Position du logo réglable ; si ticker actif et position basse → surélevé.
+    const tickerOn = globalOverlays.some((o) => o.templateId === 'ticker');
+    const bottomY = tickerOn ? 'H-h-104' : 'H-h-34';
+    const LOGO_POS = {
+      tl: '34:34', tr: 'W-w-34:34', center: '(W-w)/2:(H-h)/2',
+      bl: `34:${bottomY}`, br: `W-w-34:${bottomY}`,
+    };
+    const logoPos = LOGO_POS[opts.logoPosition] || LOGO_POS.br;
+    imgs.push({ idx: nextInput++, scaleH: 64, pos: logoPos, start: 0, dur: masterDur, opacity: 1 });
   }
   for (const ov of imageOverlays) {
     cmd.input(await resolveClipPath(ov.filename, workDir));
@@ -557,6 +576,12 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
   } else {
     alabel = baseAudio;
   }
+
+  // complexFilter mappe les labels en pads ([x]) ; un flux d'entrée brut
+  // (ex: '0:a' quand 1 clip sans mix) deviendrait `-map [0:a]` → invalide.
+  // On force un pad via passthrough.
+  if (/^\d+:v$/.test(vlabel)) { filters.push(`[${vlabel}]null[voutp]`); vlabel = 'voutp'; }
+  if (/^\d+:a$/.test(alabel)) { filters.push(`[${alabel}]anull[aoutp]`); alabel = 'aoutp'; }
 
   logger.info('Assemblage master (passe unique)', {
     context: { clips: n, transitions: wantsTransitions, globals: globalOverlays.length, images: imgs.length, music: !!music, voiceover: !!voiceover },

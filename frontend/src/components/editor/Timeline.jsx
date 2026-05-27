@@ -15,7 +15,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn, Newspaper, Eye } from 'lucide-react';
+import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn, Newspaper, Eye, Captions } from 'lucide-react';
 
 const KEN_BURNS_LABEL = { in: 'Zoom avant', out: 'Zoom arrière' };
 
@@ -73,7 +73,7 @@ function TransitionPicker({ value, onChange }) {
   );
 }
 
-function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns }) {
+function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle }) {
   const {
     attributes,
     listeners,
@@ -133,6 +133,13 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns }) {
           <ZoomIn size={13} />
         </button>
         <button
+          onClick={() => onSubtitle(clip)}
+          className={`p-1.5 rounded-lg transition-colors ${(clip.subtitles?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
+          title="Sous-titres auto"
+        >
+          <Captions size={13} />
+        </button>
+        <button
           onClick={() => onRemove(clip.instanceId || clip.id)}
           className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
           title="Retirer de la Timeline"
@@ -163,7 +170,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns }) {
   );
 }
 
-export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview }) {
+export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview, onSubtitleClip }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -288,6 +295,7 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
                       onTrim={onTrimClip}
                       onOverlay={onOverlayClip}
                       onKenBurns={cycleKenBurns}
+                      onSubtitle={onSubtitleClip}
                     />
                     {idx < clips.length - 1 && (
                       <TransitionPicker

@@ -36,6 +36,14 @@ describe('overlay animations & templates', () => {
     return content;
   };
 
+  const read2 = (overlays, style, subs) => {
+    const wd = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-sub-'));
+    const p = generateAssFile(overlays, wd, {}, subs, style);
+    const content = fs.readFileSync(p, 'utf8');
+    fs.rmSync(wd, { recursive: true, force: true });
+    return content;
+  };
+
   it('expose les nouveaux modèles JT', () => {
     const ids = OVERLAY_TEMPLATES.map((t) => t.id);
     expect(ids).toEqual(expect.arrayContaining(['titre_karaoke', 'sous_titre', 'score_resultat', 'horloge_date']));
@@ -52,6 +60,16 @@ describe('overlay animations & templates', () => {
 
     const sweep = read([{ templateId: 'titre_reportage', fields: { sujet: 'X' }, animation: 'sweep' }]);
     expect(sweep).toMatch(/\\t\(0,600,\\1c/);
+  });
+
+  it('génère des sous-titres ASS positionnés (bas \\an2 / haut \\an8)', () => {
+    const subs = [{ start: 0.2, end: 1.4, text: 'Bonjour {x}' }, { start: 1.6, end: 2.8, text: 'Suite' }];
+    const bottom = read2([], { position: 'bottom', size: 'M', font: 'PT Sans' }, subs);
+    expect(bottom).toContain('\\an2');
+    expect(bottom).toContain('Bonjour x'); // accolades échappées
+    expect((bottom.match(/Dialogue:/g) || []).length).toBe(2);
+    const top = read2([], { position: 'top' }, subs);
+    expect(top).toContain('\\an8');
   });
 
   it('échappe les caractères de contrôle ASS dans le texte', () => {

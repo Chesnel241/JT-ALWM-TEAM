@@ -71,6 +71,14 @@ function renderText(raw, animation, font) {
         prefix: `${fn}\\2a&HFF&`,
         body: [...s].map((c) => `{\\k3}${c === ' ' ? '\\h' : c}`).join(''),
       };
+    case 'pop': // overshoot : 0 → 115% → 100%
+      return { prefix: `${fn}\\fscx0\\fscy0\\fad(120,150)\\t(0,180,\\fscx115\\fscy115)\\t(180,320,\\fscx100\\fscy100)`, body: s };
+    case 'bounce': // rebond approximé sur l'échelle verticale
+      return { prefix: `${fn}\\fscy0\\fad(120,150)\\t(0,150,\\fscy112)\\t(150,260,\\fscy94)\\t(260,360,\\fscy104)\\t(360,440,\\fscy100)`, body: s };
+    case 'blurin': // entrée floue → net
+      return { prefix: `${fn}\\blur8\\fad(150,200)\\t(0,450,\\blur0)`, body: s };
+    case 'rotate': // léger redressement
+      return { prefix: `${fn}\\frz-12\\fad(120,150)\\t(0,400,\\frz0)`, body: s };
     case 'fade':
     default:
       return { prefix: `${fn}\\fad(300,250)`, body: s };
@@ -85,7 +93,15 @@ function formatAssTime(seconds) {
   return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
 }
 
-export function generateAssFile(overlays, workDir, ctx = {}) {
+// Tags ASS d'un sous-titre selon le style choisi (position bas/haut, taille,
+// police). Blanc + contour noir épais (lisible sur n'importe quel fond).
+function subtitleTags(style) {
+  const align = style?.position === 'top' ? '\\an8' : '\\an2';
+  const fs = { S: 30, M: 38, L: 48 }[style?.size] || 38;
+  return `${align}${fontTag(style?.font)}\\fs${fs}\\1c&HFFFFFF&\\3c&H000000&\\bord3\\shad1`;
+}
+
+export function generateAssFile(overlays, workDir, ctx = {}, subtitles = null, subtitleStyle = null) {
   const assFilename = `overlays_${Date.now()}_${Math.floor(Math.random() * 1000)}.ass`;
   const absoluteAssPath = path.join(workDir, assFilename);
 
@@ -121,6 +137,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       assContent += d + '\n';
     }
   });
+
+  // Sous-titres (timings déjà calés sur le clip). MarginV : au-dessus du ticker
+  // en bas, marge réduite en haut.
+  if (Array.isArray(subtitles) && subtitles.length > 0) {
+    const tags = subtitleTags(subtitleStyle);
+    const mv = subtitleStyle?.position === 'top' ? 40 : 70;
+    for (const s of subtitles) {
+      if (!s || !s.text || !(s.end > s.start)) continue;
+      assContent += `Dialogue: 4,${formatAssTime(Math.max(0, s.start))},${formatAssTime(Math.max(0, s.end))},Default,,0,0,${mv},,{${tags}}${safe(s.text)}\n`;
+    }
+  }
 
   fs.writeFileSync(absoluteAssPath, assContent, 'utf8');
   return absoluteAssPath;

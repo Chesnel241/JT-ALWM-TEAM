@@ -148,6 +148,10 @@ export const FONT_FAMILIES = [
 export const TEXT_ANIMATIONS = [
   { id: 'fade', label: 'Fondu' },
   { id: 'scale', label: 'Zoom' },
+  { id: 'pop', label: 'Pop (rebond)' },
+  { id: 'bounce', label: 'Bounce' },
+  { id: 'blurin', label: 'Flou → net' },
+  { id: 'rotate', label: 'Rotation' },
   { id: 'sweep', label: 'Balayage couleur' },
   { id: 'typewriter', label: 'Machine à écrire' },
 ];

@@ -206,6 +206,14 @@ export default function PreviewModal({ clips, branding, onClose }) {
     return clipLocal >= st && clipLocal <= en;
   });
 
+  // Sous-titre actif (timings relatifs au fichier d'origine).
+  const inP = seg?.in ?? 0;
+  const activeSub = (seg?.clip.subtitles || []).find((s) => {
+    const rel = clipLocal + inP;
+    return rel >= s.start && rel <= s.end && s.text;
+  });
+  const subPos = seg?.clip.subtitleStyle?.position === 'top' ? { top: '6%' } : { bottom: '14%' };
+
   const tk = branding?.ticker?.enabled && branding.ticker.texte ? branding.ticker : null;
   const live = branding?.live?.enabled ? branding.live : null;
 
@@ -245,6 +253,13 @@ export default function PreviewModal({ clips, branding, onClose }) {
           {activeOverlays.map((o, i) => (
             <OverlayChip key={`${o.id || o.templateId}-${i}-${idx}`} templateId={o.templateId} fields={o.fields} animation={o.animation} />
           ))}
+
+          {/* Sous-titre */}
+          {activeSub && (
+            <div style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', ...subPos }}>
+              <span style={{ background: 'rgba(0,0,0,.6)', color: '#fff', fontWeight: 600, fontSize: '1.2em', padding: '4px 14px', textShadow: '0 1px 2px #000' }}>{activeSub.text}</span>
+            </div>
+          )}
 
           {/* Habillage global */}
           {live && (

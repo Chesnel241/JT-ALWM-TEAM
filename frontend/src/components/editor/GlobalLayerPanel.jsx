@@ -92,9 +92,16 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
           </section>
 
           {/* Logo */}
-          <section className="flex items-center justify-between border border-[var(--border)] rounded-xl p-4">
-            <span className="flex items-center gap-2 font-semibold text-sm text-[color:var(--ink)]"><ImageIcon size={15} /> Logo chaîne (coin)</span>
-            <input type="checkbox" checked={v.logo} onChange={(e) => onChange({ ...v, logo: e.target.checked })} className="w-4 h-4 accent-[var(--accent)]" />
+          <section className={sectionCls}>
+            <label className="flex items-center justify-between font-semibold text-sm text-[color:var(--ink)]">
+              <span className="flex items-center gap-2"><ImageIcon size={15} /> Logo chaîne</span>
+              <input type="checkbox" checked={v.logo} onChange={(e) => onChange({ ...v, logo: e.target.checked })} className="w-4 h-4 accent-[var(--accent)]" />
+            </label>
+            {v.logo && (
+              <select className={field} value={v.logoPosition || 'br'} onChange={(e) => onChange({ ...v, logoPosition: e.target.value })}>
+                {POSITIONS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </select>
+            )}
           </section>
 
           {/* Musique */}

@@ -14,6 +14,7 @@ import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import PreviewModal from './editor/PreviewModal.jsx';
+import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import ActionSheet from './ActionSheet.jsx';
 
 // Clés localStorage : la timeline et le job de montage en cours survivent au
@@ -25,6 +26,7 @@ const DEFAULT_BRANDING = {
   ticker: { enabled: false, categorie: 'ALERTE', texte: '' },
   live: { enabled: false, label: 'DIRECT' },
   logo: false,
+  logoPosition: 'br',
   music: { enabled: false, filename: '', volume: 0.2, duck: true },
   voiceover: { enabled: false, filename: '', startTime: 0, volume: 1 },
   imageOverlays: [],
@@ -178,6 +180,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [showGlobalPanel, setShowGlobalPanel] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [subtitleTarget, setSubtitleTarget] = useState(null);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
   const [exportProgress, setExportProgress] = useState(0);
@@ -391,6 +394,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           })),
           globalOverlays,
           logo: branding.logo,
+          logoPosition: branding.logoPosition,
           music,
           voiceover,
           imageOverlays,
@@ -1256,6 +1260,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             onGlobalLayer={() => setShowGlobalPanel(true)}
             brandingActive={branding.ticker.enabled || branding.live.enabled || branding.logo}
             onPreview={() => setShowPreview(true)}
+            onSubtitleClip={(clip) => setSubtitleTarget(clip)}
           />
         </main>
       </div>
@@ -1319,6 +1324,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedBin={selectedBin}
         adminPassword={authenticatedAdminPassword}
       />
+
+      {/* Sous-titres auto */}
+      {subtitleTarget && (
+        <SubtitlePanel
+          clip={subtitleTarget}
+          onClose={() => setSubtitleTarget(null)}
+          onSave={(updatedClip) => {
+            setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+            addToast('Sous-titres appliqués', 'success', 2000);
+          }}
+        />
+      )}
 
       {/* Aperçu temps réel */}
       {showPreview && (
