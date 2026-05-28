@@ -75,6 +75,35 @@ function OverlayEditor({ overlay, onChange, onRemove }) {
         </div>
       </div>
 
+      {/* Couleurs (3 slots : texte / fond / accent) */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          ['text', 'Texte'],
+          ['bg', 'Fond'],
+          ['accent', 'Accent'],
+        ].map(([k, lab]) => (
+          <div key={k} className="flex items-center justify-between gap-2 border border-[var(--border)] rounded-lg px-2 py-1.5">
+            <span className="text-xs text-[color:var(--muted)]">{lab}</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="color"
+                value={(overlay.colors && overlay.colors[k]) || '#000000'}
+                onChange={(e) => onChange({ ...overlay, colors: { ...(overlay.colors || {}), [k]: e.target.value } })}
+                className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent"
+                title={`Couleur ${lab}`}
+              />
+              {overlay.colors && overlay.colors[k] && (
+                <button
+                  onClick={() => { const c = { ...(overlay.colors || {}) }; delete c[k]; onChange({ ...overlay, colors: c }); }}
+                  className="text-[10px] text-[color:var(--muted)] hover:text-[var(--signal)]"
+                  title="Réinitialiser"
+                >×</button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Contour + halo (gravés par libass \bord + \blur) */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">

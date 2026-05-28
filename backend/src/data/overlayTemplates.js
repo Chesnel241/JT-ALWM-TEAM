@@ -42,6 +42,27 @@ function fontTag(font) {
   return font && FONT_FAMILIES.includes(font) ? `\\fn${font}` : '';
 }
 
+// Convertit un hex #RRGGBB en couleur ASS BGR &HBBGGRR&. Retourne null si invalide.
+function hexToBgr(hex) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return null;
+  const r = m[1].slice(0, 2).toUpperCase();
+  const g = m[1].slice(2, 4).toUpperCase();
+  const b = m[1].slice(4, 6).toUpperCase();
+  return `&H${b}${g}${r}&`;
+}
+
+// Slots couleur configurables par overlay : text (texte principal), bg (bandeau/
+// fond), accent (liseré/secondaire). Retourne BGR ASS ou fallback.
+function pickColors(overlay) {
+  const c = overlay?.colors || {};
+  return {
+    text: (txt) => hexToBgr(c.text) || txt,
+    bg: (bg) => hexToBgr(c.bg) || bg,
+    accent: (ac) => hexToBgr(c.accent) || ac,
+  };
+}
+
 // Neutralise ASS control characters so user text can never break the
 // override-tag syntax or inject tags.
 function safe(s) {
@@ -255,22 +276,23 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { name, title } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_NAVY); const cAc = C.accent(COL_GOLD); const cTx = C.text(COL_WHITE);
       const slide = '\\move(-1100,0,0,0,0,450)';
       const lines = [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${COL_NAVY}\\1a&H22&\\bord0\\shad0\\p1}m 0 0 l 1060 0 1060 130 0 130{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 130 0 130{\\p0}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${cBg}\\1a&H22&\\bord0\\shad0\\p1}m 0 0 l 1060 0 1060 130 0 130{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${cAc}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 130 0 130{\\p0}`,
       ];
-      // Nom : per-char si demandé, sinon une seule Dialogue.
       if (PER_CHAR_ANIMS.has(overlay.animation)) {
         lines.push(...buildPerCharLines({
-          text: name, x: 42, y: 962, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs52\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad2`,
+          text: name, x: 42, y: 962, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs52\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad2`,
           fs: 52, anim: overlay.animation, startStr: start, endStr: end,
         }));
       } else {
         const n = renderText(name, overlay.animation, overlay.font, overlay.outline, overlay.glow);
-        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(42,962)\\fnInter\\b1\\fs52\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad2${n.prefix}}${n.body}`);
+        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(42,962)\\fnInter\\b1\\fs52\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad2${n.prefix}}${n.body}`);
       }
-      lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(44,1026)\\fnInter\\fs30\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1\\shad1\\fad(350,250)}${safe(title)}`);
+      lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(44,1026)\\fnInter\\fs30\\1c${cAc}\\3c${COL_BLACK}\\bord1\\shad1\\fad(350,250)}${safe(title)}`);
       return lines;
     },
   },
@@ -285,17 +307,18 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { title, date } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_BLACK); const cTx = C.text(COL_WHITE); const cAc = C.accent(COL_GOLD);
       const lines = [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,448)\\1c${COL_BLACK}\\1a&H40&\\bord0\\shad0\\fad(300,300)\\p1}m 0 0 l 1920 0 1920 184 0 184{\\p0}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,448)\\1c${cBg}\\1a&H40&\\bord0\\shad0\\fad(300,300)\\p1}m 0 0 l 1920 0 1920 184 0 184{\\p0}`,
       ];
-      // Per-char (cascade/charpop/wave) → split. Sinon : révélation clip ou animation choisie.
       if (PER_CHAR_ANIMS.has(overlay.animation)) {
         const txt = safe(title);
         const advance = Math.round(100 * 0.55);
         const totalW = [...txt].length * advance;
         const startX = Math.max(40, 960 - Math.round(totalW / 2));
         lines.push(...buildPerCharLines({
-          text: title, x: startX, y: 508, fontTagStr: '\\fnAnton', baseTags: `\\fs100\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord2\\shad3`,
+          text: title, x: startX, y: 508, fontTagStr: '\\fnAnton', baseTags: `\\fs100\\1c${cTx}\\3c${COL_BLACK}\\bord2\\shad3`,
           fs: 100, anim: overlay.animation, startStr: start, endStr: end,
         }));
       } else {
@@ -306,9 +329,9 @@ export const OVERLAY_TEMPLATES = [
         const titleBody = overlay.animation === 'typewriter'
           ? renderText(title, overlay.animation, overlay.font, overlay.outline, overlay.glow).body
           : safe(title);
-        lines.push(`Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,508)\\fnAnton\\fs100\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord2\\shad3${titleAnim}}${titleBody}`);
+        lines.push(`Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,508)\\fnAnton\\fs100\\1c${cTx}\\3c${COL_BLACK}\\bord2\\shad3${titleAnim}}${titleBody}`);
       }
-      lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,602)\\fnBebas Neue\\fs46\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1\\shad2\\fad(450,300)}${safe(date)}`);
+      lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,602)\\fnBebas Neue\\fs46\\1c${cAc}\\3c${COL_BLACK}\\bord1\\shad2\\fad(450,300)}${safe(date)}`);
       return lines;
     },
   },
@@ -322,12 +345,14 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { pays } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_RED); const cAc = C.accent(COL_GOLD); const cTx = C.text(COL_WHITE);
       const drop = '\\move(1660,-74,1660,20,0,400)';
       const p = renderText(pays, overlay.animation, overlay.font, overlay.outline, overlay.glow);
       return [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7${drop}\\1c${COL_RED}\\bord0\\shad0\\p1}m 0 0 l 260 0 260 64 0 64{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7${drop}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 64 l 260 64 260 70 0 70{\\p0}`,
-        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an5\\pos(1790,52)\\fnBebas Neue\\fs44\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1${p.prefix}}${p.body}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7${drop}\\1c${cBg}\\bord0\\shad0\\p1}m 0 0 l 260 0 260 64 0 64{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7${drop}\\1c${cAc}\\bord0\\shad0\\p1}m 0 64 l 260 64 260 70 0 70{\\p0}`,
+        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an5\\pos(1790,52)\\fnBebas Neue\\fs44\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1${p.prefix}}${p.body}`,
       ];
     },
   },
@@ -341,19 +366,21 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { sujet } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_DARK); const cAc = C.accent(COL_GOLD); const cTx = C.text(COL_WHITE);
       const rise = '\\move(0,180,0,0,0,420)';
       const lines = [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${COL_DARK}\\1a&H18&\\bord0\\shad0\\p1}m 0 0 l 1920 0 1920 80 0 80{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 80 0 80{\\p0}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${cBg}\\1a&H18&\\bord0\\shad0\\p1}m 0 0 l 1920 0 1920 80 0 80{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${cAc}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 80 0 80{\\p0}`,
       ];
       if (PER_CHAR_ANIMS.has(overlay.animation)) {
         lines.push(...buildPerCharLines({
-          text: sujet, x: 34, y: 1018, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs40\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad2`,
+          text: sujet, x: 34, y: 1018, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad2`,
           fs: 40, anim: overlay.animation, startStr: start, endStr: end, anchor: '\\an7', delayMs: 35
         }));
       } else {
         const s = renderText(sujet, overlay.animation, overlay.font, overlay.outline, overlay.glow);
-        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(34,1018)\\fnInter\\b1\\fs40\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad2${s.prefix}}${s.body}`);
+        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(34,1018)\\fnInter\\b1\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad2${s.prefix}}${s.body}`);
       }
       return lines;
     },
@@ -368,19 +395,21 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { texte } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_RED); const cAc = C.accent(COL_BLACK); const cTx = C.text(COL_WHITE);
       const lines = [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${COL_RED}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 1920 0 1920 72 0 72{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${COL_BLACK}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 230 0 230 72 0 72{\\p0}`,
-        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an4\\pos(28,36)\\fnAnton\\fs40\\1c${COL_WHITE}\\bord0\\fad(250,250)\\t(0,600,\\1a&H60&)\\t(600,1200,\\1a&H00&)}FLASH`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${cBg}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 1920 0 1920 72 0 72{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${cAc}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 230 0 230 72 0 72{\\p0}`,
+        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an4\\pos(28,36)\\fnAnton\\fs40\\1c${cTx}\\bord0\\fad(250,250)\\t(0,600,\\1a&H60&)\\t(600,1200,\\1a&H00&)}FLASH`,
       ];
       if (PER_CHAR_ANIMS.has(overlay.animation)) {
         lines.push(...buildPerCharLines({
-          text: texte, x: 260, y: 36, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs38\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1`,
+          text: texte, x: 260, y: 36, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs38\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1`,
           fs: 38, anim: overlay.animation, startStr: start, endStr: end, anchor: '\\an4', delayMs: 30
         }));
       } else {
         const x = renderText(texte, overlay.animation, overlay.font, overlay.outline, overlay.glow);
-        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an4\\pos(260,36)\\fnInter\\b1\\fs38\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`);
+        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an4\\pos(260,36)\\fnInter\\b1\\fs38\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`);
       }
       return lines;
     },
@@ -395,12 +424,13 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { title } = overlay.fields || {};
-      // Toujours révélation type machine à écrire.
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_BLACK); const cAc = C.accent(COL_GOLD); const cTx = C.text(COL_WHITE);
       const t = renderText(title, 'typewriter');
       return [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,540)\\1c${COL_BLACK}\\1a&H50&\\bord0\\shad0\\fad(300,300)\\p1}m 0 0 l 1920 0 1920 170 0 170{\\p0}`,
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,540)\\1c${COL_GOLD}\\bord0\\shad0\\fad(300,300)\\p1}m 0 0 l 1920 0 1920 6 0 6{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,625)\\fnAnton\\fs92\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord2\\shad3${t.prefix}}${t.body}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,540)\\1c${cBg}\\1a&H50&\\bord0\\shad0\\fad(300,300)\\p1}m 0 0 l 1920 0 1920 170 0 170{\\p0}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,540)\\1c${cAc}\\bord0\\shad0\\fad(300,300)\\p1}m 0 0 l 1920 0 1920 6 0 6{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,625)\\fnAnton\\fs92\\1c${cTx}\\3c${COL_BLACK}\\bord2\\shad3${t.prefix}}${t.body}`,
       ];
     },
   },
@@ -414,8 +444,10 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { texte } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_BLACK); const cTx = C.text(COL_WHITE);
       const lines = [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1010)\\1c${COL_BLACK}\\1a&H40&\\bord0\\shad0\\fad(200,200)\\p1}m -760 -42 l 760 -42 760 42 -760 42{\\p0}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1010)\\1c${cBg}\\1a&H40&\\bord0\\shad0\\fad(200,200)\\p1}m -760 -42 l 760 -42 760 42 -760 42{\\p0}`,
       ];
       if (PER_CHAR_ANIMS.has(overlay.animation)) {
         const txt = safe(texte);
@@ -423,12 +455,12 @@ export const OVERLAY_TEMPLATES = [
         const totalW = [...txt].length * advance;
         const startX = Math.max(40, 960 - Math.round(totalW / 2));
         lines.push(...buildPerCharLines({
-          text: texte, x: startX, y: 1014, fontTagStr: '\\fnInter', baseTags: `\\fs40\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1`,
+          text: texte, x: startX, y: 1014, fontTagStr: '\\fnInter', baseTags: `\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1`,
           fs: 40, anim: overlay.animation, startStr: start, endStr: end, anchor: '\\an2', delayMs: 40
         }));
       } else {
         const x = renderText(texte, overlay.animation, overlay.font, overlay.outline, overlay.glow);
-        lines.push(`Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1014)\\fnInter\\fs40\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`);
+        lines.push(`Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1014)\\fnInter\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`);
       }
       return lines;
     },
@@ -445,12 +477,14 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { gauche, score, droite } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_NAVY); const cTx = C.text(COL_WHITE); const cAc = C.accent(COL_GOLD);
       const drop = '\\move(0,-120,0,0,0,400)';
       return [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an8\\pos(960,40)${drop}\\1c${COL_NAVY}\\1a&H1A&\\bord0\\shad0\\p1}m -460 0 l 460 0 460 130 -460 130{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an8\\pos(740,52)${drop}\\fnBebas Neue\\fs56\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1}${safe(gauche)}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an8\\pos(960,56)${drop}\\fnAnton\\fs48\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1\\shad2}${safe(score)}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an8\\pos(1180,52)${drop}\\fnBebas Neue\\fs56\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1}${safe(droite)}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an8\\pos(960,40)${drop}\\1c${cBg}\\1a&H1A&\\bord0\\shad0\\p1}m -460 0 l 460 0 460 130 -460 130{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an8\\pos(740,52)${drop}\\fnBebas Neue\\fs56\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1}${safe(gauche)}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an8\\pos(960,56)${drop}\\fnAnton\\fs48\\1c${cAc}\\3c${COL_BLACK}\\bord1\\shad2}${safe(score)}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an8\\pos(1180,52)${drop}\\fnBebas Neue\\fs56\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1}${safe(droite)}`,
       ];
     },
   },
@@ -465,11 +499,13 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { heure, date } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_RED); const cTx = C.text(COL_WHITE); const cAc = C.accent(COL_GOLD);
       const slide = '\\move(-340,20,20,20,0,400)';
       return [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(20,20)${slide}\\1c${COL_RED}\\bord0\\shad0\\p1}m 0 0 l 300 0 300 70 0 70{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an4\\pos(36,55)${slide}\\fnBebas Neue\\fs48\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1}${safe(heure)}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an4\\pos(150,52)${slide}\\fnInter\\fs26\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1}${safe(date)}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(20,20)${slide}\\1c${cBg}\\bord0\\shad0\\p1}m 0 0 l 300 0 300 70 0 70{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an4\\pos(36,55)${slide}\\fnBebas Neue\\fs48\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1}${safe(heure)}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an4\\pos(150,52)${slide}\\fnInter\\fs26\\1c${cAc}\\3c${COL_BLACK}\\bord1}${safe(date)}`,
       ];
     },
   },
@@ -485,18 +521,15 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { titre, sous_titre } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_WHITE); const cAc = C.accent(COL_BLUE); const cTx = C.text(COL_INK);
       const slideT = '\\move(-1100,892,72,892,0,380)';
       const slideS = '\\move(-1100,958,72,958,0,460)';
       return [
-        // Barre titre blanche.
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,892)${slideT}\\1c${COL_WHITE}\\bord0\\shad3\\p1}m 0 0 l 980 0 980 64 0 64{\\p0}`,
-        // Liseré bleu gauche.
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,892)${slideT}\\1c${COL_BLUE}\\bord0\\p1}m 0 0 l 14 0 14 64 0 64{\\p0}`,
-        // Titre (Archivo Black, sombre).
-        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(100,902)\\fnArchivo Black\\fs44\\1c${COL_INK}\\bord0\\fad(420,250)}${safe(titre)}`,
-        // Barre sous-titre bleue.
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,958)${slideS}\\1c${COL_BLUE}\\bord0\\shad2\\p1}m 0 0 l 820 0 820 52 0 52{\\p0}`,
-        // Sous-titre (Inter, blanc).
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,892)${slideT}\\1c${cBg}\\bord0\\shad3\\p1}m 0 0 l 980 0 980 64 0 64{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,892)${slideT}\\1c${cAc}\\bord0\\p1}m 0 0 l 14 0 14 64 0 64{\\p0}`,
+        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(100,902)\\fnArchivo Black\\fs44\\1c${cTx}\\bord0\\fad(420,250)}${safe(titre)}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(72,958)${slideS}\\1c${cAc}\\bord0\\shad2\\p1}m 0 0 l 820 0 820 52 0 52{\\p0}`,
         `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(92,968)\\fnInter\\b1\\fs30\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord0\\fad(500,250)}${safe(sous_titre)}`,
       ];
     },
@@ -513,16 +546,15 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { titre, sujet } = overlay.fields || {};
+      const C = pickColors(overlay);
+      const cBg = C.bg(COL_RED); const cAc = C.accent(COL_WHITE); const cTx = C.text(COL_WHITE);
+      const cSujetTxt = C.text(COL_INK); // overlay.colors.text réutilisé pour le sujet
       const t = (titre && titre.trim()) || 'DERNIÈRE MINUTE';
       return [
-        // Bandeau rouge slanté (parallélogramme).
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(120,150)\\1c${COL_RED}\\bord0\\shad5\\fad(220,0)\\p1}m 60 0 l 900 0 840 132 0 132{\\p0}`,
-        // Mention (Anton, blanc, italique léger).
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(180,168)\\fnAnton\\fs66\\1c${COL_WHITE}\\bord0\\shad2\\fad(260,0)}${safe(t)}`,
-        // Bandeau sujet blanc sous le rouge.
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(120,290)\\1c${COL_WHITE}\\bord0\\shad3\\fad(380,0)\\clip(120,290,120,420)\\t(0,500,\\clip(120,290,1300,420))\\p1}m 0 0 l 1100 0 1100 70 0 70{\\p0}`,
-        // Sujet (Inter gras, sombre).
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(150,302)\\fnInter\\b1\\fs40\\1c${COL_INK}\\bord0\\fad(560,250)}${safe(sujet)}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(120,150)\\1c${cBg}\\bord0\\shad5\\fad(220,0)\\p1}m 60 0 l 900 0 840 132 0 132{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(180,168)\\fnAnton\\fs66\\1c${cTx}\\bord0\\shad2\\fad(260,0)}${safe(t)}`,
+        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(120,290)\\1c${cAc}\\bord0\\shad3\\fad(380,0)\\clip(120,290,120,420)\\t(0,500,\\clip(120,290,1300,420))\\p1}m 0 0 l 1100 0 1100 70 0 70{\\p0}`,
+        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(150,302)\\fnInter\\b1\\fs40\\1c${cSujetTxt}\\bord0\\fad(560,250)}${safe(sujet)}`,
       ];
     },
   },
