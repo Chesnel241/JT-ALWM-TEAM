@@ -75,6 +75,22 @@ function OverlayEditor({ overlay, onChange, onRemove }) {
         </div>
       </div>
 
+      {/* Contour + halo (gravés par libass \bord + \blur) */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-[color:var(--muted)]">Contour : {overlay.outline ?? 0}</label>
+          <input type="range" min="0" max="6" step="1" value={overlay.outline ?? 0}
+            onChange={(e) => onChange({ ...overlay, outline: parseInt(e.target.value, 10) || 0 })}
+            className="w-full accent-[var(--accent)]" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-[color:var(--muted)]">Halo : {overlay.glow ?? 0}</label>
+          <input type="range" min="0" max="10" step="1" value={overlay.glow ?? 0}
+            onChange={(e) => onChange({ ...overlay, glow: parseInt(e.target.value, 10) || 0 })}
+            className="w-full accent-[var(--accent)]" />
+        </div>
+      </div>
+
       {/* Timing controls */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">

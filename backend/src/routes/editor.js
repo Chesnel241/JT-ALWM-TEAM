@@ -2,6 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { concatenateVideos, XFADE_TRANSITIONS } from '../services/editorService.js';
 import { addListener, removeListener, finishJob, getJobState } from '../services/editorProgress.js';
+import { TEXT_ANIMATIONS_IDS } from '../data/overlayTemplates.js';
 import logger from '../logger/index.js';
 
 const router = express.Router();
@@ -77,8 +78,12 @@ router.post(
       .withMessage('Chaque overlay doit avoir un templateId valide.'),
     body('clips.*.overlays.*.animation')
       .optional()
-      .isIn(['fade', 'slide', 'scale', 'sweep', 'typewriter', 'pop', 'bounce', 'blurin', 'rotate'])
+      .isIn(TEXT_ANIMATIONS_IDS)
       .withMessage('animation invalide.'),
+    body('clips.*.overlays.*.outline').optional().isFloat({ min: 0, max: 6 }),
+    body('clips.*.overlays.*.glow').optional().isFloat({ min: 0, max: 10 }),
+    body('clips.*.overlays.*.position.x').optional().isFloat({ min: 0, max: 1920 }),
+    body('clips.*.overlays.*.position.y').optional().isFloat({ min: 0, max: 1080 }),
     body('clips.*.subtitles').optional().isArray(),
     body('clips.*.subtitles.*.text').optional().isString().isLength({ max: 300 }),
     body('clips.*.subtitles.*.start').optional().isFloat({ min: 0 }),
