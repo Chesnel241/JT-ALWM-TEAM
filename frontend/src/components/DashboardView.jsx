@@ -1379,6 +1379,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           clips={timelineClips}
           branding={branding}
           onClose={() => setShowPreview(false)}
+          onUpdateClip={(newClip) => setTimelineClips(prev => prev.map(c => c.instanceId === newClip.instanceId ? newClip : c))}
         />
       )}
 
