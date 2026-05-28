@@ -53,11 +53,13 @@ function fxStyle(outline, glow) {
 const ff = (font, fallback) => (font ? `'${font}', ${fallback}` : fallback);
 
 // Rendu CSS approximatif d'un overlay (par templateId).
-function OverlayChip({ templateId, fields = {}, animation, font, outline = 0, glow = 0 }) {
+function OverlayChip({ templateId, fields = {}, animation, font, outline = 0, glow = 0, colors = {} }) {
   const f = fields;
   const ac = animClass(animation);
   const FF = (fallback) => ff(font, fallback);
   const fx = fxStyle(outline, glow);
+  // Couleurs custom (text/bg/accent) avec fallback par modèle.
+  const cc = (k, fallback) => colors[k] || fallback;
   // Cellule de texte : per-char si demandé, sinon simple span.
   const Tx = ({ children }) => PER_CHAR.has(animation)
     ? <span style={fx}><CharText text={children} anim={animation} /></span>
@@ -67,81 +69,81 @@ function OverlayChip({ templateId, fields = {}, animation, font, outline = 0, gl
     case 'lower_third':
       return (
         <div className={ac} style={{ ...base, left: '2%', bottom: '6%' }}>
-          <div style={{ background: COL.navy, opacity: 0.86, borderLeft: `4px solid ${COL.gold}`, padding: '6px 18px' }}>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.5em' }}><Tx>{f.name}</Tx></div>
-            <div style={{ color: COL.gold, fontSize: '0.95em' }}><Tx>{f.title}</Tx></div>
+          <div style={{ background: cc('bg', COL.navy), opacity: 0.86, borderLeft: `4px solid ${cc('accent', COL.gold)}`, padding: '6px 18px' }}>
+            <div style={{ color: cc('text', '#fff'), fontWeight: 800, fontSize: '1.5em' }}><Tx>{f.name}</Tx></div>
+            <div style={{ color: cc('accent', COL.gold), fontSize: '0.95em' }}><Tx>{f.title}</Tx></div>
           </div>
         </div>
       );
     case 'lower_third_pro':
       return (
         <div className={ac} style={{ ...base, left: '3%', bottom: '7%' }}>
-          <div style={{ background: '#fff', color: COL.ink, fontFamily: 'Archivo Black, Inter, sans-serif', fontWeight: 900, fontSize: '1.5em', padding: '6px 18px', borderLeft: `5px solid ${COL.blue}` }}><Tx>{f.titre}</Tx></div>
-          <div style={{ background: COL.blue, color: '#fff', fontWeight: 700, fontSize: '1em', padding: '5px 18px', display: 'inline-block' }}><Tx>{f.sous_titre}</Tx></div>
+          <div style={{ background: cc('bg', '#fff'), color: cc('text', COL.ink), fontFamily: 'Archivo Black, Inter, sans-serif', fontWeight: 900, fontSize: '1.5em', padding: '6px 18px', borderLeft: `5px solid ${cc('accent', COL.blue)}` }}><Tx>{f.titre}</Tx></div>
+          <div style={{ background: cc('accent', COL.blue), color: '#fff', fontWeight: 700, fontSize: '1em', padding: '5px 18px', display: 'inline-block' }}><Tx>{f.sous_titre}</Tx></div>
         </div>
       );
     case 'grand_titre':
       return (
         <div className={ac} style={{ ...base, left: 0, right: 0, top: '40%', textAlign: 'center' }}>
-          <div style={{ background: 'rgba(0,0,0,.6)', padding: '14px 0' }}>
-            <div style={{ color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.6em' }}><Tx>{f.title}</Tx></div>
-            <div style={{ color: COL.gold, fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.3em', letterSpacing: 1 }}>{f.date}</div>
+          <div style={{ background: cc('bg', 'rgba(0,0,0,.6)'), padding: '14px 0' }}>
+            <div style={{ color: cc('text', '#fff'), fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.6em' }}><Tx>{f.title}</Tx></div>
+            <div style={{ color: cc('accent', COL.gold), fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.3em', letterSpacing: 1 }}>{f.date}</div>
           </div>
         </div>
       );
     case 'titre_karaoke':
       return (
         <div className={ac} style={{ ...base, left: 0, right: 0, top: '48%', textAlign: 'center' }}>
-          <div style={{ borderTop: `3px solid ${COL.gold}`, background: 'rgba(0,0,0,.55)', padding: '16px 0', color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.4em' }}><Tx>{f.title}</Tx></div>
+          <div style={{ borderTop: `3px solid ${cc('accent', COL.gold)}`, background: cc('bg', 'rgba(0,0,0,.55)'), padding: '16px 0', color: cc('text', '#fff'), fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.4em' }}><Tx>{f.title}</Tx></div>
         </div>
       );
     case 'titre_reportage':
       return (
         <div className={ac} style={{ ...base, left: 0, bottom: '7%' }}>
-          <div style={{ background: COL.dark, opacity: 0.92, borderLeft: `5px solid ${COL.gold}`, color: '#fff', fontWeight: 800, fontSize: '1.4em', padding: '8px 20px' }}><Tx>{f.sujet}</Tx></div>
+          <div style={{ background: cc('bg', COL.dark), opacity: 0.92, borderLeft: `5px solid ${cc('accent', COL.gold)}`, color: cc('text', '#fff'), fontWeight: 800, fontSize: '1.4em', padding: '8px 20px' }}><Tx>{f.sujet}</Tx></div>
         </div>
       );
     case 'sous_titre':
       return (
         <div className={ac} style={{ ...base, left: 0, right: 0, bottom: '6%', textAlign: 'center' }}>
-          <span style={{ background: 'rgba(0,0,0,.7)', color: '#fff', fontSize: '1.3em', padding: '6px 16px' }}><Tx>{f.texte}</Tx></span>
+          <span style={{ background: cc('bg', 'rgba(0,0,0,.7)'), color: cc('text', '#fff'), fontSize: '1.3em', padding: '6px 16px' }}><Tx>{f.texte}</Tx></span>
         </div>
       );
     case 'bandeau_pays':
       return (
         <div className={`${ac}`} style={{ ...base, right: '2%', top: '3%' }}>
-          <div style={{ background: COL.red, color: '#fff', fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.6em', padding: '4px 16px', borderBottom: `3px solid ${COL.gold}` }}>{f.pays}</div>
+          <div style={{ background: cc('bg', COL.red), color: cc('text', '#fff'), fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.6em', padding: '4px 16px', borderBottom: `3px solid ${cc('accent', COL.gold)}` }}>{f.pays}</div>
         </div>
       );
     case 'flash_info':
       return (
         <div className="pv-fade" style={{ ...base, left: 0, right: 0, top: 0, display: 'flex' }}>
-          <div style={{ background: '#000', color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '1.4em', padding: '8px 18px' }}>FLASH</div>
-          <div style={{ background: COL.red, color: '#fff', fontWeight: 800, fontSize: '1.3em', padding: '8px 18px', flex: 1 }}><Tx>{f.texte}</Tx></div>
+          <div style={{ background: cc('accent', '#000'), color: cc('text', '#fff'), fontFamily: 'Anton, Inter, sans-serif', fontSize: '1.4em', padding: '8px 18px' }}>FLASH</div>
+          <div style={{ background: cc('bg', COL.red), color: cc('text', '#fff'), fontWeight: 800, fontSize: '1.3em', padding: '8px 18px', flex: 1 }}><Tx>{f.texte}</Tx></div>
         </div>
       );
     case 'breaking_news':
       return (
         <div className="pv-fade" style={{ ...base, left: '3%', top: '14%' }}>
-          <div style={{ background: COL.red, color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.2em', padding: '6px 40px', transform: 'skewX(-12deg)' }}>
+          <div style={{ background: cc('bg', COL.red), color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.2em', padding: '6px 40px', transform: 'skewX(-12deg)' }}>
             <span style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>{f.titre || 'DERNIÈRE MINUTE'}</span>
           </div>
-          <div style={{ background: '#fff', color: COL.ink, fontWeight: 800, fontSize: '1.3em', padding: '6px 18px', marginTop: 8, display: 'inline-block' }}><Tx>{f.sujet}</Tx></div>
+          <div style={{ background: cc('accent', '#fff'), color: cc('text', COL.ink), fontWeight: 800, fontSize: '1.3em', padding: '6px 18px', marginTop: 8, display: 'inline-block' }}><Tx>{f.sujet}</Tx></div>
         </div>
       );
     case 'score_resultat':
       return (
         <div className="pv-drop" style={{ ...base, left: 0, right: 0, top: '3%', textAlign: 'center' }}>
-          <span style={{ background: COL.navy, color: '#fff', padding: '8px 22px', fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.6em' }}>
-            {f.gauche} <span style={{ color: COL.gold, fontFamily: 'Anton, Inter' }}>{f.score}</span> {f.droite}
+          <span style={{ background: cc('bg', COL.navy), color: cc('text', '#fff'), padding: '8px 22px', fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.6em' }}>
+            {f.gauche} <span style={{ color: cc('accent', COL.gold), fontFamily: 'Anton, Inter' }}>{f.score}</span> {f.droite}
           </span>
         </div>
       );
     case 'horloge_date':
       return (
-        <div className="pv-slideL" style={{ ...base, left: '2%', top: '3%', display: 'flex', alignItems: 'center', background: COL.red, padding: '4px 14px' }}>
-          <span style={{ color: '#fff', fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.5em' }}>{f.heure}</span>
-          <span style={{ color: COL.gold, fontSize: '0.85em', marginLeft: 10 }}>{f.date}</span>
+        <div className="pv-slideL" style={{ ...base, left: '2%', top: '3%', display: 'flex', alignItems: 'center', background: cc('bg', COL.red), padding: '4px 14px' }}>
+          <span style={{ color: cc('text', '#fff'), fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.5em' }}>{f.heure}</span>
+          <span style={{ color: cc('accent', COL.gold), fontSize: '0.85em', marginLeft: 10 }}>{f.date}</span>
         </div>
       );
     default:
@@ -321,7 +323,7 @@ export default function PreviewModal({ clips, branding, onClose }) {
 
           {/* Overlays du clip */}
           {activeOverlays.map((o, i) => (
-            <OverlayChip key={`${o.id || o.templateId}-${i}-${idx}`} templateId={o.templateId} fields={o.fields} animation={o.animation} font={o.font} outline={o.outline || 0} glow={o.glow || 0} />
+            <OverlayChip key={`${o.id || o.templateId}-${i}-${idx}`} templateId={o.templateId} fields={o.fields} animation={o.animation} font={o.font} outline={o.outline || 0} glow={o.glow || 0} colors={o.colors || {}} />
           ))}
 
           {/* Sous-titre (police/taille du style) */}
