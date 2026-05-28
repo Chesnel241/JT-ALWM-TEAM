@@ -58,31 +58,112 @@ function safe(s) {
 //   scale      — apparition par zoom
 //   sweep      — balayage couleur (or → blanc)
 //   typewriter — révélation lettre par lettre (karaoké, secondaire invisible)
-function renderText(raw, animation, font) {
+function renderText(raw, animation, font, outline, glow) {
   const s = safe(raw);
   const fn = fontTag(font); // override police (placé après le \fn du modèle → gagne)
+  // Tags style (contour + halo) optionnels.
+  const ob = Number(outline);
+  const gb = Number(glow);
+  const fx = (Number.isFinite(ob) && ob > 0 ? `\\bord${Math.min(6, Math.max(0, ob))}` : '')
+    + (Number.isFinite(gb) && gb > 0 ? `\\blur${Math.min(10, Math.max(0, gb))}` : '');
+  const base = `${fn}${fx}`;
   switch (animation) {
     case 'scale':
-      return { prefix: `${fn}\\fscx40\\fscy40\\fad(150,150)\\t(0,400,\\fscx100\\fscy100)`, body: s };
+      return { prefix: `${base}\\fscx40\\fscy40\\fad(150,150)\\t(0,400,\\fscx100\\fscy100)`, body: s };
     case 'sweep':
-      return { prefix: `${fn}\\1c${COL_GOLD}\\fad(200,200)\\t(0,600,\\1c${COL_WHITE})`, body: s };
+      return { prefix: `${base}\\1c${COL_GOLD}\\fad(200,200)\\t(0,600,\\1c${COL_WHITE})`, body: s };
     case 'typewriter':
       return {
-        prefix: `${fn}\\2a&HFF&`,
+        prefix: `${base}\\2a&HFF&`,
         body: [...s].map((c) => `{\\k3}${c === ' ' ? '\\h' : c}`).join(''),
       };
     case 'pop': // overshoot : 0 → 115% → 100%
-      return { prefix: `${fn}\\fscx0\\fscy0\\fad(120,150)\\t(0,180,\\fscx115\\fscy115)\\t(180,320,\\fscx100\\fscy100)`, body: s };
+      return { prefix: `${base}\\fscx0\\fscy0\\fad(120,150)\\t(0,180,\\fscx115\\fscy115)\\t(180,320,\\fscx100\\fscy100)`, body: s };
     case 'bounce': // rebond approximé sur l'échelle verticale
-      return { prefix: `${fn}\\fscy0\\fad(120,150)\\t(0,150,\\fscy112)\\t(150,260,\\fscy94)\\t(260,360,\\fscy104)\\t(360,440,\\fscy100)`, body: s };
+      return { prefix: `${base}\\fscy0\\fad(120,150)\\t(0,150,\\fscy112)\\t(150,260,\\fscy94)\\t(260,360,\\fscy104)\\t(360,440,\\fscy100)`, body: s };
     case 'blurin': // entrée floue → net
-      return { prefix: `${fn}\\blur8\\fad(150,200)\\t(0,450,\\blur0)`, body: s };
+      return { prefix: `${base}\\blur8\\fad(150,200)\\t(0,450,\\blur0)`, body: s };
     case 'rotate': // léger redressement
-      return { prefix: `${fn}\\frz-12\\fad(120,150)\\t(0,400,\\frz0)`, body: s };
+      return { prefix: `${base}\\frz-12\\fad(120,150)\\t(0,400,\\frz0)`, body: s };
+    case 'flip3d': // flip Y 90° → 0°
+      return { prefix: `${base}\\fry90\\fad(120,200)\\t(0,500,\\fry0)`, body: s };
+    case 'rotatex': // basculement axe X
+      return { prefix: `${base}\\frx-60\\fad(120,150)\\t(0,450,\\frx0)`, body: s };
+    case 'rotatey': // basculement axe Y
+      return { prefix: `${base}\\fry-60\\fad(120,150)\\t(0,450,\\fry0)`, body: s };
     case 'fade':
     default:
-      return { prefix: `${fn}\\fad(300,250)`, body: s };
+      return { prefix: `${base}\\fad(300,250)`, body: s };
   }
+}
+
+// Liste unique des animations d'entrée valides (source de vérité pour le
+// validateur de route + l'UI front).
+export const TEXT_ANIMATIONS_IDS = [
+  'fade', 'slide', 'scale', 'pop', 'bounce', 'blurin', 'rotate',
+  'sweep', 'typewriter', 'flip3d', 'rotatex', 'rotatey',
+  'cascade', 'charpop', 'wave',
+];
+
+// Animations qui nécessitent un split par caractère (N Dialogues per-char).
+const PER_CHAR_ANIMS = new Set(['cascade', 'charpop', 'wave']);
+
+// Génère des Dialogue lines per-char pour kinetic typography. Approxime
+// l'avance horizontale (font proportionnel) ≈ fs * 0.55.
+function buildPerCharLines({ text, x, y, fontTagStr = '', baseTags = '', fs = 40, anim, startStr, endStr, anchor = '\\an7', delayMs = 45 }) {
+  const s = safe(text);
+  const chars = [...s];
+  const advance = Math.max(8, Math.round(fs * 0.55));
+  const lines = [];
+  chars.forEach((c, i) => {
+    if (c === ' ') return; // espaces : laisser le vide
+    const cx = Math.round(x + i * advance);
+    const d0 = i * delayMs;
+    let tag;
+    if (anim === 'cascade') {
+      tag = `${anchor}\\pos(${cx},${y})${fontTagStr}${baseTags}\\1a&HFF&\\t(${d0},${d0 + 220},\\1a&H00&)\\fad(0,200)`;
+    } else if (anim === 'charpop') {
+      tag = `${anchor}\\pos(${cx},${y})${fontTagStr}${baseTags}\\fscx0\\fscy0\\t(${d0},${d0 + 220},\\fscx115\\fscy115)\\t(${d0 + 220},${d0 + 360},\\fscx100\\fscy100)\\fad(120,200)`;
+    } else if (anim === 'wave') {
+      tag = `${anchor}\\move(${cx},${y - 14},${cx},${y},${d0},${d0 + 280})${fontTagStr}${baseTags}\\fad(150,200)`;
+    } else {
+      tag = `${anchor}\\pos(${cx},${y})${fontTagStr}${baseTags}\\fad(180,200)`;
+    }
+    // Échappe caractères de contrôle ASS dans le glyphe.
+    const safeChar = c.replace(/[\\{}]/g, '');
+    lines.push(`Dialogue: 3,${startStr},${endStr},Default,,0,0,0,,{${tag}}${safeChar}`);
+  });
+  return lines;
+}
+
+// Ancrage par défaut de chaque template (coords PlayRes 1920×1080) pour le
+// drag de repositionnement. Sert de référence pour calculer dx/dy.
+const DEFAULT_ANCHOR = {
+  lower_third: { x: 0, y: 950 },
+  lower_third_pro: { x: 72, y: 892 },
+  grand_titre: { x: 960, y: 540 },
+  titre_karaoke: { x: 960, y: 540 },
+  bandeau_pays: { x: 1660, y: 20 },
+  titre_reportage: { x: 0, y: 1000 },
+  flash_info: { x: 0, y: 0 },
+  sous_titre: { x: 960, y: 1014 },
+  score_resultat: { x: 960, y: 40 },
+  horloge_date: { x: 20, y: 20 },
+  breaking_news: { x: 120, y: 150 },
+};
+
+// Décale tous les \pos / \move d'une liste de Dialogue strings. Sert au
+// drag de position : on déplace chaque template comme un bloc.
+function shiftDialogues(lines, dx, dy) {
+  if (!dx && !dy) return lines;
+  const rx = (n) => Math.round(Number(n) + dx);
+  const ry = (n) => Math.round(Number(n) + dy);
+  return lines.map((l) =>
+    l
+      .replace(/\\pos\(([\-\d.]+),([\-\d.]+)\)/g, (m, x, y) => `\\pos(${rx(x)},${ry(y)})`)
+      .replace(/\\move\(([\-\d.]+),([\-\d.]+),([\-\d.]+),([\-\d.]+)((?:,[\d.]+){0,2})\)/g,
+        (m, x1, y1, x2, y2, t) => `\\move(${rx(x1)},${ry(y1)},${rx(x2)},${ry(y2)}${t || ''})`)
+  );
 }
 
 function formatAssTime(seconds) {
@@ -132,7 +213,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const startTimeStr = formatAssTime(startSec);
     const endTimeStr = formatAssTime(endSec);
 
-    const dialogues = template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec });
+    let dialogues = template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec });
+    // Drag : si position custom, décaler le template comme un bloc.
+    const def = DEFAULT_ANCHOR[overlay.templateId];
+    if (def && overlay.position && typeof overlay.position === 'object') {
+      const px = Number(overlay.position.x);
+      const py = Number(overlay.position.y);
+      if (Number.isFinite(px) && Number.isFinite(py)) {
+        dialogues = shiftDialogues(dialogues, px - def.x, py - def.y);
+      }
+    }
     for (const d of dialogues) {
       assContent += d + '\n';
     }
@@ -166,13 +256,22 @@ export const OVERLAY_TEMPLATES = [
     buildAss(overlay, start, end) {
       const { name, title } = overlay.fields || {};
       const slide = '\\move(-1100,0,0,0,0,450)';
-      const n = renderText(name, overlay.animation, overlay.font);
-      return [
+      const lines = [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${COL_NAVY}\\1a&H22&\\bord0\\shad0\\p1}m 0 0 l 1060 0 1060 130 0 130{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 130 0 130{\\p0}`,
-        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(42,962)\\fnInter\\b1\\fs52\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad2${n.prefix}}${n.body}`,
-        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(44,1026)\\fnInter\\fs30\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1\\shad1\\fad(350,250)}${safe(title)}`,
       ];
+      // Nom : per-char si demandé, sinon une seule Dialogue.
+      if (PER_CHAR_ANIMS.has(overlay.animation)) {
+        lines.push(...buildPerCharLines({
+          text: name, x: 42, y: 962, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs52\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad2`,
+          fs: 52, anim: overlay.animation, startStr: start, endStr: end,
+        }));
+      } else {
+        const n = renderText(name, overlay.animation, overlay.font, overlay.outline, overlay.glow);
+        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(42,962)\\fnInter\\b1\\fs52\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad2${n.prefix}}${n.body}`);
+      }
+      lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(44,1026)\\fnInter\\fs30\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1\\shad1\\fad(350,250)}${safe(title)}`);
+      return lines;
     },
   },
   {
@@ -186,19 +285,31 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { title, date } = overlay.fields || {};
-      // Par défaut : révélation clip gauche→droite. Sinon, l'entrée choisie.
-      const useReveal = !overlay.animation || overlay.animation === 'fade';
-      const titleAnim = useReveal
-        ? '\\fad(200,250)\\clip(0,0,0,1080)\\t(0,550,\\clip(0,0,1920,1080))'
-        : renderText(title, overlay.animation, overlay.font).prefix;
-      const titleBody = overlay.animation === 'typewriter'
-        ? renderText(title, overlay.animation, overlay.font).body
-        : safe(title);
-      return [
+      const lines = [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,448)\\1c${COL_BLACK}\\1a&H40&\\bord0\\shad0\\fad(300,300)\\p1}m 0 0 l 1920 0 1920 184 0 184{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,508)\\fnAnton\\fs100\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord2\\shad3${titleAnim}}${titleBody}`,
-        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,602)\\fnBebas Neue\\fs46\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1\\shad2\\fad(450,300)}${safe(date)}`,
       ];
+      // Per-char (cascade/charpop/wave) → split. Sinon : révélation clip ou animation choisie.
+      if (PER_CHAR_ANIMS.has(overlay.animation)) {
+        const txt = safe(title);
+        const advance = Math.round(100 * 0.55);
+        const totalW = [...txt].length * advance;
+        const startX = Math.max(40, 960 - Math.round(totalW / 2));
+        lines.push(...buildPerCharLines({
+          text: title, x: startX, y: 508, fontTagStr: '\\fnAnton', baseTags: `\\fs100\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord2\\shad3`,
+          fs: 100, anim: overlay.animation, startStr: start, endStr: end,
+        }));
+      } else {
+        const useReveal = !overlay.animation || overlay.animation === 'fade';
+        const titleAnim = useReveal
+          ? '\\fad(200,250)\\clip(0,0,0,1080)\\t(0,550,\\clip(0,0,1920,1080))'
+          : renderText(title, overlay.animation, overlay.font, overlay.outline, overlay.glow).prefix;
+        const titleBody = overlay.animation === 'typewriter'
+          ? renderText(title, overlay.animation, overlay.font, overlay.outline, overlay.glow).body
+          : safe(title);
+        lines.push(`Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,508)\\fnAnton\\fs100\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord2\\shad3${titleAnim}}${titleBody}`);
+      }
+      lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an5\\pos(960,602)\\fnBebas Neue\\fs46\\1c${COL_GOLD}\\3c${COL_BLACK}\\bord1\\shad2\\fad(450,300)}${safe(date)}`);
+      return lines;
     },
   },
   {
@@ -212,7 +323,7 @@ export const OVERLAY_TEMPLATES = [
     buildAss(overlay, start, end) {
       const { pays } = overlay.fields || {};
       const drop = '\\move(1660,-74,1660,20,0,400)';
-      const p = renderText(pays, overlay.animation, overlay.font);
+      const p = renderText(pays, overlay.animation, overlay.font, overlay.outline, overlay.glow);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7${drop}\\1c${COL_RED}\\bord0\\shad0\\p1}m 0 0 l 260 0 260 64 0 64{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7${drop}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 64 l 260 64 260 70 0 70{\\p0}`,
@@ -231,7 +342,7 @@ export const OVERLAY_TEMPLATES = [
     buildAss(overlay, start, end) {
       const { sujet } = overlay.fields || {};
       const rise = '\\move(0,180,0,0,0,420)';
-      const s = renderText(sujet, overlay.animation, overlay.font);
+      const s = renderText(sujet, overlay.animation, overlay.font, overlay.outline, overlay.glow);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${COL_DARK}\\1a&H18&\\bord0\\shad0\\p1}m 0 0 l 1920 0 1920 80 0 80{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${COL_GOLD}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 80 0 80{\\p0}`,
@@ -249,7 +360,7 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { texte } = overlay.fields || {};
-      const x = renderText(texte, overlay.animation, overlay.font);
+      const x = renderText(texte, overlay.animation, overlay.font, overlay.outline, overlay.glow);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${COL_RED}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 1920 0 1920 72 0 72{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${COL_BLACK}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 230 0 230 72 0 72{\\p0}`,
@@ -287,7 +398,7 @@ export const OVERLAY_TEMPLATES = [
     ],
     buildAss(overlay, start, end) {
       const { texte } = overlay.fields || {};
-      const x = renderText(texte, overlay.animation, overlay.font);
+      const x = renderText(texte, overlay.animation, overlay.font, overlay.outline, overlay.glow);
       return [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1010)\\1c${COL_BLACK}\\1a&H40&\\bord0\\shad0\\fad(200,200)\\p1}m -760 -42 l 760 -42 760 42 -760 42{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1014)\\fnInter\\fs40\\1c${COL_WHITE}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`,

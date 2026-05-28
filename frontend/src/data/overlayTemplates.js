@@ -152,6 +152,12 @@ export const TEXT_ANIMATIONS = [
   { id: 'bounce', label: 'Bounce' },
   { id: 'blurin', label: 'Flou → net' },
   { id: 'rotate', label: 'Rotation' },
+  { id: 'flip3d', label: '3D Flip Y' },
+  { id: 'rotatex', label: '3D Bascule X' },
+  { id: 'rotatey', label: '3D Bascule Y' },
+  { id: 'cascade', label: 'Cascade (caractère)' },
+  { id: 'charpop', label: 'Pop par lettre' },
+  { id: 'wave', label: 'Vague (caractère)' },
   { id: 'sweep', label: 'Balayage couleur' },
   { id: 'typewriter', label: 'Machine à écrire' },
 ];

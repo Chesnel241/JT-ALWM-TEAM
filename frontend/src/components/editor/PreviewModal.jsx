@@ -21,43 +21,70 @@ function probeDuration(url) {
 const COL = { navy: '#14143C', gold: '#FFD700', red: '#D81818', blue: '#0046C0', ink: '#1A1A1A', dark: '#1A1A2E' };
 
 // Classe d'animation d'entrée selon overlay.animation (mappe les presets ASS).
+const PER_CHAR = new Set(['cascade', 'charpop', 'wave']);
 const animClass = (a) => ({
   fade: 'pv-fade', scale: 'pv-scale', pop: 'pv-pop', bounce: 'pv-bounce',
   blurin: 'pv-blur', rotate: 'pv-rotate', slide: 'pv-slideL',
+  flip3d: 'pv-flip3d', rotatex: 'pv-rotx', rotatey: 'pv-roty',
   sweep: 'pv-fade', typewriter: 'pv-fade',
 }[a] || 'pv-fade');
+
+// Rend du texte caractère par caractère pour cascade/charpop/wave.
+function CharText({ text, anim }) {
+  const cls = { cascade: 'pv-cascade', charpop: 'pv-charpop', wave: 'pv-wave' }[anim] || 'pv-fade';
+  return (
+    <>
+      {[...(text || '')].map((c, i) => (
+        <span key={i} className={cls} style={{ display: 'inline-block', animationDelay: `${i * 45}ms`, whiteSpace: 'pre' }}>{c}</span>
+      ))}
+    </>
+  );
+}
+
+// Effet contour + halo libass (\bord + \blur) → text-stroke + text-shadow.
+function fxStyle(outline, glow) {
+  const out = {};
+  if (outline > 0) { out.WebkitTextStroke = `${outline}px #000`; out.paintOrder = 'stroke fill'; }
+  if (glow > 0) out.textShadow = `0 0 ${glow * 2}px currentColor, 0 0 ${glow}px rgba(0,0,0,.7)`;
+  return out;
+}
 
 // Famille de police (override overlay.font) sinon défaut du modèle.
 const ff = (font, fallback) => (font ? `'${font}', ${fallback}` : fallback);
 
 // Rendu CSS approximatif d'un overlay (par templateId).
-function OverlayChip({ templateId, fields = {}, animation, font }) {
+function OverlayChip({ templateId, fields = {}, animation, font, outline = 0, glow = 0 }) {
   const f = fields;
   const ac = animClass(animation);
   const FF = (fallback) => ff(font, fallback);
+  const fx = fxStyle(outline, glow);
+  // Cellule de texte : per-char si demandé, sinon simple span.
+  const Tx = ({ children }) => PER_CHAR.has(animation)
+    ? <span style={fx}><CharText text={children} anim={animation} /></span>
+    : <span style={fx}>{children}</span>;
   const base = { position: 'absolute', fontFamily: FF('Inter, system-ui, sans-serif'), lineHeight: 1.1, whiteSpace: 'nowrap' };
   switch (templateId) {
     case 'lower_third':
       return (
         <div className={ac} style={{ ...base, left: '2%', bottom: '6%' }}>
           <div style={{ background: COL.navy, opacity: 0.86, borderLeft: `4px solid ${COL.gold}`, padding: '6px 18px' }}>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.5em' }}>{f.name}</div>
-            <div style={{ color: COL.gold, fontSize: '0.95em' }}>{f.title}</div>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.5em' }}><Tx>{f.name}</Tx></div>
+            <div style={{ color: COL.gold, fontSize: '0.95em' }}><Tx>{f.title}</Tx></div>
           </div>
         </div>
       );
     case 'lower_third_pro':
       return (
         <div className={ac} style={{ ...base, left: '3%', bottom: '7%' }}>
-          <div style={{ background: '#fff', color: COL.ink, fontFamily: 'Archivo Black, Inter, sans-serif', fontWeight: 900, fontSize: '1.5em', padding: '6px 18px', borderLeft: `5px solid ${COL.blue}` }}>{f.titre}</div>
-          <div style={{ background: COL.blue, color: '#fff', fontWeight: 700, fontSize: '1em', padding: '5px 18px', display: 'inline-block' }}>{f.sous_titre}</div>
+          <div style={{ background: '#fff', color: COL.ink, fontFamily: 'Archivo Black, Inter, sans-serif', fontWeight: 900, fontSize: '1.5em', padding: '6px 18px', borderLeft: `5px solid ${COL.blue}` }}><Tx>{f.titre}</Tx></div>
+          <div style={{ background: COL.blue, color: '#fff', fontWeight: 700, fontSize: '1em', padding: '5px 18px', display: 'inline-block' }}><Tx>{f.sous_titre}</Tx></div>
         </div>
       );
     case 'grand_titre':
       return (
         <div className={ac} style={{ ...base, left: 0, right: 0, top: '40%', textAlign: 'center' }}>
           <div style={{ background: 'rgba(0,0,0,.6)', padding: '14px 0' }}>
-            <div style={{ color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.6em' }}>{f.title}</div>
+            <div style={{ color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.6em' }}><Tx>{f.title}</Tx></div>
             <div style={{ color: COL.gold, fontFamily: 'Bebas Neue, Inter, sans-serif', fontSize: '1.3em', letterSpacing: 1 }}>{f.date}</div>
           </div>
         </div>
@@ -65,19 +92,19 @@ function OverlayChip({ templateId, fields = {}, animation, font }) {
     case 'titre_karaoke':
       return (
         <div className={ac} style={{ ...base, left: 0, right: 0, top: '48%', textAlign: 'center' }}>
-          <div style={{ borderTop: `3px solid ${COL.gold}`, background: 'rgba(0,0,0,.55)', padding: '16px 0', color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.4em' }}>{f.title}</div>
+          <div style={{ borderTop: `3px solid ${COL.gold}`, background: 'rgba(0,0,0,.55)', padding: '16px 0', color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.4em' }}><Tx>{f.title}</Tx></div>
         </div>
       );
     case 'titre_reportage':
       return (
         <div className={ac} style={{ ...base, left: 0, bottom: '7%' }}>
-          <div style={{ background: COL.dark, opacity: 0.92, borderLeft: `5px solid ${COL.gold}`, color: '#fff', fontWeight: 800, fontSize: '1.4em', padding: '8px 20px' }}>{f.sujet}</div>
+          <div style={{ background: COL.dark, opacity: 0.92, borderLeft: `5px solid ${COL.gold}`, color: '#fff', fontWeight: 800, fontSize: '1.4em', padding: '8px 20px' }}><Tx>{f.sujet}</Tx></div>
         </div>
       );
     case 'sous_titre':
       return (
         <div className={ac} style={{ ...base, left: 0, right: 0, bottom: '6%', textAlign: 'center' }}>
-          <span style={{ background: 'rgba(0,0,0,.7)', color: '#fff', fontSize: '1.3em', padding: '6px 16px' }}>{f.texte}</span>
+          <span style={{ background: 'rgba(0,0,0,.7)', color: '#fff', fontSize: '1.3em', padding: '6px 16px' }}><Tx>{f.texte}</Tx></span>
         </div>
       );
     case 'bandeau_pays':
@@ -90,7 +117,7 @@ function OverlayChip({ templateId, fields = {}, animation, font }) {
       return (
         <div className="pv-fade" style={{ ...base, left: 0, right: 0, top: 0, display: 'flex' }}>
           <div style={{ background: '#000', color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '1.4em', padding: '8px 18px' }}>FLASH</div>
-          <div style={{ background: COL.red, color: '#fff', fontWeight: 800, fontSize: '1.3em', padding: '8px 18px', flex: 1 }}>{f.texte}</div>
+          <div style={{ background: COL.red, color: '#fff', fontWeight: 800, fontSize: '1.3em', padding: '8px 18px', flex: 1 }}><Tx>{f.texte}</Tx></div>
         </div>
       );
     case 'breaking_news':
@@ -99,7 +126,7 @@ function OverlayChip({ templateId, fields = {}, animation, font }) {
           <div style={{ background: COL.red, color: '#fff', fontFamily: 'Anton, Inter, sans-serif', fontSize: '2.2em', padding: '6px 40px', transform: 'skewX(-12deg)' }}>
             <span style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>{f.titre || 'DERNIÈRE MINUTE'}</span>
           </div>
-          <div style={{ background: '#fff', color: COL.ink, fontWeight: 800, fontSize: '1.3em', padding: '6px 18px', marginTop: 8, display: 'inline-block' }}>{f.sujet}</div>
+          <div style={{ background: '#fff', color: COL.ink, fontWeight: 800, fontSize: '1.3em', padding: '6px 18px', marginTop: 8, display: 'inline-block' }}><Tx>{f.sujet}</Tx></div>
         </div>
       );
     case 'score_resultat':
@@ -251,6 +278,12 @@ export default function PreviewModal({ clips, branding, onClose }) {
         @keyframes pvBounce{0%{transform:translateY(-60%) scaleY(.6);opacity:0}40%{transform:translateY(8%) scaleY(1.06);opacity:1}65%{transform:translateY(-6%)}100%{transform:translateY(0) scaleY(1)}}
         @keyframes pvBlur{from{filter:blur(8px);opacity:0}to{filter:blur(0);opacity:1}}
         @keyframes pvRotate{from{transform:rotate(-12deg) translateY(6px);opacity:0}to{transform:rotate(0) translateY(0);opacity:1}}
+        @keyframes pvFlip3D{from{transform:perspective(800px) rotateY(90deg);opacity:0}to{transform:perspective(800px) rotateY(0);opacity:1}}
+        @keyframes pvRotX{from{transform:perspective(800px) rotateX(-60deg);opacity:0}to{transform:perspective(800px) rotateX(0);opacity:1}}
+        @keyframes pvRotY{from{transform:perspective(800px) rotateY(-60deg);opacity:0}to{transform:perspective(800px) rotateY(0);opacity:1}}
+        @keyframes pvCascade{from{opacity:0}to{opacity:1}}
+        @keyframes pvCharpop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}
+        @keyframes pvWave{0%{transform:translateY(-12px);opacity:0}60%{opacity:1}100%{transform:translateY(0);opacity:1}}
         @keyframes pvTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
         @keyframes pvPulse{0%,100%{opacity:1}50%{opacity:.5}}
         .pv-fade{animation:pvFade .35s ease both}
@@ -261,6 +294,12 @@ export default function PreviewModal({ clips, branding, onClose }) {
         .pv-blur{animation:pvBlur .5s ease both}
         .pv-rotate{animation:pvRotate .5s cubic-bezier(.34,1.56,.64,1) both}
         .pv-drop{animation:pvDrop .4s cubic-bezier(.34,1.56,.64,1) both}
+        .pv-flip3d{animation:pvFlip3D .55s cubic-bezier(.34,1.56,.64,1) both}
+        .pv-rotx{animation:pvRotX .55s cubic-bezier(.34,1.56,.64,1) both}
+        .pv-roty{animation:pvRotY .55s cubic-bezier(.34,1.56,.64,1) both}
+        .pv-cascade{animation:pvCascade .25s ease both}
+        .pv-charpop{animation:pvCharpop .42s cubic-bezier(.34,1.56,.64,1) both;display:inline-block}
+        .pv-wave{animation:pvWave .42s cubic-bezier(.34,1.56,.64,1) both;display:inline-block}
       `}</style>
       <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-[var(--paper-2)]">
@@ -282,7 +321,7 @@ export default function PreviewModal({ clips, branding, onClose }) {
 
           {/* Overlays du clip */}
           {activeOverlays.map((o, i) => (
-            <OverlayChip key={`${o.id || o.templateId}-${i}-${idx}`} templateId={o.templateId} fields={o.fields} animation={o.animation} font={o.font} />
+            <OverlayChip key={`${o.id || o.templateId}-${i}-${idx}`} templateId={o.templateId} fields={o.fields} animation={o.animation} font={o.font} outline={o.outline || 0} glow={o.glow || 0} />
           ))}
 
           {/* Sous-titre (police/taille du style) */}
