@@ -151,7 +151,112 @@ function OverlayChip({ templateId, fields = {}, animation, font, outline = 0, gl
   }
 }
 
-export default function PreviewModal({ clips, branding, onClose }) {
+const DEFAULT_ANCHOR = {
+  lower_third: { x: 0, y: 950 },
+  lower_third_pro: { x: 72, y: 892 },
+  grand_titre: { x: 960, y: 540 },
+  titre_karaoke: { x: 960, y: 540 },
+  bandeau_pays: { x: 1660, y: 20 },
+  titre_reportage: { x: 0, y: 1000 },
+  flash_info: { x: 0, y: 0 },
+  sous_titre: { x: 960, y: 1014 },
+  score_resultat: { x: 960, y: 40 },
+  horloge_date: { x: 20, y: 20 },
+  breaking_news: { x: 120, y: 150 },
+};
+
+function DraggableOverlay({ overlay, onUpdatePosition }) {
+  const [dragOffset, setDragOffset] = useState(null);
+  const def = DEFAULT_ANCHOR[overlay.templateId] || { x: 0, y: 0 };
+  const currentPos = overlay.position || def;
+  
+  // Le décalage total est la différence entre la position actuelle et l'ancre par défaut,
+  // plus le décalage temporaire en cours de drag.
+  const dx = (currentPos.x - def.x) + (dragOffset ? dragOffset.x : 0);
+  const dy = (currentPos.y - def.y) + (dragOffset ? dragOffset.y : 0);
+
+  const handlePointerDown = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const container = e.currentTarget.closest('.preview-container');
+    if (!container) return;
+
+    const onPointerMove = (ev) => {
+      // Calculer le delta en pixels écran
+      const deltaX = ev.clientX - startX;
+      const deltaY = ev.clientY - startY;
+      
+      // Convertir en résolution ASS (1920x1080)
+      const rect = container.getBoundingClientRect();
+      const scaleX = 1920 / rect.width;
+      const scaleY = 1080 / rect.height;
+      
+      setDragOffset({
+        x: Math.round(deltaX * scaleX),
+        y: Math.round(deltaY * scaleY)
+      });
+    };
+
+    const onPointerUp = (ev) => {
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      
+      const deltaX = ev.clientX - startX;
+      const deltaY = ev.clientY - startY;
+      
+      const rect = container.getBoundingClientRect();
+      const scaleX = 1920 / rect.width;
+      const scaleY = 1080 / rect.height;
+      
+      const finalDx = Math.round(deltaX * scaleX);
+      const finalDy = Math.round(deltaY * scaleY);
+      
+      setDragOffset(null);
+      
+      if (finalDx !== 0 || finalDy !== 0) {
+        onUpdatePosition({
+          x: currentPos.x + finalDx,
+          y: currentPos.y + finalDy
+        });
+      }
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  };
+
+  // Convertir le delta ASS en % du conteneur pour le CSS
+  const dxPct = (dx / 1920) * 100;
+  const dyPct = (dy / 1080) * 100;
+
+  return (
+    <div 
+      onPointerDown={handlePointerDown}
+      style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        pointerEvents: 'none',
+        transform: `translate(${dxPct}cqi, ${dyPct}cqb)`
+      }}
+      className="draggable-overlay-wrapper"
+    >
+      <div style={{ pointerEvents: 'auto', cursor: 'grab', position: 'absolute', width: '100%', height: '100%' }}>
+        <OverlayChip
+          templateId={overlay.templateId}
+          fields={overlay.fields}
+          animation={overlay.animation}
+          font={overlay.font}
+          outline={overlay.outline}
+          glow={overlay.glow}
+          colors={overlay.colors || {}}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default function PreviewModal({ clips, branding, onClose, onUpdateClip }) {
   const videoRef = useRef(null);
   const seekRef = useRef(null); // in-point à appliquer après loadedmetadata
   const [segs, setSegs] = useState(null);
@@ -310,10 +415,10 @@ export default function PreviewModal({ clips, branding, onClose }) {
         </div>
 
         {/* Scène 16:9 */}
-        <div className="relative w-full bg-black" style={{ aspectRatio: '16 / 9' }}>
+        <div className="relative w-full bg-black preview-container" style={{ aspectRatio: '16 / 9', containerType: 'size' }}>
           <video
             ref={videoRef}
-            className="absolute inset-0 w-full h-full object-contain"
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
             style={{ transition: 'opacity .3s', opacity: fade ? 0 : 1 }}
             onLoadedMetadata={onLoadedMeta}
             onTimeUpdate={onTimeUpdate}
@@ -323,7 +428,21 @@ export default function PreviewModal({ clips, branding, onClose }) {
 
           {/* Overlays du clip */}
           {activeOverlays.map((o, i) => (
-            <OverlayChip key={`${o.id || o.templateId}-${i}-${idx}`} templateId={o.templateId} fields={o.fields} animation={o.animation} font={o.font} outline={o.outline || 0} glow={o.glow || 0} colors={o.colors || {}} />
+            <DraggableOverlay
+              key={`${o.id || o.templateId}-${i}-${idx}`}
+              overlay={o}
+              onUpdatePosition={(newPos) => {
+                if (!onUpdateClip || !seg) return;
+                const newClip = { ...seg.clip };
+                const newOverlays = [...newClip.overlays];
+                const oIdx = newOverlays.findIndex(ov => ov.id === o.id || (ov.templateId === o.templateId && ov.startTime === o.startTime));
+                if (oIdx >= 0) {
+                  newOverlays[oIdx] = { ...newOverlays[oIdx], position: newPos };
+                  newClip.overlays = newOverlays;
+                  onUpdateClip(newClip);
+                }
+              }}
+            />
           ))}
 
           {/* Sous-titre (police/taille du style) */}

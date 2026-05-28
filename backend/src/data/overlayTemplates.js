@@ -369,12 +369,20 @@ export const OVERLAY_TEMPLATES = [
       const C = pickColors(overlay);
       const cBg = C.bg(COL_DARK); const cAc = C.accent(COL_GOLD); const cTx = C.text(COL_WHITE);
       const rise = '\\move(0,180,0,0,0,420)';
-      const s = renderText(sujet, overlay.animation, overlay.font, overlay.outline, overlay.glow);
-      return [
+      const lines = [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${cBg}\\1a&H18&\\bord0\\shad0\\p1}m 0 0 l 1920 0 1920 80 0 80{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,1000)${rise}\\1c${cAc}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 80 0 80{\\p0}`,
-        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(34,1018)\\fnInter\\b1\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad2${s.prefix}}${s.body}`,
       ];
+      if (PER_CHAR_ANIMS.has(overlay.animation)) {
+        lines.push(...buildPerCharLines({
+          text: sujet, x: 34, y: 1018, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad2`,
+          fs: 40, anim: overlay.animation, startStr: start, endStr: end, anchor: '\\an7', delayMs: 35
+        }));
+      } else {
+        const s = renderText(sujet, overlay.animation, overlay.font, overlay.outline, overlay.glow);
+        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an7\\pos(34,1018)\\fnInter\\b1\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad2${s.prefix}}${s.body}`);
+      }
+      return lines;
     },
   },
   {
@@ -389,13 +397,21 @@ export const OVERLAY_TEMPLATES = [
       const { texte } = overlay.fields || {};
       const C = pickColors(overlay);
       const cBg = C.bg(COL_RED); const cAc = C.accent(COL_BLACK); const cTx = C.text(COL_WHITE);
-      const x = renderText(texte, overlay.animation, overlay.font, overlay.outline, overlay.glow);
-      return [
+      const lines = [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${cBg}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 1920 0 1920 72 0 72{\\p0}`,
         `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,0)\\1c${cAc}\\bord0\\shad0\\fad(250,250)\\p1}m 0 0 l 230 0 230 72 0 72{\\p0}`,
         `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an4\\pos(28,36)\\fnAnton\\fs40\\1c${cTx}\\bord0\\fad(250,250)\\t(0,600,\\1a&H60&)\\t(600,1200,\\1a&H00&)}FLASH`,
-        `Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an4\\pos(260,36)\\fnInter\\b1\\fs38\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`,
       ];
+      if (PER_CHAR_ANIMS.has(overlay.animation)) {
+        lines.push(...buildPerCharLines({
+          text: texte, x: 260, y: 36, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs38\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1`,
+          fs: 38, anim: overlay.animation, startStr: start, endStr: end, anchor: '\\an4', delayMs: 30
+        }));
+      } else {
+        const x = renderText(texte, overlay.animation, overlay.font, overlay.outline, overlay.glow);
+        lines.push(`Dialogue: 2,${start},${end},Default,,0,0,0,,{\\an4\\pos(260,36)\\fnInter\\b1\\fs38\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`);
+      }
+      return lines;
     },
   },
   {
@@ -430,11 +446,23 @@ export const OVERLAY_TEMPLATES = [
       const { texte } = overlay.fields || {};
       const C = pickColors(overlay);
       const cBg = C.bg(COL_BLACK); const cTx = C.text(COL_WHITE);
-      const x = renderText(texte, overlay.animation, overlay.font, overlay.outline, overlay.glow);
-      return [
+      const lines = [
         `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1010)\\1c${cBg}\\1a&H40&\\bord0\\shad0\\fad(200,200)\\p1}m -760 -42 l 760 -42 760 42 -760 42{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1014)\\fnInter\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`,
       ];
+      if (PER_CHAR_ANIMS.has(overlay.animation)) {
+        const txt = safe(texte);
+        const advance = Math.round(40 * 0.55);
+        const totalW = [...txt].length * advance;
+        const startX = Math.max(40, 960 - Math.round(totalW / 2));
+        lines.push(...buildPerCharLines({
+          text: texte, x: startX, y: 1014, fontTagStr: '\\fnInter', baseTags: `\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1`,
+          fs: 40, anim: overlay.animation, startStr: start, endStr: end, anchor: '\\an2', delayMs: 40
+        }));
+      } else {
+        const x = renderText(texte, overlay.animation, overlay.font, overlay.outline, overlay.glow);
+        lines.push(`Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an2\\pos(960,1014)\\fnInter\\fs40\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad1${x.prefix}}${x.body}`);
+      }
+      return lines;
     },
   },
   {
