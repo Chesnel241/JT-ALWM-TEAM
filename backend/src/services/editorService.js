@@ -107,7 +107,7 @@ function runFfmpegStep(command, label, { onStart, onProgress } = {}) {
 }
 
 // Transitions xfade autorisées (vidéo) — `acrossfade` côté audio.
-const XFADE_TRANSITIONS = new Set([
+export const XFADE_TRANSITIONS = new Set([
   'fade', 'fadeblack', 'fadewhite', 'fadegrays', 'wipeleft', 'wiperight',
   'wipeup', 'wipedown', 'slideleft', 'slideright', 'slideup', 'slidedown',
   'dissolve', 'pixelize', 'circleopen', 'circleclose', 'circlecrop', 'radial',

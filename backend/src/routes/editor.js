@@ -1,6 +1,6 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import { concatenateVideos } from '../services/editorService.js';
+import { concatenateVideos, XFADE_TRANSITIONS } from '../services/editorService.js';
 import { addListener, removeListener, finishJob, getJobState } from '../services/editorProgress.js';
 import logger from '../logger/index.js';
 
@@ -92,7 +92,7 @@ router.post(
       .withMessage('font invalide.'),
     body('clips.*.transition.type')
       .optional()
-      .isIn(['fade', 'fadeblack', 'wipeleft', 'wiperight', 'slideleft', 'slideright', 'dissolve', 'circleopen', 'circleclose', 'pixelize'])
+      .isIn([...XFADE_TRANSITIONS])
       .withMessage('Type de transition invalide.'),
     body('clips.*.transition.duration')
       .optional()
