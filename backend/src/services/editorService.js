@@ -210,9 +210,74 @@ async function resolveClipPath(filename, workDir) {
  * Concatène et trim une liste de clips, applique les overlays.
  * Retourne { url } : URL présignée R2 (prod) ou chemin relatif (dev).
  */
+// Sélecteur de moteur de rendu : 'remotion' délègue à Cloud Run, sinon
+// 'libass' (pipeline ffmpeg/libass local, défaut).
+const RENDERER = process.env.RENDERER || 'libass';
+const WORKER_URL = process.env.RENDER_WORKER_URL || '';
+const WORKER_KEY = process.env.WORKER_KEY || '';
+const PUBLIC_API_URL = process.env.PUBLIC_API_URL || '';
+
+// Transforme le payload /concat (globalOverlays array) en props Remotion
+// (branding object). Conserve clips + médias.
+function buildRemotionPayload(clips, opts) {
+  const branding = { logo: !!opts.logo, logoPosition: opts.logoPosition || 'br' };
+  for (const g of opts.globalOverlays || []) {
+    if (g.templateId === 'ticker') {
+      branding.ticker = { enabled: true, categorie: g.fields?.categorie || '', texte: g.fields?.texte || '' };
+    } else if (g.templateId === 'live_badge') {
+      branding.live = { enabled: true, label: g.fields?.label || 'LIVE' };
+    }
+  }
+  return {
+    clips: clips.map((c) => ({
+      filename: c.filename,
+      inPoint: c.inPoint,
+      outPoint: c.outPoint,
+      // Durée du segment (sec) : fournie par le frontend (probe metadata).
+      durationSec: c.durationSec != null
+        ? c.durationSec
+        : (c.outPoint != null ? c.outPoint - (c.inPoint || 0) : (c.duration || 5)),
+      overlays: c.overlays || [],
+      transition: c.transition,
+      kenBurns: c.kenBurns,
+      subtitles: c.subtitles,
+      subtitleStyle: c.subtitleStyle,
+    })),
+    branding,
+    music: opts.music,
+    voiceover: opts.voiceover,
+    imageOverlays: opts.imageOverlays || [],
+  };
+}
+
+// Délègue le rendu au worker Cloud Run. Le worker pilote la progression via
+// POST /api/editor/internal/progress (SSE existant). Retourne { delegated }.
+async function delegateToRemotion(clips, jobId, opts) {
+  if (!WORKER_URL) throw new Error('RENDER_WORKER_URL non configuré.');
+  const payload = buildRemotionPayload(clips, opts);
+  setProgress(jobId, 5, 'downloading');
+  const res = await withTimeout(
+    fetch(`${WORKER_URL}/render`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Worker-Key': WORKER_KEY },
+      body: JSON.stringify({ payload, jobId, returnTo: PUBLIC_API_URL }),
+    }),
+    30 * 1000,
+    'Appel worker Remotion'
+  );
+  if (!res.ok) throw new Error(`Worker a refusé le rendu (HTTP ${res.status}).`);
+  logger.info('Rendu délégué au worker Remotion', { jobId });
+  return { delegated: true };
+}
+
 export async function concatenateVideos(clips, jobId = null, opts = {}) {
   if (!clips || clips.length === 0) {
     throw new Error('Aucune vidéo fournie pour le montage.');
+  }
+
+  // Chemin Remotion : délégué à Cloud Run (le worker gère le rendu + SSE).
+  if (RENDERER === 'remotion') {
+    return delegateToRemotion(clips, jobId, opts);
   }
 
   if (isRendering) {

@@ -128,6 +128,22 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   // pouvoir s'authentifier sans être déjà authentifié.
   app.use('/api/auth', authRouter);
 
+  // Callback du worker de rendu Remotion (Cloud Run) — AVANT requireAuth :
+  // le worker s'authentifie par WORKER_KEY, pas par session utilisateur.
+  app.post('/api/editor/internal/progress', async (req, res) => {
+    const WORKER_KEY = process.env.WORKER_KEY || '';
+    if (!WORKER_KEY || req.header('x-worker-key') !== WORKER_KEY) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    const { jobId, percent, status, url } = req.body || {};
+    if (!jobId) return res.status(400).json({ error: 'jobId requis' });
+    const { setProgress, finishJob } = await import('./services/editorProgress.js');
+    if (status === 'done') finishJob(jobId, 'done', url);
+    else if (status === 'error') finishJob(jobId, 'error');
+    else setProgress(jobId, percent ?? 0, status || 'encoding');
+    return res.json({ ok: true });
+  });
+
   // Toutes les autres routes /api/* exigent un cookie de session valide.
   app.use('/api', requireAuth);
 

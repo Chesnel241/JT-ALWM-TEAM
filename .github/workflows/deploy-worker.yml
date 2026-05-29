@@ -1,0 +1,43 @@
+name: Deploy Remotion worker (Cloud Run)
+
+# Déploiement manuel du worker de rendu Remotion sur Cloud Run.
+# Secrets requis : GCP_SA_KEY (clé compte de service JSON), GCP_PROJECT_ID.
+# Variables d'env du service à définir dans la console Cloud Run ou ci-dessous.
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: Région Cloud Run
+        default: europe-west1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Build & push image
+        run: |
+          IMAGE="gcr.io/${{ secrets.GCP_PROJECT_ID }}/jt-render-worker:${{ github.sha }}"
+          gcloud builds submit --tag "$IMAGE" -f worker/Dockerfile .
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy jt-render-worker \
+            --image "$IMAGE" \
+            --region "${{ inputs.region }}" \
+            --memory 2Gi --cpu 1 --timeout 1800 \
+            --min-instances 0 --max-instances 2 \
+            --no-allow-unauthenticated \
+            --set-env-vars "WORKER_KEY=${{ secrets.WORKER_KEY }},R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }},R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }},R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }},R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}"
