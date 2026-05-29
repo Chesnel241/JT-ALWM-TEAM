@@ -110,6 +110,7 @@ router.post(
       .optional()
       .isIn(['in', 'out'])
       .withMessage('Mode Ken Burns invalide.'),
+    body('clips.*.durationSec').optional().isFloat({ min: 0.1, max: 36000 }),
     body('globalOverlays')
       .optional()
       .isArray()
@@ -149,8 +150,10 @@ router.post(
 
       // Run async to prevent Render 100s timeout on HTTP request
       concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, logoPosition, music, voiceover, imageOverlays })
-        .then(({ url }) => {
-          finishJob(jobId, 'done', url);
+        .then((result) => {
+          // Chemin Remotion : le worker pilote la fin via /internal/progress.
+          if (result && result.delegated) return;
+          finishJob(jobId, 'done', result.url);
         })
         .catch((err) => {
           logger.error('Erreur lors du montage vidéo en arrière-plan', { error: err.message });

@@ -395,6 +395,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       : undefined;
     const imageOverlays = (branding.imageOverlays || []).filter((o) => o.filename);
 
+    // Durée de chaque segment (sec) : trim si défini, sinon metadata de la
+    // vidéo. Nécessaire au moteur Remotion (durationInFrames).
+    const probeDur = (url) => new Promise((resolve) => {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.onloadedmetadata = () => resolve(v.duration || 0);
+      v.onerror = () => resolve(0);
+      v.src = url;
+    });
+    const durations = await Promise.all(timelineClips.map(async (clip) => {
+      if (clip.outPoint != null) return Math.max(0.3, clip.outPoint - (clip.inPoint || 0));
+      const full = await probeDur(`${API_BASE}/uploads/${clip.filename}`);
+      return Math.max(0.3, (full || 5) - (clip.inPoint || 0));
+    }));
+
     try {
       const response = await fetch(`${API_BASE}/api/editor/concat`, {
         method: 'POST',
@@ -402,13 +417,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         credentials: 'include',
         body: JSON.stringify({
           jobId,
-          clips: timelineClips.map(clip => ({
+          clips: timelineClips.map((clip, i) => ({
             filename: clip.filename,
             inPoint: clip.inPoint,
             outPoint: clip.outPoint,
+            durationSec: durations[i],
             overlays: clip.overlays || [],
             transition: clip.transition,
             kenBurns: clip.kenBurns,
+            subtitles: clip.subtitles,
+            subtitleStyle: clip.subtitleStyle,
           })),
           globalOverlays,
           logo: branding.logo,
