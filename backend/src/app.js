@@ -132,11 +132,21 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   // le worker s'authentifie par WORKER_KEY, pas par session utilisateur.
   app.post('/api/editor/internal/progress', async (req, res) => {
     const WORKER_KEY = process.env.WORKER_KEY || '';
-    if (!WORKER_KEY || req.header('x-worker-key') !== WORKER_KEY) {
-      return res.status(403).json({ error: 'forbidden' });
+    const provided = req.header('x-worker-key');
+    if (!WORKER_KEY) {
+      console.warn('[internal/progress] 403 — WORKER_KEY non configuré côté backend');
+      return res.status(403).json({ error: 'forbidden', reason: 'WORKER_KEY non configuré' });
+    }
+    if (provided !== WORKER_KEY) {
+      console.warn('[internal/progress] 403 — clé reçue ne matche pas', {
+        receivedLen: provided ? provided.length : 0,
+        expectedLen: WORKER_KEY.length,
+      });
+      return res.status(403).json({ error: 'forbidden', reason: 'X-Worker-Key invalide' });
     }
     const { jobId, percent, status, url } = req.body || {};
     if (!jobId) return res.status(400).json({ error: 'jobId requis' });
+    console.log('[internal/progress] callback reçu', { jobId, percent, status, hasUrl: !!url });
     const { setProgress, finishJob } = await import('./services/editorProgress.js');
     if (status === 'done') finishJob(jobId, 'done', url);
     else if (status === 'error') finishJob(jobId, 'error');

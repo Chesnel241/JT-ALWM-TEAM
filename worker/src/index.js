@@ -31,25 +31,45 @@ async function resolveUrls(payload) {
   return p;
 }
 
-async function postProgress(returnTo, jobId, percent) {
-  if (!returnTo || !jobId) return;
+async function callback(returnTo, jobId, body, label) {
+  if (!returnTo) {
+    console.warn(`[callback ${label}] skip: returnTo manquant`, { jobId });
+    return;
+  }
+  if (!jobId) {
+    console.warn(`[callback ${label}] skip: jobId manquant`);
+    return;
+  }
+  const url = `${returnTo}/api/editor/internal/progress`;
   try {
-    await fetch(`${returnTo}/api/editor/internal/progress`, {
+    const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Worker-Key': WORKER_KEY },
-      body: JSON.stringify({ jobId, percent: Math.round(percent), status: 'encoding' }),
+      body: JSON.stringify(body),
     });
-  } catch { /* best effort */ }
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      console.error(`[callback ${label}] HTTP ${r.status}`, { jobId, url, body: text.slice(0, 200) });
+    }
+  } catch (err) {
+    console.error(`[callback ${label}] network error`, { jobId, url, error: err.message });
+  }
+}
+
+async function postProgress(returnTo, jobId, percent) {
+  return callback(returnTo, jobId, { jobId, percent: Math.round(percent), status: 'encoding' }, 'progress');
 }
 
 app.post('/render', async (req, res) => {
   if (WORKER_KEY && req.header('x-worker-key') !== WORKER_KEY) {
+    console.warn('[/render] 403 forbidden — X-Worker-Key invalide');
     return res.status(403).json({ error: 'forbidden' });
   }
   const { payload, jobId, returnTo } = req.body || {};
   if (!payload || !Array.isArray(payload.clips) || payload.clips.length === 0) {
     return res.status(400).json({ error: 'payload.clips requis' });
   }
+  console.log('[/render] accepté', { jobId, clips: payload.clips.length, returnTo });
 
   // Réponse immédiate : rendu en arrière-plan (évite timeout HTTP).
   res.status(202).json({ accepted: true });
@@ -78,18 +98,10 @@ app.post('/render', async (req, res) => {
       await uploadFile(outPath, r2Key, 'video/mp4');
       url = await presignRead(r2Key, 60 * 60 * 24);
     }
-    await fetch(`${returnTo}/api/editor/internal/progress`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Worker-Key': WORKER_KEY },
-      body: JSON.stringify({ jobId, percent: 100, status: 'done', url }),
-    }).catch(() => {});
+    await callback(returnTo, jobId, { jobId, percent: 100, status: 'done', url }, 'done');
   } catch (err) {
     console.error('Render failed', err);
-    await fetch(`${returnTo}/api/editor/internal/progress`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Worker-Key': WORKER_KEY },
-      body: JSON.stringify({ jobId, status: 'error', error: err.message }),
-    }).catch(() => {});
+    await callback(returnTo, jobId, { jobId, status: 'error', error: err.message }, 'error');
   } finally {
     try { fs.rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
   }
