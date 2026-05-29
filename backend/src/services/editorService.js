@@ -254,6 +254,17 @@ function buildRemotionPayload(clips, opts) {
 // POST /api/editor/internal/progress (SSE existant). Retourne { delegated }.
 async function delegateToRemotion(clips, jobId, opts) {
   if (!WORKER_URL) throw new Error('RENDER_WORKER_URL non configuré.');
+  if (!WORKER_KEY) throw new Error('WORKER_KEY non configuré côté backend.');
+  if (!PUBLIC_API_URL) throw new Error('PUBLIC_API_URL non configuré (le worker ne saura pas où renvoyer la progression).');
+
+  // Fail-fast : ping /health avant de payer 30 s de timeout sur /render.
+  try {
+    const h = await withTimeout(fetch(`${WORKER_URL}/health`), 10 * 1000, 'Health worker');
+    if (!h.ok) throw new Error(`HTTP ${h.status}`);
+  } catch (err) {
+    throw new Error(`Worker Cloud Run injoignable (${WORKER_URL}/health) : ${err.message}`);
+  }
+
   const payload = buildRemotionPayload(clips, opts);
   setProgress(jobId, 5, 'downloading');
   const res = await withTimeout(
@@ -265,8 +276,11 @@ async function delegateToRemotion(clips, jobId, opts) {
     30 * 1000,
     'Appel worker Remotion'
   );
-  if (!res.ok) throw new Error(`Worker a refusé le rendu (HTTP ${res.status}).`);
-  logger.info('Rendu délégué au worker Remotion', { jobId });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Worker a refusé le rendu (HTTP ${res.status}) : ${body.slice(0, 200)}`);
+  }
+  logger.info('Rendu délégué au worker Remotion', { jobId, workerUrl: WORKER_URL, callbackUrl: `${PUBLIC_API_URL}/api/editor/internal/progress` });
   return { delegated: true };
 }
 
