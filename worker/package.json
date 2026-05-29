@@ -1,0 +1,19 @@
+{
+  "name": "jt-render-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:remotion": "cd ../remotion && npm ci && node scripts/bundle.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1050.0",
+    "@aws-sdk/lib-storage": "^3.1050.0",
+    "@aws-sdk/s3-request-presigner": "^3.1050.0",
+    "@remotion/renderer": "4.0.290",
+    "express": "4.19.2",
+    "ffmpeg-static": "^5.3.0",
+    "uuid": "9.0.1"
+  }
+}
