@@ -23,7 +23,8 @@ const JOB_STORE_KEY = 'jt-editor-job';
 const timelineKey = (weekId) => `jt-timeline-${weekId}`;
 const brandingKey = (weekId) => `jt-branding-${weekId}`;
 const DEFAULT_BRANDING = {
-  ticker: { enabled: false, categorie: 'ALERTE', texte: '' },
+  ticker: { enabled: false, categorie: 'ALERTE', texte: '', speed: 3 },
+  atmosphere: { vignette: 0, grain: 0, sweep: 0 },
   live: { enabled: false, label: 'DIRECT' },
   logo: false,
   logoPosition: 'br',
@@ -382,7 +383,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // Habillage global → overlays appliqués à tout le master.
     const globalOverlays = [];
     if (branding.ticker.enabled && branding.ticker.texte.trim()) {
-      globalOverlays.push({ templateId: 'ticker', fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte } });
+      globalOverlays.push({ templateId: 'ticker', fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte, speed: branding.ticker.speed || 3 } });
     }
     if (branding.live.enabled) {
       globalOverlays.push({ templateId: 'live_badge', fields: { label: branding.live.label } });
@@ -434,6 +435,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           music,
           voiceover,
           imageOverlays,
+          atmosphere: branding.atmosphere,
         })
       });
 

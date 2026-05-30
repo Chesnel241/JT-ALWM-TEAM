@@ -7,6 +7,7 @@ import { wipe } from '@remotion/transitions/wipe';
 import { loadFonts, FPS } from './theme.js';
 import { Overlay } from './overlays/index.jsx';
 import { Ticker, LiveBadge, Logo, Subtitles } from './global.jsx';
+import { Vignette, Grain, LightSweep } from './atmosphere.jsx';
 import { Stage } from './Stage.jsx';
 
 loadFonts();
@@ -93,6 +94,15 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover }) {
           return tr ? [seq, tr] : [seq];
         })}
       </TransitionSeries>
+
+      {/* Atmosphère cinéma (sous l'habillage, au-dessus des clips). */}
+      {branding.atmosphere && (
+        <Stage>
+          <Vignette strength={branding.atmosphere.vignette} />
+          <Grain strength={branding.atmosphere.grain} />
+          <LightSweep strength={branding.atmosphere.sweep} fps={fps} />
+        </Stage>
+      )}
 
       {/* Habillage global au-dessus de tout, durée totale */}
       <Stage>

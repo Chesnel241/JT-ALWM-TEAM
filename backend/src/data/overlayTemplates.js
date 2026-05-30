@@ -124,6 +124,10 @@ export const TEXT_ANIMATIONS_IDS = [
   'fade', 'slide', 'scale', 'pop', 'bounce', 'blurin', 'rotate',
   'sweep', 'typewriter', 'flip3d', 'rotatex', 'rotatey',
   'cascade', 'charpop', 'wave',
+  // Animations Remotion-only. Libass legacy retombe sur 'fade'
+  // (cf. default du switch dans renderText).
+  'mask_reveal', 'outline_morph', 'letterspread', 'weight_pulse',
+  'kerning_shake', 'glitch_in',
 ];
 
 // Animations qui nécessitent un split par caractère (N Dialogues per-char).
@@ -567,11 +571,14 @@ export const OVERLAY_TEMPLATES = [
     fields: [
       { key: 'categorie', label: 'Catégorie (tag)', placeholder: 'Ex: ALERTE' },
       { key: 'texte', label: 'Texte défilant', placeholder: 'Ex: Sommet à Libreville • Élections au Bénin • …' },
+      { key: 'speed', label: 'Vitesse (1 lent → 5 rapide)', placeholder: '3' },
     ],
     buildAss(overlay, start, end, ctx = {}) {
-      const { categorie, texte } = overlay.fields || {};
+      const { categorie, texte, speed } = overlay.fields || {};
       const durSec = Math.max(2, ctx.durSec || 30);
-      const SPEED = 170; // px/s
+      const speedLevel = Math.max(1, Math.min(5, Number(speed) || 3));
+      // Vitesses px/s alignées sur Remotion (Ticker dans remotion/src/global.jsx).
+      const SPEED = [60, 110, 170, 240, 320][speedLevel - 1];
       const FS = 32;
       const CHAR_W = 16;
       const sep = '       •       ';

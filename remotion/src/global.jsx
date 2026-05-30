@@ -3,13 +3,16 @@ import { AbsoluteFill, Img, staticFile, useCurrentFrame, interpolate } from 'rem
 import { COL, ff } from './theme.js';
 
 // Bande défilante (ticker) continue — translateX en boucle.
+// `speed` : 1 (très lent) → 5 (très rapide), défaut 3 (= 170 px/s historique).
 export function Ticker({ ticker }) {
   const frame = useCurrentFrame();
   if (!ticker || !ticker.enabled || !ticker.texte) return null;
   const sep = '       •       ';
   const unit = ticker.texte + sep;
-  // Défilement : ~170 px/s à 30 fps. Texte doublé pour boucle sans couture.
-  const speed = 170 / 30;
+  const speedLevel = Math.max(1, Math.min(5, Number(ticker.speed) || 3));
+  // Vitesses (px/s) : 1=60, 2=110, 3=170, 4=240, 5=320.
+  const PX_PER_SEC = [60, 110, 170, 240, 320][speedLevel - 1];
+  const speed = PX_PER_SEC / 30;
   const x = -((frame * speed) % 2000);
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, background: COL.ticker, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>

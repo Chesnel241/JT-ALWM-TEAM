@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload } from 'lucide-react';
+import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload, Sparkles } from 'lucide-react';
 
 // Bouton d'upload d'un asset (musique/voix-off/image) → uploadAsset → {filename,name}.
 function UploadBtn({ accept, label, uploadAsset, onUploaded }) {
@@ -41,6 +41,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
   const setTicker = (p) => onChange({ ...v, ticker: { ...v.ticker, ...p } });
   const setLive = (p) => onChange({ ...v, live: { ...v.live, ...p } });
   const setMusic = (p) => onChange({ ...v, music: { ...v.music, ...p } });
+  const setAtmo = (p) => onChange({ ...v, atmosphere: { ...(v.atmosphere || {}), ...p } });
   const setVoice = (p) => onChange({ ...v, voiceover: { ...v.voiceover, ...p } });
   const setImages = (arr) => onChange({ ...v, imageOverlays: arr });
 
@@ -75,6 +76,23 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
               <>
                 <input className={field} placeholder="Catégorie (ex: ALERTE)" value={v.ticker.categorie} onChange={(e) => setTicker({ categorie: e.target.value })} />
                 <input className={field} placeholder="Texte défilant (séparez par •)" value={v.ticker.texte} onChange={(e) => setTicker({ texte: e.target.value })} />
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
+                    <span>Vitesse de défilement</span>
+                    <span className="text-[color:var(--ink)]">
+                      {['Très lent', 'Lent', 'Normal', 'Rapide', 'Très rapide'][(v.ticker.speed || 3) - 1]}
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    step="1"
+                    value={v.ticker.speed || 3}
+                    onChange={(e) => setTicker({ speed: parseInt(e.target.value, 10) })}
+                    className="w-full accent-[var(--accent)]"
+                  />
+                </div>
               </>
             )}
           </section>
@@ -102,6 +120,37 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                 {POSITIONS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
             )}
+          </section>
+
+          {/* Atmosphère cinéma : vignette + grain + sweep lumineux */}
+          <section className={sectionCls}>
+            <label className="flex items-center gap-2 font-semibold text-sm text-[color:var(--ink)]">
+              <Sparkles size={15} /> Atmosphère cinéma
+            </label>
+            {[
+              ['vignette', 'Vignettage'],
+              ['grain', 'Grain (film)'],
+              ['sweep', 'Sweep lumineux'],
+            ].map(([k, lab]) => {
+              const val = (v.atmosphere && v.atmosphere[k]) || 0;
+              return (
+                <div key={k} className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
+                    <span>{lab}</span>
+                    <span className="text-[color:var(--ink)]">{Math.round(val * 100)}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={val}
+                    onChange={(e) => setAtmo({ [k]: parseFloat(e.target.value) })}
+                    className="w-full accent-[var(--accent)]"
+                  />
+                </div>
+              );
+            })}
           </section>
 
           {/* Musique */}

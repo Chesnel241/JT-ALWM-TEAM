@@ -160,4 +160,12 @@ export const TEXT_ANIMATIONS = [
   { id: 'wave', label: 'Vague (caractère)' },
   { id: 'sweep', label: 'Balayage couleur' },
   { id: 'typewriter', label: 'Machine à écrire' },
+  // Animations Remotion-only (rendu master). Le pipeline libass legacy
+  // retombe sur 'fade' pour ces entrées (cf. renderText côté backend).
+  { id: 'mask_reveal', label: 'Révélation masque' },
+  { id: 'outline_morph', label: 'Contour → rempli' },
+  { id: 'letterspread', label: 'Écartement lettres' },
+  { id: 'weight_pulse', label: 'Pulsation poids' },
+  { id: 'kerning_shake', label: 'Tremblement (impact)' },
+  { id: 'glitch_in', label: 'Glitch d\'entrée' },
 ];
