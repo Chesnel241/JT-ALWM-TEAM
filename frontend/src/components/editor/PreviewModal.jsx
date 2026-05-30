@@ -475,7 +475,7 @@ export default function PreviewModal({ clips, branding, onClose, onUpdateClip })
           {tk && (
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '11%', background: 'rgba(10,26,47,.95)', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
               {tk.categorie && <span style={{ background: COL.red, color: '#fff', fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', flexShrink: 0 }}>{tk.categorie}</span>}
-              <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: 'pvTicker 18s linear infinite' }}>
+              <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: `pvTicker ${[50, 28, 18, 13, 9][Math.max(1, Math.min(5, Number(tk.speed) || 3)) - 1]}s linear infinite` }}>
                 <span style={{ color: '#fff', padding: '0 30px' }}>{tk.texte}</span>
                 <span style={{ color: '#fff', padding: '0 30px' }}>{tk.texte}</span>
               </div>

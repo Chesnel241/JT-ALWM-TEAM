@@ -136,6 +136,9 @@ router.post(
     body('imageOverlays.*.opacity').optional().isFloat({ min: 0, max: 1 }),
     body('imageOverlays.*.startTime').optional().isFloat({ min: 0 }),
     body('imageOverlays.*.duration').optional().isFloat({ min: 0.1 }),
+    body('atmosphere.vignette').optional().isFloat({ min: 0, max: 1 }),
+    body('atmosphere.grain').optional().isFloat({ min: 0, max: 1 }),
+    body('atmosphere.sweep').optional().isFloat({ min: 0, max: 1 }),
   ],
   async (req, res, next) => {
     try {
@@ -144,12 +147,12 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { clips, jobId, globalOverlays, logo, logoPosition, music, voiceover, imageOverlays } = req.body;
+      const { clips, jobId, globalOverlays, logo, logoPosition, music, voiceover, imageOverlays, atmosphere } = req.body;
 
       logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo, music: !!(music && music.filename), voiceover: !!(voiceover && voiceover.filename), images: Array.isArray(imageOverlays) ? imageOverlays.length : 0 });
 
       // Run async to prevent Render 100s timeout on HTTP request
-      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, logoPosition, music, voiceover, imageOverlays })
+      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, logoPosition, music, voiceover, imageOverlays, atmosphere })
         .then((result) => {
           // Chemin Remotion : le worker pilote la fin via /internal/progress.
           if (result && result.delegated) return;

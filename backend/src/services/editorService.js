@@ -221,9 +221,22 @@ const PUBLIC_API_URL = process.env.PUBLIC_API_URL || '';
 // (branding object). Conserve clips + médias.
 function buildRemotionPayload(clips, opts) {
   const branding = { logo: !!opts.logo, logoPosition: opts.logoPosition || 'br' };
+  if (opts.atmosphere) {
+    const clamp = (v) => Math.max(0, Math.min(1, Number(v) || 0));
+    branding.atmosphere = {
+      vignette: clamp(opts.atmosphere.vignette),
+      grain: clamp(opts.atmosphere.grain),
+      sweep: clamp(opts.atmosphere.sweep),
+    };
+  }
   for (const g of opts.globalOverlays || []) {
     if (g.templateId === 'ticker') {
-      branding.ticker = { enabled: true, categorie: g.fields?.categorie || '', texte: g.fields?.texte || '' };
+      branding.ticker = {
+        enabled: true,
+        categorie: g.fields?.categorie || '',
+        texte: g.fields?.texte || '',
+        speed: Number(g.fields?.speed) || 3,
+      };
     } else if (g.templateId === 'live_badge') {
       branding.live = { enabled: true, label: g.fields?.label || 'LIVE' };
     }
