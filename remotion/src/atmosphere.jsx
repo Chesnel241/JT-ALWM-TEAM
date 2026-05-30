@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { AbsoluteFill, useCurrentFrame } from 'remotion';
 
 // Vignette douce : dégradé radial multiplié sur l'image. `strength` 0→1.
@@ -23,18 +23,22 @@ export function Vignette({ strength = 0 }) {
 // On limite à 12 frames distinctes pour ne pas exploser le rendu Chromium.
 export function Grain({ strength = 0 }) {
   const frame = useCurrentFrame();
+  const uid = useId().replace(/:/g, '');
   const s = Math.max(0, Math.min(1, Number(strength) || 0));
   if (s <= 0) return null;
   const seed = frame % 12;
   const opacity = 0.06 + s * 0.18;
+  // ID unique par instance (uid) + variant par frame (seed) pour éviter
+  // les collisions si plusieurs Grain coexistent sur la même page.
+  const filterId = `grain-${uid}-${seed}`;
   return (
     <AbsoluteFill style={{ opacity, mixBlendMode: 'overlay', pointerEvents: 'none' }}>
       <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-        <filter id={`grain-${seed}`}>
+        <filter id={filterId}>
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed={seed} />
           <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0" />
         </filter>
-        <rect width="100%" height="100%" filter={`url(#grain-${seed})`} />
+        <rect width="100%" height="100%" filter={`url(#${filterId})`} />
       </svg>
     </AbsoluteFill>
   );
