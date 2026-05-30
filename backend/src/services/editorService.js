@@ -214,15 +214,17 @@ async function resolveClipPath(filename, workDir) {
  * Retourne { url } : URL présignée R2 (prod) ou chemin relatif (dev).
  */
 // Sélecteur de moteur de rendu : 'remotion' délègue à Cloud Run, sinon
-// 'libass' (pipeline ffmpeg/libass local, défaut).
-const RENDERER = process.env.RENDERER || 'libass';
-const WORKER_URL = process.env.RENDER_WORKER_URL || '';
-const WORKER_KEY = process.env.WORKER_KEY || '';
-const PUBLIC_API_URL = process.env.PUBLIC_API_URL || '';
+// 'libass' (pipeline ffmpeg/libass local, défaut). Lecture LAZY de l'env
+// pour que les tests + le hot-reload Render puissent piloter ces valeurs
+// sans devoir relire le module au démarrage.
+const renderer = () => process.env.RENDERER || 'libass';
+const workerUrl = () => process.env.RENDER_WORKER_URL || '';
+const workerKey = () => process.env.WORKER_KEY || '';
+const publicApiUrl = () => process.env.PUBLIC_API_URL || '';
 
 // Transforme le payload /concat (globalOverlays array) en props Remotion
 // (branding object). Conserve clips + médias.
-function buildRemotionPayload(clips, opts) {
+export function buildRemotionPayload(clips, opts) {
   const branding = { logo: !!opts.logo, logoPosition: opts.logoPosition || 'br' };
   if (opts.atmosphere) {
     const clamp = (v) => Math.max(0, Math.min(1, Number(v) || 0));
@@ -268,7 +270,10 @@ function buildRemotionPayload(clips, opts) {
 
 // Délègue le rendu au worker Cloud Run. Le worker pilote la progression via
 // POST /api/editor/internal/progress (SSE existant). Retourne { delegated }.
-async function delegateToRemotion(clips, jobId, opts) {
+export async function delegateToRemotion(clips, jobId, opts) {
+  const WORKER_URL = workerUrl();
+  const WORKER_KEY = workerKey();
+  const PUBLIC_API_URL = publicApiUrl();
   if (!WORKER_URL) throw new Error('RENDER_WORKER_URL non configuré.');
   if (!WORKER_KEY) throw new Error('WORKER_KEY non configuré côté backend.');
   if (!PUBLIC_API_URL) throw new Error('PUBLIC_API_URL non configuré (le worker ne saura pas où renvoyer la progression).');
@@ -306,7 +311,7 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
   }
 
   // Chemin Remotion : délégué à Cloud Run (le worker gère le rendu + SSE).
-  if (RENDERER === 'remotion') {
+  if (renderer() === 'remotion') {
     return delegateToRemotion(clips, jobId, opts);
   }
 
