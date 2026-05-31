@@ -14,11 +14,12 @@ import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD;
+const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD ? String(process.env.GLOBAL_PASSWORD).trim() : undefined;
 
 function safeEqual(a, b) {
-  const hashA = createHash('sha256').update(String(a)).digest();
-  const hashB = createHash('sha256').update(String(b)).digest();
+  if (!a || !b) return false;
+  const hashA = createHash('sha256').update(String(a).toLowerCase()).digest();
+  const hashB = createHash('sha256').update(String(b).toLowerCase()).digest();
   return timingSafeEqual(hashA, hashB);
 }
 
@@ -40,10 +41,11 @@ const authLimiter = rateLimit({
 
 // POST /api/auth/login — body: { password }
 router.post('/login', loginLimiter, asyncHandler(async (req, res, next) => {
-  const { password } = req.body || {};
+  let { password } = req.body || {};
   if (!password || typeof password !== 'string') {
     return next(createErrors.badRequest('Mot de passe requis'));
   }
+  password = password.trim();
   if (!GLOBAL_PASSWORD) {
     // Dev local sans password configuré : on accepte n'importe quoi
     return res.json({ success: true, token: 'dev-noauth' });
@@ -76,11 +78,13 @@ router.get('/check', authLimiter, (req, res) => {
 
 // GET /api/auth/check-admin — vérifier si le mot de passe admin est valide
 router.get('/check-admin', authLimiter, (req, res) => {
-  const token = req.headers['x-admin-password'];
+  let token = req.headers['x-admin-password'];
   if (!token) return res.status(401).json({ authenticated: false });
+  token = typeof token === 'string' ? token.trim() : token;
   
-  if (!process.env.ADMIN_PASSWORD) return res.json({ authenticated: true });
-  if (!safeEqual(token, process.env.ADMIN_PASSWORD)) return res.status(401).json({ authenticated: false });
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
+  if (!ADMIN_PASSWORD) return res.json({ authenticated: true });
+  if (!safeEqual(token, ADMIN_PASSWORD)) return res.status(401).json({ authenticated: false });
   
   return res.json({ authenticated: true });
 });

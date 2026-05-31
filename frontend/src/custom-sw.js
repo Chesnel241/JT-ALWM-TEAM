@@ -24,7 +24,7 @@ registerRoute(
   new NavigationRoute(
     new NetworkFirst({
       cacheName: 'jt-html',
-      networkTimeoutSeconds: 4,
+      networkTimeoutSeconds: 15, // Augmenté de 4 à 15 pour les connexions lentes
       plugins: [{
         cacheWillUpdate: async ({ response }) =>
           response && response.status === 200 ? response : null,

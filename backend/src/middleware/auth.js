@@ -2,7 +2,7 @@ import { createErrors } from './errorHandler.js';
 import logger from '../logger/index.js';
 import { timingSafeEqual } from 'crypto';
 
-const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD;
+const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD ? String(process.env.GLOBAL_PASSWORD).trim() : undefined;
 const IS_TEST = process.env.NODE_ENV === 'test';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -10,8 +10,8 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 // vérifications admin hors middleware (app.js, routes/uploads.js).
 export function safeEqual(a, b) {
   if (!a || !b) return false;
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
+  const bufA = Buffer.from(String(a).toLowerCase());
+  const bufB = Buffer.from(String(b).toLowerCase());
   if (bufA.length !== bufB.length) return false;
   return timingSafeEqual(bufA, bufB);
 }
@@ -29,7 +29,8 @@ export function requireAuth(req, res, next) {
   // Si aucun mot de passe n'est configuré (ex: dev local), on laisse passer
   if (!GLOBAL_PASSWORD) return next();
 
-  const token = req.header('x-app-password') || req.query.pwd;
+  let token = req.header('x-app-password') || req.query.pwd;
+  token = typeof token === 'string' ? token.trim() : token;
   
   if (token && safeEqual(token, GLOBAL_PASSWORD)) {
     return next();
@@ -45,13 +46,14 @@ export function requireAdmin(req, res, next) {
   if (req.method === 'OPTIONS') return next();
   if (IS_TEST) return next();
 
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
   if (!ADMIN_PASSWORD) {
     logger.warn('Admin action attempted but ADMIN_PASSWORD is not set on the server.');
     return next(createErrors.forbidden('Action non configurée (mot de passe admin manquant sur le serveur)'));
   }
 
-  const token = req.header('x-admin-password');
+  let token = req.header('x-admin-password');
+  token = typeof token === 'string' ? token.trim() : token;
   
   if (token && safeEqual(token, ADMIN_PASSWORD)) {
     return next();

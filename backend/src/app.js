@@ -90,8 +90,9 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     // Vérification de sécurité pour le pays "mj" (MOT DU JT)
     const metadata = (await import('./data/store.js')).getFileMetadata(filename);
     if (metadata && metadata.countryId === 'mj') {
-      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-      const providedToken = req.query.adminPassword || req.header('x-admin-password');
+      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
+      let providedToken = req.query.adminPassword || req.header('x-admin-password');
+      providedToken = typeof providedToken === 'string' ? providedToken.trim() : providedToken;
       if (ADMIN_PASSWORD && !safeEqual(providedToken, ADMIN_PASSWORD)) {
         return res.status(403).send('Accès protégé : mot de passe administrateur requis pour cette rubrique.');
       }
