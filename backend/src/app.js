@@ -6,6 +6,7 @@ import { join } from 'path';
 import { initSentry, getSentryErrorHandler } from './monitoring/sentry.js';
 import { initMetrics } from './monitoring/metrics.js';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import countriesRouter from './routes/countries.js';
 import weeksRouter from './routes/weeks.js';
 import uploadsRouter from './routes/uploads.js';
@@ -93,6 +94,8 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     initMetrics(app);
   }
 
+  app.use(compression());
+
   // Helmet : en-têtes de sécurité HTTP (X-Frame-Options, X-Content-Type,
   // Referrer-Policy, etc.). CSP désactivée car le backend ne sert pas
   // de HTML (le frontend Vercel applique sa propre CSP via vercel.json).
@@ -147,7 +150,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     next();
   });
 
-  app.use('/uploads', express.static(dir));
+  app.use('/uploads', express.static(dir, { maxAge: '1y', immutable: true }));
 
   app.get('/', (req, res) => res.status(200).send('ALWM Backend API is running.'));
 
