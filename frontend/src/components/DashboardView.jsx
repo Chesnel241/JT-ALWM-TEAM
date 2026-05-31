@@ -521,24 +521,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setDownloadDialogOpen(true);
   };
 
-  const handleConfirmDownload = async () => {
+  const handleConfirmDownload = () => {
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
     
     // Le backend ne demande plus de mot de passe pour les téléchargements.
-    // On utilise donc une URL directe pour déclencher le téléchargement
-    // natif du navigateur instantanément (sans passer par un Blob en mémoire).
     const url = isArchive
       ? `${API_BASE}/api/uploads/${fileToDownload.filename}`
       : `${API_BASE}/uploads/${fileToDownload.filename}`;
       
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileToDownload.name;
-    link.target = '_blank'; // Sécurité supplémentaire au cas où le navigateur essaie d'ouvrir plutôt que télécharger
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Au lieu de simuler un clic (bloqué par les anti-popups stricts sur PC),
+    // on redirige directement. Le navigateur recevant un "Content-Disposition: attachment"
+    // ne changera pas de page mais lancera le téléchargement instantanément.
+    window.location.assign(url);
     
     setDownloadDialogOpen(false);
     setFileToDownload(null);
