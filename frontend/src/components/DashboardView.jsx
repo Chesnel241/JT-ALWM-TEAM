@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { io } from 'socket.io-client';
 import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -285,6 +286,27 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       .then(setDeliveries)
       .catch(console.error);
   }, [isActive, selectedWeek]);
+
+  // Connect socket.io for real-time updates when authenticated as admin
+  useEffect(() => {
+    if (!isAuthenticatedAdmin || !selectedWeek) return;
+
+    // Connect to the same origin/host as the API
+    const socketUrl = API_BASE || window.location.origin;
+    const socket = io(socketUrl);
+
+    socket.on('upload_update', (data) => {
+      if (data.weekId === selectedWeek) {
+        addToast('Nouveau fichier !', 'info');
+        api.getDashboard(selectedWeek).then(setDashboard).catch(console.error);
+        api.getDeliveries(selectedWeek).then(setDeliveries).catch(console.error);
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [isAuthenticatedAdmin, selectedWeek, addToast]);
 
   // Suit un job de montage (SSE temps réel + polling de secours). Réutilisé
   // pour démarrer un montage ET pour reprendre le suivi après refresh/onglet

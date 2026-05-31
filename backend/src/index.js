@@ -1,7 +1,7 @@
 import logger from './logger/index.js';
 import { startAlertMonitoring } from './monitoring/alerts.js';
 import { cleanupExpiredUploads, initDb } from './data/store.js';
-import { createApp } from './app.js';
+import { createApp, initSocket } from './app.js';
 import { uploadsDir as resolveUploadsDir, pathsDiagnostic } from './lib/paths.js';
 
 const PORT = process.env.PORT || 3010;
@@ -56,6 +56,8 @@ const server = app.listen(PORT, () => {
   console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
   console.log(`💊 Health: http://localhost:${PORT}/health`);
 });
+
+initSocket(server);
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', {

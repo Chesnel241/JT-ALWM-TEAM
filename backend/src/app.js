@@ -24,6 +24,13 @@ import logger from './logger/index.js';
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter } from './middleware/rateLimiter.js';
 import { errorHandlerMiddleware, notFoundMiddleware } from './middleware/errorHandler.js';
+import { Server } from 'socket.io';
+
+export let io;
+
+export function initSocket(server) {
+  io = new Server(server, { cors: { origin: '*' } });
+}
 
 // Timeout par requête (en ms). Upload de gros fichiers : 10 min.
 // Reste : 30 s. Au-delà, on coupe pour éviter les Slowloris.

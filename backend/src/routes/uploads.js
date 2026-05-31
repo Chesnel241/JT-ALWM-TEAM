@@ -20,6 +20,8 @@ import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2, ch
 import { Readable } from 'stream';
 import { processVoiceover } from '../services/audioProcessor.js';
 import { broadcastNotification } from './webpush.js';
+import { io } from '../app.js';
+
 function createLazyStream(factory) {
   let stream = null;
   let initiating = false;
@@ -373,6 +375,8 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
         url: `/?week=${weekId}`
       }).catch(err => logger.error('Push notification failed', { error: err.message }));
       
+      io?.emit('upload_update', { weekId, countryId });
+      
       return res.status(201).json(result);
     } catch (storeErr) {
       const uploadDurationMs = Date.now() - uploadStartTime;
@@ -456,6 +460,8 @@ router.post('/:weekId/:countryId/finalize', uploadMiddleware, asyncHandler(async
       url: `/?week=${weekId}`
     }).catch(err => logger.error('Push notification failed', { error: err.message }));
 
+    io?.emit('upload_update', { weekId, countryId });
+
     return res.status(201).json(result);
   } catch (storeErr) {
     recordUpload(0, false);
@@ -537,6 +543,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
         contentLength: content.length,
       },
     });
+    io?.emit('upload_update', { weekId, countryId });
     return res.status(201).json(result);
   } catch (storeErr) {
     // ROLLBACK: Supprimer le fichier en cas d'erreur DB
@@ -644,6 +651,8 @@ router.delete('/:weekId/:countryId/:fileId', requireAdmin, asyncHandler(async (r
       filename: deleted.filename,
     });
 
+    io?.emit('upload_update', { weekId, countryId });
+
     return res.status(204).end();
   } catch (error) {
     logger.error(`Delete operation failed: ${error.message}`, {
@@ -678,6 +687,8 @@ router.patch('/:weekId/files/:fileId/status', requireAdmin, [
   if (!updatedFile) {
     return next(createErrors.notFound('Fichier'));
   }
+
+  io?.emit('upload_update', { weekId, countryId: undefined });
 
   return res.json(updatedFile);
 }));
@@ -794,6 +805,8 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
 
     const uploadDurationMs = Date.now() - uploadStartTime;
     recordUpload(uploadDurationMs, true);
+
+    io?.emit('upload_update', { weekId, countryId });
 
       broadcastNotification({
         title: 'Nouvelle Voix Off Studio',
