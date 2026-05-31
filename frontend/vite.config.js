@@ -11,8 +11,15 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'custom-sw.js',
       registerType: 'autoUpdate',
+      // On gère l'enregistrement manuellement dans main.jsx (via
+      // virtual:pwa-register) pour pouvoir détecter une nouvelle version et
+      // forcer un reload automatique.
+      injectRegister: false,
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // HTML EXCLU du précache : récupéré frais depuis le réseau via la
+        // NavigationRoute NetworkFirst (cf. custom-sw.js). Évite que le SW
+        // sert un index.html périmé pointant vers des chunks disparus.
+        globPatterns: ['**/*.{js,css,ico,png,svg}'],
         // Ne pas précacher les gros chunks chargés à la demande (Whisper/ONNX,
         // Remotion) : ils restent récupérés au runtime, le SW reste léger.
         globIgnores: ['**/transformers*', '**/ort*', '**/onnx*', '**/remotion*', '**/*whisper*'],
