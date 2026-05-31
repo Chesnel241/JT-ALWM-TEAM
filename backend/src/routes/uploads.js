@@ -106,13 +106,7 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
     return next(createErrors.notFound('Week ou Country'));
   }
 
-  // Sécurisation spécifique pour MOT DU JT
-  if (countryId === 'mj') {
-    const providedToken = req.query.adminPassword || req.header('x-admin-password');
-    if (!safeEqual(providedToken, ADMIN_PASSWORD)) {
-      return res.status(403).json({ error: 'Accès protégé : mot de passe administrateur requis pour cette rubrique.' });
-    }
-  }
+  // Sécurisation retirée à la demande de l'utilisateur : le téléchargement est public
 
   const uploads = getCountryUploads(weekId, countryId);
   // Si R2 est actif, on assume que le fichier existe dans le cloud (ou on tentera de l'attraper).

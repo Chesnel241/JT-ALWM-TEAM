@@ -524,41 +524,24 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const handleConfirmDownload = async () => {
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
-    const isMj = selectedBin === 'mj';
-    const token = localStorage.getItem('app-password') || '';
-    // Les archives passent par /api (requireAuth) ; les fichiers bruts par
-    // /uploads (public, sauf mj admin-gated). Identifiants en EN-TÊTES, jamais
-    // dans l'URL (fuite logs/historique). Téléchargement via blob.
-    const base = isArchive
+    
+    // Le backend ne demande plus de mot de passe pour les téléchargements.
+    // On utilise donc une URL directe pour déclencher le téléchargement
+    // natif du navigateur instantanément (sans passer par un Blob en mémoire).
+    const url = isArchive
       ? `${API_BASE}/api/uploads/${fileToDownload.filename}`
       : `${API_BASE}/uploads/${fileToDownload.filename}`;
-    const headers = {};
-    if (isArchive) headers['X-App-Password'] = token;
-    if (isMj) headers['X-Admin-Password'] = authenticatedAdminPassword;
-
-    let blobUrl;
-    try {
-      const res = await fetch(base, { headers, credentials: 'include' });
-      if (!res.ok) throw new Error('Téléchargement refusé par le serveur.');
-      const blob = await res.blob();
-      blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = fileToDownload.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      addToast(err.message || 'Téléchargement échoué', 'error', 5000);
-    } finally {
-      if (blobUrl) {
-        // Il faut laisser le temps au navigateur de démarrer le téléchargement
-        // avant de révoquer l'URL, sinon le téléchargement échoue silencieusement.
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-      }
-      setDownloadDialogOpen(false);
-      setFileToDownload(null);
-    }
+      
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileToDownload.name;
+    link.target = '_blank'; // Sécurité supplémentaire au cas où le navigateur essaie d'ouvrir plutôt que télécharger
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setDownloadDialogOpen(false);
+    setFileToDownload(null);
   };
 
   const handleConfirmDelete = async () => {
@@ -1478,8 +1461,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         isVideo={actionSheetFile?.type === 'video' || !!actionSheetFile?.name.match(/\.(mp4|mov|avi|mkv)$/i)}
         onApprove={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'approved')}
         onReject={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'rejected')}
-        onDownload={() => selectedBin === 'mj' ? openDownloadDialog(actionSheetFile) : null}
-        onDownloadHref={selectedBin !== 'mj' && actionSheetFile ? `${API_BASE}/uploads/${actionSheetFile.filename}` : null}
+        onDownload={() => {}}
+        onDownloadHref={actionSheetFile ? `${API_BASE}/uploads/${actionSheetFile.filename}` : null}
         onDelete={() => openDeleteDialog(selectedBin, actionSheetFile?.id)}
         onViewScript={(f) => setViewingScript(f)}
       />
