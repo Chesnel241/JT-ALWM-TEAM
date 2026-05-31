@@ -12,19 +12,34 @@ export default function LoginView({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!password) {
+    // Nettoyage côté client : trim + retrait des caractères invisibles
+    // injectés par auto-complete / copier-coller (NBSP, NARROW NBSP,
+    // ZW SPACE/JOINER, BOM, WORD JOINER). Le backend re-normalise de toute
+    // façon, c'est de la défense en profondeur pour éviter d'envoyer un
+    // mot de passe que l'utilisateur croit valide.
+    const cleaned = password
+      .normalize('NFC')
+      .replace(/[\u0009\u00A0\u1680\u2000-\u200D\u202F\u205F\u2060\u3000\uFEFF]/g, '')
+      .trim();
+    if (!cleaned) {
       setError(t.login?.required || 'Mot de passe requis');
       return;
     }
     setError('');
     setSubmitting(true);
     try {
-      // Le backend valide le password ET pose un cookie httpOnly.
-      // Aucun secret n'est stocké côté JS — XSS-resistant.
-      await api.login(password);
+      await api.login(cleaned);
       onLogin();
     } catch (err) {
-      setError(err.message || t.errors?.serverError || 'Erreur');
+      const msg = err.message || '';
+      // Distingue 429 (trop de tentatives) du 401 (mdp réellement faux).
+      // Avant ce fix, les deux affichaient "mot de passe incorrect", ce
+      // qui rendait impossible le diagnostic côté pays.
+      if (/trop de tentatives|too many/i.test(msg)) {
+        setError(msg);
+      } else {
+        setError(msg || t.errors?.serverError || 'Erreur');
+      }
     } finally {
       setSubmitting(false);
     }

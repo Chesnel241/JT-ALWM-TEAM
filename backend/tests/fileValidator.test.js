@@ -87,10 +87,23 @@ describe('validateMagicNumber', () => {
     expect(res.valid).toBe(true);
   });
 
-  it('accepts a WAV header (RIFF)', () => {
+  it('accepts a WAV header (RIFF + WAVE fourCC)', () => {
     const path = join(TMP, 'sound.wav');
-    writeFileSync(path, Buffer.from([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0]));
+    // RIFF à 0, taille (4 octets), 'WAVE' à l'offset 8.
+    writeFileSync(path, Buffer.from([
+      0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45, 0, 0, 0, 0,
+    ]));
     const res = validateMagicNumber(path, '.wav');
     expect(res.valid).toBe(true);
+  });
+
+  it('rejette un RIFF sans fourCC WAVE (anti-polyglot)', () => {
+    const path = join(TMP, 'fake.wav');
+    // RIFF mais 'WEBP' à l'offset 8 → ne doit PAS passer pour du wav.
+    writeFileSync(path, Buffer.from([
+      0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0, 0, 0, 0,
+    ]));
+    const res = validateMagicNumber(path, '.wav');
+    expect(res.valid).toBe(false);
   });
 });

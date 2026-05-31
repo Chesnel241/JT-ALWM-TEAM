@@ -15,6 +15,30 @@ export function initSentry(app) {
       dsn: process.env.SENTRY_DSN,
       environment: process.env.NODE_ENV || 'development',
       tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+      // Ne pas envoyer les PII par défaut (IP, cookies) automatiquement.
+      sendDefaultPii: false,
+      // Scrubbing : on retire les en-têtes d'authentification et les cookies
+      // des événements avant envoi (X-App-Password, X-Admin-Password,
+      // X-Worker-Key, Authorization, Cookie). Évite que des secrets se
+      // retrouvent dans Sentry.
+      beforeSend(event) {
+        try {
+          const h = event.request && event.request.headers;
+          if (h) {
+            for (const k of Object.keys(h)) {
+              if (/^(x-app-password|x-admin-password|x-worker-key|authorization|cookie)$/i.test(k)) {
+                h[k] = '[redacted]';
+              }
+            }
+          }
+          // Les query strings peuvent contenir ?adminPassword= / ?pwd= .
+          if (event.request && typeof event.request.query_string === 'string') {
+            event.request.query_string = event.request.query_string
+              .replace(/(adminPassword|pwd)=[^&]*/gi, '$1=[redacted]');
+          }
+        } catch { /* best effort, ne jamais bloquer l'envoi */ }
+        return event;
+      },
     });
 
     if (Sentry.setupExpressErrorHandler) {

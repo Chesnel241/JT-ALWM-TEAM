@@ -2,7 +2,10 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { concatenateVideos, XFADE_TRANSITIONS } from '../services/editorService.js';
 import { addListener, removeListener, finishJob, getJobState } from '../services/editorProgress.js';
-import { TEXT_ANIMATIONS_IDS } from '../data/overlayTemplates.js';
+import { TEXT_ANIMATIONS_IDS, OVERLAY_TEMPLATES } from '../data/overlayTemplates.js';
+
+// Allowlist des templateId valides (source unique = registre des modèles).
+const TEMPLATE_IDS = OVERLAY_TEMPLATES.map((t) => t.id);
 import logger from '../logger/index.js';
 
 const router = express.Router();
@@ -74,8 +77,15 @@ router.post(
       .withMessage('duration doit être supérieur à 0.'),
     body('clips.*.overlays.*.templateId')
       .optional()
-      .isString()
-      .withMessage('Chaque overlay doit avoir un templateId valide.'),
+      .isIn(TEMPLATE_IDS)
+      .withMessage('templateId invalide.'),
+    // Champs d'un overlay (texte libre gravé via safe(), ou valeurs num.
+    // comme ticker.speed). Si chaîne : bornée à 600 (défense en profondeur ;
+    // safe() reste le vrai garde-fou anti-injection). Nombres/booléens OK.
+    body('clips.*.overlays.*.fields.*')
+      .optional()
+      .custom((v) => typeof v !== 'string' || v.length <= 600)
+      .withMessage('Champ texte overlay trop long (max 600).'),
     body('clips.*.overlays.*.animation')
       .optional()
       .isIn(TEXT_ANIMATIONS_IDS)
@@ -117,8 +127,12 @@ router.post(
       .withMessage('globalOverlays doit être un tableau.'),
     body('globalOverlays.*.templateId')
       .optional()
-      .isString()
+      .isIn(TEMPLATE_IDS)
       .withMessage('templateId global invalide.'),
+    body('globalOverlays.*.fields.*')
+      .optional()
+      .custom((v) => typeof v !== 'string' || v.length <= 600)
+      .withMessage('Champ texte global trop long (max 600).'),
     body('logo')
       .optional()
       .isBoolean()

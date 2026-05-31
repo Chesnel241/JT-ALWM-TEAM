@@ -38,7 +38,9 @@ describe('POST /api/editor/internal/progress (callback worker Cloud Run)', () =>
       .set('X-Worker-Key', 'wrong')
       .send({ jobId: 'j1', percent: 42 });
     expect(res.status).toBe(403);
-    expect(res.body.reason).toMatch(/invalide/i);
+    // La réponse ne doit PAS divulguer d'info sur la clé (longueur, raison
+    // précise) — juste 'forbidden'.
+    expect(res.body).toEqual({ error: 'forbidden' });
   });
 
   it('rejette 403 si WORKER_KEY non configuré côté backend', async () => {
@@ -48,7 +50,7 @@ describe('POST /api/editor/internal/progress (callback worker Cloud Run)', () =>
       .set('X-Worker-Key', 'anything')
       .send({ jobId: 'j1', percent: 10 });
     expect(res.status).toBe(403);
-    expect(res.body.reason).toMatch(/non configuré/i);
+    expect(res.body).toEqual({ error: 'forbidden' });
   });
 
   it('rejette 400 si jobId manquant', async () => {
@@ -70,15 +72,28 @@ describe('POST /api/editor/internal/progress (callback worker Cloud Run)', () =>
     expect(getJobState(jobId)).toMatchObject({ percent: 73, status: 'encoding' });
   });
 
-  it('finalise via finishJob sur status=done avec URL', async () => {
+  it('finalise via finishJob sur status=done avec URL R2 autorisée', async () => {
     const jobId = `job-done-${Math.random()}`;
+    const url = 'https://acc123.r2.cloudflarestorage.com/exports/out.mp4?X-Amz-Signature=abc';
     setProgress(jobId, 90, 'encoding');
     const res = await request(app)
       .post('/api/editor/internal/progress')
       .set('X-Worker-Key', 'test-secret-key')
-      .send({ jobId, status: 'done', url: 'https://r2.example/out.mp4' });
+      .send({ jobId, status: 'done', url });
     expect(res.status).toBe(200);
-    expect(getJobState(jobId)).toEqual({ percent: 100, status: 'done', url: 'https://r2.example/out.mp4' });
+    expect(getJobState(jobId)).toEqual({ percent: 100, status: 'done', url });
+  });
+
+  it('rejette une URL de résultat d\'origine non autorisée (anti-injection)', async () => {
+    const jobId = `job-evil-${Math.random()}`;
+    setProgress(jobId, 90, 'encoding');
+    const res = await request(app)
+      .post('/api/editor/internal/progress')
+      .set('X-Worker-Key', 'test-secret-key')
+      .send({ jobId, status: 'done', url: 'https://evil.example/pwn.mp4' });
+    expect(res.status).toBe(400);
+    // Le job bascule en erreur, l'URL malveillante n'est jamais servie.
+    expect(getJobState(jobId).status).toBe('error');
   });
 
   it('finalise en erreur sur status=error', async () => {

@@ -18,7 +18,8 @@ import webpushRouter from './routes/webpush.js';
 import presignedRouter from './routes/presigned.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
 import { HAS_R2, getR2PresignedUrl, checkR2Exists } from './lib/s3.js';
-import { requireAuth, safeEqual } from './middleware/auth.js';
+import { requireAuth, requireAdmin, safeEqual } from './middleware/auth.js';
+import logger from './logger/index.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter } from './middleware/rateLimiter.js';
@@ -28,6 +29,27 @@ import { errorHandlerMiddleware, notFoundMiddleware } from './middleware/errorHa
 // Reste : 30 s. Au-delà, on coupe pour éviter les Slowloris.
 const UPLOAD_TIMEOUT_MS = parseInt(process.env.UPLOAD_TIMEOUT_MS || 600000, 10);
 const REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || 30000, 10);
+
+// Allowlist des origines acceptées pour l'URL du master final renvoyée par le
+// worker Remotion. Par défaut : R2 Cloudflare + chemins relatifs /uploads/*.
+// Surchargeable via RESULT_URL_HOSTS (hôtes séparés par des virgules, ex. un
+// CDN custom). Empêche l'injection d'une URL arbitraire dans le lecteur vidéo
+// si la WORKER_KEY venait à fuiter.
+const RESULT_URL_HOSTS = (process.env.RESULT_URL_HOSTS || '')
+  .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+
+function isAllowedResultUrl(url) {
+  if (typeof url !== 'string' || url.length === 0) return false;
+  // Chemin relatif servi par le backend lui-même (mode local sans R2).
+  if (url.startsWith('/uploads/')) return true;
+  let parsed;
+  try { parsed = new URL(url); } catch { return false; }
+  if (parsed.protocol !== 'https:') return false;
+  const host = parsed.hostname.toLowerCase();
+  if (host.endsWith('.r2.cloudflarestorage.com')) return true;
+  if (host.endsWith('.r2.dev')) return true;
+  return RESULT_URL_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
 
 function timeoutMiddleware(ms) {
   return (req, res, next) => {
@@ -123,7 +145,10 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.get('/', (req, res) => res.status(200).send('ALWM Backend API is running.'));
 
   app.use('/health', healthRouter);
-  app.use('/metrics', metricsRouter);
+  // /metrics expose des infos internes (mémoire, compteurs d'erreurs, dernier
+  // message d'erreur). Protégé par le mot de passe admin (header) — plus
+  // public.
+  app.use('/metrics', requireAdmin, metricsRouter);
 
   // Routes auth (login/logout/check) AVANT requireAuth : on doit
   // pouvoir s'authentifier sans être déjà authentifié.
@@ -135,23 +160,36 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     const WORKER_KEY = process.env.WORKER_KEY || '';
     const provided = req.header('x-worker-key');
     if (!WORKER_KEY) {
-      console.warn('[internal/progress] 403 — WORKER_KEY non configuré côté backend');
-      return res.status(403).json({ error: 'forbidden', reason: 'WORKER_KEY non configuré' });
+      logger.warn('[internal/progress] 403 — WORKER_KEY non configuré côté backend');
+      return res.status(403).json({ error: 'forbidden' });
     }
-    if (provided !== WORKER_KEY) {
-      console.warn('[internal/progress] 403 — clé reçue ne matche pas', {
-        receivedLen: provided ? provided.length : 0,
-        expectedLen: WORKER_KEY.length,
-      });
-      return res.status(403).json({ error: 'forbidden', reason: 'X-Worker-Key invalide' });
+    // Comparaison à temps constant ; aucune fuite de longueur de clé dans la
+    // réponse ni dans les logs (un attaquant lisant les logs ne doit rien
+    // apprendre sur le secret).
+    if (!safeEqual(provided, WORKER_KEY)) {
+      logger.warn('[internal/progress] 403 — X-Worker-Key invalide', { ip: req.ip });
+      return res.status(403).json({ error: 'forbidden' });
     }
     const { jobId, percent, status, url } = req.body || {};
-    if (!jobId) return res.status(400).json({ error: 'jobId requis' });
-    console.log('[internal/progress] callback reçu', { jobId, percent, status, hasUrl: !!url });
+    if (!jobId || typeof jobId !== 'string') return res.status(400).json({ error: 'jobId requis' });
+    logger.info('[internal/progress] callback reçu', { jobId, percent, status, hasUrl: !!url });
     const { setProgress, finishJob } = await import('./services/editorProgress.js');
-    if (status === 'done') finishJob(jobId, 'done', url);
-    else if (status === 'error') finishJob(jobId, 'error');
-    else setProgress(jobId, percent ?? 0, status || 'encoding');
+    if (status === 'done') {
+      // Le worker contrôle le `url` final servi à l'opérateur (<video src>,
+      // <a href download>). On n'accepte QUE des URLs vers nos propres
+      // origines (R2 / CDN) ou un chemin relatif /uploads/* (mode local) :
+      // empêche l'injection d'une URL arbitraire si la WORKER_KEY fuite.
+      if (!isAllowedResultUrl(url)) {
+        logger.warn('[internal/progress] URL de résultat rejetée (origine non autorisée)', { jobId });
+        finishJob(jobId, 'error');
+        return res.status(400).json({ error: 'url non autorisée' });
+      }
+      finishJob(jobId, 'done', url);
+    } else if (status === 'error') {
+      finishJob(jobId, 'error');
+    } else {
+      setProgress(jobId, percent ?? 0, status || 'encoding');
+    }
     return res.json({ ok: true });
   });
 
