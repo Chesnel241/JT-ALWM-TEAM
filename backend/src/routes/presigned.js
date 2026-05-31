@@ -5,6 +5,17 @@ import logger from '../logger/index.js';
 
 const router = express.Router();
 
+// Réduit le nom fourni par le client à un basename sûr : on retire tout
+// séparateur de chemin et caractère de contrôle pour qu'il ne puisse pas
+// s'échapper du préfixe `uploads/` dans la clé R2 (path traversal).
+function safeNamePart(name) {
+  return String(name)
+    .replace(/[/\\]/g, '_')        // pas de séparateur de chemin
+    .replace(/\.{2,}/g, '_')        // pas de '..'
+    .replace(/[\x00-\x1f]/g, '')    // pas de caractère de contrôle
+    .slice(0, 200);                 // borne la longueur
+}
+
 // GET /api/presigned/upload?filename=...&contentType=...
 router.get('/upload', async (req, res) => {
   try {
@@ -13,9 +24,12 @@ router.get('/upload', async (req, res) => {
     if (!filename || !contentType) {
       return res.status(400).json({ error: 'filename and contentType are required' });
     }
+    if (typeof contentType !== 'string' || !/^[\w.+-]+\/[\w.+-]+$/.test(contentType)) {
+      return res.status(400).json({ error: 'contentType invalide' });
+    }
 
-    // Generate a unique filename to avoid collisions
-    const uniqueFilename = `${uuidv4()}-${filename}`;
+    // Generate a unique filename to avoid collisions (nom client assaini)
+    const uniqueFilename = `${uuidv4()}-${safeNamePart(filename)}`;
     const r2Key = `uploads/${uniqueFilename}`;
 
     // Get the presigned URL valid for 1 hour (3600 seconds)
