@@ -69,7 +69,7 @@ export default function AdminUploadDialog({ isOpen, onClose, onUpload, isLoading
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-title">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[10001] p-4" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-title">
       <div ref={dialogRef} className="bg-[var(--paper)] rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-[var(--border)]">
         <div className="flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
           <h2 id="admin-dialog-title" className="text-lg font-bold text-[color:var(--ink)] flex items-center gap-2">
