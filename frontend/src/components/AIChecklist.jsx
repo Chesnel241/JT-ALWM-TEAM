@@ -91,8 +91,25 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
             if (c.id === 'tj' || c.id === 'mj') continue;
 
             for (const matchWord of c.matchers) {
-               // On cherche si le nom du pays apparaît en début de ligne ou avant les ":"
+               let isMatch = false;
                if (normalizedFirstPart === matchWord || normalizedFirstPart.includes(matchWord) || normalizedLine.startsWith(matchWord)) {
+                 isMatch = true;
+                 
+                 // Faux positif : Centrafrique contient "afrique"
+                 if (matchWord === 'afrique' && (normalizedFirstPart.includes('centrafrique') || normalizedLine.startsWith('centrafrique'))) {
+                   isMatch = false;
+                 }
+                 // Faux positif : Nigeria contient "niger"
+                 if (matchWord === 'niger' && (normalizedFirstPart.includes('nigeria') || normalizedLine.startsWith('nigeria'))) {
+                   isMatch = false;
+                 }
+                 // Faux positif : Guinee Equatoriale contient "guinee" mais doit être distingué
+                 if (matchWord === 'guinee' && (normalizedFirstPart.includes('guineeequatoriale') || normalizedLine.startsWith('guineeequatoriale') || normalizedFirstPart.includes('guineebissau'))) {
+                   isMatch = false;
+                 }
+               }
+
+               if (isMatch) {
                  if (!detected.has(c.id)) {
                    // Transmettre l'objet pays complet pour que le composant CountryAvatar fonctionne correctement (avec le code)
                    detected.set(c.id, { ...c, reportages: [] });
