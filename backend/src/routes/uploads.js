@@ -422,6 +422,15 @@ router.post('/:weekId/:countryId/finalize', uploadMiddleware, asyncHandler(async
     return next(createErrors.badRequest('Paramètres manquants: name, filename, size, type'));
   }
 
+  // `filename` est réutilisé tel quel comme clé R2 et stocké en base. On
+  // refuse tout séparateur de chemin / '..' / caractère de contrôle pour
+  // empêcher le path traversal (échapper le préfixe uploads/) et le
+  // poisoning de la base.
+  if (typeof filename !== 'string' || /[/\\\x00-\x1f]/.test(filename) || filename.includes('..') || filename.length > 300) {
+    logger.warn('Finalize attempt with unsafe filename', { context: { weekId, countryId, ip: req.ip } });
+    return next(createErrors.badRequest('filename invalide'));
+  }
+
   if (HAS_R2) {
     const r2Key = `uploads/${filename}`;
     const exists = await checkR2Exists(r2Key);

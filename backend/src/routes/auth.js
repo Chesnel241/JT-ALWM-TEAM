@@ -16,16 +16,44 @@ const router = Router();
 
 const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD;
 
+// Normalise un mot de passe avant comparaison :
+// - NFC unicode (un même caractère accentué peut arriver en deux formes
+//   différentes selon le clavier ou l'OS)
+// - retire les caractères invisibles ajoutés par copier-coller (NBSP,
+//   zero-width space, BOM)
+// - trim des espaces classiques en début/fin (auto-fill/auto-complete
+//   navigateur en injecte fréquemment)
+// L'admin a confirmé qu'aucun mot de passe configuré ne contient
+// d'espace ; cette normalisation est donc sûre et résout les "mot de
+// passe incorrect" inexpliqués signalés depuis les pays.
+function normalizePassword(s) {
+  if (typeof s !== 'string') return '';
+  // Caractères invisibles fréquemment injectés par les claviers mobiles
+  // ou copier-coller depuis WhatsApp/Notes : NBSP, NARROW NBSP,
+  // ZW SPACE/NON-JOINER/JOINER, LINE/PARA SEP, WORD JOINER, BOM.
+  return s
+    .normalize('NFC')
+    .replace(/[\u0009\u00A0\u1680\u2000-\u200D\u202F\u205F\u2060\u3000\uFEFF]/g, '')
+    .trim();
+}
+
 function safeEqual(a, b) {
   const hashA = createHash('sha256').update(String(a)).digest();
   const hashB = createHash('sha256').update(String(b)).digest();
   return timingSafeEqual(hashA, hashB);
 }
 
+// Limiteur login : 5/15 min était trop strict — un bureau-pays derrière
+// un NAT (5 correspondants partagent la même IP) atteignait la limite et
+// recevait 429 que le frontend affichait comme "mot de passe incorrect".
+// On passe à 30/15 min pour absorber les tentatives légitimes tout en
+// gardant un garde-fou brute-force (le mot de passe global est par
+// définition partagé, le brute-force réel doit être détecté côté
+// observabilité plutôt que freiné par cette limite).
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
-  message: { error: 'Trop de tentatives de connexion, veuillez réessayer plus tard' },
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX || '30', 10),
+  message: { error: 'Trop de tentatives de connexion, veuillez réessayer dans 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -40,21 +68,36 @@ const authLimiter = rateLimit({
 
 // POST /api/auth/login — body: { password }
 router.post('/login', loginLimiter, asyncHandler(async (req, res, next) => {
-  const { password } = req.body || {};
-  if (!password || typeof password !== 'string') {
+  const raw = (req.body || {}).password;
+  if (!raw || typeof raw !== 'string') {
     return next(createErrors.badRequest('Mot de passe requis'));
   }
+  const password = normalizePassword(raw);
+  const expected = normalizePassword(GLOBAL_PASSWORD);
   if (!GLOBAL_PASSWORD) {
     // Dev local sans password configuré : on accepte n'importe quoi
     return res.json({ success: true, token: 'dev-noauth' });
   }
-  if (!safeEqual(password, GLOBAL_PASSWORD)) {
-    logger.warn('Login: incorrect password', { context: { ip: req.ip } });
+  if (!safeEqual(password, expected)) {
+    // Log diagnostic : on enregistre les LONGUEURS reçues/attendues + le
+    // delta après normalisation, pas le contenu. Permet de voir si un pays
+    // est rejeté pour raison de caractère invisible (raw.length différent
+    // de normalized.length) ou de vrai mismatch.
+    logger.warn('Login: incorrect password', {
+      context: {
+        ip: req.ip,
+        rawLen: raw.length,
+        normalizedLen: password.length,
+        expectedLen: expected.length,
+      },
+    });
     return next(createErrors.unauthorized('Mot de passe incorrect'));
   }
-  
+
   logger.info('Login successful', { context: { ip: req.ip } });
-  // Retourne le mot de passe qui servira de "token" à insérer dans X-App-Password
+  // Retourne le mot de passe normalisé qui servira de "token" à insérer
+  // dans X-App-Password ; comme on normalise aussi côté requireAuth, le
+  // header sera accepté même si le frontend l'a stocké avec espaces.
   return res.json({ success: true, token: password });
 }));
 
@@ -65,22 +108,26 @@ router.post('/logout', (req, res) => {
 
 // GET /api/auth/check — pour que le front sache si la session est valide
 router.get('/check', authLimiter, (req, res) => {
-  const token = req.headers['x-app-password'];
+  const token = normalizePassword(req.headers['x-app-password']);
   if (!token) return res.status(401).json({ authenticated: false });
-  
+
   if (!GLOBAL_PASSWORD) return res.json({ authenticated: true });
-  if (!safeEqual(token, GLOBAL_PASSWORD)) return res.status(401).json({ authenticated: false });
-  
+  if (!safeEqual(token, normalizePassword(GLOBAL_PASSWORD))) {
+    return res.status(401).json({ authenticated: false });
+  }
+
   return res.json({ authenticated: true });
 });
 
 // GET /api/auth/check-admin — vérifier si le mot de passe admin est valide
 router.get('/check-admin', authLimiter, (req, res) => {
-  const token = req.headers['x-admin-password'];
+  const token = normalizePassword(req.headers['x-admin-password']);
   if (!token) return res.status(401).json({ authenticated: false });
   
   if (!process.env.ADMIN_PASSWORD) return res.json({ authenticated: true });
-  if (!safeEqual(token, process.env.ADMIN_PASSWORD)) return res.status(401).json({ authenticated: false });
+  if (!safeEqual(token, normalizePassword(process.env.ADMIN_PASSWORD))) {
+    return res.status(401).json({ authenticated: false });
+  }
   
   return res.json({ authenticated: true });
 });

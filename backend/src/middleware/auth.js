@@ -1,19 +1,32 @@
 import { createErrors } from './errorHandler.js';
 import logger from '../logger/index.js';
-import { timingSafeEqual } from 'crypto';
+import { timingSafeEqual, createHash } from 'crypto';
 
 const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD;
 const IS_TEST = process.env.NODE_ENV === 'test';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-// Comparaison à temps constant (anti-timing-attack). Exportée pour les
-// vérifications admin hors middleware (app.js, routes/uploads.js).
+// Mêmes règles que routes/auth.js : NFC + retrait des caractères invisibles
+// (NBSP, ZW*, BOM) + trim. Aligne le comparateur sur le format normalisé
+// que le frontend envoie après login.
+function normalizeToken(s) {
+  if (typeof s !== 'string') return '';
+  return s
+    .normalize('NFC')
+    .replace(/[\u0009\u00A0\u1680\u2000-\u200D\u202F\u205F\u2060\u3000\uFEFF]/g, '')
+    .trim();
+}
+
+// Comparaison à temps constant (anti-timing-attack). On hache les deux entrées
+// en SHA-256 (32 octets fixes) AVANT timingSafeEqual : ça élimine l'oracle de
+// longueur (un early-return sur des Buffer de tailles différentes laisserait
+// fuiter la longueur du secret par timing). Exportée pour les vérifications
+// admin hors middleware (app.js, routes/uploads.js).
 export function safeEqual(a, b) {
-  if (!a || !b) return false;
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
+  if (a == null || b == null) return false;
+  const hashA = createHash('sha256').update(String(a)).digest();
+  const hashB = createHash('sha256').update(String(b)).digest();
+  return timingSafeEqual(hashA, hashB);
 }
 
 // Fail-closed en prod si pas de mot de passe configuré.
@@ -29,9 +42,10 @@ export function requireAuth(req, res, next) {
   // Si aucun mot de passe n'est configuré (ex: dev local), on laisse passer
   if (!GLOBAL_PASSWORD) return next();
 
-  const token = req.header('x-app-password') || req.query.pwd;
-  
-  if (token && safeEqual(token, GLOBAL_PASSWORD)) {
+  const raw = req.header('x-app-password') || req.query.pwd;
+  const token = normalizeToken(raw);
+
+  if (token && safeEqual(token, normalizeToken(GLOBAL_PASSWORD))) {
     return next();
   }
 
@@ -51,9 +65,9 @@ export function requireAdmin(req, res, next) {
     return next(createErrors.forbidden('Action non configurée (mot de passe admin manquant sur le serveur)'));
   }
 
-  const token = req.header('x-admin-password');
-  
-  if (token && safeEqual(token, ADMIN_PASSWORD)) {
+  const token = normalizeToken(req.header('x-admin-password'));
+
+  if (token && safeEqual(token, normalizeToken(ADMIN_PASSWORD))) {
     return next();
   }
 

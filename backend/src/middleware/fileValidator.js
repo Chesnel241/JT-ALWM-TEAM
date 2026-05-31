@@ -27,7 +27,12 @@ const MAGIC_SIGNATURES = {
     { offset: 0, bytes: [0xff, 0xf2] },
   ],
   '.wav': [
-    { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // 'RIFF'
+    // RIFF à 0 ET WAVE à 8 (les deux requis, cf. `all`) : le fourCC évite
+    // qu'un RIFF/WEBP polyglot passe pour du wav.
+    { all: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // 'RIFF'
+      { offset: 8, bytes: [0x57, 0x41, 0x56, 0x45] }, // 'WAVE'
+    ] },
   ],
   '.docx': [
     { offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }, // ZIP local header
@@ -50,7 +55,12 @@ const MAGIC_SIGNATURES = {
     { offset: 0, bytes: [0x47, 0x49, 0x46, 0x38] }, // GIF8
   ],
   '.webp': [
-    { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
+    // RIFF à 0 ET WEBP à 8 (les deux requis) : sans le fourCC, un wav
+    // (RIFF/WAVE) ou tout conteneur RIFF passerait pour du webp.
+    { all: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
+      { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }, // 'WEBP'
+    ] },
   ],
   '.bmp': [
     { offset: 0, bytes: [0x42, 0x4d] }, // BM
@@ -64,6 +74,10 @@ const MAGIC_SIGNATURES = {
 };
 
 function matchesSignature(buf, signature) {
+  // Signature composée : tous les fragments {offset,bytes} doivent matcher (AND).
+  if (signature.all) {
+    return signature.all.every((s) => matchesSignature(buf, s));
+  }
   return signature.bytes.every((b, i) => buf[signature.offset + i] === b);
 }
 

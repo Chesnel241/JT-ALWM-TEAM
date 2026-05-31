@@ -110,7 +110,6 @@ metricsRouter.get('/', asyncHandler(async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch metrics',
-      message: error.message,
       timestamp: new Date().toISOString(),
     });
   }
