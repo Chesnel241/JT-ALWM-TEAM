@@ -41,6 +41,12 @@ export function requireAuth(req, res, next) {
   if (req.method === 'OPTIONS') return next();
   if (IS_TEST) return next();
 
+  // EXCEPTION : Les routes de téléchargement d'archives ZIP sont publiques
+  // (La sécurité est désormais assurée par l'accès à l'Espace Montage)
+  if (req.method === 'GET' && req.originalUrl.endsWith('/archive')) {
+    return next();
+  }
+
   // Si aucun mot de passe n'est configuré (ex: dev local), on laisse passer
   if (!GLOBAL_PASSWORD) return next();
 
