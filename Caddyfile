@@ -1,0 +1,21 @@
+:80 {
+	# Rediriger toutes les requêtes API vers le Backend Node.js
+	handle_path /api/* {
+		reverse_proxy backend:3010
+	}
+
+	# Rediriger les fichiers statiques (Uploads) vers le Backend Node.js
+	handle_path /uploads/* {
+		reverse_proxy backend:3010
+	}
+
+	# Rediriger les WebSockets Socket.io vers le Backend Node.js
+	handle_path /socket.io/* {
+		reverse_proxy backend:3010
+	}
+
+	# Rediriger tout le reste vers le Frontend (Nginx/React)
+	handle {
+		reverse_proxy frontend:80
+	}
+}
