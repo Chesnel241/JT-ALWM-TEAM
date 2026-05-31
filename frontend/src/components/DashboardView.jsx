@@ -499,11 +499,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   
   const handleDeleteDelivery = async (fileId, fileName) => {
     if(!window.confirm(`Supprimer ${fileName} ?`)) return;
+    
+    let previousDeliveries = [];
+    setDeliveries((prev) => {
+      previousDeliveries = prev;
+      return prev.filter((f) => f.id !== fileId);
+    });
+
     try {
       await api.deleteDelivery(selectedWeek, fileId);
-      setDeliveries((prev) => prev.filter((f) => f.id !== fileId));
       addToast(t.delivery.deleteSuccess(fileName), 'success');
     } catch (err) {
+      setDeliveries(previousDeliveries);
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error');
     }
   };
@@ -542,22 +549,31 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const handleConfirmDelete = async () => {
     if (!fileToDelete) return;
     setIsDeleting(true);
+
+    const targetFileId = fileToDelete.fileId;
+    const targetCountryId = fileToDelete.countryId;
+    const targetFileName = fileToDelete.fileName;
+    
+    let previousBinState = [];
+    
+    setDashboard((prev) => {
+      previousBinState = prev[targetCountryId] || [];
+      return {
+        ...prev,
+        [targetCountryId]: previousBinState.filter((f) => f.id !== targetFileId),
+      };
+    });
+    setDeleteDialogOpen(false);
+    setFileToDelete(null);
+
     try {
-      await api.deleteFile(selectedWeek, fileToDelete.countryId, fileToDelete.fileId, authenticatedAdminPassword);
-      // Sécurise contre l'erreur "Cannot read properties of undefined (reading
-      // 'filter')" : si l'entrée pays a été rafraîchie pendant la requête, on
-      // garde quand même la mise à jour cohérente.
-      setDashboard((prev) => {
-        const list = prev[fileToDelete.countryId] || [];
-        return {
-          ...prev,
-          [fileToDelete.countryId]: list.filter((f) => f.id !== fileToDelete.fileId),
-        };
-      });
-      addToast(t.dashboard.deleted(fileToDelete.name), 'success');
-      setDeleteDialogOpen(false);
-      setFileToDelete(null);
+      await api.deleteFile(selectedWeek, targetCountryId, targetFileId, authenticatedAdminPassword);
+      addToast(t.dashboard.deleted(targetFileName), 'success');
     } catch (err) {
+      setDashboard((prev) => ({
+        ...prev,
+        [targetCountryId]: previousBinState,
+      }));
       addToast(`${t.dashboard.deleteError} : ${err.message}`, 'error');
     } finally {
       setIsDeleting(false);
@@ -577,25 +593,38 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const handleConfirmFeedback = async () => {
     if (!fileToFeedback) return;
     setIsSubmittingFeedback(true);
-    try {
-      await api.updateFileStatus(selectedWeek, fileToFeedback.fileId, feedbackStatus, feedbackText, authenticatedAdminPassword);
-      setDashboard(prev => {
-        const binFiles = prev[selectedBin] || [];
-        const updatedFiles = binFiles.map(f => {
-          if (f.id === fileToFeedback.fileId) {
-            return { ...f, status: feedbackStatus, adminFeedback: feedbackText };
-          }
-          return f;
-        });
-        return { ...prev, [selectedBin]: updatedFiles };
+
+    const targetFileId = fileToFeedback.fileId;
+    const targetCountryId = fileToFeedback.countryId;
+    const targetStatus = feedbackStatus;
+    const targetText = feedbackText;
+
+    let previousBinState = [];
+
+    setDashboard(prev => {
+      previousBinState = prev[targetCountryId] || [];
+      const updatedFiles = previousBinState.map(f => {
+        if (f.id === targetFileId) {
+          return { ...f, status: targetStatus, adminFeedback: targetText };
+        }
+        return f;
       });
+      return { ...prev, [targetCountryId]: updatedFiles };
+    });
+    setFeedbackDialogOpen(false);
+    setFileToFeedback(null);
+    setFeedbackStatus('');
+    setFeedbackText('');
+
+    try {
+      await api.updateFileStatus(selectedWeek, targetFileId, targetStatus, targetText, authenticatedAdminPassword);
       addToast('Statut mis à jour avec succès', 'success');
-      setFeedbackDialogOpen(false);
-      setFileToFeedback(null);
-      setFeedbackStatus('');
-      setFeedbackText('');
     } catch (err) {
       console.error(err);
+      setDashboard(prev => ({
+        ...prev,
+        [targetCountryId]: previousBinState
+      }));
       addToast(`Erreur : ${err.message}`, 'error');
     } finally {
       setIsSubmittingFeedback(false);
