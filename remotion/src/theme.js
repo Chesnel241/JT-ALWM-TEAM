@@ -24,6 +24,14 @@ export const FONT_FILES = {
   'PT Serif': 'PTSerif-Bold.ttf',
   'PT Sans': 'PTSans-Bold.ttf',
   'Titillium Web': 'TitilliumWeb-Bold.ttf',
+  // Pack broadcast 2026 : condensé display, monospace ticker, serif éditorial,
+  // sport, breaking urgent, body neutre.
+  Oswald: 'Oswald-SemiBold.ttf',
+  'Roboto Condensed': 'RobotoCondensed-Bold.ttf',
+  'Russo One': 'RussoOne-Regular.ttf',
+  'Playfair Display': 'PlayfairDisplay-ExtraBold.ttf',
+  'IBM Plex Sans': 'IBMPlexSans-SemiBold.ttf',
+  'JetBrains Mono': 'JetBrainsMono-Medium.ttf',
 };
 
 export const FONT_FAMILIES = Object.keys(FONT_FILES);

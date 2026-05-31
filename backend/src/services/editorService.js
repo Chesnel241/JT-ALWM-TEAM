@@ -117,6 +117,9 @@ export const XFADE_TRANSITIONS = new Set([
   'squeezeh', 'squeezev', 'zoomin',
   'coverleft', 'coverright', 'coverup', 'coverdown',
   'revealleft', 'revealright', 'revealup', 'revealdown',
+  // Transitions broadcast custom (Remotion-only). Libass legacy retombe
+  // sur 'fade' (cf. ffmpeg xfade ne connaît pas ces noms).
+  'whippan', 'glitch', 'rgbsplit', 'lightsweep', 'flashwhite',
 ]);
 // Au-delà, on retombe sur le concat copy (le filtergraph xfade ouvre tous les
 // clips à la fois → on borne la RAM sur Render free).
@@ -211,15 +214,17 @@ async function resolveClipPath(filename, workDir) {
  * Retourne { url } : URL présignée R2 (prod) ou chemin relatif (dev).
  */
 // Sélecteur de moteur de rendu : 'remotion' délègue à Cloud Run, sinon
-// 'libass' (pipeline ffmpeg/libass local, défaut).
-const RENDERER = process.env.RENDERER || 'libass';
-const WORKER_URL = process.env.RENDER_WORKER_URL || '';
-const WORKER_KEY = process.env.WORKER_KEY || '';
-const PUBLIC_API_URL = process.env.PUBLIC_API_URL || '';
+// 'libass' (pipeline ffmpeg/libass local, défaut). Lecture LAZY de l'env
+// pour que les tests + le hot-reload Render puissent piloter ces valeurs
+// sans devoir relire le module au démarrage.
+const renderer = () => process.env.RENDERER || 'libass';
+const workerUrl = () => process.env.RENDER_WORKER_URL || '';
+const workerKey = () => process.env.WORKER_KEY || '';
+const publicApiUrl = () => process.env.PUBLIC_API_URL || '';
 
 // Transforme le payload /concat (globalOverlays array) en props Remotion
 // (branding object). Conserve clips + médias.
-function buildRemotionPayload(clips, opts) {
+export function buildRemotionPayload(clips, opts) {
   const branding = { logo: !!opts.logo, logoPosition: opts.logoPosition || 'br' };
   if (opts.atmosphere) {
     const clamp = (v) => Math.max(0, Math.min(1, Number(v) || 0));
@@ -265,7 +270,10 @@ function buildRemotionPayload(clips, opts) {
 
 // Délègue le rendu au worker Cloud Run. Le worker pilote la progression via
 // POST /api/editor/internal/progress (SSE existant). Retourne { delegated }.
-async function delegateToRemotion(clips, jobId, opts) {
+export async function delegateToRemotion(clips, jobId, opts) {
+  const WORKER_URL = workerUrl();
+  const WORKER_KEY = workerKey();
+  const PUBLIC_API_URL = publicApiUrl();
   if (!WORKER_URL) throw new Error('RENDER_WORKER_URL non configuré.');
   if (!WORKER_KEY) throw new Error('WORKER_KEY non configuré côté backend.');
   if (!PUBLIC_API_URL) throw new Error('PUBLIC_API_URL non configuré (le worker ne saura pas où renvoyer la progression).');
@@ -303,7 +311,7 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
   }
 
   // Chemin Remotion : délégué à Cloud Run (le worker gère le rendu + SSE).
-  if (RENDERER === 'remotion') {
+  if (renderer() === 'remotion') {
     return delegateToRemotion(clips, jobId, opts);
   }
 
@@ -565,9 +573,12 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
     let lastV = '0:v'; let lastA = '0:a'; let accLen = durations[0];
     for (let i = 1; i < n; i++) {
       const t = transitions[i - 1] || { type: 'fade', duration: 0.5 };
+      // Transitions custom Remotion (whippan/glitch/rgbsplit/lightsweep/flashwhite)
+      // n'existent pas dans ffmpeg xfade → fallback sur 'fade' pour le legacy.
+      const xfadeType = ['whippan', 'glitch', 'rgbsplit', 'lightsweep', 'flashwhite'].includes(t.type) ? 'fade' : t.type;
       const off = Math.max(0.1, accLen - t.duration).toFixed(3);
       const vO = `vx${i}`; const aO = `ax${i}`;
-      filters.push(`[${lastV}][${i}:v]xfade=transition=${t.type}:duration=${t.duration}:offset=${off}[${vO}]`);
+      filters.push(`[${lastV}][${i}:v]xfade=transition=${xfadeType}:duration=${t.duration}:offset=${off}[${vO}]`);
       filters.push(`[${lastA}][${i}:a]acrossfade=d=${t.duration}[${aO}]`);
       lastV = vO; lastA = aO;
       accLen = accLen + durations[i] - t.duration;

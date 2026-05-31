@@ -48,8 +48,21 @@ export const api = {
     localStorage.removeItem('app-password');
     return request('/auth/logout', { method: 'POST' });
   },
-  checkAuth: () =>
-    fetch(`${BASE}/auth/check`, { headers: { 'X-App-Password': localStorage.getItem('app-password') || '' } }).then((r) => r.ok),
+  checkAuth: () => {
+    // Render free cold start peut prendre 30-50 s. Sans timeout, l'UI reste
+    // bloquée sur le skeleton (écran blanc perçu). Avec timeout 12 s on bascule
+    // vers la page login (l'utilisateur peut retenter, et le backend chauffe
+    // entre-temps).
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    return fetch(`${BASE}/auth/check`, {
+      headers: { 'X-App-Password': localStorage.getItem('app-password') || '' },
+      signal: ctrl.signal,
+    })
+      .then((r) => r.ok)
+      .catch(() => false)
+      .finally(() => clearTimeout(timer));
+  },
   checkAdminPassword: (adminPassword) =>
     fetch(`${BASE}/auth/check-admin`, { headers: { 'X-Admin-Password': adminPassword } }).then((r) => r.ok),
 

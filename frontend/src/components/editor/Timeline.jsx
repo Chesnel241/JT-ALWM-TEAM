@@ -50,6 +50,13 @@ const TRANSITIONS = [
   { id: 'coverright', label: 'Couvre →' },
   { id: 'revealleft', label: 'Révèle ←' },
   { id: 'revealright', label: 'Révèle →' },
+  // Transitions broadcast custom (Remotion master). Le rendu libass
+  // legacy retombe automatiquement sur 'fade'.
+  { id: 'whippan', label: 'Whip pan (flou)' },
+  { id: 'glitch', label: 'Glitch cut' },
+  { id: 'rgbsplit', label: 'RGB split' },
+  { id: 'lightsweep', label: 'Sweep lumineux' },
+  { id: 'flashwhite', label: 'Flash blanc' },
 ];
 
 // Sélecteur de transition inséré entre deux clips.

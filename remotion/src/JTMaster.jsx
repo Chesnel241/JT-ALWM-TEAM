@@ -4,6 +4,7 @@ import { TransitionSeries, linearTiming } from '@remotion/transitions';
 import { fade } from '@remotion/transitions/fade';
 import { slide } from '@remotion/transitions/slide';
 import { wipe } from '@remotion/transitions/wipe';
+import { whipPan, glitchCut, rgbSplit, lightSweep, flashWhite } from './transitions.jsx';
 import { loadFonts, FPS } from './theme.js';
 import { Overlay } from './overlays/index.jsx';
 import { Ticker, LiveBadge, Logo, Subtitles } from './global.jsx';
@@ -17,6 +18,11 @@ const secToFrames = (s, fps) => Math.max(1, Math.round((s || 0) * fps));
 // Mappe notre type de transition (xfade) → presentation Remotion.
 function presentation(type) {
   if (!type) return null;
+  if (type === 'whippan') return whipPan();
+  if (type === 'glitch') return glitchCut();
+  if (type === 'rgbsplit') return rgbSplit();
+  if (type === 'lightsweep') return lightSweep();
+  if (type === 'flashwhite' || type === 'fadewhite') return flashWhite();
   if (type.startsWith('slide')) {
     const dir = type.includes('left') ? 'from-right' : type.includes('right') ? 'from-left' : type.includes('up') ? 'from-bottom' : 'from-top';
     return slide({ direction: dir });

@@ -142,6 +142,8 @@ export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'glo
 export const FONT_FAMILIES = [
   'Inter', 'Bebas Neue', 'Anton', 'Archivo Black', 'Barlow',
   'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
+  'Oswald', 'Roboto Condensed', 'Russo One', 'Playfair Display',
+  'IBM Plex Sans', 'JetBrains Mono',
 ];
 
 // Animations d'entrée du texte (doit matcher renderText() côté backend).

@@ -35,6 +35,8 @@ const COL_TICKER = '&H2F1A0A&'; // fond bandeau ticker (#0A1A2F)
 export const FONT_FAMILIES = [
   'Inter', 'Bebas Neue', 'Anton', 'Archivo Black', 'Barlow',
   'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
+  'Oswald', 'Roboto Condensed', 'Russo One', 'Playfair Display',
+  'IBM Plex Sans', 'JetBrains Mono',
 ];
 
 // Tag \fn si la police demandée est valide, sinon vide (garde le défaut du modèle).
