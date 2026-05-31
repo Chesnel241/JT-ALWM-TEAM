@@ -551,7 +551,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     } catch (err) {
       addToast(err.message || 'Téléchargement échoué', 'error', 5000);
     } finally {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      if (blobUrl) {
+        // Il faut laisser le temps au navigateur de démarrer le téléchargement
+        // avant de révoquer l'URL, sinon le téléchargement échoue silencieusement.
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      }
       setDownloadDialogOpen(false);
       setFileToDownload(null);
     }
