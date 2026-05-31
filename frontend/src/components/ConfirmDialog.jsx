@@ -77,7 +77,7 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 bg-[var(--ink)]/30 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-[var(--ink)]/30 flex items-center justify-center z-[10001] p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="dialog-title"

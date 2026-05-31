@@ -5,9 +5,18 @@ import { MessageSquare, X, Send, Bot, User, HelpCircle } from 'lucide-react';
 import { getTourSteps } from '../data/tourSteps';
 import { getAIResponse, getSuggestedQuestions } from '../data/faqKnowledge';
 
+// Clé localStorage : si l'utilisateur ferme la bulle "Veux-tu savoir comment
+// faire ?", on la cache pour 24 h (évite que la bulle masque les boutons
+// d'action sur mobile à chaque visite).
+const BUBBLE_HIDDEN_KEY = 'jt-ai-bubble-hidden-until';
+
 export default function AIAssistant({ currentPage }) {
   const { t, lang } = useI18n();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [bubbleHidden, setBubbleHidden] = useState(() => {
+    const until = parseInt(localStorage.getItem(BUBBLE_HIDDEN_KEY) || '0', 10);
+    return until > Date.now();
+  });
   const [messages, setMessages] = useState([
     { role: 'ai', content: t.aiAssistant.chatGreeting }
   ]);
@@ -105,13 +114,26 @@ export default function AIAssistant({ currentPage }) {
       <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
         
         {/* Floating Bubble Prompt */}
-        {!isChatOpen && !runTour && (
-          <button 
-            onClick={() => setIsChatOpen(true)}
-            className="flex items-center gap-2 bg-[var(--paper)] text-[color:var(--ink)] px-4 py-2 rounded-full shadow-lg border border-[var(--border)] hover:bg-[var(--paper-2)] transition-colors mb-4 animate-bounce"
-          >
-            <span className="text-sm font-medium">{t.aiAssistant.greeting}</span>
-          </button>
+        {!isChatOpen && !runTour && !bubbleHidden && (
+          <div className="flex items-center gap-1 bg-[var(--paper)] text-[color:var(--ink)] pl-4 pr-1 py-1 rounded-full shadow-lg border border-[var(--border)] mb-4 animate-bounce">
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="text-sm font-medium py-1"
+            >
+              {t.aiAssistant.greeting}
+            </button>
+            <button
+              onClick={() => {
+                localStorage.setItem(BUBBLE_HIDDEN_KEY, String(Date.now() + 24 * 60 * 60 * 1000));
+                setBubbleHidden(true);
+              }}
+              aria-label="Masquer la bulle"
+              className="ml-1 w-7 h-7 flex items-center justify-center rounded-full text-[color:var(--muted)] hover:bg-[var(--paper-2)] hover:text-[color:var(--ink)]"
+              title="Masquer (24 h)"
+            >
+              <X size={14} />
+            </button>
+          </div>
         )}
 
         {/* The Chat Window */}

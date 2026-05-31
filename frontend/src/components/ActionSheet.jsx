@@ -41,7 +41,7 @@ export default function ActionSheet({
   if (!render || !file) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
+    <div className="fixed inset-0 z-[10001] flex items-end justify-center sm:items-center p-4">
       {/* Backdrop */}
       <div 
         className={`absolute inset-0 bg-[var(--ink)]/40 backdrop-blur-sm transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
