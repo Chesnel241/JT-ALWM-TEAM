@@ -562,10 +562,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setIsDeleting(true);
     try {
       await api.deleteFile(selectedWeek, fileToDelete.countryId, fileToDelete.fileId, authenticatedAdminPassword);
-      setDashboard((prev) => ({
-        ...prev,
-        [fileToDelete.countryId]: prev[fileToDelete.countryId].filter((f) => f.id !== fileToDelete.fileId),
-      }));
+      // Sécurise contre l'erreur "Cannot read properties of undefined (reading
+      // 'filter')" : si l'entrée pays a été rafraîchie pendant la requête, on
+      // garde quand même la mise à jour cohérente.
+      setDashboard((prev) => {
+        const list = prev[fileToDelete.countryId] || [];
+        return {
+          ...prev,
+          [fileToDelete.countryId]: list.filter((f) => f.id !== fileToDelete.fileId),
+        };
+      });
       addToast(t.dashboard.deleted(fileToDelete.name), 'success');
       setDeleteDialogOpen(false);
       setFileToDelete(null);
