@@ -5,8 +5,8 @@ jt-alwm-team.duckdns.org {
 	}
 
 	# Servir directement les fichiers statiques (Uploads) sans passer par Node.js
-	handle_path /uploads/* {
-		root * /app/uploads
+	handle /uploads/* {
+		root * /app
 		file_server
 	}
 
