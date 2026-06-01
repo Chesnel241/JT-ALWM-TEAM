@@ -176,7 +176,7 @@ function OverlayBlock({ overlay, index, clipDur, overlays, onChange, onOpen }) {
   );
 }
 
-function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle, onOverlaysChange, clipStart = 0, playheadSec = null }) {
+function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle, onOverlaysChange }) {
   const {
     attributes,
     listeners,
@@ -268,7 +268,7 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
       </div>
 
       {/* TEXT TRACK */}
-      <div data-text-track aria-label="Piste texte — glisser pour déplacer, poignées pour rogner" className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-visible flex items-center group">
+      <div data-text-track className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-visible flex items-center group">
         <div className="absolute inset-0 flex items-center px-2 text-[8px] text-[color:var(--muted)] uppercase font-bold tracking-wider pointer-events-none">
           Piste Texte
         </div>
@@ -283,13 +283,6 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
             onOpen={() => onOverlay(clip)}
           />
         ))}
-        {/* Ligne de playhead (clip actif uniquement) : montre exactement où
-            "Couper Texte" va découper. Position proportionnelle = exacte. */}
-        {playheadPct != null && (
-          <div className="absolute top-0 bottom-0 w-0.5 bg-[var(--signal)] pointer-events-none z-20" style={{ left: `${playheadPct}%` }}>
-            <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 rounded-full bg-[var(--signal)]" />
-          </div>
-        )}
       </div>
     </div>
   );
