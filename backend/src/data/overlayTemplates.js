@@ -240,7 +240,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const startTimeStr = formatAssTime(startSec);
     const endTimeStr = formatAssTime(endSec);
 
-    let dialogues = template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec });
+    let dialogues = typeof template.buildAss === 'function' 
+      ? template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec }) 
+      : [];
     // Drag : si position custom, décaler le template comme un bloc.
     const def = DEFAULT_ANCHOR[overlay.templateId];
     if (def && overlay.position && typeof overlay.position === 'object') {
@@ -272,23 +274,147 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 export const OVERLAY_TEMPLATES = [
   {
-    id: 'lower_third',
-    label: 'Lower Third',
-    emoji: '📺',
-    preview: 'Nom et titre du journaliste, glisse depuis la gauche',
+    id: 'titre_reportage',
+    label: 'Titre Reportage',
+    emoji: '📰',
+    preview: 'Barre bleue glissante, titre avec flou de mouvement.',
     fields: [
-      { key: 'name', label: 'Nom complet', placeholder: 'Ex: Marie Dupont' },
-      { key: 'title', label: 'Titre / Fonction', placeholder: 'Ex: Correspondante à Paris' },
-    ],
-    buildAss(overlay, start, end) {
-      const { name, title } = overlay.fields || {};
-      const C = pickColors(overlay);
-      const cBg = C.bg(COL_NAVY); const cAc = C.accent(COL_GOLD); const cTx = C.text(COL_WHITE);
-      const slide = '\\move(-1100,0,0,0,0,450)';
-      const lines = [
-        `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${cBg}\\1a&H22&\\bord0\\shad0\\p1}m 0 0 l 1060 0 1060 130 0 130{\\p0}`,
-        `Dialogue: 1,${start},${end},Default,,0,0,0,,{\\an7\\pos(0,950)${slide}\\1c${cAc}\\bord0\\shad0\\p1}m 0 0 l 12 0 12 130 0 130{\\p0}`,
-      ];
+      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Un sous-titre ou précision' }
+    ]
+  },
+  {
+    id: 'nom_interview',
+    label: 'Nom Interview (Lower Third)',
+    emoji: '🗣️',
+    preview: 'Style France 24 : le cartouche glisse, nom apparaît en fondu.',
+    fields: [
+      { key: 'nom', label: 'Prénom & Nom', placeholder: 'PRÉNOM NOM' },
+      { key: 'fonction', label: 'Fonction / Qualité', placeholder: 'FONCTION / QUALITÉ' }
+    ]
+  },
+  {
+    id: 'signature_reportage',
+    label: 'Signature Reportage',
+    emoji: '✍️',
+    preview: 'Apparition très rapide et sobre du nom du reporter.',
+    fields: [
+      { key: 'nom', label: 'Nom du journaliste', placeholder: 'PRÉNOM NOM' }
+    ]
+  },
+  {
+    id: 'grand_titre',
+    label: 'Grands Titres du JT',
+    emoji: '🎬',
+    preview: 'Zoom, rotation 3D faible et reflet lumineux.',
+    fields: [
+      { key: 'titre', label: 'Titre', placeholder: 'LE JOURNAL' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'GRAND TITRE' }
+    ]
+  },
+  {
+    id: 'rappel_titres',
+    label: 'Rappel des Titres',
+    emoji: '📑',
+    preview: 'Titres glissant séquentiellement en cascade.',
+    fields: [
+      { key: 'titre1', label: 'Titre 1', placeholder: 'TITRE DU SUJET À LA UNE' },
+      { key: 'titre2', label: 'Titre 2', placeholder: 'AUTRE TITRE DU SUJET' },
+      { key: 'titre3', label: 'Titre 3', placeholder: 'DERNIER TITRE DU JOURNAL' }
+    ]
+  },
+  {
+    id: 'a_suivre',
+    label: 'À Suivre',
+    emoji: '⏩',
+    preview: 'Carte blanche, barre bleue pousse le texte machine à écrire.',
+    fields: [
+      { key: 'texte', label: 'Texte d\'annonce', placeholder: 'VOTRE PROGRAMME' }
+    ]
+  },
+  {
+    id: 'tout_de_suite',
+    label: 'Tout De Suite',
+    emoji: '⚡',
+    preview: 'Identique à À Suivre, mais plus rapide.',
+    fields: [
+      { key: 'texte', label: 'Texte d\'annonce', placeholder: 'VOTRE PROGRAMME' }
+    ]
+  },
+  {
+    id: 'publicite',
+    label: 'Publicité',
+    emoji: '📺',
+    preview: 'Transition plein écran, fond globe, zoom léger.',
+    fields: [
+      { key: 'texte', label: 'Texte', placeholder: 'PUBLICITÉ' }
+    ]
+  },
+  {
+    id: 'compte_a_rebours',
+    label: 'Compte à rebours',
+    emoji: '⏳',
+    preview: 'Décompte avec flip numérique ou transition verticale.',
+    fields: [
+      { key: 'texte', label: 'Texte', placeholder: 'NOUS REVENONS DANS UN INSTANT' },
+      { key: 'secondes', label: 'Durée (sec)', placeholder: '45' }
+    ]
+  },
+  {
+    id: 'la_speciale',
+    label: 'La Spéciale',
+    emoji: '⭐',
+    preview: 'Habillage premium, glissement croisé, scale impact.',
+    fields: [
+      { key: 'titre', label: 'Titre principal', placeholder: 'LA SPÉCIALE' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'ÉMISSION SPÉCIALE' }
+    ]
+  },
+  {
+    id: 'fin_merci',
+    label: 'Fin / Merci',
+    emoji: '👋',
+    preview: 'Bandeau glisse doucement, texte fondu, logo ALWM.',
+    fields: [
+      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
+    ]
+  },
+  {
+    id: 'bandeau_infos',
+    label: 'Bandeau Infos (Défilement)',
+    emoji: '📜',
+    scope: 'global',
+    preview: 'Heure, info, texte qui défile lentement.',
+    fields: [
+      { key: 'heure', label: 'Heure', placeholder: '20:30' },
+      { key: 'info', label: 'Catégorie', placeholder: 'INFO' },
+      { key: 'texte', label: 'Texte défilant', placeholder: 'Texte de l\'information qui défile...' }
+    ]
+  },
+  {
+    id: 'flash_info',
+    label: 'Flash Info',
+    emoji: '🔴',
+    scope: 'clip',
+    preview: 'Flash rouge/bleu lumineux, tremblement, texte.',
+    fields: [
+      { key: 'titre', label: 'Titre', placeholder: 'FLASH INFO' },
+      { key: 'texte', label: 'Texte', placeholder: 'Sujet du flash' }
+    ]
+  },
+  {
+    id: 'alerte_info',
+    label: 'Alerte Info',
+    emoji: '🚨',
+    scope: 'clip',
+    preview: 'Pulsation rouge, bandeau urgent.',
+    fields: [
+      { key: 'titre', label: 'Titre', placeholder: 'ALERTE' },
+      { key: 'texte', label: 'Texte urgent', placeholder: 'Sujet urgent' }
+    ]
+  }
+];
       if (PER_CHAR_ANIMS.has(overlay.animation)) {
         lines.push(...buildPerCharLines({
           text: name, x: 42, y: 962, fontTagStr: '\\fnInter', baseTags: `\\b1\\fs52\\1c${cTx}\\3c${COL_BLACK}\\bord1\\shad2`,
