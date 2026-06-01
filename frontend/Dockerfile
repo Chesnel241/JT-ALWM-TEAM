@@ -43,6 +43,9 @@ server {
   listen 80;
   server_name _;
 
+  # Définir le dossier racine globalement pour que toutes les 'locations' l'utilisent
+  root /usr/share/nginx/html;
+
   # Enable gzip compression
   gzip on;
   gzip_types text/plain text/css text/xml text/javascript 
@@ -55,7 +58,6 @@ server {
 
   # SPA routing: serve index.html for all non-file routes
   location / {
-    root /usr/share/nginx/html;
     try_files $uri $uri/ /index.html;
   }
 
