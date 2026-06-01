@@ -14,7 +14,7 @@ import Timeline from './editor/Timeline.jsx';
 import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
-import PreviewModal from './editor/PreviewModal.jsx';
+import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import ActionSheet from './ActionSheet.jsx';
 
@@ -1435,11 +1435,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
       {/* Aperçu temps réel */}
       {showPreview && (
-        <PreviewModal
+        <RemotionLivePreview
           clips={timelineClips}
           branding={branding}
           onClose={() => setShowPreview(false)}
-          onUpdateClip={(newClip) => setTimelineClips(prev => prev.map(c => c.instanceId === newClip.instanceId ? newClip : c))}
         />
       )}
 

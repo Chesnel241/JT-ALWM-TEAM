@@ -50,6 +50,9 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5173,
+    fs: {
+      allow: ['..']
+    },
     proxy: {
       '/api': 'http://localhost:3010',
       '/uploads': 'http://localhost:3010',
