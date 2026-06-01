@@ -36,7 +36,7 @@ const POSITIONS = [
  * incrustations images. Les fichiers audio/image proviennent des uploads de la
  * semaine (props audioFiles / imageFiles : [{filename, name}]).
  */
-export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [], uploadAsset, inline = false }) {
+export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [], uploadAsset }) {
   const v = value;
   const setTicker = (p) => onChange({ ...v, ticker: { ...v.ticker, ...p } });
   const setLive = (p) => onChange({ ...v, live: { ...v.live, ...p } });
@@ -58,9 +58,10 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
   const updImage = (i, p) => setImages(v.imageOverlays.map((im, idx) => (idx === i ? { ...im, ...p } : im)));
   const rmImage = (i) => setImages(v.imageOverlays.filter((_, idx) => idx !== i));
 
-  const content = (
-    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-lg shadow-2xl border border-[var(--border)] max-h-[90vh]'}`}>
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
+  return (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="bg-[var(--paper)] rounded-2xl w-full max-w-lg flex flex-col shadow-2xl border border-[var(--border)] max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
           <h2 className="font-bold text-[color:var(--ink)] flex items-center gap-2 text-base">
             <Newspaper className="text-[var(--accent)]" size={18} /> Habillage JT (global)
           </h2>
@@ -232,13 +233,6 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-[var(--ink)] text-[var(--paper)] font-semibold text-sm hover:opacity-90">Terminé</button>
         </div>
       </div>
-  );
-
-  if (inline) return content;
-
-  return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
-      {content}
     </div>
   );
 }
