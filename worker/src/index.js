@@ -82,9 +82,8 @@ app.post('/render', async (req, res) => {
     const inputProps = HAS_R2 ? await resolveUrls(payload) : payload;
     const sharedChromiumOptions = { 
       gl: 'angle',
-      enableMultiProcessOnLinux: false,
       disableWebSecurity: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     };
     const composition = await selectComposition({
       serveUrl: SERVE_URL,
