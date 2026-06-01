@@ -7,19 +7,37 @@
  * Mono-instance only (Map en mémoire) — cohérent avec scaling=1.
  */
 
-const jobs = new Map(); // jobId -> { percent, status, url, listeners:Set<res>, timeout, doneAt }
+const jobs = new Map(); // jobId -> { percent, status, url, listeners:Set<res>, timeout, stall, doneAt }
 
-const JOB_TTL_MS = 30 * 60 * 1000; // 30 min : durée max d'un job actif
+const JOB_TTL_MS = 30 * 60 * 1000; // 30 min : durée max absolue d'un job actif
+// Watchdog anti-blocage : si aucune progression n'arrive pendant ce délai
+// (worker OOM-killed, Chromium crash, callback réseau coupé…), on finalise
+// le job en 'error' pour que l'utilisateur ne reste pas bloqué sur le
+// spinner jusqu'au TTL de 30 min. Réinitialisé à chaque setProgress.
+const STALL_MS = Number(process.env.RENDER_STALL_MS) || 3 * 60 * 1000; // 3 min
 // Un job terminé est conservé un moment pour que le frontend puisse
 // récupérer le résultat même si le SSE a été coupé pendant le rendu.
 const FINISHED_RETENTION_MS = 15 * 60 * 1000;
+
+// (Re)arme le watchdog de stagnation. Appelé à la création + à chaque
+// progression. Si le délai expire sans nouvelle progression → erreur.
+function armStall(job, jobId) {
+  if (job.stall) clearTimeout(job.stall);
+  job.stall = setTimeout(() => {
+    if (!isFinished(job.status)) {
+      finishJob(jobId, 'error');
+    }
+  }, STALL_MS);
+}
 
 function ensure(jobId) {
   if (!jobs.has(jobId)) {
     const timeout = setTimeout(() => {
       finishJob(jobId, 'error');
     }, JOB_TTL_MS);
-    jobs.set(jobId, { percent: 0, status: 'pending', url: null, listeners: new Set(), timeout, doneAt: null });
+    const job = { percent: 0, status: 'pending', url: null, listeners: new Set(), timeout, stall: null, doneAt: null };
+    jobs.set(jobId, job);
+    armStall(job, jobId);
   }
   return jobs.get(jobId);
 }
@@ -35,10 +53,11 @@ export function setProgress(jobId, percent, status = 'processing') {
   if (isFinished(job.status)) return;
   job.percent = Math.max(0, Math.min(100, Math.round(percent)));
   job.status = status;
+  armStall(job, jobId); // progression reçue → on relance le watchdog
   const payload = `data: ${JSON.stringify({ percent: job.percent, status: job.status })}\n\n`;
   for (const res of job.listeners) {
-    try { 
-      res.write(payload); 
+    try {
+      res.write(payload);
       res.flush?.();
     } catch { /* client parti */ }
   }
@@ -49,6 +68,7 @@ export function finishJob(jobId, status = 'done', url = null) {
   const job = ensure(jobId);
   if (isFinished(job.status)) return; // déjà terminé, ne pas réémettre
   if (job.timeout) clearTimeout(job.timeout);
+  if (job.stall) { clearTimeout(job.stall); job.stall = null; }
   job.percent = status === 'done' ? 100 : job.percent;
   job.status = status;
   job.url = url;

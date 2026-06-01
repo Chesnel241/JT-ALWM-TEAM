@@ -60,6 +60,15 @@ async function postProgress(returnTo, jobId, percent) {
   return callback(returnTo, jobId, { jobId, percent: Math.round(percent), status: 'encoding' }, 'progress');
 }
 
+// Un seul rendu Chromium à la fois (budget mémoire limité). Une 2e demande
+// concurrente reçoit 429 → le backend la finalisera en erreur via son
+// watchdog, l'utilisateur voit un message clair plutôt qu'un OOM silencieux.
+let rendering = false;
+
+// Timeout dur du rendu : si renderMedia se bloque (clip illisible, Chromium
+// figé), on rejette pour toujours déclencher un callback 'error'.
+const RENDER_TIMEOUT_MS = Number(process.env.RENDER_TIMEOUT_MS) || 12 * 60 * 1000;
+
 app.post('/render', async (req, res) => {
   if (WORKER_KEY && req.header('x-worker-key') !== WORKER_KEY) {
     console.warn('[/render] 403 forbidden — X-Worker-Key invalide');
@@ -69,18 +78,23 @@ app.post('/render', async (req, res) => {
   if (!payload || !Array.isArray(payload.clips) || payload.clips.length === 0) {
     return res.status(400).json({ error: 'payload.clips requis' });
   }
+  if (rendering) {
+    console.warn('[/render] 429 busy — un rendu est déjà en cours', { jobId });
+    return res.status(429).json({ error: 'busy' });
+  }
   console.log('[/render] accepté', { jobId, clips: payload.clips.length, returnTo });
 
   // Réponse immédiate : rendu en arrière-plan (évite timeout HTTP).
   res.status(202).json({ accepted: true });
 
+  rendering = true;
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-remotion-'));
   const outName = `export_${uuidv4()}.mp4`;
   const outPath = path.join(workDir, outName);
   try {
     await ensureBrowser();
     const inputProps = HAS_R2 ? await resolveUrls(payload) : payload;
-    const sharedChromiumOptions = { 
+    const sharedChromiumOptions = {
       gl: 'angle',
       disableWebSecurity: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -91,16 +105,22 @@ app.post('/render', async (req, res) => {
       inputProps,
       chromiumOptions: sharedChromiumOptions,
     });
-    await renderMedia({
-      composition,
-      serveUrl: SERVE_URL,
-      codec: 'h264',
-      outputLocation: outPath,
-      inputProps,
-      concurrency: 1,
-      chromiumOptions: sharedChromiumOptions,
-      onProgress: ({ progress }) => postProgress(returnTo, jobId, progress * 100),
-    });
+    await Promise.race([
+      renderMedia({
+        composition,
+        serveUrl: SERVE_URL,
+        codec: 'h264',
+        outputLocation: outPath,
+        inputProps,
+        concurrency: 1,
+        chromiumOptions: sharedChromiumOptions,
+        onProgress: ({ progress }) => postProgress(returnTo, jobId, progress * 100),
+      }),
+      new Promise((_, reject) => setTimeout(
+        () => reject(new Error(`Rendu interrompu : délai dépassé (${Math.round(RENDER_TIMEOUT_MS / 60000)} min)`)),
+        RENDER_TIMEOUT_MS,
+      )),
+    ]);
 
     let url = `file://${outPath}`;
     if (HAS_R2) {
@@ -120,6 +140,7 @@ app.post('/render', async (req, res) => {
     console.error('Render failed', err);
     await callback(returnTo, jobId, { jobId, status: 'error', error: err.message }, 'error');
   } finally {
+    rendering = false;
     try { fs.rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
   }
 });
