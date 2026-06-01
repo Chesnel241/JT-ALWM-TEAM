@@ -9,7 +9,7 @@ function formatTime(s) {
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
 }
 
-function OverlayEditor({ overlay, onChange, onRemove }) {
+export function OverlayEditor({ overlay, onChange, onRemove }) {
   const template = OVERLAY_TEMPLATES.find((t) => t.id === overlay.templateId);
   if (!template) return null;
 

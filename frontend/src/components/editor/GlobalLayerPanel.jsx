@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload, Sparkles } from 'lucide-react';
+import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload, Sparkles, Layers } from 'lucide-react';
+import { GLOBAL_TEMPLATES } from '../../data/overlayTemplates.js';
+import { OverlayEditor } from './OverlayPanel.jsx';
 
 // Bouton d'upload d'un asset (musique/voix-off/image) → uploadAsset → {filename,name}.
 function UploadBtn({ accept, label, uploadAsset, onUploaded }) {
@@ -44,6 +46,29 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
   const setAtmo = (p) => onChange({ ...v, atmosphere: { ...(v.atmosphere || {}), ...p } });
   const setVoice = (p) => onChange({ ...v, voiceover: { ...v.voiceover, ...p } });
   const setImages = (arr) => onChange({ ...v, imageOverlays: arr });
+  const setOverlays = (arr) => onChange({ ...v, overlays: arr });
+
+  const addOverlay = (templateId) => {
+    setOverlays([
+      ...(v.overlays || []),
+      {
+        id: `${templateId}-${Date.now()}`,
+        templateId,
+        fields: {},
+        animation: 'fade',
+        startTime: 0,
+        duration: null,
+      },
+    ]);
+  };
+  const updOverlay = (idx, upd) => {
+    const copy = [...(v.overlays || [])];
+    copy[idx] = upd;
+    setOverlays(copy);
+  };
+  const rmOverlay = (idx) => {
+    setOverlays((v.overlays || []).filter((_, i) => i !== idx));
+  };
 
   const field = 'w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]';
   const sectionCls = 'flex flex-col gap-3 border border-[var(--border)] rounded-xl p-4';
@@ -92,6 +117,22 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                     className="w-full accent-[var(--accent)]"
                   />
                 </div>
+                
+                {/* Sliders Position / Scale Ticker */}
+                <div className="grid grid-cols-3 gap-3 mt-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position X</label>
+                    <input type="range" min="-1920" max="1920" step="10" value={v.ticker.posX ?? 0} onChange={(e) => setTicker({ posX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position Y</label>
+                    <input type="range" min="-1080" max="1080" step="10" value={v.ticker.posY ?? 0} onChange={(e) => setTicker({ posY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille (%)</label>
+                    <input type="range" min="10" max="300" step="5" value={v.ticker.scale ?? 100} onChange={(e) => setTicker({ scale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                </div>
               </>
             )}
           </section>
@@ -100,11 +141,27 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
           <section className={sectionCls}>
             {head(<Radio size={15} />, 'Badge LIVE / DIRECT', v.live.enabled, (c) => setLive({ enabled: c }))}
             {v.live.enabled && (
-              <div className="flex gap-2">
-                {['LIVE', 'DIRECT'].map((l) => (
-                  <button key={l} onClick={() => setLive({ label: l })} className={`px-3 py-1.5 rounded-lg text-sm border ${v.live.label === l ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border)] text-[color:var(--muted)]'}`}>{l}</button>
-                ))}
-              </div>
+              <>
+                <div className="flex gap-2">
+                  {['LIVE', 'DIRECT'].map((l) => (
+                    <button key={l} onClick={() => setLive({ label: l })} className={`px-3 py-1.5 rounded-lg text-sm border ${v.live.label === l ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border)] text-[color:var(--muted)]'}`}>{l}</button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-3 mt-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position X</label>
+                    <input type="range" min="-1920" max="1920" step="10" value={v.live.posX ?? 0} onChange={(e) => setLive({ posX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position Y</label>
+                    <input type="range" min="-1080" max="1080" step="10" value={v.live.posY ?? 0} onChange={(e) => setLive({ posY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille (%)</label>
+                    <input type="range" min="10" max="300" step="5" value={v.live.scale ?? 100} onChange={(e) => setLive({ scale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                </div>
+              </>
             )}
           </section>
 
@@ -115,9 +172,25 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
               <input type="checkbox" checked={v.logo} onChange={(e) => onChange({ ...v, logo: e.target.checked })} className="w-4 h-4 accent-[var(--accent)]" />
             </label>
             {v.logo && (
-              <select className={field} value={v.logoPosition || 'br'} onChange={(e) => onChange({ ...v, logoPosition: e.target.value })}>
-                {POSITIONS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-              </select>
+              <>
+                <select className={field} value={v.logoPosition || 'br'} onChange={(e) => onChange({ ...v, logoPosition: e.target.value })}>
+                  {POSITIONS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+                <div className="grid grid-cols-3 gap-3 mt-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position X</label>
+                    <input type="range" min="-1920" max="1920" step="10" value={v.logoPosX ?? 0} onChange={(e) => onChange({ ...v, logoPosX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position Y</label>
+                    <input type="range" min="-1080" max="1080" step="10" value={v.logoPosY ?? 0} onChange={(e) => onChange({ ...v, logoPosY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille (%)</label>
+                    <input type="range" min="10" max="300" step="5" value={v.logoScale ?? 100} onChange={(e) => onChange({ ...v, logoScale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                </div>
+              </>
             )}
           </section>
 
@@ -225,6 +298,27 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                 onUploaded={(r) => setImages([...(v.imageOverlays || []), { filename: r.filename, position: 'tr', scale: 0.25, opacity: 1, startTime: 0 }])}
               />
             </div>
+          </section>
+
+          {/* Animations & Habillages Globaux (Alerte, Flash...) */}
+          <section className={sectionCls}>
+            {head(<Layers size={15} />, 'Animations & Habillages Globaux', null)}
+            
+            <div className="flex gap-2">
+              <select className={field} onChange={(e) => { if(e.target.value) { addOverlay(e.target.value); e.target.value = ''; } }}>
+                <option value="">— Ajouter un habillage global —</option>
+                {GLOBAL_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+              </select>
+            </div>
+
+            {(v.overlays || []).map((overlay, idx) => (
+              <OverlayEditor
+                key={overlay.id}
+                overlay={overlay}
+                onChange={(upd) => updOverlay(idx, upd)}
+                onRemove={() => rmOverlay(idx)}
+              />
+            ))}
           </section>
         </div>
 

@@ -618,8 +618,19 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
       tl: '34:34', tr: 'W-w-34:34', center: '(W-w)/2:(H-h)/2',
       bl: `34:${bottomY}`, br: `W-w-34:${bottomY}`,
     };
-    const logoPos = LOGO_POS[opts.logoPosition] || LOGO_POS.br;
-    imgs.push({ idx: nextInput++, scaleH: 64, pos: logoPos, start: 0, dur: masterDur, opacity: 1 });
+    let logoPos = LOGO_POS[opts.logoPosition] || LOGO_POS.br;
+    
+    const dx = Number(opts.logoPosX) || 0;
+    const dy = Number(opts.logoPosY) || 0;
+    if (dx !== 0 || dy !== 0) {
+      const [px, py] = logoPos.split(':');
+      logoPos = `(${px})${dx >= 0 ? '+' : ''}${dx}:(${py})${dy >= 0 ? '+' : ''}${dy}`;
+    }
+    
+    const logoScalePct = opts.logoScale != null ? Number(opts.logoScale) / 100 : 1;
+    const scaleH = Math.max(10, Math.round(64 * logoScalePct));
+    
+    imgs.push({ idx: nextInput++, scaleH, pos: logoPos, start: 0, dur: masterDur, opacity: 1 });
   }
   for (const ov of imageOverlays) {
     cmd.input(await resolveClipPath(ov.filename, workDir));

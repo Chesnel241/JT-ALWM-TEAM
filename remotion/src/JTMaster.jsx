@@ -117,7 +117,24 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover }) {
       <Stage>
         <Ticker ticker={branding.ticker} />
         <LiveBadge live={branding.live} />
-        <Logo logo={branding.logo} logoPosition={branding.logoPosition} tickerOn={tickerOn} />
+        <Logo 
+          logo={branding.logo} 
+          logoPosition={branding.logoPosition} 
+          logoPosX={branding.logoPosX} 
+          logoPosY={branding.logoPosY} 
+          logoScale={branding.logoScale} 
+          tickerOn={tickerOn} 
+        />
+        {(branding.overlays || []).map((o, i) => {
+          const fps = FPS;
+          const start = Math.max(0, secToFrames(o.startTime || 0, fps));
+          const dur = o.duration ? secToFrames(o.duration, fps) : Infinity;
+          return (
+            <Sequence key={`g-ov-${i}`} from={start} durationInFrames={dur}>
+              <Overlay overlay={o} fps={fps} clipDurationSec={Number.MAX_VALUE} />
+            </Sequence>
+          );
+        })}
       </Stage>
 
       {/* Mix audio (en plus de l'audio des clips) */}

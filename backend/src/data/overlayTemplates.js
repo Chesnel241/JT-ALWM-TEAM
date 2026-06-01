@@ -179,18 +179,31 @@ const DEFAULT_ANCHOR = {
   breaking_news: { x: 120, y: 150 },
 };
 
-// Décale tous les \pos / \move d'une liste de Dialogue strings. Sert au
-// drag de position : on déplace chaque template comme un bloc.
-function shiftDialogues(lines, dx, dy) {
-  if (!dx && !dy) return lines;
-  const rx = (n) => Math.round(Number(n) + dx);
-  const ry = (n) => Math.round(Number(n) + dy);
-  return lines.map((l) =>
-    l
+// Décale et met à l'échelle tous les \pos / \move d'une liste de Dialogue strings.
+// Sert au drag de position et au redimensionnement.
+function transformDialogues(lines, defX, defY, dx, dy, scale = 1) {
+  if (!dx && !dy && scale === 1) return lines;
+  
+  // Transformation affine : on redimensionne par rapport au point d'ancrage par défaut, puis on translate.
+  const rx = (n) => Math.round(defX + (Number(n) - defX) * scale + dx);
+  const ry = (n) => Math.round(defY + (Number(n) - defY) * scale + dy);
+
+  return lines.map((l) => {
+    let out = l;
+    if (scale !== 1) {
+      // Met à l'échelle la police, les bordures et les ombres
+      out = out.replace(/\\fs(\d+)/g, (m, val) => `\\fs${Math.round(Number(val) * scale)}`);
+      out = out.replace(/\\bord([\d.]+)/g, (m, val) => `\\bord${+(Number(val) * scale).toFixed(1)}`);
+      out = out.replace(/\\shad([\d.]+)/g, (m, val) => `\\shad${+(Number(val) * scale).toFixed(1)}`);
+    }
+
+    out = out
       .replace(/\\pos\(([\-\d.]+),([\-\d.]+)\)/g, (m, x, y) => `\\pos(${rx(x)},${ry(y)})`)
       .replace(/\\move\(([\-\d.]+),([\-\d.]+),([\-\d.]+),([\-\d.]+)((?:,[\d.]+){0,2})\)/g,
-        (m, x1, y1, x2, y2, t) => `\\move(${rx(x1)},${ry(y1)},${rx(x2)},${ry(y2)}${t || ''})`)
-  );
+        (m, x1, y1, x2, y2, t) => `\\move(${rx(x1)},${ry(y1)},${rx(x2)},${ry(y2)}${t || ''})`);
+        
+    return out;
+  });
 }
 
 function formatAssTime(seconds) {
@@ -243,11 +256,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     let dialogues = template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec });
     // Drag : si position custom, décaler le template comme un bloc.
     const def = DEFAULT_ANCHOR[overlay.templateId];
-    if (def && overlay.position && typeof overlay.position === 'object') {
-      const px = Number(overlay.position.x);
-      const py = Number(overlay.position.y);
-      if (Number.isFinite(px) && Number.isFinite(py)) {
-        dialogues = shiftDialogues(dialogues, px - def.x, py - def.y);
+    if (def) {
+      const dxDrag = overlay.position && typeof overlay.position === 'object' ? Number(overlay.position.x) - def.x : 0;
+      const dyDrag = overlay.position && typeof overlay.position === 'object' ? Number(overlay.position.y) - def.y : 0;
+      const px = def.x + dxDrag + (Number(overlay.posX) || 0);
+      const py = def.y + dyDrag + (Number(overlay.posY) || 0);
+      const scale = overlay.scale != null ? Number(overlay.scale) / 100 : 1;
+      
+      if (Number.isFinite(px) && Number.isFinite(py) && Number.isFinite(scale)) {
+        dialogues = transformDialogues(dialogues, def.x, def.y, px - def.x, py - def.y, scale);
       }
     }
     for (const d of dialogues) {

@@ -126,7 +126,7 @@ export const OVERLAY_TEMPLATES = [
     id: 'flash_info',
     label: 'Flash Info',
     emoji: '🔴',
-    scope: 'clip',
+    scope: 'global',
     preview: 'Flash rouge/bleu lumineux, tremblement, texte.',
     fields: [
       { key: 'titre', label: 'Titre', placeholder: 'FLASH INFO' },
@@ -137,7 +137,7 @@ export const OVERLAY_TEMPLATES = [
     id: 'alerte_info',
     label: 'Alerte Info',
     emoji: '🚨',
-    scope: 'clip',
+    scope: 'global',
     preview: 'Pulsation rouge, bandeau urgent.',
     fields: [
       { key: 'titre', label: 'Titre', placeholder: 'ALERTE' },

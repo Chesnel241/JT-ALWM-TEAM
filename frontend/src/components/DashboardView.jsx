@@ -406,11 +406,20 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // Habillage global → overlays appliqués à tout le master.
     const globalOverlays = [];
     if (branding.ticker.enabled && branding.ticker.texte.trim()) {
-      globalOverlays.push({ templateId: 'ticker', fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte, speed: branding.ticker.speed || 3 } });
+      globalOverlays.push({ 
+        templateId: 'ticker', 
+        posX: branding.ticker.posX, posY: branding.ticker.posY, scale: branding.ticker.scale,
+        fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte, speed: branding.ticker.speed || 3 } 
+      });
     }
     if (branding.live.enabled) {
-      globalOverlays.push({ templateId: 'live_badge', fields: { label: branding.live.label } });
+      globalOverlays.push({ 
+        templateId: 'live_badge', 
+        posX: branding.live.posX, posY: branding.live.posY, scale: branding.live.scale,
+        fields: { label: branding.live.label } 
+      });
     }
+    globalOverlays.push(...(branding.overlays || []));
     const music = branding.music.enabled && branding.music.filename
       ? { filename: branding.music.filename, volume: branding.music.volume, duck: branding.music.duck }
       : undefined;
@@ -455,6 +464,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           globalOverlays,
           logo: branding.logo,
           logoPosition: branding.logoPosition,
+          logoPosX: branding.logoPosX,
+          logoPosY: branding.logoPosY,
+          logoScale: branding.logoScale,
           music,
           voiceover,
           imageOverlays,
@@ -857,9 +869,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 setTrimTarget(file);
                 setSelectedBin('studio');
               }}
-              className="mt-1 w-full text-xs py-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-transparent transition-colors shadow-sm flex items-center justify-center gap-1"
+              className="mt-2 w-full text-sm font-medium py-2 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-transparent transition-colors shadow-sm flex items-center justify-center gap-2"
             >
-              ✂️ Trim & Ajouter
+              ✂️ Ajouter à la Timeline
             </button>
           )}
         </div>
@@ -916,15 +928,35 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   return (
     <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-6 md:h-screen min-h-screen flex flex-col">
-      <div className="flex flex-col md:flex-row flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
+      <div className="flex flex-col flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
         
-        {/* Sidebar Bins (Mobile Collapsible) */}
-        <aside id="tour-editing-sidebar" className={`w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 ${isMobileSidebarOpen ? 'block' : 'hidden md:flex'}`}>
-          <div className="p-3 md:p-4 border-b border-[var(--border)] bg-[var(--paper)] hidden md:block">
-            <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-2 inline-block">{t.nav.editing}</div>
-            <h2 className="text-xl font-bold text-[color:var(--ink)]">{t.dashboard.title}</h2>
-          </div>
+        {/* Top Tabs (Tableau de bord) */}
+        <div className="flex bg-[var(--paper)] border-b border-[var(--border)] shrink-0 overflow-x-auto">
+          <button 
+            onClick={() => setSelectedBin(countriesWithUploads[0] || null)} 
+            className={`flex items-center gap-2 px-6 py-4 font-bold text-sm uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+          >
+            <Folder size={18} /> Chutiers (Rushs)
+          </button>
+          <button 
+            onClick={() => setSelectedBin('studio')} 
+            className={`flex items-center gap-2 px-6 py-4 font-bold text-sm uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${selectedBin === 'studio' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+          >
+            <Video size={18} /> Studio de Montage
+          </button>
+          <button 
+            onClick={() => setSelectedBin('delivery')} 
+            className={`flex items-center gap-2 px-6 py-4 font-bold text-sm uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${selectedBin === 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+          >
+            <UploadCloud size={18} /> Livraison JT
+          </button>
+        </div>
+
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0">
           
+        {/* Sidebar Bins (Mobile Collapsible) - Seulement visible pour les chutiers */}
+        {selectedBin !== 'studio' && selectedBin !== 'delivery' && (
+        <aside id="tour-editing-sidebar" className={`w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 ${isMobileSidebarOpen ? 'block' : 'hidden md:flex'}`}>
           <div className="p-2 md:p-4 md:flex-1 w-full overflow-hidden">
             <div className="flex items-center justify-between px-2 mb-3 md:mb-0">
               <h3 className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Chutiers (Pays)</h3>
@@ -964,40 +996,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 })}
               </div>
             )}
-            
-            <div className="mt-6 px-2">
-              <h3 className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider mb-2">Opérations</h3>
-              
-              <button
-                onClick={() => setSelectedBin('studio')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all border mb-2 ${
-                  selectedBin === 'studio'
-                    ? 'bg-[var(--accent)] text-white font-semibold border-transparent shadow-md'
-                    : 'bg-[var(--paper)] border-[var(--border)] text-[color:var(--muted)] hover:bg-[var(--paper-2)] hover:text-[color:var(--ink)]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Video size={16} className={selectedBin === 'studio' ? 'opacity-70' : ''} />
-                  <span className="text-sm">Studio de Montage</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setSelectedBin('delivery')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all border ${
-                  selectedBin === 'delivery'
-                    ? 'bg-[var(--accent)] text-white font-semibold border-transparent shadow-md'
-                    : 'bg-[var(--paper)] border-[var(--border)] text-[color:var(--muted)] hover:bg-[var(--paper-2)] hover:text-[color:var(--ink)]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <UploadCloud size={16} className={selectedBin === 'delivery' ? 'opacity-70' : ''} />
-                  <span className="text-sm">Livraison JT</span>
-                </div>
-              </button>
-            </div>
           </div>
         </aside>
+        )}
 
         {/* Main Content Area */}
         <main id="tour-editing-grid" className={`flex-1 flex flex-col min-w-0 bg-[var(--paper)] ${selectedBin !== 'studio' ? 'overflow-y-auto' : ''}`}>
@@ -1598,6 +1599,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         onDelete={() => openDeleteDialog(selectedBin, actionSheetFile?.id)}
         onViewScript={(f) => setViewingScript(f)}
       />
+    </div>
     </div>
   );
 }

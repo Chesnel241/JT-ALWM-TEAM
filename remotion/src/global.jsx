@@ -14,8 +14,11 @@ export function Ticker({ ticker }) {
   const PX_PER_SEC = [60, 110, 170, 240, 320][speedLevel - 1];
   const speed = PX_PER_SEC / 30;
   const x = -((frame * speed) % 2000);
+  const scale = (ticker.scale ?? 100) / 100;
+  const px = ticker.posX || 0;
+  const py = ticker.posY || 0;
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, background: COL.ticker, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, background: COL.ticker, display: 'flex', alignItems: 'center', overflow: 'hidden', transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'bottom left' }}>
       {ticker.categorie && (
         <span style={{ background: COL.red, color: COL.white, fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 18px', flexShrink: 0, fontFamily: ff(null, 'Inter, sans-serif'), fontSize: 30 }}>{ticker.categorie}</span>
       )}
@@ -35,8 +38,11 @@ export function LiveBadge({ live }) {
   const frame = useCurrentFrame();
   if (!live || !live.enabled) return null;
   const pulse = interpolate(Math.sin(frame / 6), [-1, 1], [0.5, 1]);
+  const scale = (live.scale ?? 100) / 100;
+  const px = live.posX || 0;
+  const py = live.posY || 0;
   return (
-    <div style={{ position: 'absolute', right: 30, top: 24, background: COL.red, color: COL.white, fontWeight: 800, fontSize: 32, padding: '6px 18px', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter, sans-serif', opacity: pulse }}>
+    <div style={{ position: 'absolute', right: 30, top: 24, background: COL.red, color: COL.white, fontWeight: 800, fontSize: 32, padding: '6px 18px', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter, sans-serif', opacity: pulse, transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'top right' }}>
       <span style={{ width: 14, height: 14, background: COL.white, borderRadius: '50%' }} />
       {(live.label || 'LIVE').toUpperCase()}
     </div>
@@ -52,11 +58,12 @@ const LOGO_POS = {
 };
 
 // Logo chaîne incrusté ; surélevé si ticker actif et position basse.
-export function Logo({ logo, logoPosition, tickerOn }) {
+export function Logo({ logo, logoPosition, tickerOn, logoPosX = 0, logoPosY = 0, logoScale = 100 }) {
   if (!logo) return null;
   const pos = { ...(LOGO_POS[logoPosition] || LOGO_POS.br) };
   if (tickerOn && (logoPosition === 'bl' || logoPosition === 'br' || !logoPosition)) pos.bottom = 120;
-  return <Img src={staticFile('logo-lwm.png')} style={{ position: 'absolute', height: 130, opacity: 0.9, ...pos }} />;
+  const scale = logoScale / 100;
+  return <Img src={staticFile('logo-lwm.png')} style={{ position: 'absolute', height: 130, opacity: 0.9, ...pos, transform: `translate(${logoPosX}px, ${logoPosY}px) scale(${scale})`, transformOrigin: 'center center' }} />;
 }
 
 // Sous-titres : style position/taille/police, affichés selon le timing courant.
