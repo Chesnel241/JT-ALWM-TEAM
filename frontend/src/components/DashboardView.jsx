@@ -1481,7 +1481,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
               }
               // If it's a new addition (from the top section), give it a unique instanceId
-              const newClip = { ...trimmedClip, instanceId: trimmedClip.instanceId || crypto.randomUUID() };
+              const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+              const newClip = { ...trimmedClip, instanceId: trimmedClip.instanceId || generateId() };
               return [...prev, newClip];
             });
             addToast('Clip ajouté à la timeline', 'success', 2000);
