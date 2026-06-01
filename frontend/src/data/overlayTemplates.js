@@ -146,28 +146,37 @@ export const FONT_FAMILIES = [
   'IBM Plex Sans', 'JetBrains Mono',
 ];
 
-// Animations d'entrée du texte (doit matcher renderText() côté backend).
-export const TEXT_ANIMATIONS = [
-  { id: 'fade', label: 'Fondu' },
-  { id: 'scale', label: 'Zoom' },
-  { id: 'pop', label: 'Pop (rebond)' },
-  { id: 'bounce', label: 'Bounce' },
-  { id: 'blurin', label: 'Flou → net' },
-  { id: 'rotate', label: 'Rotation' },
-  { id: 'flip3d', label: '3D Flip Y' },
-  { id: 'rotatex', label: '3D Bascule X' },
-  { id: 'rotatey', label: '3D Bascule Y' },
-  { id: 'cascade', label: 'Cascade (caractère)' },
-  { id: 'charpop', label: 'Pop par lettre' },
-  { id: 'wave', label: 'Vague (caractère)' },
-  { id: 'sweep', label: 'Balayage couleur' },
+// Animations d'entrée (In)
+export const TEXT_ANIMATIONS_IN = [
+  { id: 'fade', label: 'Fondu classique' },
+  { id: 'scale', label: 'Zoom doux' },
+  { id: 'pop', label: 'Pop dynamique' },
+  { id: 'bounce', label: 'Rebond' },
+  { id: 'blurin', label: 'Apparition floue' },
+  { id: 'mask_reveal', label: 'Révélation par masque (Pro)' },
   { id: 'typewriter', label: 'Machine à écrire' },
-  // Animations Remotion-only (rendu master). Le pipeline libass legacy
-  // retombe sur 'fade' pour ces entrées (cf. renderText côté backend).
-  { id: 'mask_reveal', label: 'Révélation masque' },
-  { id: 'outline_morph', label: 'Contour → rempli' },
-  { id: 'letterspread', label: 'Écartement lettres' },
-  { id: 'weight_pulse', label: 'Pulsation poids' },
-  { id: 'kerning_shake', label: 'Tremblement (impact)' },
-  { id: 'glitch_in', label: 'Glitch d\'entrée' },
+  { id: 'glitch_in', label: 'Glitch numérique' },
+  { id: 'neon_on', label: 'Allumage Néon' },
+  { id: 'cascade', label: 'Cascade de lettres' },
 ];
+
+// Animations continues (Loop)
+export const TEXT_ANIMATIONS_LOOP = [
+  { id: 'none', label: 'Fixe (Aucune)' },
+  { id: 'float', label: 'Flottement léger' },
+  { id: 'pulse', label: 'Pulsation lente' },
+  { id: 'neon_flicker', label: 'Grésillement Néon' },
+  { id: 'kerning_shake', label: 'Vibration tendue' },
+];
+
+// Animations de sortie (Out)
+export const TEXT_ANIMATIONS_OUT = [
+  { id: 'fade', label: 'Fondu classique' },
+  { id: 'scale_down', label: 'Zoom arrière' },
+  { id: 'slide_out', label: 'Glissement extérieur' },
+  { id: 'blurout', label: 'Disparition floue' },
+  { id: 'glitch_out', label: 'Coupure Glitch' },
+];
+
+// Rétrocompatibilité
+export const TEXT_ANIMATIONS = TEXT_ANIMATIONS_IN;

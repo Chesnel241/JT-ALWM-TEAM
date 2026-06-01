@@ -44,10 +44,12 @@ function ClipLayer({ clip }) {
       <Stage>
         {overlays.map((o, i) => {
           const start = secToFrames(o.startTime || 0, fps);
-          const dur = o.duration != null ? secToFrames(o.duration, fps) : 36000;
+          const clipDur = secToFrames(clip.durationSec || 5, fps);
+          const dur = o.duration != null ? secToFrames(o.duration, fps) : clipDur - start;
+          const finalDur = Math.max(1, Math.min(dur, clipDur - start));
           return (
-            <Sequence key={o.id || i} from={start} durationInFrames={dur} layout="none">
-              <Overlay overlay={o} />
+            <Sequence key={o.id || i} from={start} durationInFrames={finalDur} layout="none">
+              <Overlay overlay={o} durationInFrames={finalDur} />
             </Sequence>
           );
         })}

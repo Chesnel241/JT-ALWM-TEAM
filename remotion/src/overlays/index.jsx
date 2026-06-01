@@ -4,23 +4,25 @@ import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 
 // Texte avec animation d'entrée (per-char ou bloc) + contour/halo + police.
-function Tx({ children, overlay, fontFamily, baseStyle }) {
+function Tx({ children, overlay, durationInFrames, fontFamily, baseStyle }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const anim = overlay.animation;
+  const animIn = overlay.animation || 'fade';
+  const animOut = overlay.animationOut || 'fade';
   const fx = fxStyle(overlay.outline, overlay.glow);
-  const fontStyle = { fontFamily: ff(overlay.font, fontFamily), ...baseStyle, ...fx };
+  const wrapperStyle = { fontFamily: ff(overlay.font, fontFamily), ...baseStyle, ...fx, ...entranceStyle(overlay, frame, fps, durationInFrames) };
   const text = children == null ? '' : String(children);
-  if (PER_CHAR.has(anim)) {
+  
+  if (PER_CHAR.has(animIn) || PER_CHAR.has(animOut)) {
     return (
-      <span style={fontStyle}>
+      <span style={wrapperStyle}>
         {[...text].map((c, i) => (
-          <span key={i} style={{ ...charStyle(anim, frame, fps, i), whiteSpace: 'pre' }}>{c}</span>
+          <span key={i} style={{ ...charStyle(overlay, frame, fps, durationInFrames, i, text.length), whiteSpace: 'pre' }}>{c}</span>
         ))}
       </span>
     );
   }
-  return <span style={{ ...fontStyle, ...entranceStyle(anim, frame, fps) }}>{text}</span>;
+  return <span style={wrapperStyle}>{text}</span>;
 }
 
 // Position d'un overlay : ancrage défaut + delta drag (overlay.position).
@@ -41,14 +43,14 @@ function Box({ overlay, style, children }) {
   );
 }
 
-function LowerThird({ overlay }) {
+function LowerThird({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
     <Box overlay={overlay} style={{ left: 0, top: 950 }}>
       <div style={{ position: 'relative', background: C.bg(COL.navy), opacity: 0.94, borderLeft: `12px solid ${C.accent(COL.gold)}`, width: 1060, height: 130, padding: '12px 0 0 42px', boxSizing: 'border-box' }}>
         <div style={{ fontWeight: 800, fontSize: 52, color: C.text(COL.white) }}>
-          <Tx overlay={overlay} fontFamily="Inter">{f.name}</Tx>
+          <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.name}</Tx>
         </div>
         <div style={{ fontSize: 30, color: C.accent(COL.gold), marginTop: 6 }}>{f.title}</div>
       </div>
@@ -56,27 +58,27 @@ function LowerThird({ overlay }) {
   );
 }
 
-function LowerThirdPro({ overlay }) {
+function LowerThirdPro({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
     <Box overlay={overlay} style={{ left: 72, top: 892 }}>
       <div style={{ background: C.bg(COL.white), color: C.text(COL.ink), fontFamily: ff(overlay.font, "'Archivo Black', sans-serif"), fontWeight: 900, fontSize: 44, padding: '10px 18px', borderLeft: `14px solid ${C.accent(COL.blue)}` }}>
-        <Tx overlay={overlay} fontFamily="'Archivo Black', sans-serif">{f.titre}</Tx>
+        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="'Archivo Black', sans-serif">{f.titre}</Tx>
       </div>
       <div style={{ background: C.accent(COL.blue), color: COL.white, fontWeight: 700, fontSize: 30, padding: '8px 18px', display: 'inline-block', marginTop: 6 }}>{f.sous_titre}</div>
     </Box>
   );
 }
 
-function GrandTitre({ overlay }) {
+function GrandTitre({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
     <Box overlay={overlay} style={{ left: 0, top: 448, width: 1920, textAlign: 'center' }}>
       <div style={{ background: C.bg('rgba(0,0,0,.6)'), padding: '20px 0', width: 1920 }}>
         <div style={{ fontSize: 100, color: C.text(COL.white) }}>
-          <Tx overlay={overlay} fontFamily="Anton">{f.title}</Tx>
+          <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Anton">{f.title}</Tx>
         </div>
         <div style={{ fontSize: 46, color: C.accent(COL.gold), fontFamily: "'Bebas Neue', sans-serif", marginTop: 4 }}>{f.date}</div>
       </div>
@@ -84,44 +86,44 @@ function GrandTitre({ overlay }) {
   );
 }
 
-function TitreKaraoke({ overlay }) {
+function TitreKaraoke({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const o = { ...overlay, animation: overlay.animation || 'cascade' };
   return (
     <Box overlay={overlay} style={{ left: 0, top: 455, width: 1920, textAlign: 'center' }}>
       <div style={{ borderTop: `6px solid ${C.accent(COL.gold)}`, background: C.bg('rgba(0,0,0,.55)'), padding: '28px 0', width: 1920, fontSize: 92, color: C.text(COL.white) }}>
-        <Tx overlay={o} fontFamily="Anton">{f.title}</Tx>
+        <Tx overlay={o} durationInFrames={durationInFrames} fontFamily="Anton">{f.title}</Tx>
       </div>
     </Box>
   );
 }
 
-function TitreReportage({ overlay }) {
+function TitreReportage({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
     <Box overlay={overlay} style={{ left: 0, top: 1000 }}>
       <div style={{ position: 'relative', background: C.bg(COL.dark), opacity: 0.92, borderLeft: `12px solid ${C.accent(COL.gold)}`, width: 1920, height: 80, padding: '18px 0 0 34px', boxSizing: 'border-box', fontWeight: 800, fontSize: 40, color: C.text(COL.white) }}>
-        <Tx overlay={overlay} fontFamily="Inter">{f.sujet}</Tx>
+        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.sujet}</Tx>
       </div>
     </Box>
   );
 }
 
-function SousTitre({ overlay }) {
+function SousTitre({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
     <Box overlay={overlay} style={{ left: 200, top: 972, width: 1520, textAlign: 'center' }}>
       <span style={{ background: C.bg('rgba(0,0,0,.7)'), color: C.text(COL.white), fontSize: 40, padding: '6px 16px' }}>
-        <Tx overlay={overlay} fontFamily="Inter">{f.texte}</Tx>
+        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.texte}</Tx>
       </span>
     </Box>
   );
 }
 
-function BandeauPays({ overlay }) {
+function BandeauPays({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
@@ -131,20 +133,20 @@ function BandeauPays({ overlay }) {
   );
 }
 
-function FlashInfo({ overlay }) {
+function FlashInfo({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, display: 'flex', height: 72 }}>
       <div style={{ background: C.accent(COL.black), color: C.text(COL.white), fontFamily: 'Anton, sans-serif', fontSize: 40, width: 230, textAlign: 'center', lineHeight: '72px' }}>FLASH</div>
       <div style={{ background: C.bg(COL.red), color: C.text(COL.white), fontWeight: 800, fontSize: 38, flex: 1, lineHeight: '72px', paddingLeft: 30 }}>
-        <Tx overlay={overlay} fontFamily="Inter">{f.texte}</Tx>
+        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.texte}</Tx>
       </div>
     </Box>
   );
 }
 
-function BreakingNews({ overlay }) {
+function BreakingNews({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
@@ -153,13 +155,13 @@ function BreakingNews({ overlay }) {
         <span style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>{f.titre || 'DERNIÈRE MINUTE'}</span>
       </div>
       <div style={{ marginTop: 12, background: C.accent(COL.white), color: C.text(COL.ink), fontWeight: 800, fontSize: 40, padding: '8px 18px', display: 'inline-block' }}>
-        <Tx overlay={overlay} fontFamily="Inter">{f.sujet}</Tx>
+        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.sujet}</Tx>
       </div>
     </Box>
   );
 }
 
-function ScoreResultat({ overlay }) {
+function ScoreResultat({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
@@ -171,7 +173,7 @@ function ScoreResultat({ overlay }) {
   );
 }
 
-function HorlogeDate({ overlay }) {
+function HorlogeDate({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
@@ -196,7 +198,7 @@ const REGISTRY = {
   horloge_date: HorlogeDate,
 };
 
-export function Overlay({ overlay }) {
+export function Overlay({ overlay, durationInFrames }) {
   const Comp = REGISTRY[overlay.templateId];
-  return Comp ? <Comp overlay={overlay} /> : null;
+  return Comp ? <Comp overlay={overlay} durationInFrames={durationInFrames} /> : null;
 }

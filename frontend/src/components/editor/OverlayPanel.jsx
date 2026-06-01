@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Plus, Trash2, Layers, Clock } from 'lucide-react';
-import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, TEXT_ANIMATIONS, FONT_FAMILIES } from '../../data/overlayTemplates.js';
+import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, TEXT_ANIMATIONS_IN, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -46,21 +46,48 @@ function OverlayEditor({ overlay, onChange, onRemove }) {
         </div>
       ))}
 
-      {/* Animation + Police */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Animations : In / Loop / Out */}
+      <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">Animation d'entrée</label>
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Entrée</label>
           <select
             value={overlay.animation || 'fade'}
             onChange={(e) => onChange({ ...overlay, animation: e.target.value })}
-            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
           >
-            {TEXT_ANIMATIONS.map((a) => (
+            {TEXT_ANIMATIONS_IN.map((a) => (
               <option key={a.id} value={a.id}>{a.label}</option>
             ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Continue</label>
+          <select
+            value={overlay.animationLoop || 'none'}
+            onChange={(e) => onChange({ ...overlay, animationLoop: e.target.value })}
+            className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
+          >
+            {TEXT_ANIMATIONS_LOOP.map((a) => (
+              <option key={a.id} value={a.id}>{a.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Sortie</label>
+          <select
+            value={overlay.animationOut || 'fade'}
+            onChange={(e) => onChange({ ...overlay, animationOut: e.target.value })}
+            className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
+          >
+            {TEXT_ANIMATIONS_OUT.map((a) => (
+              <option key={a.id} value={a.id}>{a.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Police */}
+      <div className="flex flex-col gap-1 mt-1">
           <label className="text-xs font-medium text-[color:var(--muted)]">Police</label>
           <select
             value={overlay.font || ''}
