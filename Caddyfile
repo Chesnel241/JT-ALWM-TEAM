@@ -1,4 +1,4 @@
-:80 {
+jt-alwm-team.duckdns.org {
 	# Rediriger toutes les requêtes API vers le Backend Node.js
 	handle /api/* {
 		reverse_proxy backend:3010
