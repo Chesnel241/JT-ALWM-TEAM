@@ -146,6 +146,28 @@ function OverlayEditor({ overlay, onChange, onRemove }) {
         </div>
       </div>
 
+      {/* Transform controls */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Position X : {overlay.posX ?? 0}</label>
+          <input type="range" min="-1920" max="1920" step="10" value={overlay.posX ?? 0}
+            onChange={(e) => onChange({ ...overlay, posX: parseInt(e.target.value, 10) || 0 })}
+            className="w-full accent-[var(--accent)]" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Position Y : {overlay.posY ?? 0}</label>
+          <input type="range" min="-1080" max="1080" step="10" value={overlay.posY ?? 0}
+            onChange={(e) => onChange({ ...overlay, posY: parseInt(e.target.value, 10) || 0 })}
+            className="w-full accent-[var(--accent)]" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Taille : {overlay.scale ?? 100}%</label>
+          <input type="range" min="10" max="300" step="5" value={overlay.scale ?? 100}
+            onChange={(e) => onChange({ ...overlay, scale: parseInt(e.target.value, 10) || 100 })}
+            className="w-full accent-[var(--accent)]" />
+        </div>
+      </div>
+
       {/* Timing controls */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">

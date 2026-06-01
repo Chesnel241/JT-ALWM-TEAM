@@ -35,11 +35,23 @@ function shift(overlay) {
 
 const px = (n) => `${n}px`;
 
-// Wrapper positionné en coords 1920×1080, applique le delta de drag.
+// Wrapper positionné en coords 1920×1080, applique le delta de drag + offset perso.
 function Box({ overlay, style, children }) {
   const { dx, dy } = shift(overlay);
+  const posX = overlay.posX || 0;
+  const posY = overlay.posY || 0;
+  const scale = (overlay.scale ?? 100) / 100;
+  
+  // We merge transforms. dx/dy come from legacy dragging, posX/posY come from sliders.
+  const customTransform = `translate(${px(dx + posX)}, ${px(dy + posY)}) scale(${scale})`;
+  
   return (
-    <div style={{ position: 'absolute', transform: `translate(${px(dx)}, ${px(dy)})`, ...style }}>{children}</div>
+    <div style={{ 
+      position: 'absolute', 
+      ...style,
+      transform: style.transform ? `${style.transform} ${customTransform}` : customTransform,
+      transformOrigin: 'top left'
+    }}>{children}</div>
   );
 }
 
