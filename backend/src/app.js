@@ -144,6 +144,8 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
         const url = await getR2PresignedUrl(`uploads/${filename}`);
         return res.redirect(302, url);
       } catch (err) {
+        const logger = (await import('./logger/index.js')).default;
+        logger.error(`Error in R2 get/proxy for ${filename}:`, err);
         // Ignorer l'erreur et laisser express.static chercher localement
       }
     }
