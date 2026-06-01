@@ -101,6 +101,22 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           </select>
         </div>
 
+      {/* Typographie étendue */}
+      <div className="grid grid-cols-2 gap-3 mt-2 mb-2">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Taille Texte : {overlay.fontSize ?? 100}%</label>
+          <input type="range" min="50" max="250" step="5" value={overlay.fontSize ?? 100}
+            onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
+            className="w-full accent-[var(--accent)]" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Interligne : {overlay.lineHeight ?? 120}%</label>
+          <input type="range" min="50" max="250" step="5" value={overlay.lineHeight ?? 120}
+            onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) || 120 })}
+            className="w-full accent-[var(--accent)]" />
+        </div>
+      </div>
+
       {/* Couleurs (3 slots : texte / fond / accent) */}
       <div className="grid grid-cols-3 gap-3">
         {[

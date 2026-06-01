@@ -133,6 +133,16 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                     <input type="range" min="10" max="300" step="5" value={v.ticker.scale ?? 100} onChange={(e) => setTicker({ scale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille Texte (%)</label>
+                    <input type="range" min="50" max="250" step="5" value={v.ticker.fontSize ?? 100} onChange={(e) => setTicker({ fontSize: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Interligne (%)</label>
+                    <input type="range" min="50" max="250" step="5" value={v.ticker.lineHeight ?? 120} onChange={(e) => setTicker({ lineHeight: parseInt(e.target.value, 10) || 120 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                </div>
               </>
             )}
           </section>
@@ -159,6 +169,16 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille (%)</label>
                     <input type="range" min="10" max="300" step="5" value={v.live.scale ?? 100} onChange={(e) => setLive({ scale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille Texte (%)</label>
+                    <input type="range" min="50" max="250" step="5" value={v.live.fontSize ?? 100} onChange={(e) => setLive({ fontSize: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Interligne (%)</label>
+                    <input type="range" min="50" max="250" step="5" value={v.live.lineHeight ?? 120} onChange={(e) => setLive({ lineHeight: parseInt(e.target.value, 10) || 120 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
               </>

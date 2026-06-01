@@ -82,10 +82,10 @@ function NomInterview({ overlay, durationInFrames }) {
   return (
     <Box overlay={overlay} style={{ left: 100, top: 880, opacity: containerOpacity, transform: `translateX(${slideX}px)` }}>
       <div style={{ background: C.bg(COL.navy), borderLeft: `12px solid ${C.accent(COL.gold)}`, padding: '16px 42px', minWidth: 400 }}>
-        <div style={{ fontWeight: 800, fontSize: 52, color: C.text(COL.white), opacity: nameOpacity, fontFamily: 'Inter' }}>
+        <div style={{ fontWeight: 800, fontSize: `${(overlay.fontSize || 100) / 100 * 52}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.text(COL.white), opacity: nameOpacity, fontFamily: 'Inter' }}>
           {f.name || f.nom || "NOM INTERVIEW"}
         </div>
-        <div style={{ fontSize: 30, color: C.accent(COL.gold), marginTop: 8, opacity: funcOpacity, fontFamily: 'Inter', fontWeight: 600 }}>
+        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 30}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.accent(COL.gold), marginTop: 8, opacity: funcOpacity, fontFamily: 'Inter', fontWeight: 600 }}>
           {f.title || f.fonction || "FONCTION"}
         </div>
       </div>
@@ -98,10 +98,10 @@ function LowerThirdPro({ overlay, durationInFrames }) {
   const C = pickColors(overlay);
   return (
     <Box overlay={overlay} style={{ left: 72, top: 892 }}>
-      <div style={{ background: C.bg(COL.white), color: C.text(COL.ink), fontFamily: ff(overlay.font, "'Archivo Black', sans-serif"), fontWeight: 900, fontSize: 44, padding: '10px 18px', borderLeft: `14px solid ${C.accent(COL.blue)}` }}>
+      <div style={{ background: C.bg(COL.white), color: C.text(COL.ink), fontFamily: ff(overlay.font, "'Archivo Black', sans-serif"), fontWeight: 900, fontSize: `${(overlay.fontSize || 100) / 100 * 44}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, padding: '10px 18px', borderLeft: `14px solid ${C.accent(COL.blue)}` }}>
         <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="'Archivo Black', sans-serif">{f.titre}</Tx>
       </div>
-      <div style={{ background: C.accent(COL.blue), color: COL.white, fontWeight: 700, fontSize: 30, padding: '8px 18px', display: 'inline-block', marginTop: 6 }}>{f.sous_titre}</div>
+      <div style={{ background: C.accent(COL.blue), color: COL.white, fontWeight: 700, fontSize: `${(overlay.fontSize || 100) / 100 * 30}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, padding: '8px 18px', display: 'inline-block', marginTop: 6 }}>{f.sous_titre}</div>
     </Box>
   );
 }
@@ -158,8 +158,8 @@ function GrandTitre({ overlay, durationInFrames }) {
         zIndex: 2,
         textShadow: '0 10px 30px rgba(0,0,0,0.5)'
       }}>
-        <div style={{ fontSize: 160, letterSpacing: '0.04em' }}>{f.titre || f.title || 'LE JOURNAL'}</div>
-        <div style={{ fontSize: 60, color: C.accent(COL.gold), fontFamily: "'Bebas Neue', sans-serif", marginTop: 15 }}>{f.sous_titre || f.subtitle || f.date || 'EDITION SPECIALE'}</div>
+        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 160}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, letterSpacing: '0.04em' }}>{f.titre || f.title || 'LE JOURNAL'}</div>
+        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 60}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.accent(COL.gold), fontFamily: "'Bebas Neue', sans-serif", marginTop: 15 }}>{f.sous_titre || f.subtitle || f.date || 'EDITION SPECIALE'}</div>
       </div>
     </Box>
   );
@@ -211,7 +211,7 @@ function TitreReportage({ overlay, durationInFrames }) {
   const whiteClipLeft = interpolate(whiteProgress, [0, 1], [100, 0]);
 
   return (
-    <Box overlay={overlay} style={{ left: 100, top: 850, width: 1400, height: 140 }}>
+    <Box overlay={overlay} style={{ left: 100, top: 850, width: 1400, height: 'auto', minHeight: 140 }}>
        {/* Blue bar */}
        <div style={{
          position: 'absolute', top: 0, left: 0, bottom: 0,
@@ -221,27 +221,31 @@ function TitreReportage({ overlay, durationInFrames }) {
        }} />
        {/* White background */}
        <div style={{
-         position: 'absolute', top: 0, left: 0, bottom: 0,
+         position: 'relative',
          width: '100%',
          background: C.bg(COL.white),
          clipPath: `inset(0 ${clipRight}% 0 ${isOut ? 0 : whiteClipLeft}%)`,
-         padding: '24px 0 0 40px', boxSizing: 'border-box'
+         padding: '24px 40px', boxSizing: 'border-box',
+         display: 'flex', flexDirection: 'column', justifyContent: 'center'
        }}>
           <div style={{
-            position: 'absolute',
             transform: `translateX(${isOut ? 0 : titleSlide}px)`,
             filter: `blur(${isOut ? 0 : titleBlur}px)`,
             opacity: isOut ? 1 : titleOpacity,
-            fontWeight: 900, fontSize: 48, color: C.text(COL.ink),
-            fontFamily: 'Inter'
+            fontWeight: 900, fontSize: `${(overlay.fontSize || 100) / 100 * 48}px`, 
+            lineHeight: `${(overlay.lineHeight || 110) / 100}`,
+            color: C.text(COL.ink),
+            fontFamily: 'Inter',
+            marginBottom: 8
           }}>
              {f.titre || f.sujet || f.title || "TITRE REPORTAGE"}
           </div>
           <div style={{
-            position: 'absolute', top: 84,
             transform: `translateX(${isOut ? 0 : subSlide}px)`,
             opacity: isOut ? 1 : subOpacity,
-            fontSize: 28, color: C.accent(COL.blue),
+            fontSize: `${(overlay.fontSize || 100) / 100 * 28}px`,
+            lineHeight: `${(overlay.lineHeight || 110) / 100}`,
+            color: C.accent(COL.blue),
             fontFamily: 'Inter', fontWeight: 600
           }}>
              {f.subtitle || f.sous_titre || "SOUS-TITRE"}
@@ -351,7 +355,7 @@ function FlashInfo({ overlay, durationInFrames }) {
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, display: 'flex', height: 72 }}>
       <div style={{ background: C.accent(COL.black), color: C.text(COL.white), fontFamily: 'Anton, sans-serif', fontSize: 40, width: 230, textAlign: 'center', lineHeight: '72px' }}>FLASH</div>
-      <div style={{ background: C.bg(COL.red), color: C.text(COL.white), fontWeight: 800, fontSize: 38, flex: 1, lineHeight: '72px', paddingLeft: 30 }}>
+      <div style={{ background: C.bg(COL.red), color: C.text(COL.white), fontWeight: 800, fontSize: `${(overlay.fontSize || 100) / 100 * 38}px`, lineHeight: `${(overlay.lineHeight || 120) / 100 * 72}px`, flex: 1, paddingLeft: 30 }}>
         <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.texte}</Tx>
       </div>
     </Box>
@@ -363,10 +367,10 @@ function BreakingNews({ overlay, durationInFrames }) {
   const C = pickColors(overlay);
   return (
     <Box overlay={overlay} style={{ left: 120, top: 150 }}>
-      <div style={{ background: C.bg(COL.red), color: COL.white, fontFamily: 'Anton, sans-serif', fontSize: 66, padding: '6px 40px', transform: 'skewX(-12deg)', display: 'inline-block' }}>
+      <div style={{ background: C.bg(COL.red), color: COL.white, fontFamily: 'Anton, sans-serif', fontSize: `${(overlay.fontSize || 100) / 100 * 66}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, padding: '6px 40px', transform: 'skewX(-12deg)', display: 'inline-block' }}>
         <span style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>{f.titre || 'DERNIÈRE MINUTE'}</span>
       </div>
-      <div style={{ marginTop: 12, background: C.accent(COL.white), color: C.text(COL.ink), fontWeight: 800, fontSize: 40, padding: '8px 18px', display: 'inline-block' }}>
+      <div style={{ marginTop: 12, background: C.accent(COL.white), color: C.text(COL.ink), fontWeight: 800, fontSize: `${(overlay.fontSize || 100) / 100 * 40}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, padding: '8px 18px', display: 'inline-block' }}>
         <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.texte || f.sujet}</Tx>
       </div>
     </Box>

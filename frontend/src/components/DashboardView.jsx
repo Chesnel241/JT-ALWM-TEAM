@@ -409,6 +409,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       globalOverlays.push({ 
         templateId: 'ticker', 
         posX: branding.ticker.posX, posY: branding.ticker.posY, scale: branding.ticker.scale,
+        fontSize: branding.ticker.fontSize, lineHeight: branding.ticker.lineHeight,
         fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte, speed: branding.ticker.speed || 3 } 
       });
     }
@@ -416,6 +417,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       globalOverlays.push({ 
         templateId: 'live_badge', 
         posX: branding.live.posX, posY: branding.live.posY, scale: branding.live.scale,
+        fontSize: branding.live.fontSize, lineHeight: branding.live.lineHeight,
         fields: { label: branding.live.label } 
       });
     }
