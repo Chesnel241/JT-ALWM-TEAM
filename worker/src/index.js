@@ -80,7 +80,13 @@ app.post('/render', async (req, res) => {
   try {
     await ensureBrowser();
     const inputProps = HAS_R2 ? await resolveUrls(payload) : payload;
-    const composition = await selectComposition({ serveUrl: SERVE_URL, id: 'JTMaster', inputProps });
+    const sharedChromiumOptions = { gl: 'angle' };
+    const composition = await selectComposition({
+      serveUrl: SERVE_URL,
+      id: 'JTMaster',
+      inputProps,
+      chromiumOptions: sharedChromiumOptions,
+    });
     await renderMedia({
       composition,
       serveUrl: SERVE_URL,
@@ -88,10 +94,7 @@ app.post('/render', async (req, res) => {
       outputLocation: outPath,
       inputProps,
       concurrency: 1,
-      chromiumOptions: { 
-        gl: 'angle',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      },
+      chromiumOptions: sharedChromiumOptions,
       onProgress: ({ progress }) => postProgress(returnTo, jobId, progress * 100),
     });
 
@@ -101,8 +104,9 @@ app.post('/render', async (req, res) => {
       await uploadFile(outPath, r2Key, 'video/mp4');
       url = await presignRead(r2Key, 60 * 60 * 24);
     } else {
-      // Local fallback: move file to shared volume /app/uploads
-      const exportsDir = path.join('/app/uploads', 'exports');
+      // Local fallback: écrire dans /app/uploads/files/exports pour que
+      // express.static (qui sert depuis /app/uploads/files) puisse le trouver.
+      const exportsDir = path.join('/app/uploads/files', 'exports');
       fs.mkdirSync(exportsDir, { recursive: true });
       fs.copyFileSync(outPath, path.join(exportsDir, outName));
       url = `/uploads/exports/${outName}`;
