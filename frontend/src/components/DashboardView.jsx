@@ -713,7 +713,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // uploads). Sans ça, sélectionner "JT Prêt"/"MOT DU JT" était
   // immédiatement réinitialisé par l'effet ci-dessous → la fenêtre
   // d'upload s'ouvrait puis se refermait en quelques ms.
-  const SPECIAL_BINS = ['delivery', 'mj', 'tj'];
+  const SPECIAL_BINS = ['delivery', 'mj', 'tj', 'studio'];
 
   const binIsValid = (bin) =>
     bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
@@ -853,7 +853,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </div>
           {isVideo && (
             <button
-              onClick={() => setTrimTarget(file)}
+              onClick={() => {
+                setTrimTarget(file);
+                setSelectedBin('studio');
+              }}
               className="mt-1 w-full text-xs py-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-transparent transition-colors shadow-sm flex items-center justify-center gap-1"
             >
               ✂️ Trim & Ajouter
