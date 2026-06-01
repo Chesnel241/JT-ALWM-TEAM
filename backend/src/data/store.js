@@ -65,27 +65,94 @@ export async function initDb() {
 // Écriture atomique : tmp file + rename. Évite la corruption du JSON
 // si le process meurt en plein write. Suffisant en mono-instance ; pour
 // multi-instance il faudrait migrer vers une vraie DB.
-async function persistDbLocal() {
+// Écrit le store sur le disque local (write atomique via tmp + rename).
+// `snapshot` = JSON déjà sérialisé (réutilisé pour Redis, évite un 2e
+// stringify). Si absent, sérialise db courant.
+async function persistDbLocalRaw(snapshot) {
   try {
     await mkdir(dirname(DB_PATH), { recursive: true });
-    // Use a unique tmp path for each concurrent write to prevent ENOENT during rename
+    // tmp unique pour éviter ENOENT pendant rename si writes concurrents.
     const tmpPath = `${DB_PATH}.${process.pid}.${Date.now()}.${Math.floor(Math.random() * 10000)}.tmp`;
-    await writeFile(tmpPath, JSON.stringify(db, null, 2));
+    await writeFile(tmpPath, snapshot != null ? snapshot : JSON.stringify(db));
     await rename(tmpPath, DB_PATH);
   } catch (err) {
     logger.error('Failed to persist DB locally', { error: err.message });
   }
 }
 
+// Variante immédiate (chargement initial depuis Redis → sync disque).
+async function persistDbLocal() {
+  return persistDbLocalRaw(null);
+}
+
 function persistDb() {
-  persistDbLocal();
-  
-  if (redis) {
-    // Fire and forget: sync to Redis asynchronously so we don't block the API
-    redis.set(REDIS_KEY, JSON.stringify(db)).catch(err => {
-      logger.error('Failed to sync DB to Redis', { error: err.message });
-    });
+  schedulePersist();
+}
+
+// Écriture debouncée : chaque mutation marque le store "sale" et programme un
+// flush. On coalesce les rafales (30 users qui uploadent → des dizaines de
+// mutations/s) en une seule écriture disque + Redis. Le `maxWait` garantit
+// qu'on ne repousse pas indéfiniment si les mutations sont continues.
+let dirty = false;
+let debounceTimer = null;
+let firstDirtyAt = 0;
+let flushing = false;
+const PERSIST_DEBOUNCE_MS = Number(process.env.PERSIST_DEBOUNCE_MS) || 1500;
+const PERSIST_MAX_WAIT_MS = Number(process.env.PERSIST_MAX_WAIT_MS) || 5000;
+
+async function flushPersist() {
+  if (!dirty || flushing) return;
+  flushing = true;
+  dirty = false;
+  firstDirtyAt = 0;
+  if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+  // Snapshot pour que les mutations pendant l'await ré-arment proprement.
+  const snapshot = JSON.stringify(db);
+  try {
+    await persistDbLocalRaw(snapshot);
+    if (redis) {
+      await redis.set(REDIS_KEY, snapshot).catch((err) => {
+        logger.error('Failed to sync DB to Redis', { error: err.message });
+      });
+    }
+  } finally {
+    flushing = false;
+    // Une mutation est arrivée pendant le flush → reprogramme.
+    if (dirty) schedulePersist();
   }
+}
+
+function schedulePersist() {
+  const now = Date.now();
+  if (!dirty) { dirty = true; firstDirtyAt = now; }
+  const waited = now - firstDirtyAt;
+  // Si on a déjà attendu le max, flush tout de suite ; sinon (re)debounce.
+  const delay = waited >= PERSIST_MAX_WAIT_MS ? 0 : Math.min(PERSIST_DEBOUNCE_MS, PERSIST_MAX_WAIT_MS - waited);
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => { flushPersist(); }, delay);
+}
+
+// Flush synchrone best-effort à l'arrêt du process pour ne pas perdre les
+// dernières mutations (déploiement, redémarrage conteneur).
+async function flushOnExit(signal) {
+  try {
+    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+    if (dirty) { dirty = true; await flushPersist(); }
+  } catch { /* best effort */ }
+  if (signal) process.exit(0);
+}
+// Enregistre les handlers une seule fois par process (les tests réimportent
+// le module via vi.resetModules() → éviter l'accumulation de listeners).
+if (!globalThis.__jtStoreExitHooks) {
+  globalThis.__jtStoreExitHooks = true;
+  process.once('SIGTERM', () => flushOnExit('SIGTERM'));
+  process.once('SIGINT', () => flushOnExit('SIGINT'));
+  process.once('beforeExit', () => flushOnExit(null));
+}
+
+// Exposé pour les tests / shutdown explicite.
+export async function flushStore() {
+  await flushPersist();
 }
 
 // Clés réservées d'une entrée de semaine (`db[weekId][...]`) qui ne sont

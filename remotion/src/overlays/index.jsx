@@ -2,6 +2,7 @@ import React from 'react';
 import { useCurrentFrame, useVideoConfig, spring, interpolate, Img, staticFile } from 'remotion';
 import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
+import { WorldMap } from '../worldmap.jsx';
 
 // Texte avec animation d'entrée (per-char ou bloc) + contour/halo + police.
 function Tx({ children, overlay, durationInFrames, fontFamily, baseStyle }) {
@@ -486,18 +487,14 @@ function Publicite({ overlay, durationInFrames }) {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         position: 'relative', overflow: 'hidden'
       }}>
-        {/* CSS Pattern for world map / network */}
+        {/* Globe filaire animé (réseau mondial) */}
+        <WorldMap rotateSpeed={0.3} opacity={0.55} />
         <div style={{
-          position: 'absolute', width: '200%', height: '200%',
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 2px, transparent 2px)',
-          backgroundSize: '40px 40px',
-          opacity: 0.5,
-          transform: `rotate(${frame * 0.05}deg)`
-        }} />
-        <div style={{
+          position: 'relative', zIndex: 2,
           transform: `scale(${textScale})`,
           fontSize: 180,
-          fontFamily: 'Anton, sans-serif',
+          fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
+          fontWeight: 700,
           color: C.text(COL.white),
           letterSpacing: '10px',
           textShadow: '0 10px 40px rgba(0,0,0,0.5)'
@@ -605,14 +602,8 @@ function LaSpeciale({ overlay, durationInFrames }) {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         position: 'relative', overflow: 'hidden'
       }}>
-        {/* Slow rotating world map background */}
-        <div style={{
-          position: 'absolute', width: '150%', height: '150%',
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
-          backgroundSize: '100px 100px',
-          transform: `rotate(${frame * 0.02}deg)`,
-          opacity: 0.6
-        }} />
+        {/* Globe filaire qui tourne lentement (habillage premium) */}
+        <WorldMap rotateSpeed={0.15} opacity={0.45} color={COL.light} glow={COL.blue} />
         
         {/* Sliding cross bars */}
         <div style={{ position: 'absolute', width: '100%', height: 4, background: C.accent(COL.gold), top: '40%', transform: `translateX(${bar1X}px)` }} />
