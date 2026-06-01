@@ -92,6 +92,8 @@ services:
       - R2_BUCKET_NAME=${R2_BUCKET_NAME}
     networks:
       - jt-alwm-network
+    volumes:
+      - uploads_volume:/app/uploads
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
