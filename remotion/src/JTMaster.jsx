@@ -69,6 +69,7 @@ function ClipVideo({ clip }) {
         startFrom={secToFrames(clip.inPoint || 0, fps)}
         muted={hasExtraAudio}
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        crossOrigin="anonymous"
       />
       <ClipLayer clip={clip} />
     </AbsoluteFill>
