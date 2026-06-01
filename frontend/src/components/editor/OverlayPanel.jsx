@@ -181,7 +181,7 @@ function OverlayEditor({ overlay, onChange, onRemove }) {
   );
 }
 
-export default function OverlayPanel({ clip, onClose, onSave }) {
+export default function OverlayPanel({ clip, onClose, onSave, inline = false }) {
   const [overlays, setOverlays] = useState(clip.overlays || []);
   const [picking, setPicking] = useState(false);
 
@@ -215,13 +215,8 @@ export default function OverlayPanel({ clip, onClose, onSave }) {
     onClose();
   };
 
-  return (
-    <div
-      className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="bg-[var(--paper)] rounded-2xl w-full max-w-lg flex flex-col shadow-2xl border border-[var(--border)] max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+  const content = (
+    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-lg shadow-2xl border border-[var(--border)] max-h-[90vh] animate-in fade-in zoom-in-95 duration-200'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
@@ -309,7 +304,17 @@ export default function OverlayPanel({ clip, onClose, onSave }) {
             Appliquer ({overlays.length} animation{overlays.length !== 1 ? 's' : ''})
           </button>
         </div>
-      </div>
+    </div>
+  );
+  if (inline) return content;
+
+  return (
+    <div
+      className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+    >
+      {content}
     </div>
   );
 }

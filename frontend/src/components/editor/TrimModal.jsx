@@ -10,7 +10,7 @@ function formatTime(seconds) {
   return `${m}:${String(s).padStart(2, '0')}.${ms}`;
 }
 
-export default function TrimModal({ file, onClose, onConfirm }) {
+export default function TrimModal({ file, onClose, onConfirm, inline = false }) {
   const videoRef = useRef(null);
   const progressRef = useRef(null);
 
@@ -140,13 +140,8 @@ export default function TrimModal({ file, onClose, onConfirm }) {
 
   if (!file) return null;
 
-  return (
-    <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="bg-[var(--paper)] rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+  const content = (
+    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-2xl shadow-2xl border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
@@ -283,7 +278,18 @@ export default function TrimModal({ file, onClose, onConfirm }) {
             </button>
           </div>
         </div>
-      </div>
+    </div>
+  );
+
+  if (inline) return content;
+
+  return (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+    >
+      {content}
     </div>
   );
 }

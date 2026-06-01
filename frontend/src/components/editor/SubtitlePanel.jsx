@@ -11,7 +11,7 @@ function fmt(s) {
 }
 
 // Sous-titrage auto (Whisper navigateur) + édition + style, par clip.
-export default function SubtitlePanel({ clip, onClose, onSave }) {
+export default function SubtitlePanel({ clip, onClose, onSave, inline = false }) {
   const [segs, setSegs] = useState(clip.subtitles || []);
   const [style, setStyle] = useState(clip.subtitleStyle || { position: 'bottom', size: 'M', font: '' });
   const [busy, setBusy] = useState(false);
@@ -52,9 +52,8 @@ export default function SubtitlePanel({ clip, onClose, onSave }) {
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
-      <div className="bg-[var(--paper)] rounded-2xl w-full max-w-lg flex flex-col shadow-2xl border border-[var(--border)] max-h-[90vh] overflow-hidden">
+  const content = (
+    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-lg shadow-2xl border border-[var(--border)] max-h-[90vh]'}`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
           <h2 className="font-bold text-[color:var(--ink)] flex items-center gap-2 text-base">
             <Captions className="text-[var(--accent)]" size={18} /> Sous-titres auto
@@ -123,6 +122,13 @@ export default function SubtitlePanel({ clip, onClose, onSave }) {
           </button>
         </div>
       </div>
+  );
+
+  if (inline) return content;
+
+  return (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+      {content}
     </div>
   );
 }
