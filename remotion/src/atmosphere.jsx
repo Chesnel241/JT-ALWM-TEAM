@@ -64,3 +64,49 @@ export function LightSweep({ strength = 0, periodSec = 8, fps = 30 }) {
     />
   );
 }
+
+export function GlobalAtmosphere({ strength = 1, fps = 30 }) {
+  const frame = useCurrentFrame();
+  if (strength <= 0) return null;
+
+  const lineOffset = (frame * 0.5) % 40;
+  const sweep = (frame % (10 * fps)) / (10 * fps);
+  const sweepX = sweep * 200 - 50;
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none', zIndex: 1 }}>
+      <AbsoluteFill style={{
+        background: 'linear-gradient(135deg, rgba(0, 0, 128, 0.4) 0%, rgba(0, 191, 255, 0.3) 100%)',
+        mixBlendMode: 'overlay',
+      }} />
+
+      <AbsoluteFill style={{ mixBlendMode: 'screen', opacity: 0.3 * strength, transform: `translateY(${(frame * 0.2) % 100}px)` }}>
+         <svg width="100%" height="120%" preserveAspectRatio="none">
+           <filter id="particles-atm">
+             <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="1" seed="42" />
+             <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 5 -2" />
+           </filter>
+           <rect width="100%" height="100%" filter="url(#particles-atm)" />
+         </svg>
+      </AbsoluteFill>
+
+      <AbsoluteFill style={{
+        background: `repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255, 255, 255, 0.05) 2px, rgba(255, 255, 255, 0.05) 4px)`,
+        backgroundSize: '40px 40px',
+        backgroundPosition: `${lineOffset}px ${lineOffset}px`,
+        opacity: strength * 0.8
+      }} />
+
+      <AbsoluteFill style={{
+        backdropFilter: 'blur(2px)',
+        WebkitBackdropFilter: 'blur(2px)',
+        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+      }} />
+
+      <AbsoluteFill style={{
+        background: `linear-gradient(115deg, transparent ${sweepX - 10}%, rgba(255, 255, 255, 0.15) ${sweepX}%, transparent ${sweepX + 10}%)`,
+        mixBlendMode: 'screen'
+      }} />
+    </AbsoluteFill>
+  );
+}

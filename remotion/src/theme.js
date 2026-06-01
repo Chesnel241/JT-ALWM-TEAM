@@ -5,10 +5,11 @@ export const COL = {
   white: '#FFFFFF',
   black: '#000000',
   gold: '#FFD700',
-  navy: '#14143C',
+  navy: '#0A1A2F',
   red: '#D81818',
   dark: '#1A1A2E',
-  blue: '#0046C0',
+  blue: '#0066FF',
+  light: '#66B2FF',
   ink: '#1A1A1A',
   ticker: '#0A1A2F',
 };
@@ -32,6 +33,8 @@ export const FONT_FILES = {
   'Playfair Display': 'PlayfairDisplay-ExtraBold.ttf',
   'IBM Plex Sans': 'IBMPlexSans-SemiBold.ttf',
   'JetBrains Mono': 'JetBrainsMono-Medium.ttf',
+  'Montserrat Bold': 'Montserrat-Bold.ttf',
+  'Montserrat Medium': 'Montserrat-Medium.ttf',
 };
 
 export const FONT_FAMILIES = Object.keys(FONT_FILES);

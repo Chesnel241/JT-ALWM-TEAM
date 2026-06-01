@@ -47,6 +47,12 @@ export default defineConfig({
       }
     })
   ],
+  resolve: {
+    alias: {
+      'remotion': path.resolve(__dirname, 'node_modules/remotion'),
+      '@remotion/transitions': path.resolve(__dirname, 'node_modules/@remotion/transitions'),
+    }
+  },
   server: {
     host: '127.0.0.1',
     port: 5173,

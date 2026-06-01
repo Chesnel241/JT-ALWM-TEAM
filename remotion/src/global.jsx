@@ -75,3 +75,106 @@ export function Subtitles({ subtitles, style, clipTimeSec }) {
     </AbsoluteFill>
   );
 }
+
+// ----------------------------------------------------
+// Tickers Spécifiques
+// ----------------------------------------------------
+
+export function BandeauInfos({ ticker, timeString = "18:45" }) {
+  const frame = useCurrentFrame();
+  if (!ticker || !ticker.enabled || !ticker.texte) return null;
+  
+  // Speed: ~60px/sec (slow!) -> 60 / 30 = 2px/frame
+  const speed = 2; 
+  const x = -((frame * speed) % 2000);
+  const sep = '       •       ';
+  const unit = ticker.texte + sep;
+
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 80, background: 'rgba(10, 20, 50, 0.95)', display: 'flex', alignItems: 'center', overflow: 'hidden', borderTop: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+      <div style={{ background: COL.red, color: COL.white, fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 24px', flexShrink: 0, fontFamily: ff(null, 'Inter, sans-serif'), fontSize: 32, zIndex: 2 }}>
+        {timeString}
+      </div>
+      {ticker.categorie && (
+        <div style={{ background: '#FFD700', color: '#000', fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 24px', flexShrink: 0, fontFamily: ff(null, 'Inter, sans-serif'), fontSize: 30, zIndex: 2, textTransform: 'uppercase' }}>
+          {ticker.categorie}
+        </div>
+      )}
+      <div style={{ position: 'relative', flex: 1, overflow: 'hidden', height: '100%', zIndex: 1 }}>
+        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${x}px)`, top: 0, lineHeight: '80px', color: COL.white, fontFamily: 'Inter, sans-serif', fontSize: 30, fontWeight: 500 }}>
+          <span style={{ padding: '0 30px' }}>{unit}</span>
+          <span style={{ padding: '0 30px' }}>{unit}</span>
+          <span style={{ padding: '0 30px' }}>{unit}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function FlashInfo({ ticker }) {
+  const frame = useCurrentFrame();
+  if (!ticker || !ticker.enabled || !ticker.texte) return null;
+  
+  const speed = 5; 
+  const x = -((frame * speed) % 2000);
+  const sep = '       FLASH       ';
+  const unit = ticker.texte + sep;
+
+  // Red/Blue flash
+  const isRed = Math.floor(frame / 15) % 2 === 0;
+  const bgColor = isRed ? '#D32F2F' : '#1976D2';
+
+  // Tremor
+  const tremorX = Math.sin(frame * 2.1) * 2;
+  const tremorY = Math.cos(frame * 1.8) * 2;
+
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 80, height: 90, background: bgColor, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+      <div style={{ background: '#000', color: '#FFF', fontWeight: 900, height: '100%', display: 'flex', alignItems: 'center', padding: '0 30px', flexShrink: 0, fontFamily: ff(null, 'Inter, sans-serif'), fontSize: 36, zIndex: 2, transform: `translate(${tremorX}px, ${tremorY}px)` }}>
+        FLASH INFO
+      </div>
+      <div style={{ position: 'relative', flex: 1, overflow: 'hidden', height: '100%', zIndex: 1 }}>
+        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${x}px)`, top: 0, lineHeight: '90px', color: COL.white, fontFamily: 'Inter, sans-serif', fontSize: 34, fontWeight: 700 }}>
+          <span style={{ padding: '0 30px' }}>{unit}</span>
+          <span style={{ padding: '0 30px' }}>{unit}</span>
+          <span style={{ padding: '0 30px' }}>{unit}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AlerteInfo({ ticker }) {
+  const frame = useCurrentFrame();
+  if (!ticker || !ticker.enabled || !ticker.texte) return null;
+  
+  const speed = 8;
+  const x = -((frame * speed) % 2000);
+  const sep = '   ⚠   ALERTE MAXIMALE   ⚠   ';
+  const unit = ticker.texte + sep;
+
+  const pulseOp = interpolate(Math.sin(frame / 5), [-1, 1], [0.85, 1]);
+  const bannerPulse = interpolate(Math.sin(frame / 3), [-1, 1], [1, 1.05]);
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none', zIndex: 10 }}>
+      <AbsoluteFill style={{ 
+        boxShadow: `inset 0 0 100px rgba(255, 0, 0, ${pulseOp * 0.6})`,
+        border: `${pulseOp * 15}px solid rgba(255,0,0,0.8)`
+      }} />
+
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 120, background: `rgba(200, 0, 0, ${pulseOp})`, display: 'flex', alignItems: 'center', overflow: 'hidden', borderTop: '4px solid #FFF' }}>
+        <div style={{ background: '#FFF', color: '#C00', fontWeight: 900, height: '100%', display: 'flex', alignItems: 'center', padding: '0 40px', flexShrink: 0, fontFamily: ff(null, 'Inter, sans-serif'), fontSize: 46, zIndex: 2, transform: `scale(${bannerPulse})`, transformOrigin: 'center left' }}>
+          ALERTE
+        </div>
+        <div style={{ position: 'relative', flex: 1, overflow: 'hidden', height: '100%', zIndex: 1 }}>
+          <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${x}px)`, top: 0, lineHeight: '120px', color: COL.white, fontFamily: 'Inter, sans-serif', fontSize: 44, fontWeight: 800 }}>
+            <span style={{ padding: '0 30px' }}>{unit}</span>
+            <span style={{ padding: '0 30px' }}>{unit}</span>
+            <span style={{ padding: '0 30px' }}>{unit}</span>
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+}

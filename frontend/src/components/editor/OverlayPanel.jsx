@@ -100,7 +100,6 @@ function OverlayEditor({ overlay, onChange, onRemove }) {
             ))}
           </select>
         </div>
-      </div>
 
       {/* Couleurs (3 slots : texte / fond / accent) */}
       <div className="grid grid-cols-3 gap-3">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCurrentFrame, useVideoConfig } from 'remotion';
+import { useCurrentFrame, useVideoConfig, spring, interpolate, Img, staticFile } from 'remotion';
 import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 
@@ -43,16 +43,39 @@ function Box({ overlay, style, children }) {
   );
 }
 
-function LowerThird({ overlay, durationInFrames }) {
+function NomInterview({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const outDur = Math.round(fps * 0.5);
+  const isOut = frame > durationInFrames - outDur;
+  const outFrame = isOut ? frame - (durationInFrames - outDur) : 0;
+
+  const inSpring = spring({ frame, fps, config: { damping: 14 } });
+  const outSpring = spring({ frame: outFrame, fps, config: { damping: 14 } });
+  
+  const funcDelayFrames = Math.round(fps * 0.15);
+  const funcSpring = spring({ frame: Math.max(0, frame - funcDelayFrames), fps, config: { damping: 14 } });
+
+  const slideX = isOut 
+    ? interpolate(outSpring, [0, 1], [0, -150]) 
+    : interpolate(inSpring, [0, 1], [-150, 0]);
+  
+  const containerOpacity = isOut ? interpolate(outSpring, [0, 1], [1, 0]) : 1;
+  const nameOpacity = interpolate(inSpring, [0, 1], [0, 1]);
+  const funcOpacity = interpolate(funcSpring, [0, 1], [0, 1]);
+
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 950 }}>
-      <div style={{ position: 'relative', background: C.bg(COL.navy), opacity: 0.94, borderLeft: `12px solid ${C.accent(COL.gold)}`, width: 1060, height: 130, padding: '12px 0 0 42px', boxSizing: 'border-box' }}>
-        <div style={{ fontWeight: 800, fontSize: 52, color: C.text(COL.white) }}>
-          <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.name}</Tx>
+    <Box overlay={overlay} style={{ left: 100, top: 880, opacity: containerOpacity, transform: `translateX(${slideX}px)` }}>
+      <div style={{ background: C.bg(COL.navy), borderLeft: `12px solid ${C.accent(COL.gold)}`, padding: '16px 42px', minWidth: 400 }}>
+        <div style={{ fontWeight: 800, fontSize: 52, color: C.text(COL.white), opacity: nameOpacity, fontFamily: 'Inter' }}>
+          {f.name || f.nom || "NOM INTERVIEW"}
         </div>
-        <div style={{ fontSize: 30, color: C.accent(COL.gold), marginTop: 6 }}>{f.title}</div>
+        <div style={{ fontSize: 30, color: C.accent(COL.gold), marginTop: 8, opacity: funcOpacity, fontFamily: 'Inter', fontWeight: 600 }}>
+          {f.title || f.fonction || "FONCTION"}
+        </div>
       </div>
     </Box>
   );
@@ -74,13 +97,57 @@ function LowerThirdPro({ overlay, durationInFrames }) {
 function GrandTitre({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const isOut = frame > durationInFrames - 20;
+  const outFrame = isOut ? frame - (durationInFrames - 20) : 0;
+  const outOpacity = interpolate(outFrame, [0, 20], [1, 0]);
+
+  // bg zoom slightly
+  const bgScale = interpolate(frame, [0, durationInFrames], [1, 1.05]);
+  // slow 3D rotation
+  const rotateX = interpolate(frame, [0, durationInFrames], [5, -5]);
+  const rotateY = interpolate(frame, [0, durationInFrames], [-2, 2]);
+
+  // Title scales 80->100, op 0->1
+  const titleSpring = spring({ frame, fps, config: { damping: 20 } });
+  const titleScale = interpolate(titleSpring, [0, 1], [0.8, 1]);
+  const titleOpacity = interpolate(titleSpring, [0, 1], [0, 1]);
+
+  // Light reflection sweep
+  const lightPos = interpolate(frame, [0, 60], [-100, 200], { extrapolateRight: 'clamp' }); // sweeps across
+
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 448, width: 1920, textAlign: 'center' }}>
-      <div style={{ background: C.bg('rgba(0,0,0,.6)'), padding: '20px 0', width: 1920 }}>
-        <div style={{ fontSize: 100, color: C.text(COL.white) }}>
-          <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Anton">{f.title}</Tx>
-        </div>
-        <div style={{ fontSize: 46, color: C.accent(COL.gold), fontFamily: "'Bebas Neue', sans-serif", marginTop: 4 }}>{f.date}</div>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, perspective: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+        background: C.bg(COL.navy),
+        transform: `scale(${bgScale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
+        transformStyle: 'preserve-3d',
+        overflow: 'hidden',
+        zIndex: 1
+      }}>
+         {/* Light sweep */}
+         <div style={{
+           position: 'absolute', top: 0, bottom: 0, width: '40%',
+           background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent)',
+           transform: `translateX(${lightPos}%) skewX(-20deg)`
+         }} />
+      </div>
+
+      <div style={{
+        position: 'relative',
+        transform: `scale(${titleScale})`,
+        opacity: titleOpacity,
+        textAlign: 'center',
+        color: C.text(COL.white),
+        fontFamily: "'Anton', sans-serif",
+        zIndex: 2,
+        textShadow: '0 10px 30px rgba(0,0,0,0.5)'
+      }}>
+        <div style={{ fontSize: 160, letterSpacing: '0.04em' }}>{f.title || 'LE JOURNAL'}</div>
+        <div style={{ fontSize: 60, color: C.accent(COL.gold), fontFamily: "'Bebas Neue', sans-serif", marginTop: 15 }}>{f.date || f.subtitle || 'EDITION SPECIALE'}</div>
       </div>
     </Box>
   );
@@ -102,11 +169,144 @@ function TitreKaraoke({ overlay, durationInFrames }) {
 function TitreReportage({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const inDuration = Math.round(fps * 0.4);
+  const subDelay = Math.round(fps * 0.2);
+  const outDuration = Math.round(fps * 0.5);
+  
+  const isOut = frame > durationInFrames - outDuration;
+  const outFrame = isOut ? frame - (durationInFrames - outDuration) : 0;
+
+  const barProgress = spring({ frame, fps, config: { damping: 14 } });
+  const whiteProgress = spring({ frame: Math.max(0, frame - 5), fps, config: { damping: 14 } });
+  
+  const titleFrame = Math.max(0, frame - 5);
+  const titleSlide = interpolate(spring({ frame: titleFrame, fps, config: { damping: 12 } }), [0, 1], [-60, 0]);
+  const titleBlur = interpolate(titleFrame, [0, 10], [10, 0], { extrapolateRight: 'clamp' });
+  const titleOpacity = interpolate(titleFrame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
+
+  const subFrame = Math.max(0, frame - (5 + subDelay));
+  const subSlide = interpolate(spring({ frame: subFrame, fps, config: { damping: 12 } }), [0, 1], [-40, 0]);
+  const subOpacity = interpolate(subFrame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
+
+  const outProgress = spring({ frame: outFrame, fps, config: { damping: 14 } });
+
+  const clipLeft = interpolate(barProgress, [0, 1], [100, 0]);
+  const clipRight = isOut ? interpolate(outProgress, [0, 1], [0, 100]) : 0;
+  
+  const whiteClipLeft = interpolate(whiteProgress, [0, 1], [100, 0]);
+
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 1000 }}>
-      <div style={{ position: 'relative', background: C.bg(COL.dark), opacity: 0.92, borderLeft: `12px solid ${C.accent(COL.gold)}`, width: 1920, height: 80, padding: '18px 0 0 34px', boxSizing: 'border-box', fontWeight: 800, fontSize: 40, color: C.text(COL.white) }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.sujet}</Tx>
+    <Box overlay={overlay} style={{ left: 100, top: 850, width: 1400, height: 140 }}>
+       {/* Blue bar */}
+       <div style={{
+         position: 'absolute', top: 0, left: 0, bottom: 0,
+         width: '100%',
+         background: C.accent(COL.blue),
+         clipPath: `inset(0 ${clipRight}% 0 ${isOut ? 0 : clipLeft}%)`,
+       }} />
+       {/* White background */}
+       <div style={{
+         position: 'absolute', top: 0, left: 0, bottom: 0,
+         width: '100%',
+         background: C.bg(COL.white),
+         clipPath: `inset(0 ${clipRight}% 0 ${isOut ? 0 : whiteClipLeft}%)`,
+         padding: '24px 0 0 40px', boxSizing: 'border-box'
+       }}>
+          <div style={{
+            position: 'absolute',
+            transform: `translateX(${isOut ? 0 : titleSlide}px)`,
+            filter: `blur(${isOut ? 0 : titleBlur}px)`,
+            opacity: isOut ? 1 : titleOpacity,
+            fontWeight: 900, fontSize: 48, color: C.text(COL.ink),
+            fontFamily: 'Inter'
+          }}>
+             {f.sujet || f.title || "TITRE REPORTAGE"}
+          </div>
+          <div style={{
+            position: 'absolute', top: 84,
+            transform: `translateX(${isOut ? 0 : subSlide}px)`,
+            opacity: isOut ? 1 : subOpacity,
+            fontSize: 28, color: C.accent(COL.blue),
+            fontFamily: 'Inter', fontWeight: 600
+          }}>
+             {f.subtitle || f.sous_titre || "SOUS-TITRE"}
+          </div>
+       </div>
+    </Box>
+  );
+}
+
+function SignatureReportage({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const outDur = 15;
+  const isOut = frame > durationInFrames - outDur;
+  const outFrame = isOut ? frame - (durationInFrames - outDur) : 0;
+
+  const inPop = spring({ frame, fps, config: { damping: 12, stiffness: 100 } });
+  const outFade = interpolate(outFrame, [0, outDur], [1, 0], { extrapolateRight: 'clamp' });
+  
+  const moveY = interpolate(inPop, [0, 1], [20, 0]);
+  const opacity = interpolate(inPop, [0, 1], [0, 1]);
+
+  return (
+    <Box overlay={overlay} style={{ left: 1600, top: 950, transform: `translateY(${moveY}px)`, opacity: isOut ? outFade : opacity }}>
+      <div style={{ background: C.bg('rgba(0,0,0,0.7)'), color: C.text(COL.white), padding: '10px 24px', borderRadius: 4, fontSize: 26, fontFamily: 'Inter', fontWeight: 500, letterSpacing: '0.02em', border: `1px solid ${C.accent('rgba(255,255,255,0.15)')}` }}>
+        {f.texte || f.signature || "SIGNATURE"}
       </div>
+    </Box>
+  );
+}
+
+function RappelTitres({ overlay, durationInFrames }) {
+  const f = overlay.fields || {}; 
+  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const titres = Array.isArray(f.titres) ? f.titres : [f.titre1, f.titre2, f.titre3].filter(Boolean);
+  if (titres.length === 0) {
+    titres.push("PREMIER TITRE DE L'ACTUALITÉ", "DEUXIÈME INFORMATION MAJEURE", "TROISIÈME SUJET IMPORTANT");
+  }
+  
+  const isOut = frame > durationInFrames - 20;
+  const outFrame = isOut ? frame - (durationInFrames - 20) : 0;
+  const outOpacity = interpolate(outFrame, [0, 20], [1, 0]);
+
+  return (
+    <Box overlay={overlay} style={{ left: 150, top: 250, opacity: isOut ? outOpacity : 1 }}>
+      {titres.map((titre, i) => {
+        const delay = Math.round(fps * 0.2) * i;
+        const itemFrame = Math.max(0, frame - delay);
+        const slideIn = spring({ frame: itemFrame, fps, config: { damping: 14 } });
+        const x = interpolate(slideIn, [0, 1], [-150, 0]);
+        const opacity = interpolate(slideIn, [0, 1], [0, 1]);
+        
+        return (
+          <div key={i} style={{
+            transform: `translateX(${x}px)`,
+            opacity,
+            background: C.bg('rgba(0, 14, 51, 0.9)'),
+            color: C.text(COL.white),
+            padding: '24px 40px',
+            fontSize: 44,
+            fontFamily: 'Inter',
+            fontWeight: 800,
+            borderLeft: `10px solid ${C.accent(COL.gold)}`,
+            marginBottom: 24,
+            boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
+            maxWidth: 1200
+          }}>
+            {titre}
+          </div>
+        );
+      })}
     </Box>
   );
 }
@@ -184,18 +384,289 @@ function HorlogeDate({ overlay, durationInFrames }) {
   );
 }
 
+// 6. ASuivre
+function ASuivre({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // White card slides in from right
+  const cardX = interpolate(spring({ frame, fps, config: { damping: 14 } }), [0, 1], [1000, 0]);
+  
+  // Blue bar pushes text
+  const barWidth = interpolate(spring({ frame: Math.max(0, frame - 10), fps, config: { damping: 12 } }), [0, 1], [0, 20]);
+  
+  // Typewriter effect handled by Tx (with animation: 'typewriter')
+  const o = { ...overlay, animation: overlay.animation || 'typewriter' };
+
+  return (
+    <Box overlay={overlay} style={{ left: 1400, top: 800 }}>
+      <div style={{ 
+        transform: `translateX(${cardX}px)`, 
+        background: C.bg(COL.white), 
+        padding: '20px 40px',
+        display: 'flex',
+        alignItems: 'center',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+      }}>
+        <div style={{ width: barWidth, height: 60, background: C.accent(COL.blue), marginRight: barWidth > 0 ? 20 : 0 }} />
+        <div style={{ color: C.text(COL.ink), fontSize: 40, fontFamily: 'Inter, sans-serif', fontWeight: 800 }}>
+          <Tx overlay={o} durationInFrames={durationInFrames}>{f.texte || 'VOTRE PROGRAMME'}</Tx>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+// 7. ToutDeSuite
+function ToutDeSuite({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Faster sliding
+  const cardX = interpolate(spring({ frame, fps, config: { damping: 10, stiffness: 180 } }), [0, 1], [1000, 0]);
+  const barWidth = interpolate(spring({ frame: Math.max(0, frame - 5), fps, config: { damping: 10, stiffness: 180 } }), [0, 1], [0, 24]);
+  
+  const o = { ...overlay, animation: overlay.animation || 'typewriter' };
+
+  return (
+    <Box overlay={overlay} style={{ left: 1400, top: 800 }}>
+      <div style={{ 
+        transform: `translateX(${cardX}px)`, 
+        background: C.bg(COL.white), 
+        padding: '20px 40px',
+        display: 'flex',
+        alignItems: 'center',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+        borderLeft: `8px solid ${C.accent(COL.gold)}`
+      }}>
+        <div style={{ width: barWidth, height: 60, background: C.accent(COL.red), marginRight: barWidth > 0 ? 20 : 0 }} />
+        <div style={{ color: C.text(COL.ink), fontSize: 44, fontFamily: 'Inter, sans-serif', fontWeight: 900, transform: 'skewX(-10deg)' }}>
+          <Tx overlay={o} durationInFrames={durationInFrames}>{f.texte || 'TOUT DE SUITE'}</Tx>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+// 8. Publicite
+function Publicite({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Zoom in text
+  const textScale = interpolate(spring({ frame, fps, config: { damping: 12 } }), [0, 1], [0, 1]);
+  
+  return (
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080 }}>
+      <div style={{ 
+        width: 1920, height: 1080, 
+        background: `radial-gradient(circle at center, ${C.bg(COL.blue)} 0%, ${C.bg(COL.navy)} 100%)`,
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        position: 'relative', overflow: 'hidden'
+      }}>
+        {/* CSS Pattern for world map / network */}
+        <div style={{
+          position: 'absolute', width: '200%', height: '200%',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 2px, transparent 2px)',
+          backgroundSize: '40px 40px',
+          opacity: 0.5,
+          transform: `rotate(${frame * 0.05}deg)`
+        }} />
+        <div style={{
+          transform: `scale(${textScale})`,
+          fontSize: 180,
+          fontFamily: 'Anton, sans-serif',
+          color: C.text(COL.white),
+          letterSpacing: '10px',
+          textShadow: '0 10px 40px rgba(0,0,0,0.5)'
+        }}>
+          {f.texte || 'PUBLICITÉ'}
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+// 9. CompteARebours
+function CompteARebours({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Digital flip effect: basic version we can just scale Y to 0 and back on second change
+  const secondsLeft = Math.max(0, Math.ceil((durationInFrames - frame) / fps));
+  const timeString = `00:${secondsLeft.toString().padStart(2, '0')}`;
+  
+  // Flip animation every second
+  const frameInSecond = frame % fps;
+  const flipScaleY = frameInSecond < 5 ? interpolate(frameInSecond, [0, 2.5, 5], [1, 0, 1]) : 1;
+
+  return (
+    <Box overlay={overlay} style={{ left: 1600, top: 900 }}>
+      <div style={{
+        background: C.bg('rgba(0,0,0,0.8)'),
+        padding: '10px 30px',
+        border: `4px solid ${C.accent(COL.gold)}`,
+        borderRadius: 10
+      }}>
+        <div style={{
+          fontSize: 60,
+          fontFamily: "'Bebas Neue', sans-serif",
+          color: C.text(COL.white),
+          transform: `scaleY(${flipScaleY})`,
+          transformOrigin: 'center'
+        }}>
+          {timeString}
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+// 10. LaSpeciale
+function LaSpeciale({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Text LA SPÉCIALE scales 90->100% with impact shake
+  const scale = interpolate(spring({ frame, fps, config: { damping: 10 } }), [0, 1], [0.9, 1]);
+  // Impact shake right after scale completes
+  const isShaking = frame > 10 && frame < 20;
+  const shakeX = isShaking ? Math.sin(frame * 2) * 10 : 0;
+  const shakeY = isShaking ? Math.cos(frame * 2) * 10 : 0;
+  
+  // Sliding cross bars
+  const bar1X = interpolate(spring({ frame, fps, config: { damping: 14 } }), [0, 1], [-1920, 0]);
+  const bar2X = interpolate(spring({ frame, fps, config: { damping: 14 } }), [0, 1], [1920, 0]);
+
+  return (
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080 }}>
+      <div style={{ 
+        width: 1920, height: 1080, 
+        background: `radial-gradient(circle at center, ${C.bg(COL.dark)} 0%, ${COL.black} 100%)`,
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        position: 'relative', overflow: 'hidden'
+      }}>
+        {/* Slow rotating world map background */}
+        <div style={{
+          position: 'absolute', width: '150%', height: '150%',
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
+          backgroundSize: '100px 100px',
+          transform: `rotate(${frame * 0.02}deg)`,
+          opacity: 0.6
+        }} />
+        
+        {/* Sliding cross bars */}
+        <div style={{ position: 'absolute', width: '100%', height: 4, background: C.accent(COL.gold), top: '40%', transform: `translateX(${bar1X}px)` }} />
+        <div style={{ position: 'absolute', width: '100%', height: 4, background: C.accent(COL.gold), top: '60%', transform: `translateX(${bar2X}px)` }} />
+        
+        {/* Impact shake text */}
+        <div style={{
+          transform: `scale(${scale}) translate(${shakeX}px, ${shakeY}px)`,
+          fontSize: 160,
+          fontFamily: "'Archivo Black', sans-serif",
+          color: C.text(COL.gold),
+          textShadow: '0 0 40px rgba(255,215,0,0.3), 0 20px 40px rgba(0,0,0,0.8)',
+          letterSpacing: '5px'
+        }}>
+          {f.texte || 'LA SPÉCIALE'}
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+// 11. FinMerci
+function FinMerci({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Slower animations
+  // Banner slides gently
+  const bannerY = interpolate(spring({ frame, fps, config: { damping: 20, stiffness: 60 } }), [0, 1], [200, 0]);
+  
+  // Text fades in
+  const textOpacity = interpolate(frame, [30, 60], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  
+  // ALWM TV logo appears last
+  const logoOpacity = interpolate(frame, [70, 100], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const logoScale = interpolate(spring({ frame: Math.max(0, frame - 70), fps, config: { damping: 12 } }), [0, 1], [0.8, 1]);
+
+  return (
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080 }}>
+      <div style={{ 
+        width: 1920, height: 1080, 
+        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center',
+        paddingBottom: 100
+      }}>
+        <div style={{
+          transform: `translateY(${bannerY}px)`,
+          background: C.bg('rgba(0,0,0,0.85)'),
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '40px 0',
+          borderTop: `2px solid ${C.accent(COL.gold)}`
+        }}>
+          <div style={{
+            opacity: textOpacity,
+            fontSize: 60,
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 300,
+            color: C.text(COL.white),
+            letterSpacing: '4px'
+          }}>
+            {f.texte || 'MERCI DE NOUS AVOIR SUIVIS'}
+          </div>
+          
+          <div style={{
+            opacity: logoOpacity,
+            transform: `scale(${logoScale})`,
+            marginTop: 30,
+            display: 'flex',
+            justifyContent: 'center'
+          }}>
+            <Img src={staticFile('images/alwm-logo.png')} style={{ width: 400, objectFit: 'contain' }} />
+          </div>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
 const REGISTRY = {
-  lower_third: LowerThird,
+  lower_third: NomInterview,
+  nom_interview: NomInterview,
   lower_third_pro: LowerThirdPro,
   grand_titre: GrandTitre,
   titre_karaoke: TitreKaraoke,
   titre_reportage: TitreReportage,
+  signature_reportage: SignatureReportage,
+  rappel_titres: RappelTitres,
   sous_titre: SousTitre,
   bandeau_pays: BandeauPays,
   flash_info: FlashInfo,
   breaking_news: BreakingNews,
   score_resultat: ScoreResultat,
   horloge_date: HorlogeDate,
+  a_suivre: ASuivre,
+  tout_de_suite: ToutDeSuite,
+  publicite: Publicite,
+  compte_a_rebours: CompteARebours,
+  la_speciale: LaSpeciale,
+  fin_merci: FinMerci,
 };
 
 export function Overlay({ overlay, durationInFrames }) {

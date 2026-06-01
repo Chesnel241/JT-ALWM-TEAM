@@ -1,182 +1,195 @@
 /**
  * Shared overlay template definitions for the frontend.
- * Mirrors backend/src/data/overlayTemplates.js (field definitions only — no FFmpeg code).
+ * ALWM TV Graphic Templates
  */
 export const OVERLAY_TEMPLATES = [
-  {
-    id: 'lower_third',
-    label: 'Lower Third',
-    emoji: '📺',
-    preview: 'Nom et titre du journaliste, glisse depuis la gauche',
-    fields: [
-      { key: 'name',  label: 'Nom complet',       placeholder: 'Ex: Marie Dupont' },
-      { key: 'title', label: 'Titre / Fonction',  placeholder: 'Ex: Correspondante à Paris' },
-    ],
-  },
-  {
-    id: 'grand_titre',
-    label: 'Grand Titre JT',
-    emoji: '🎬',
-    preview: 'Grand titre centré (révélation gauche→droite) pour l\'ouverture',
-    fields: [
-      { key: 'title', label: 'Titre principal', placeholder: 'Ex: JOURNAL TÉLÉVISÉ' },
-      { key: 'date',  label: 'Date / Édition',  placeholder: 'Ex: Semaine du 26 Mai 2025' },
-    ],
-  },
-  {
-    id: 'bandeau_pays',
-    label: 'Bandeau Pays',
-    emoji: '🌍',
-    preview: 'Badge pays en haut à droite, glisse depuis le haut',
-    fields: [
-      { key: 'pays', label: 'Nom du pays', placeholder: 'Ex: CONGO' },
-    ],
-  },
   {
     id: 'titre_reportage',
     label: 'Titre Reportage',
     emoji: '📰',
-    preview: 'Titre du sujet en bas, glisse depuis le bas',
+    preview: 'Barre bleue glissante, titre avec flou de mouvement.',
     fields: [
-      { key: 'sujet', label: 'Titre du sujet', placeholder: 'Ex: Élections présidentielles au Bénin' },
-    ],
+      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Un sous-titre ou précision' }
+    ]
+  },
+  {
+    id: 'nom_interview',
+    label: 'Nom Interview (Lower Third)',
+    emoji: '🗣️',
+    preview: 'Style France 24 : le cartouche glisse, nom apparaît en fondu.',
+    fields: [
+      { key: 'nom', label: 'Prénom & Nom', placeholder: 'PRÉNOM NOM' },
+      { key: 'fonction', label: 'Fonction / Qualité', placeholder: 'FONCTION / QUALITÉ' }
+    ]
+  },
+  {
+    id: 'signature_reportage',
+    label: 'Signature Reportage',
+    emoji: '✍️',
+    preview: 'Apparition très rapide et sobre du nom du reporter.',
+    fields: [
+      { key: 'nom', label: 'Nom du journaliste', placeholder: 'PRÉNOM NOM' }
+    ]
+  },
+  {
+    id: 'grand_titre',
+    label: 'Grands Titres du JT',
+    emoji: '🎬',
+    preview: 'Zoom, rotation 3D faible et reflet lumineux.',
+    fields: [
+      { key: 'titre', label: 'Titre', placeholder: 'LE JOURNAL' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'GRAND TITRE' }
+    ]
+  },
+  {
+    id: 'rappel_titres',
+    label: 'Rappel des Titres',
+    emoji: '📑',
+    preview: 'Titres glissant séquentiellement en cascade.',
+    fields: [
+      { key: 'titre1', label: 'Titre 1', placeholder: 'TITRE DU SUJET À LA UNE' },
+      { key: 'titre2', label: 'Titre 2', placeholder: 'AUTRE TITRE DU SUJET' },
+      { key: 'titre3', label: 'Titre 3', placeholder: 'DERNIER TITRE DU JOURNAL' }
+    ]
+  },
+  {
+    id: 'a_suivre',
+    label: 'À Suivre',
+    emoji: '⏩',
+    preview: 'Carte blanche, barre bleue pousse le texte machine à écrire.',
+    fields: [
+      { key: 'texte', label: 'Texte d\'annonce', placeholder: 'VOTRE PROGRAMME' }
+    ]
+  },
+  {
+    id: 'tout_de_suite',
+    label: 'Tout De Suite',
+    emoji: '⚡',
+    preview: 'Identique à À Suivre, mais plus rapide.',
+    fields: [
+      { key: 'texte', label: 'Texte d\'annonce', placeholder: 'VOTRE PROGRAMME' }
+    ]
+  },
+  {
+    id: 'publicite',
+    label: 'Publicité',
+    emoji: '📺',
+    preview: 'Transition plein écran, fond globe, zoom léger.',
+    fields: [
+      { key: 'texte', label: 'Texte', placeholder: 'PUBLICITÉ' }
+    ]
+  },
+  {
+    id: 'compte_a_rebours',
+    label: 'Compte à rebours',
+    emoji: '⏳',
+    preview: 'Décompte avec flip numérique ou transition verticale.',
+    fields: [
+      { key: 'texte', label: 'Texte', placeholder: 'NOUS REVENONS DANS UN INSTANT' },
+      { key: 'secondes', label: 'Durée (sec)', placeholder: '45' }
+    ]
+  },
+  {
+    id: 'la_speciale',
+    label: 'La Spéciale',
+    emoji: '⭐',
+    preview: 'Habillage premium, glissement croisé, scale impact.',
+    fields: [
+      { key: 'titre', label: 'Titre principal', placeholder: 'LA SPÉCIALE' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'ÉMISSION SPÉCIALE' }
+    ]
+  },
+  {
+    id: 'fin_merci',
+    label: 'Fin / Merci',
+    emoji: '👋',
+    preview: 'Bandeau glisse doucement, texte fondu, logo ALWM.',
+    fields: [
+      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
+    ]
+  },
+  {
+    id: 'bandeau_infos',
+    label: 'Bandeau Infos (Défilement)',
+    emoji: '📜',
+    scope: 'global',
+    preview: 'Heure, info, texte qui défile lentement.',
+    fields: [
+      { key: 'heure', label: 'Heure', placeholder: '20:30' },
+      { key: 'info', label: 'Catégorie', placeholder: 'INFO' },
+      { key: 'texte', label: 'Texte défilant', placeholder: 'Texte de l\'information qui défile...' }
+    ]
   },
   {
     id: 'flash_info',
     label: 'Flash Info',
-    emoji: '⚡',
-    preview: 'Bandeau d\'alerte rouge en haut, façon édition spéciale',
-    fields: [
-      { key: 'texte', label: 'Texte de l\'alerte', placeholder: 'Ex: ÉDITION SPÉCIALE' },
-    ],
-  },
-  {
-    id: 'titre_karaoke',
-    label: 'Titre Karaoké',
-    emoji: '🎤',
-    preview: 'Grand titre révélé lettre par lettre (machine à écrire)',
-    fields: [
-      { key: 'title', label: 'Titre', placeholder: 'Ex: LE GRAND JOURNAL' },
-    ],
-  },
-  {
-    id: 'sous_titre',
-    label: 'Sous-titre Interview',
-    emoji: '💬',
-    preview: 'Sous-titre de parole, bas centré, fond sombre',
-    fields: [
-      { key: 'texte', label: 'Texte', placeholder: 'Ex: « Nous attendons les résultats… »' },
-    ],
-  },
-  {
-    id: 'score_resultat',
-    label: 'Score / Résultat',
-    emoji: '🏆',
-    preview: 'Encadré résultat (deux camps + score)',
-    fields: [
-      { key: 'gauche', label: 'Camp gauche', placeholder: 'Ex: OUI' },
-      { key: 'score',  label: 'Score / valeur', placeholder: 'Ex: 54% - 46%' },
-      { key: 'droite', label: 'Camp droite', placeholder: 'Ex: NON' },
-    ],
-  },
-  {
-    id: 'horloge_date',
-    label: 'Horloge / Date',
-    emoji: '🕐',
-    preview: 'Heure et date en coin haut-gauche',
-    fields: [
-      { key: 'heure', label: 'Heure', placeholder: 'Ex: 20:00' },
-      { key: 'date',  label: 'Date',  placeholder: 'Ex: Lun. 26 Mai' },
-    ],
-  },
-  {
-    id: 'lower_third_pro',
-    label: 'Lower-Third Pro (2 lignes)',
-    emoji: '🟦',
+    emoji: '🔴',
     scope: 'clip',
-    preview: 'Style France 24 : titre gras + sous-titre coloré, bas-gauche',
+    preview: 'Flash rouge/bleu lumineux, tremblement, texte.',
     fields: [
-      { key: 'titre', label: 'Titre (gras)', placeholder: 'Ex: LE MAROC ACCROCHÉ' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Ex: Les Lions concèdent le nul (1-1)' },
-    ],
+      { key: 'titre', label: 'Titre', placeholder: 'FLASH INFO' },
+      { key: 'texte', label: 'Texte', placeholder: 'Sujet du flash' }
+    ]
   },
   {
-    id: 'breaking_news',
-    label: 'Breaking News',
+    id: 'alerte_info',
+    label: 'Alerte Info',
     emoji: '🚨',
     scope: 'clip',
-    preview: 'Bandeau rouge slanté « DERNIÈRE MINUTE » + sujet',
+    preview: 'Pulsation rouge, bandeau urgent.',
     fields: [
-      { key: 'titre', label: 'Mention', placeholder: 'Ex: DERNIÈRE MINUTE' },
-      { key: 'sujet', label: 'Sujet', placeholder: 'Ex: Coup d\'État au Gabon' },
-    ],
-  },
-  {
-    id: 'ticker',
-    label: 'Bande défilante (ticker)',
-    emoji: '📰',
-    scope: 'global',
-    preview: 'Infos défilant en continu en bas, sur tout le JT',
-    fields: [
-      { key: 'categorie', label: 'Catégorie (tag)', placeholder: 'Ex: ALERTE' },
-      { key: 'texte', label: 'Texte défilant', placeholder: 'Ex: Sommet à Libreville • Élections au Bénin • …' },
-    ],
-  },
-  {
-    id: 'live_badge',
-    label: 'Badge LIVE / DIRECT',
-    emoji: '🔴',
-    scope: 'global',
-    preview: 'Pastille LIVE/DIRECT en haut à droite, sur tout le JT',
-    fields: [
-      { key: 'label', label: 'Texte', placeholder: 'Ex: DIRECT' },
-    ],
-  },
+      { key: 'titre', label: 'Titre', placeholder: 'ALERTE' },
+      { key: 'texte', label: 'Texte urgent', placeholder: 'Sujet urgent' }
+    ]
+  }
 ];
 
-// Modèles par clip (liés à un intervenant/plan) vs habillage global (tout le JT).
 export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'global');
 export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'global');
 
-// Polices disponibles (miroir backend FONT_FAMILIES).
 export const FONT_FAMILIES = [
+  'Montserrat Bold', 'Montserrat Medium',
   'Inter', 'Bebas Neue', 'Anton', 'Archivo Black', 'Barlow',
   'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
   'Oswald', 'Roboto Condensed', 'Russo One', 'Playfair Display',
   'IBM Plex Sans', 'JetBrains Mono',
 ];
 
-// Animations d'entrée (In)
 export const TEXT_ANIMATIONS_IN = [
-  { id: 'fade', label: 'Fondu classique' },
-  { id: 'scale', label: 'Zoom doux' },
-  { id: 'pop', label: 'Pop dynamique' },
-  { id: 'bounce', label: 'Rebond' },
-  { id: 'blurin', label: 'Apparition floue' },
-  { id: 'mask_reveal', label: 'Révélation par masque (Pro)' },
-  { id: 'typewriter', label: 'Machine à écrire' },
-  { id: 'glitch_in', label: 'Glitch numérique' },
+  { id: 'fade', label: 'Fondu' },
+  { id: 'scale', label: 'Scale' },
+  { id: 'slide_left', label: 'Slide Left' },
+  { id: 'slide_right', label: 'Slide Right' },
+  { id: 'pop', label: 'Pop' },
+  { id: 'bounce', label: 'Bounce' },
+  { id: 'blurin', label: 'Blur In' },
+  { id: 'mask_reveal', label: 'Mask Reveal' },
   { id: 'neon_on', label: 'Allumage Néon' },
-  { id: 'cascade', label: 'Cascade de lettres' },
+  { id: 'glitch_in', label: 'Glitch In' },
+  { id: 'rotate', label: 'Rotate' },
+  { id: 'flip3d', label: 'Flip 3D' },
+  { id: 'letterspread', label: 'Letter Spread' },
+  { id: 'typewriter', label: 'Machine à écrire' },
+  { id: 'cascade', label: 'Cascade' },
 ];
 
-// Animations continues (Loop)
 export const TEXT_ANIMATIONS_LOOP = [
-  { id: 'none', label: 'Fixe (Aucune)' },
-  { id: 'float', label: 'Flottement léger' },
-  { id: 'pulse', label: 'Pulsation lente' },
-  { id: 'neon_flicker', label: 'Grésillement Néon' },
+  { id: 'none', label: 'Aucun (statique)' },
+  { id: 'float', label: 'Flottement (Float)' },
+  { id: 'pulse', label: 'Pulsation (Pulse)' },
   { id: 'kerning_shake', label: 'Vibration tendue' },
+  { id: 'neon_flicker', label: 'Grésillement Néon' },
 ];
 
-// Animations de sortie (Out)
 export const TEXT_ANIMATIONS_OUT = [
-  { id: 'fade', label: 'Fondu classique' },
-  { id: 'scale_down', label: 'Zoom arrière' },
-  { id: 'slide_out', label: 'Glissement extérieur' },
-  { id: 'blurout', label: 'Disparition floue' },
-  { id: 'glitch_out', label: 'Coupure Glitch' },
+  { id: 'fade', label: 'Fondu out' },
+  { id: 'scale_down', label: 'Scale Down' },
+  { id: 'slide_out', label: 'Slide Out (Left)' },
+  { id: 'blurout', label: 'Blur Out' },
+  { id: 'glitch_out', label: 'Glitch Out' },
+  { id: 'typewriter_out', label: 'Machine à écrire (retour)' },
 ];
 
-// Rétrocompatibilité
 export const TEXT_ANIMATIONS = TEXT_ANIMATIONS_IN;
