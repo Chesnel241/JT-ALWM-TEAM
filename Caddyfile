@@ -4,10 +4,9 @@ jt-alwm-team.duckdns.org {
 		reverse_proxy backend:3010
 	}
 
-	# Servir directement les fichiers statiques (Uploads) sans passer par Node.js (Full Hetzner)
+	# Laisser le Backend Node.js gérer les fichiers statiques (pour garantir les Range requests vidéo)
 	handle /uploads/* {
-		root * /app
-		file_server
+		reverse_proxy backend:3010
 	}
 
 	# Rediriger les WebSockets Socket.io vers le Backend Node.js
