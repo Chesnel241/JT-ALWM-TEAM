@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -7,6 +7,15 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+
+const FPS = 30;
+// Durée effective d'un clip (sec) — miroir de getClipDur/buildRemotionPayload.
+const clipDurSec = (c) => c.durationSec || (c.outPoint != null ? Math.max(0.3, c.outPoint - (c.inPoint || 0)) : 10);
+// Format mm:ss pour le timecode.
+const fmtTime = (sec) => {
+  const s = Math.max(0, Math.floor(sec || 0));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
 import {
   arrayMove,
   SortableContext,
@@ -167,7 +176,7 @@ function OverlayBlock({ overlay, index, clipDur, overlays, onChange, onOpen }) {
   );
 }
 
-function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle, onOverlaysChange }) {
+function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle, onOverlaysChange, clipStart = 0, playheadSec = null }) {
   const {
     attributes,
     listeners,
@@ -183,32 +192,42 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
     zIndex: isDragging ? 10 : 1,
   };
 
-  const getClipDur = (c) => c.durationSec || (c.outPoint != null ? Math.max(0.3, c.outPoint - (c.inPoint || 0)) : 10);
+  const getClipDur = clipDurSec;
+  const dur = getClipDur(clip);
+  // Le clip est "actif" si le playhead (temps global) tombe dans sa plage.
+  const localSec = playheadSec != null ? playheadSec - clipStart : null;
+  const isActive = localSec != null && localSec >= 0 && localSec <= dur;
+  const playheadPct = isActive ? Math.max(0, Math.min(100, (localSec / dur) * 100)) : null;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
+      role="listitem"
+      aria-label={`Clip ${index != null ? index + 1 : ''} : ${clip.name}, durée ${fmtTime(dur)}${isActive ? ', en lecture' : ''}`}
       className={`relative flex flex-col gap-1 bg-[var(--paper)] border ${
-        isDragging ? 'border-[var(--accent)] shadow-xl' : 'border-[var(--border)] shadow-sm'
-      } rounded-xl p-2 min-w-[200px] shrink-0`}
+        isDragging ? 'border-[var(--accent)] shadow-xl' : isActive ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/40 shadow-md' : 'border-[var(--border)] shadow-sm'
+      } rounded-xl p-2 min-w-[200px] shrink-0 transition-shadow`}
     >
       <div className="flex items-center gap-2">
-        <div
+        <button
           {...attributes}
           {...listeners}
+          aria-label={`Réordonner le clip ${clip.name}`}
           className="cursor-grab active:cursor-grabbing p-1 text-[color:var(--muted)] hover:text-[color:var(--ink)]"
         >
           <GripVertical size={16} />
-        </div>
-        <div className="w-10 h-7 bg-black/10 rounded flex items-center justify-center shrink-0">
+        </button>
+        <div className="w-10 h-7 bg-black/10 rounded flex items-center justify-center shrink-0" aria-hidden="true">
           <Video size={13} className="text-[color:var(--muted)]" />
         </div>
         <div className="flex-1 truncate text-xs font-semibold text-[color:var(--ink)]" title={clip.name}>
           {clip.name}
+          <span className="ml-1 font-normal text-[10px] text-[color:var(--muted)] tabular-nums">· {fmtTime(dur)}</span>
         </div>
         <button
           onClick={() => onTrim(clip)}
+          aria-label="Modifier le trim (points d'entrée/sortie)"
           className="p-1.5 text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-lg transition-colors"
           title="Modifier le Trim"
         >
@@ -216,6 +235,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
         </button>
         <button
           onClick={() => onOverlay(clip)}
+          aria-label={`Animations & habillage${(clip.overlays?.length ?? 0) > 0 ? ` (${clip.overlays.length})` : ''}`}
           className={`p-1.5 rounded-lg transition-colors ${(clip.overlays?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
           title="Animations & Habillage"
         >
@@ -223,6 +243,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
         </button>
         <button
           onClick={() => onKenBurns(clip.instanceId || clip.id)}
+          aria-label={`Zoom lent Ken Burns${clip.kenBurns?.mode ? ` : ${KEN_BURNS_LABEL[clip.kenBurns.mode]}` : ' : désactivé'}`}
           className={`p-1.5 rounded-lg transition-colors ${clip.kenBurns?.mode ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
           title="Zoom lent (Ken Burns) — clic pour changer"
         >
@@ -230,6 +251,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
         </button>
         <button
           onClick={() => onSubtitle(clip)}
+          aria-label={`Sous-titres auto${(clip.subtitles?.length ?? 0) > 0 ? ` (${clip.subtitles.length})` : ''}`}
           className={`p-1.5 rounded-lg transition-colors ${(clip.subtitles?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
           title="Sous-titres auto"
         >
@@ -237,15 +259,16 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
         </button>
         <button
           onClick={() => onRemove(clip.instanceId || clip.id)}
+          aria-label={`Retirer ${clip.name} de la timeline`}
           className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
           title="Retirer de la Timeline"
         >
           <Trash2 size={13} />
         </button>
       </div>
-      
+
       {/* TEXT TRACK */}
-      <div data-text-track className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-visible flex items-center group">
+      <div data-text-track aria-label="Piste texte — glisser pour déplacer, poignées pour rogner" className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-visible flex items-center group">
         <div className="absolute inset-0 flex items-center px-2 text-[8px] text-[color:var(--muted)] uppercase font-bold tracking-wider pointer-events-none">
           Piste Texte
         </div>
@@ -260,18 +283,58 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
             onOpen={() => onOverlay(clip)}
           />
         ))}
+        {/* Ligne de playhead (clip actif uniquement) : montre exactement où
+            "Couper Texte" va découper. Position proportionnelle = exacte. */}
+        {playheadPct != null && (
+          <div className="absolute top-0 bottom-0 w-0.5 bg-[var(--signal)] pointer-events-none z-20" style={{ left: `${playheadPct}%` }}>
+            <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 rounded-full bg-[var(--signal)]" />
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview, onSubtitleClip, onSplitText }) {
+export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview, onSubtitleClip, onSplitText, playerRef }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Décalages temporels cumulés de chaque clip (en sec), en tenant compte du
+  // chevauchement des transitions — miroir de totalDurationInFrames côté
+  // Remotion. Sert à placer le playhead dans le bon clip.
+  const starts = [];
+  let acc = 0;
+  let total = 0;
+  clips.forEach((c, i) => {
+    starts[i] = acc;
+    const d = clipDurSec(c);
+    total += d;
+    const tr = c.transition && i < clips.length - 1 ? (c.transition.duration || 0.5) : 0;
+    acc += d - tr;
+    total -= tr;
+  });
+  total = Math.max(0, total);
+
+  // Playhead synchronisé au lecteur Remotion via requestAnimationFrame.
+  // null = pas de lecteur (mini-timeline) → aucune ligne de playhead.
+  const [playheadSec, setPlayheadSec] = useState(null);
+  useEffect(() => {
+    if (!playerRef?.current) return undefined;
+    let raf;
+    const tick = () => {
+      try {
+        const f = playerRef.current?.getCurrentFrame?.();
+        if (typeof f === 'number') setPlayheadSec(f / FPS);
+      } catch { /* player pas prêt */ }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playerRef]);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -322,8 +385,13 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
           {clips.length > 0 && (
             <span className="text-xs font-normal text-[color:var(--muted)] ml-1">({clips.length} clip{clips.length > 1 ? 's' : ''})</span>
           )}
+          {clips.length > 0 && (
+            <span className="ml-2 text-xs font-mono tabular-nums px-2 py-0.5 rounded bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)]" aria-label={`Position ${fmtTime(playheadSec)} sur ${fmtTime(total)}`}>
+              {fmtTime(playheadSec)} / {fmtTime(total)}
+            </span>
+          )}
         </h3>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" role="toolbar" aria-label="Actions de montage">
           {onPreview && clips.length > 0 && (
             <button
               onClick={onPreview}
@@ -402,6 +470,9 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
                   <React.Fragment key={clip.instanceId || clip.id}>
                     <SortableClip
                       clip={clip}
+                      index={idx}
+                      clipStart={starts[idx]}
+                      playheadSec={playheadSec}
                       onRemove={removeClip}
                       onTrim={onTrimClip}
                       onOverlay={onOverlayClip}
