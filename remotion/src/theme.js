@@ -1,17 +1,22 @@
 import { staticFile } from 'remotion';
 
-// Couleurs par défaut (hex CSS) — miroir des constantes ASS du backend.
+// Palette ALWM TV (brand officiel) :
+// - navy : bleu marine (fond habillage principal)
+// - blue : bleu électrique (accent CTA / barres / chiffres)
+// - light : bleu clair (highlights, dégradés)
+// Le rouge reste réservé à FLASH INFO / ALERTE INFO ; le gold est un accent
+// premium ponctuel (LA SPÉCIALE, score, horloge).
 export const COL = {
   white: '#FFFFFF',
   black: '#000000',
   gold: '#FFD700',
-  navy: '#0A1A2F',
+  navy: '#14143C',
   red: '#D81818',
-  dark: '#1A1A2E',
-  blue: '#0066FF',
-  light: '#66B2FF',
+  dark: '#0A0A1F',
+  blue: '#0046C0',
+  light: '#5BA9F7',
   ink: '#1A1A1A',
-  ticker: '#0A1A2F',
+  ticker: '#14143C',
 };
 
 // Polices bundlées → familles CSS. Chargées via @font-face injecté (loadFonts).
