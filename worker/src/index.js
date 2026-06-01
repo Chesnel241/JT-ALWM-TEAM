@@ -88,7 +88,10 @@ app.post('/render', async (req, res) => {
       outputLocation: outPath,
       inputProps,
       concurrency: 1,
-      chromiumOptions: { gl: 'angle' },
+      chromiumOptions: { 
+        gl: 'angle',
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      },
       onProgress: ({ progress }) => postProgress(returnTo, jobId, progress * 100),
     });
 
