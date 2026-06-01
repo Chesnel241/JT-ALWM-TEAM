@@ -31,8 +31,10 @@ describe('store: addUpload / getCountryUploads', () => {
   });
 
   it('writes the JSON file atomically (no leftover .tmp)', async () => {
-    const { addUpload } = await freshStore();
-    addUpload('w-43', 'sn', { id: 'atomic-1', name: 'x.mp4', type: 'video' });
+    const store = await freshStore();
+    store.addUpload('w-43', 'sn', { id: 'atomic-1', name: 'x.mp4', type: 'video' });
+    // L'écriture est debouncée : on force le flush pour le test.
+    await store.flushStore();
     expect(existsSync(STORE_PATH)).toBe(true);
     expect(existsSync(`${STORE_PATH}.${process.pid}.tmp`)).toBe(false);
   });
