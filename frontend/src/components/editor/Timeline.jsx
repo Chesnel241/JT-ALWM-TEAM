@@ -80,7 +80,94 @@ function TransitionPicker({ value, onChange }) {
   );
 }
 
-function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle }) {
+// Bloc d'overlay interactif sur la piste texte : déplacer (drag corps),
+// rogner (poignées G/D), dupliquer, supprimer — feel NLE pro. Tout en
+// Pointer Events (souris + tactile tablettes pays).
+function OverlayBlock({ overlay, index, clipDur, overlays, onChange, onOpen }) {
+  const o = overlay;
+  const startTime = o.startTime || 0;
+  const dur = o.duration ?? (clipDur - startTime);
+  const left = Math.max(0, Math.min(100, (startTime / clipDur) * 100));
+  const width = Math.max(2, Math.min(100 - left, (dur / clipDur) * 100));
+
+  // Drag générique : mode 'move' | 'left' | 'right'. Convertit le delta px
+  // en secondes via la largeur pixel de la piste.
+  const startDrag = (mode) => (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const track = e.currentTarget.closest('[data-text-track]');
+    if (!track) return;
+    const trackW = track.getBoundingClientRect().width;
+    const startX = e.clientX;
+    const orig = { start: startTime, dur };
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
+    let moved = false;
+
+    const onMove = (ev) => {
+      const dxSec = ((ev.clientX - startX) / trackW) * clipDur;
+      if (Math.abs(ev.clientX - startX) > 2) moved = true;
+      const next = overlays.map((ov, j) => {
+        if (j !== index) return ov;
+        if (mode === 'move') {
+          const ns = Math.max(0, Math.min(clipDur - 0.3, orig.start + dxSec));
+          return { ...ov, startTime: Math.round(ns * 100) / 100 };
+        }
+        if (mode === 'left') {
+          const ns = Math.max(0, Math.min(orig.start + orig.dur - 0.3, orig.start + dxSec));
+          const nd = orig.start + orig.dur - ns;
+          return { ...ov, startTime: Math.round(ns * 100) / 100, duration: Math.round(nd * 100) / 100 };
+        }
+        // right
+        const nd = Math.max(0.3, Math.min(clipDur - orig.start, orig.dur + dxSec));
+        return { ...ov, duration: Math.round(nd * 100) / 100 };
+      });
+      onChange(next);
+    };
+    const onUp = (ev) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      // clic net (pas de drag) → ouvre le panneau d'édition.
+      if (!moved && mode === 'move') onOpen();
+      ev.stopPropagation();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  const duplicate = (e) => {
+    e.stopPropagation();
+    const copy = { ...o, id: `ov-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, startTime: Math.round(Math.min(clipDur - 0.3, startTime + 0.5) * 100) / 100 };
+    const next = [...overlays]; next.splice(index + 1, 0, copy);
+    onChange(next);
+  };
+  const remove = (e) => {
+    e.stopPropagation();
+    onChange(overlays.filter((_, j) => j !== index));
+  };
+
+  const label = o.fields?.texte || o.fields?.titre || o.fields?.nom || o.type || 'Texte';
+  return (
+    <div
+      onPointerDown={startDrag('move')}
+      className="absolute top-1 bottom-1 bg-[var(--accent)]/85 hover:bg-[var(--accent)] border border-[var(--accent)]/60 rounded-sm cursor-grab active:cursor-grabbing transition-colors shadow-sm flex items-center group/ov"
+      style={{ left: `${left}%`, width: `${width}%`, touchAction: 'none' }}
+      title={`${label} — glisser pour déplacer, poignées pour rogner`}
+    >
+      {/* poignée gauche (trim début) */}
+      <div onPointerDown={startDrag('left')} className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/30 hover:bg-white/70 rounded-l-sm" style={{ touchAction: 'none' }} />
+      <div className="text-[9px] text-white truncate px-2 font-medium w-full pointer-events-none">{label}</div>
+      {/* poignée droite (trim durée) */}
+      <div onPointerDown={startDrag('right')} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/30 hover:bg-white/70 rounded-r-sm" style={{ touchAction: 'none' }} />
+      {/* actions au survol : dupliquer / supprimer */}
+      <div className="absolute -top-3 right-0 hidden group-hover/ov:flex gap-0.5 z-10">
+        <button onPointerDown={(e) => e.stopPropagation()} onClick={duplicate} title="Dupliquer" className="w-4 h-4 flex items-center justify-center rounded bg-[var(--paper)] border border-[var(--border)] text-[8px] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white">⧉</button>
+        <button onPointerDown={(e) => e.stopPropagation()} onClick={remove} title="Supprimer" className="w-4 h-4 flex items-center justify-center rounded bg-[var(--paper)] border border-[var(--border)] text-[8px] text-[color:var(--signal)] hover:bg-[var(--signal)] hover:text-white">✕</button>
+      </div>
+    </div>
+  );
+}
+
+function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle, onOverlaysChange }) {
   const {
     attributes,
     listeners,
@@ -158,28 +245,21 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
       </div>
       
       {/* TEXT TRACK */}
-      <div className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-hidden flex items-center group">
+      <div data-text-track className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-visible flex items-center group">
         <div className="absolute inset-0 flex items-center px-2 text-[8px] text-[color:var(--muted)] uppercase font-bold tracking-wider pointer-events-none">
           Piste Texte
         </div>
-        {(clip.overlays || []).map((o, i) => {
-           const dur = getClipDur(clip);
-           const left = ((o.startTime || 0) / dur) * 100;
-           const width = ((o.duration ?? (dur - (o.startTime || 0))) / dur) * 100;
-           return (
-             <div 
-               key={o.id || i}
-               onClick={(e) => { e.stopPropagation(); onOverlay(clip); }}
-               className="absolute top-1 bottom-1 bg-[var(--accent)]/80 hover:bg-[var(--accent)] border border-[var(--accent)]/50 rounded-sm cursor-pointer transition-colors shadow-sm flex items-center"
-               style={{ left: `${Math.max(0, Math.min(100, left))}%`, width: `${Math.max(1, Math.min(100 - left, width))}%` }}
-               title={o.fields?.texte || o.type || 'Texte'}
-             >
-                <div className="text-[9px] text-white truncate px-1 font-medium w-full">
-                  {o.fields?.texte || o.fields?.titre || o.type || 'Texte'}
-                </div>
-             </div>
-           );
-        })}
+        {(clip.overlays || []).map((o, i) => (
+          <OverlayBlock
+            key={o.id || i}
+            overlay={o}
+            index={i}
+            clipDur={getClipDur(clip)}
+            overlays={clip.overlays || []}
+            onChange={(next) => onOverlaysChange?.(clip, next)}
+            onOpen={() => onOverlay(clip)}
+          />
+        ))}
       </div>
     </div>
   );
@@ -207,6 +287,13 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
 
   const removeClip = (instanceId) => {
     setClips(clips.filter((c) => (c.instanceId || c.id) !== instanceId));
+  };
+
+  // Met à jour les overlays d'un clip (drag/trim/duplicate/delete sur la
+  // piste texte). Source de vérité = clip.overlays.
+  const updateClipOverlays = (clip, newOverlays) => {
+    const cid = clip.instanceId || clip.id;
+    setClips(clips.map((c) => ((c.instanceId || c.id) === cid ? { ...c, overlays: newOverlays } : c)));
   };
 
   const cycleKenBurns = (instanceId) => {
@@ -320,6 +407,7 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
                       onOverlay={onOverlayClip}
                       onKenBurns={cycleKenBurns}
                       onSubtitle={onSubtitleClip}
+                      onOverlaysChange={updateClipOverlays}
                     />
                     {idx < clips.length - 1 && (
                       <TransitionPicker
