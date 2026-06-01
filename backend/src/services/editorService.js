@@ -248,8 +248,13 @@ export function buildRemotionPayload(clips, opts) {
   }
   
   const apiUrl = publicApiUrl();
-  // Si R2 est inactif, le backend fournit directement les URLs pointant vers lui-même.
-  const resolve = (f) => (f && !process.env.R2_ACCOUNT_ID ? `${apiUrl}/uploads/${f}` : undefined);
+  // URL de lecture des médias TOUJOURS routée via le backend
+  // (`${PUBLIC_API_URL}/uploads/<f>`) : le backend sert le fichier depuis le
+  // volume local OU redirige (302) vers R2 présigné si HAS_R2. Le worker
+  // (Chromium) suit la redirection. Avantage : le worker n'a PAS besoin des
+  // creds R2 — un seul point de vérité pour l'accès médias, pas de rupture
+  // si R2 est activé côté backend seulement.
+  const resolve = (f) => (f ? `${apiUrl}/uploads/${f}` : undefined);
 
   return {
     clips: clips.map((c) => ({

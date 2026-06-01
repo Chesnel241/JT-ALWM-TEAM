@@ -509,38 +509,71 @@ function Publicite({ overlay, durationInFrames }) {
   );
 }
 
-// 9. CompteARebours
+// Cellule "flip clock" pour un seul chiffre : roll vertical pro façon
+// compteur TV. Le chiffre courant glisse vers le haut sur les ~7 dernières
+// frames de la seconde, révélant le suivant en dessous.
+function FlipDigit({ current, next, progress, color, bg, accent }) {
+  // progress 0→1 sur la transition ; -100% = chiffre suivant entièrement révélé.
+  const y = -progress * 100;
+  return (
+    <div style={{
+      position: 'relative', width: '0.62em', height: '1em', overflow: 'hidden',
+      background: bg, borderRadius: 8, margin: '0 3px',
+      boxShadow: 'inset 0 -2px 6px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.35)',
+      borderBottom: `3px solid ${accent}`,
+    }}>
+      {/* ligne médiane (split-flap) */}
+      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.35)', zIndex: 3 }} />
+      <div style={{ transform: `translateY(${y}%)`, willChange: 'transform' }}>
+        <div style={{ height: '1em', lineHeight: '1em', textAlign: 'center', color }}>{current}</div>
+        <div style={{ height: '1em', lineHeight: '1em', textAlign: 'center', color }}>{next}</div>
+      </div>
+    </div>
+  );
+}
+
+// 9. CompteARebours — vrai flip numérique (roll vertical par chiffre),
+// couleurs brand (carte marine, accent bleu électrique), Montserrat.
 function CompteARebours({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Digital flip effect: basic version we can just scale Y to 0 and back on second change
   const secondsLeft = Math.max(0, Math.ceil((durationInFrames - frame) / fps));
-  const timeString = `00:${secondsLeft.toString().padStart(2, '0')}`;
-  
-  // Flip animation every second
+  const nextSeconds = Math.max(0, secondsLeft - 1);
+  const mmss = (s) => {
+    const m = Math.floor(s / 60), ss = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  };
+  const cur = mmss(secondsLeft);
+  const nxt = mmss(nextSeconds);
+
+  // Transition sur les 7 dernières frames de chaque seconde.
   const frameInSecond = frame % fps;
-  const flipScaleY = frameInSecond < 5 ? interpolate(frameInSecond, [0, 2.5, 5], [1, 0, 1]) : 1;
+  const FLIP_FRAMES = 7;
+  const progress = frameInSecond >= fps - FLIP_FRAMES
+    ? interpolate(frameInSecond, [fps - FLIP_FRAMES, fps - 1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+    : 0;
+
+  const color = C.text(COL.white);
+  const cellBg = C.bg(COL.navy);
+  const accent = C.accent(COL.blue);
 
   return (
-    <Box overlay={overlay} style={{ left: 1600, top: 900 }}>
+    <Box overlay={overlay} style={{ left: 1480, top: 880 }}>
       <div style={{
-        background: C.bg('rgba(0,0,0,0.8)'),
-        padding: '10px 30px',
-        border: `4px solid ${C.accent(COL.gold)}`,
-        borderRadius: 10
+        display: 'inline-flex', alignItems: 'center',
+        fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
+        fontWeight: 700,
+        fontSize: `${(overlay.fontSize || 100) / 100 * 76}px`,
+        padding: '14px 20px', background: 'rgba(0,0,0,0.35)', borderRadius: 14,
       }}>
-        <div style={{
-          fontSize: 60,
-          fontFamily: "'Bebas Neue', sans-serif",
-          color: C.text(COL.white),
-          transform: `scaleY(${flipScaleY})`,
-          transformOrigin: 'center'
-        }}>
-          {timeString}
-        </div>
+        {[...cur].map((ch, i) => (
+          ch === ':'
+            ? <span key={i} style={{ color: accent, margin: '0 2px' }}>:</span>
+            : <FlipDigit key={i} current={ch} next={nxt[i] ?? ch} progress={nxt[i] === ch ? 0 : progress} color={color} bg={cellBg} accent={accent} />
+        ))}
       </div>
     </Box>
   );
