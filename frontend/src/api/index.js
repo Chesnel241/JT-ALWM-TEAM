@@ -108,12 +108,50 @@ export const api = {
     request(`/notifications/${weekId}`),
 
   uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, adminPassword } = {}) => {
+    let useDirectUpload = false;
+    let url, r2Key, filename;
+
     // 1. GET presigned url
-    const presignedRes = await request(`/presigned/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`, {
-      method: 'GET',
-      adminPassword
-    });
-    const { url, r2Key, filename } = presignedRes;
+    try {
+      const presignedRes = await request(`/presigned/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`, {
+        method: 'GET',
+        adminPassword
+      });
+      url = presignedRes.url;
+      r2Key = presignedRes.r2Key;
+      filename = presignedRes.filename;
+    } catch (err) {
+      // Fallback vers upload direct local si R2 n'est pas configuré
+      useDirectUpload = true;
+    }
+
+    if (useDirectUpload) {
+      if (typeof onPhase === 'function') onPhase('processing');
+      const formData = new FormData();
+      formData.append('file', file);
+      if (reportage) formData.append('reportage', reportage);
+
+      const headers = {};
+      const token = localStorage.getItem('app-password');
+      if (token) headers['X-App-Password'] = token;
+      if (adminPassword) headers['X-Admin-Password'] = adminPassword;
+
+      try {
+        const res = await axios.post(`${API_BASE}/api/uploads/${weekId}/${countryId}`, formData, {
+          headers,
+          onUploadProgress: (e) => {
+            if (e.lengthComputable && typeof onProgress === 'function') {
+              onProgress((e.loaded / e.total) * 100);
+            }
+          },
+          signal,
+        });
+        return res.data;
+      } catch (err) {
+        if (axios.isCancel(err)) throw new Error(tStatic().errors.uploadCancelled);
+        throw new Error(err.response?.data?.message || tStatic().errors.networkError);
+      }
+    }
 
     // 2. PUT to Cloudflare using axios
     try {
