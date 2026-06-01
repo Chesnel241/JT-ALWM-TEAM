@@ -6,7 +6,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY frontend/package*.json ./
 
 # Define build arguments
 ARG VITE_API_URL
@@ -15,13 +15,16 @@ ENV VITE_API_URL=${VITE_API_URL}
 # Install dependencies
 RUN npm ci
 
+# Copy remotion for relative imports
+COPY remotion /remotion
+
 # Copy source code
-COPY src ./src
-COPY public ./public
-COPY index.html ./index.html
-COPY vite.config.js ./vite.config.js
-COPY tailwind.config.js ./tailwind.config.js
-COPY postcss.config.js ./postcss.config.js
+COPY frontend/src ./src
+COPY frontend/public ./public
+COPY frontend/index.html ./index.html
+COPY frontend/vite.config.js ./vite.config.js
+COPY frontend/tailwind.config.js ./tailwind.config.js
+COPY frontend/postcss.config.js ./postcss.config.js
 
 # Build the Vite application
 RUN npm run build
