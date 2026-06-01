@@ -1017,10 +1017,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </div>
               
               {/* Zone Supérieure : Player (Centre) + Inspecteur (Droite) */}
-              <div className="flex flex-col xl:flex-row h-auto xl:h-[65vh] xl:min-h-[700px] border-b border-[var(--border)] bg-[var(--paper-2)]">
+              <div className="flex flex-col xl:flex-row h-auto xl:h-[55vh] xl:min-h-[450px] border-b border-[var(--border)] bg-[var(--paper-2)] shrink-0">
                 
                 {/* PLAYER CENTER */}
-                <div className="flex-1 bg-black relative flex items-center justify-center p-4 xl:p-8 min-h-[400px] shadow-[inset_0_0_50px_rgba(0,0,0,0.5)]">
+                <div className="flex-1 bg-black relative flex items-center justify-center p-4 xl:p-8 shadow-[inset_0_0_50px_rgba(0,0,0,0.5)]">
                   <RemotionLivePreview 
                     playerRef={playerRef} 
                     inline={true} 
