@@ -83,7 +83,8 @@ app.post('/render', async (req, res) => {
     const sharedChromiumOptions = { 
       gl: 'angle',
       enableMultiProcessOnLinux: false,
-      disableWebSecurity: true
+      disableWebSecurity: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     };
     const composition = await selectComposition({
       serveUrl: SERVE_URL,
