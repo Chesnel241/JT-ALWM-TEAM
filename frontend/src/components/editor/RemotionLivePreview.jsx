@@ -15,7 +15,8 @@ export default function RemotionLivePreview({ clips, global, branding, onClose, 
         ...clip,
         url,
         // s'assure qu'on a bien durationSec, comme attendu par JTMaster
-        durationSec: clip.durationSec || (clip.trimEnd - clip.trimStart) || 5
+        // s'assure qu'on a bien durationSec, comme attendu par JTMaster
+        durationSec: clip.durationSec || (clip.outPoint != null ? clip.outPoint - (clip.inPoint || 0) : null) || 5
       };
     });
 

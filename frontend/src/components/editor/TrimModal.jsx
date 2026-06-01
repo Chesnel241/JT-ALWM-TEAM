@@ -122,13 +122,15 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
   };
 
   const handleConfirm = () => {
+    const finalOut = outPoint ?? duration;
     onConfirm({
       ...file,
       inPoint: inPoint > 0 ? inPoint : undefined,
       outPoint: outPoint != null && outPoint < duration ? outPoint : undefined,
+      durationSec: finalOut - inPoint,
       trimLabel:
         inPoint > 0 || (outPoint != null && outPoint < duration)
-          ? `${formatTime(inPoint)} → ${formatTime(outPoint ?? duration)}`
+          ? `${formatTime(inPoint)} → ${formatTime(finalOut)}`
           : null,
     });
     onClose();

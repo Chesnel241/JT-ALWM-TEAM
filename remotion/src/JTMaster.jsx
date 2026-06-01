@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, Series, OffthreadVideo, Audio, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Series, Video, Audio, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import { TransitionSeries, linearTiming } from '@remotion/transitions';
 import { fade } from '@remotion/transitions/fade';
 import { slide } from '@remotion/transitions/slide';
@@ -64,7 +64,7 @@ function ClipVideo({ clip }) {
   const hasExtraAudio = false; // l'audio du clip reste actif ; mix musique/voix par-dessus
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
-      <OffthreadVideo
+      <Video
         src={clip.url}
         startFrom={secToFrames(clip.inPoint || 0, fps)}
         muted={hasExtraAudio}
