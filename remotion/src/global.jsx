@@ -63,7 +63,7 @@ export function Logo({ logo, logoPosition, tickerOn, logoPosX = 0, logoPosY = 0,
   const pos = { ...(LOGO_POS[logoPosition] || LOGO_POS.br) };
   if (tickerOn && (logoPosition === 'bl' || logoPosition === 'br' || !logoPosition)) pos.bottom = 120;
   const scale = logoScale / 100;
-  return <Img src={staticFile('logo-lwm.png')} style={{ position: 'absolute', height: 130, opacity: 0.9, ...pos, transform: `translate(${logoPosX}px, ${logoPosY}px) scale(${scale})`, transformOrigin: 'center center' }} />;
+  return <Img src={staticFile('habillage-logo.png')} style={{ position: 'absolute', height: 130, opacity: 0.9, ...pos, transform: `translate(${logoPosX}px, ${logoPosY}px) scale(${scale})`, transformOrigin: 'center center' }} />;
 }
 
 // Sous-titres : style position/taille/police, affichés selon le timing courant.
