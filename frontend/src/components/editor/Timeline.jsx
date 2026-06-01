@@ -96,6 +96,8 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
     zIndex: isDragging ? 10 : 1,
   };
 
+  const getClipDur = (c) => c.durationSec || (c.outPoint != null ? Math.max(0.3, c.outPoint - (c.inPoint || 0)) : 10);
+
   return (
     <div
       ref={setNodeRef}
@@ -154,30 +156,36 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
           <Trash2 size={13} />
         </button>
       </div>
-      {/* Trim badge */}
-      {clip.trimLabel && (
-        <div className="flex items-center gap-1 px-2 py-0.5 bg-[var(--accent)]/10 rounded text-[10px] text-[color:var(--accent)] font-mono font-medium">
-          <Scissors size={10} />
-          {clip.trimLabel}
+      
+      {/* TEXT TRACK */}
+      <div className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-hidden flex items-center group">
+        <div className="absolute inset-0 flex items-center px-2 text-[8px] text-[color:var(--muted)] uppercase font-bold tracking-wider pointer-events-none">
+          Piste Texte
         </div>
-      )}
-      {(clip.overlays?.length ?? 0) > 0 && (
-        <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/10 rounded text-[10px] text-purple-500 font-medium">
-          <Layers size={10} />
-          {clip.overlays.length} animation{clip.overlays.length > 1 ? 's' : ''}
-        </div>
-      )}
-      {clip.kenBurns?.mode && (
-        <div className="flex items-center gap-1 px-2 py-0.5 bg-[var(--accent)]/10 rounded text-[10px] text-[var(--accent)] font-medium">
-          <ZoomIn size={10} />
-          {KEN_BURNS_LABEL[clip.kenBurns.mode]}
-        </div>
-      )}
+        {(clip.overlays || []).map((o, i) => {
+           const dur = getClipDur(clip);
+           const left = ((o.startTime || 0) / dur) * 100;
+           const width = ((o.duration ?? (dur - (o.startTime || 0))) / dur) * 100;
+           return (
+             <div 
+               key={o.id || i}
+               onClick={(e) => { e.stopPropagation(); onOverlay(clip); }}
+               className="absolute top-1 bottom-1 bg-[var(--accent)]/80 hover:bg-[var(--accent)] border border-[var(--accent)]/50 rounded-sm cursor-pointer transition-colors shadow-sm flex items-center"
+               style={{ left: `${Math.max(0, Math.min(100, left))}%`, width: `${Math.max(1, Math.min(100 - left, width))}%` }}
+               title={o.fields?.texte || o.type || 'Texte'}
+             >
+                <div className="text-[9px] text-white truncate px-1 font-medium w-full">
+                  {o.fields?.texte || o.fields?.titre || o.type || 'Texte'}
+                </div>
+             </div>
+           );
+        })}
+      </div>
     </div>
   );
 }
 
-export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview, onSubtitleClip }) {
+export default function Timeline({ clips, setClips, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview, onSubtitleClip, onSplitText }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -236,6 +244,15 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
               title="Aperçu temps réel avant l'assemblage"
             >
               <Eye size={16} /> Aperçu
+            </button>
+          )}
+          {onSplitText && clips.length > 0 && (
+            <button
+              onClick={onSplitText}
+              className="text-sm px-3 py-2 rounded-lg border border-[var(--border)] text-[color:var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors flex items-center gap-2"
+              title="Couper le texte actif au niveau du curseur"
+            >
+              <Scissors size={16} /> Couper Texte
             </button>
           )}
           {onGlobalLayer && (

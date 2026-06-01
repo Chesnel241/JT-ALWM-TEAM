@@ -485,6 +485,94 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }
   };
 
+  const handleSplitTextAtPlayhead = async () => {
+    if (!playerRef.current || timelineClips.length === 0) return;
+    const frame = playerRef.current.getCurrentFrame();
+    if (frame === null || frame === undefined) return;
+    
+    const currentGlobalSec = frame / 30; // FPS = 30
+    
+    const probeDur = (url) => new Promise((resolve) => {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.onloadedmetadata = () => resolve(v.duration || 0);
+      v.onerror = () => resolve(0);
+      v.src = url;
+    });
+
+    const durations = await Promise.all(timelineClips.map(async (clip) => {
+      if (clip.outPoint != null) return Math.max(0.3, clip.outPoint - (clip.inPoint || 0));
+      const full = await probeDur(`${API_BASE}/uploads/${clip.filename}`);
+      return Math.max(0.3, (full || 5) - (clip.inPoint || 0));
+    }));
+
+    let sequenceStartSec = 0;
+    let targetClipIndex = -1;
+    let targetLocalSec = 0;
+
+    for (let i = 0; i < timelineClips.length; i++) {
+      const clip = timelineClips[i];
+      const durSec = durations[i];
+      const overlapSec = (i < timelineClips.length - 1 && clip.transition) ? (clip.transition.duration || 0.5) : 0;
+      
+      const nextSequenceStartSec = sequenceStartSec + durSec - overlapSec;
+      
+      if (currentGlobalSec >= sequenceStartSec && currentGlobalSec < sequenceStartSec + durSec) {
+        targetClipIndex = i;
+        targetLocalSec = currentGlobalSec - sequenceStartSec;
+        break;
+      }
+      sequenceStartSec = nextSequenceStartSec;
+    }
+
+    if (targetClipIndex === -1) {
+      addToast('Aucune vidéo trouvée à cette position pour couper le texte.', 'error');
+      return;
+    }
+
+    const clip = timelineClips[targetClipIndex];
+    if (!clip.overlays || clip.overlays.length === 0) {
+      addToast('Aucun texte à couper sur ce clip.', 'error');
+      return;
+    }
+
+    const durSec = durations[targetClipIndex];
+    
+    const overlayIndex = clip.overlays.findIndex(o => {
+      const start = o.startTime || 0;
+      const oDur = o.duration ?? (durSec - start);
+      return targetLocalSec >= start && targetLocalSec < start + oDur;
+    });
+
+    if (overlayIndex === -1) {
+      addToast("Aucun texte n'est actif à ce moment précis.", 'error');
+      return;
+    }
+
+    const o = clip.overlays[overlayIndex];
+    const start = o.startTime || 0;
+    const oDur = o.duration ?? (durSec - start);
+    
+    if (targetLocalSec - start < 0.1 || (start + oDur) - targetLocalSec < 0.1) {
+      addToast('Impossible de couper si près du bord.', 'error');
+      return;
+    }
+
+    const o1 = { ...o, duration: targetLocalSec - start };
+    const o2 = { ...o, startTime: targetLocalSec, duration: oDur - (targetLocalSec - start), id: Math.random().toString(36).slice(2) };
+
+    const newOverlays = [...clip.overlays];
+    newOverlays.splice(overlayIndex, 1, o1, o2);
+
+    setTimelineClips(prev => {
+      const next = [...prev];
+      next[targetClipIndex] = { ...clip, overlays: newOverlays };
+      return next;
+    });
+
+    addToast('Texte coupé en deux !', 'success');
+  };
+
   const handleDeliveryFiles = (filesList) => {
     Array.from(filesList).forEach((file) => {
       const tempId = Math.random().toString(36).slice(2);
@@ -1112,6 +1200,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   onPreview={() => {}} // Disabled as preview is always active
                   onSubtitleClip={(clip) => setSubtitleTarget(clip)}
                   playerRef={playerRef}
+                  onSplitText={handleSplitTextAtPlayhead}
                 />
               </div>
             </div>
