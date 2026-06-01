@@ -1,5 +1,9 @@
+# ⚠️  CE FICHIER EST POUR LE DÉVELOPPEMENT LOCAL UNIQUEMENT.
+# NODE_ENV=development + VITE_API_URL=localhost → NE PAS utiliser sur un VPS
+# (les navigateurs des pays appelleraient leur PROPRE localhost).
+# Pour la production VPS : `docker compose -f docker-compose.prod.yml up -d --build`
+# (cf. docs/VPS.md).
 version: '3.8'
-
 services:
   # =========================================================================
   # Caddy Reverse Proxy (Gère les domaines, SSL, et route le trafic)
