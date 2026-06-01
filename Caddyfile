@@ -4,9 +4,10 @@ jt-alwm-team.duckdns.org {
 		reverse_proxy backend:3010
 	}
 
-	# Rediriger les fichiers statiques (Uploads) vers le Backend Node.js
-	handle /uploads/* {
-		reverse_proxy backend:3010
+	# Servir directement les fichiers statiques (Uploads) sans passer par Node.js
+	handle_path /uploads/* {
+		root * /app/uploads
+		file_server
 	}
 
 	# Rediriger les WebSockets Socket.io vers le Backend Node.js

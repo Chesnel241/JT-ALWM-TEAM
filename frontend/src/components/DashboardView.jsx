@@ -1328,6 +1328,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <video 
                   src={generatedVideoUrl} 
                   controls 
+                  preload="metadata"
                   className="w-full max-h-[400px] bg-black rounded-xl"
                 />
                 <div className="mt-4 flex justify-end">
