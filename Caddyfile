@@ -1,10 +1,13 @@
 jt-alwm-team.duckdns.org {
-	# Rediriger toutes les requêtes API et Uploads vers le Backend Node.js
+	# Rediriger toutes les requêtes API vers le Backend Node.js
 	handle /api/* {
 		reverse_proxy backend:3010
 	}
+
+	# Servir directement les fichiers statiques (Uploads) sans passer par Node.js (Full Hetzner)
 	handle /uploads/* {
-		reverse_proxy backend:3010
+		root * /app
+		file_server
 	}
 
 	# Rediriger les WebSockets Socket.io vers le Backend Node.js
