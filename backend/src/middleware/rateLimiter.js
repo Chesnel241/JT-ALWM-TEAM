@@ -37,7 +37,7 @@ export const uploadLimiter = rateLimit({
  */
 export const globalLimiter = rateLimit({
   windowMs: parseInt(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || 60000), // 1 minute
-  max: parseInt(process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS || 100), // 100 requêtes par IP
+  max: parseInt(process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS || 500), // 500 requêtes par IP
   message: 'Trop de requêtes depuis cette IP. Veuillez réessayer plus tard.',
   standardHeaders: true,
   legacyHeaders: false, validate: { xForwardedForHeader: false, default: false },
