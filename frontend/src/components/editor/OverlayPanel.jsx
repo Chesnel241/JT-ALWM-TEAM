@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Layers, Clock } from 'lucide-react';
 import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, TEXT_ANIMATIONS_IN, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
 
@@ -203,9 +203,16 @@ function OverlayEditor({ overlay, onChange, onRemove }) {
   );
 }
 
-export default function OverlayPanel({ clip, onClose, onSave, inline = false }) {
+export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, inline = false }) {
   const [overlays, setOverlays] = useState(clip.overlays || []);
   const [picking, setPicking] = useState(false);
+
+  // Trigger real-time preview
+  useEffect(() => {
+    if (onChangePreview) {
+      onChangePreview({ ...clip, overlays });
+    }
+  }, [overlays, clip, onChangePreview]);
 
   const addOverlay = (templateId) => {
     setOverlays([

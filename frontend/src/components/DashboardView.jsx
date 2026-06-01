@@ -1040,6 +1040,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
                         addToast('Animations mises à jour', 'success', 2000);
                       }}
+                      onChangePreview={(updatedClip) => {
+                        setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                      }}
                     />
                   ) : showGlobalPanel ? (
                     <GlobalLayerPanel

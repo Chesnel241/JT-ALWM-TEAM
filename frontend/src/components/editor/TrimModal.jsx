@@ -273,7 +273,10 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
             </button>
             <button
               onClick={handleConfirm}
-              className="flex-1 py-2.5 rounded-xl bg-[var(--ink)] text-[color:var(--paper)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+              disabled={duration === 0}
+              className={`flex-1 py-2.5 rounded-xl text-[color:var(--paper)] font-semibold text-sm transition-opacity flex items-center justify-center gap-2 ${
+                duration === 0 ? 'bg-[color:var(--muted)] cursor-not-allowed' : 'bg-[var(--ink)] hover:opacity-90'
+              }`}
             >
               <Scissors size={15} />
               Ajouter à la Timeline
