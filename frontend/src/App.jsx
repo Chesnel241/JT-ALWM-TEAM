@@ -73,6 +73,10 @@ function AppShell() {
     if (!selectedWeek) return;
 
     const checkNewUploads = async () => {
+      // Onglet en arrière-plan : on ne sonde pas (économie réseau/CPU, utile
+      // sur connexions 4G limitées multi-pays). Le badge se rafraîchit au
+      // retour de focus.
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const dashboard = await api.getDashboard(selectedWeek);
         const currentTotal = Object.values(dashboard).reduce((acc, files) => acc + files.length, 0);
@@ -88,12 +92,16 @@ function AppShell() {
       }
     };
 
-    // On lance la vérification initiale
+    // Vérification initiale + polling. Le temps réel sur le dashboard est
+    // assuré par Socket.io ; ce polling sert le badge de notification sur
+    // les autres vues, donc 45 s suffisent (réduit la charge serveur pour
+    // 30 users répartis sur plusieurs continents).
     checkNewUploads();
-
-    // Puis on vérifie toutes les 20 secondes
-    const interval = setInterval(checkNewUploads, 20000);
-    return () => clearInterval(interval);
+    const interval = setInterval(checkNewUploads, 45000);
+    // Rafraîchit dès que l'onglet revient au premier plan.
+    const onVis = () => { if (!document.hidden) checkNewUploads(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVis); };
   }, [selectedWeek, currentView, addToast, isAuthenticated]);
 
   useEffect(() => {
