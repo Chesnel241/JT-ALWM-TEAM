@@ -210,6 +210,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const sseRef = useRef(null);
   const pollRef = useRef(null);
   const safetyRef = useRef(null);
+  const playerRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -1101,8 +1102,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             </details>
           </header>
 
-          {/* Media Grid */}
-          <div className="p-4 md:p-6 md:overflow-y-auto flex-1 bg-[var(--paper-2)]">
+          {/* WORKSPACE MIDDLE: Media Pool, Player, Inspector */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* LEFT: MEDIA POOL */}
+            <div className={`w-1/4 min-w-[280px] max-w-[400px] border-r border-[var(--border)] bg-[var(--paper)] flex flex-col overflow-y-auto ${!selectedBin ? 'hidden md:flex' : ''}`}>
             <AIChecklist 
               dashboard={dashboard} 
               countries={countries} 
@@ -1321,7 +1324,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
             {/* GENERATED VIDEO PREVIEW */}
             {generatedVideoUrl && (
-              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+              <div className="m-4 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-4">
                 <h3 className="text-lg font-bold text-[color:var(--ink)] mb-3 flex items-center gap-2">
                   <CheckCircle className="text-[var(--accent)]" /> Vidéo Assemblée
                 </h3>
@@ -1329,7 +1332,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   src={generatedVideoUrl} 
                   controls 
                   preload="metadata"
-                  className="w-full max-h-[400px] bg-black rounded-xl"
+                  className="w-full max-h-[300px] bg-black rounded-xl"
                 />
                 <div className="mt-4 flex justify-end">
                   <a 
@@ -1342,11 +1345,81 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
               </div>
             )}
+            </div>
 
+            {/* CENTER: PLAYER (Permanently visible) */}
+            <div className="flex-1 flex flex-col items-center justify-center bg-black relative p-4">
+              <RemotionLivePreview
+                playerRef={playerRef}
+                inline={true}
+                clips={timelineClips}
+                branding={branding}
+                onClose={() => {}}
+              />
+            </div>
+
+            {/* RIGHT: INSPECTOR */}
+            {(overlayTarget || showGlobalPanel || subtitleTarget || trimTarget) && (
+              <div className="w-80 min-w-[320px] max-w-[400px] border-l border-[var(--border)] bg-[var(--paper)] overflow-y-auto">
+                {overlayTarget && (
+                  <OverlayPanel
+                    inline={true}
+                    clip={overlayTarget}
+                    onClose={() => setOverlayTarget(null)}
+                    onSave={(updatedClip) => {
+                      setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                    }}
+                  />
+                )}
+                {showGlobalPanel && (
+                  <GlobalLayerPanel
+                    inline={true}
+                    value={branding}
+                    onChange={setBranding}
+                    onClose={() => setShowGlobalPanel(false)}
+                    audioFiles={weekAudioFiles}
+                    imageFiles={weekImageFiles}
+                    uploadAsset={uploadAsset}
+                  />
+                )}
+                {subtitleTarget && (
+                  <SubtitlePanel
+                    inline={true}
+                    clip={subtitleTarget}
+                    onClose={() => setSubtitleTarget(null)}
+                    onSave={(updatedClip) => {
+                      setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                      addToast('Sous-titres appliqués', 'success', 2000);
+                    }}
+                  />
+                )}
+                {trimTarget && (
+                  <TrimModal
+                    inline={true}
+                    file={trimTarget}
+                    onClose={() => setTrimTarget(null)}
+                    onConfirm={(trimmedClip) => {
+                      setTimelineClips((prev) => {
+                        const index = prev.findIndex((c) => c.instanceId === trimmedClip.instanceId);
+                        if (index >= 0) {
+                          return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
+                        }
+                        const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+                        const newClip = { ...trimmedClip, instanceId: trimmedClip.instanceId || generateId() };
+                        return [...prev, newClip];
+                      });
+                      addToast('Clip ajouté à la timeline', 'success', 2000);
+                      setTrimTarget(null);
+                    }}
+                  />
+                )}
+              </div>
+            )}
           </div>
 
-          {/* TIMELINE (Éditeur Vidéo) */}
-          <Timeline
+          {/* TIMELINE (Éditeur Vidéo) au bas */}
+          <div className="h-72 min-h-[250px] border-t border-[var(--border)] bg-[var(--paper-2)] flex flex-col shrink-0 overflow-y-auto">
+            <Timeline
             clips={timelineClips}
             setClips={setTimelineClips}
             onGenerate={handleGenerateVideo}
@@ -1357,10 +1430,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             brandingActive={branding.ticker.enabled || branding.live.enabled || branding.logo}
             onPreview={() => setShowPreview(true)}
             onSubtitleClip={(clip) => setSubtitleTarget(clip)}
+            playerRef={playerRef}
           />
+          </div>
         </main>
       </div>
-
 
       <ConfirmDialog
         isOpen={deleteDialogOpen}
@@ -1411,8 +1485,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         }}
       />
 
-
-      {/* Script Viewer Modal */}
+      {/* Script Viewer Modal (gardé comme modal) */}
       <ScriptViewerModal 
         file={viewingScript} 
         onClose={() => setViewingScript(null)}
@@ -1420,75 +1493,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedBin={selectedBin}
         adminPassword={authenticatedAdminPassword}
       />
-
-      {/* Sous-titres auto */}
-      {subtitleTarget && (
-        <SubtitlePanel
-          clip={subtitleTarget}
-          onClose={() => setSubtitleTarget(null)}
-          onSave={(updatedClip) => {
-            setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
-            addToast('Sous-titres appliqués', 'success', 2000);
-          }}
-        />
-      )}
-
-      {/* Aperçu temps réel */}
-      {showPreview && (
-        <RemotionLivePreview
-          clips={timelineClips}
-          branding={branding}
-          onClose={() => setShowPreview(false)}
-        />
-      )}
-
-      {/* Habillage JT global */}
-      {showGlobalPanel && (
-        <GlobalLayerPanel
-          value={branding}
-          onChange={setBranding}
-          onClose={() => setShowGlobalPanel(false)}
-          audioFiles={weekAudioFiles}
-          imageFiles={weekImageFiles}
-          uploadAsset={uploadAsset}
-        />
-      )}
-
-      {/* Overlay Panel */}
-      {overlayTarget && (
-        <OverlayPanel
-          clip={overlayTarget}
-          onClose={() => setOverlayTarget(null)}
-          onSave={(updatedClip) => {
-            setTimelineClips((prev) =>
-              prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c))
-            );
-            addToast('Animations mises à jour', 'success', 2000);
-          }}
-        />
-      )}
-
-      {/* Trim Modal */}
-      {trimTarget && (
-        <TrimModal
-          file={trimTarget}
-          onClose={() => setTrimTarget(null)}
-          onConfirm={(trimmedClip) => {
-            setTimelineClips((prev) => {
-              // If already in timeline, update its trim data
-              const index = prev.findIndex((c) => c.instanceId === trimmedClip.instanceId);
-              if (index >= 0) {
-                return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
-              }
-              // If it's a new addition (from the top section), give it a unique instanceId
-              const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
-              const newClip = { ...trimmedClip, instanceId: trimmedClip.instanceId || generateId() };
-              return [...prev, newClip];
-            });
-            addToast('Clip ajouté à la timeline', 'success', 2000);
-          }}
-        />
-      )}
 
       {selectedBin && (
         <AdminUploadDialog
