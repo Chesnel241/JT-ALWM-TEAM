@@ -87,6 +87,7 @@ services:
       - jt-alwm-network
     volumes:
       - uploads_volume:/app/uploads
+    shm_size: "2gb"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
