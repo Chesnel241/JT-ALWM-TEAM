@@ -158,8 +158,8 @@ function GrandTitre({ overlay, durationInFrames }) {
         zIndex: 2,
         textShadow: '0 10px 30px rgba(0,0,0,0.5)'
       }}>
-        <div style={{ fontSize: 160, letterSpacing: '0.04em' }}>{f.title || 'LE JOURNAL'}</div>
-        <div style={{ fontSize: 60, color: C.accent(COL.gold), fontFamily: "'Bebas Neue', sans-serif", marginTop: 15 }}>{f.date || f.subtitle || 'EDITION SPECIALE'}</div>
+        <div style={{ fontSize: 160, letterSpacing: '0.04em' }}>{f.titre || f.title || 'LE JOURNAL'}</div>
+        <div style={{ fontSize: 60, color: C.accent(COL.gold), fontFamily: "'Bebas Neue', sans-serif", marginTop: 15 }}>{f.sous_titre || f.subtitle || f.date || 'EDITION SPECIALE'}</div>
       </div>
     </Box>
   );
@@ -235,7 +235,7 @@ function TitreReportage({ overlay, durationInFrames }) {
             fontWeight: 900, fontSize: 48, color: C.text(COL.ink),
             fontFamily: 'Inter'
           }}>
-             {f.sujet || f.title || "TITRE REPORTAGE"}
+             {f.titre || f.sujet || f.title || "TITRE REPORTAGE"}
           </div>
           <div style={{
             position: 'absolute', top: 84,
@@ -367,7 +367,7 @@ function BreakingNews({ overlay, durationInFrames }) {
         <span style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>{f.titre || 'DERNIÈRE MINUTE'}</span>
       </div>
       <div style={{ marginTop: 12, background: C.accent(COL.white), color: C.text(COL.ink), fontWeight: 800, fontSize: 40, padding: '8px 18px', display: 'inline-block' }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.sujet}</Tx>
+        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.texte || f.sujet}</Tx>
       </div>
     </Box>
   );

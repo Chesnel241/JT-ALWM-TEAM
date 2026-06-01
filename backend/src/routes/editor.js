@@ -127,7 +127,7 @@ router.post(
       .withMessage('globalOverlays doit être un tableau.'),
     body('globalOverlays.*.templateId')
       .optional()
-      .isIn(TEMPLATE_IDS)
+      .isIn([...TEMPLATE_IDS, 'ticker', 'live_badge'])
       .withMessage('templateId global invalide.'),
     body('globalOverlays.*.fields.*')
       .optional()
