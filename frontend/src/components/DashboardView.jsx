@@ -915,7 +915,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 md:h-screen min-h-screen flex flex-col">
+    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-6 md:h-screen min-h-screen flex flex-col">
       <div className="flex flex-col md:flex-row flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
         
         {/* Sidebar Bins (Mobile Collapsible) */}
@@ -1016,7 +1016,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </div>
               
               {/* Zone Supérieure : Player (Centre) + Inspecteur (Droite) */}
-              <div className="flex flex-col xl:flex-row h-auto xl:h-[500px] border-b border-[var(--border)] bg-[var(--paper-2)]">
+              <div className="flex flex-col xl:flex-row h-auto xl:h-[65vh] xl:min-h-[700px] border-b border-[var(--border)] bg-[var(--paper-2)]">
                 
                 {/* PLAYER CENTER */}
                 <div className="flex-1 bg-black relative flex items-center justify-center p-4 xl:p-8 min-h-[400px] shadow-[inset_0_0_50px_rgba(0,0,0,0.5)]">
@@ -1030,7 +1030,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
 
                 {/* INSPECTOR RIGHT */}
-                <div className="w-full xl:w-[450px] bg-[var(--paper)] border-l-0 xl:border-l border-[var(--border)] overflow-y-auto shrink-0 flex flex-col shadow-[-10px_0_20px_-10px_rgba(0,0,0,0.05)] relative z-10">
+                <div className="w-full xl:w-[550px] bg-[var(--paper)] border-l-0 xl:border-l border-[var(--border)] overflow-y-auto shrink-0 flex flex-col shadow-[-10px_0_20px_-10px_rgba(0,0,0,0.05)] relative z-10">
                   {overlayTarget ? (
                     <OverlayPanel
                       inline={true}
