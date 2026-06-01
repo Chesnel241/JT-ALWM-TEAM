@@ -11,6 +11,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"   # HTTP/3 (QUIC)
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -33,10 +34,14 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3010
-      - CORS_ORIGIN=*
+      # Origine publique (domaine Caddy). Évite CORS=* (rejeté par les
+      # navigateurs avec credentials, et trop permissif).
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://jt-alwm-team.duckdns.org}
       - RENDERER=remotion
       - RENDER_WORKER_URL=http://worker:8080
-      - WORKER_KEY=internal_secret_key
+      # Secret partagé backend↔worker — JAMAIS en dur. Défini dans .env
+      # (générer : openssl rand -hex 32). Fail si vide.
+      - WORKER_KEY=${WORKER_KEY:?WORKER_KEY requis dans .env}
       - PUBLIC_API_URL=http://backend:3010
       - GLOBAL_PASSWORD=${GLOBAL_PASSWORD}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
@@ -82,7 +87,7 @@ services:
       dockerfile: worker/Dockerfile
     environment:
       - PORT=8080
-      - WORKER_KEY=internal_secret_key
+      - WORKER_KEY=${WORKER_KEY:?WORKER_KEY requis dans .env}
     networks:
       - jt-alwm-network
     volumes:

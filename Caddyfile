@@ -1,21 +1,42 @@
+# ============================================================================
+# Caddy — reverse proxy ALWM TV. TLS auto (Let's Encrypt), HTTP/2 + HTTP/3.
+# HTTP/3 (QUIC) réduit les handshakes sur réseaux à forte latence/perte
+# (4G Afrique/Asie) → gain perçu le plus rapide pour les pays distants.
+# ============================================================================
+{
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
 jt-alwm-team.duckdns.org {
-	# Rediriger toutes les requêtes API vers le Backend Node.js
+	# Compression : zstd (moderne) puis gzip (fallback) sur les réponses texte.
+	encode zstd gzip
+
+	# API → Backend Node.js
 	handle /api/* {
 		reverse_proxy backend:3010
 	}
 
-	# Laisser le Backend Node.js gérer les fichiers statiques (pour garantir les Range requests vidéo)
+	# Fichiers (Range requests vidéo) → Backend Node.js
 	handle /uploads/* {
 		reverse_proxy backend:3010
 	}
 
-	# Rediriger les WebSockets Socket.io vers le Backend Node.js
+	# WebSockets Socket.io → Backend Node.js
 	handle /socket.io/* {
 		reverse_proxy backend:3010
 	}
 
-	# Rediriger tout le reste vers le Frontend (Nginx/React)
+	# Tout le reste → Frontend (Nginx/React)
 	handle {
+		# Assets hashés immuables : cache navigateur 1 an.
+		@assets path *.js *.css *.woff2 *.woff *.ttf *.png *.jpg *.svg *.ico
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		# index.html jamais mis en cache (SPA → toujours la dernière version
+		# après un nouveau build).
+		@html path / /index.html
+		header @html Cache-Control "no-cache, must-revalidate"
 		reverse_proxy frontend:80
 	}
 }
