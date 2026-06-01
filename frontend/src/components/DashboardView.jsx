@@ -205,12 +205,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState(null);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportPhase, setExportPhase] = useState('');
+  const [exportError, setExportError] = useState(null);
+  const [exportStartedAt, setExportStartedAt] = useState(null);
+  const [exportElapsed, setExportElapsed] = useState(0);
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
   const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
   const sseRef = useRef(null);
   const pollRef = useRef(null);
   const safetyRef = useRef(null);
   const playerRef = useRef(null);
+
+  // Chrono d'assemblage : temps écoulé depuis le lancement du rendu.
+  useEffect(() => {
+    if (!isGeneratingVideo || !exportStartedAt) { setExportElapsed(0); return undefined; }
+    const id = setInterval(() => setExportElapsed(Math.floor((Date.now() - exportStartedAt) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [isGeneratingVideo, exportStartedAt]);
 
   useEffect(() => {
     return () => {
@@ -355,6 +365,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       stop();
       localStorage.removeItem(JOB_STORE_KEY);
       setIsGeneratingVideo(false);
+      setExportError(msg);
       if (!silent) addToast(msg, 'error', 6000);
     };
     const handleState = ({ percent, status, url }) => {
@@ -365,6 +376,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     };
 
     setIsGeneratingVideo(true);
+    setExportError(null);
+    setExportStartedAt(Date.now());
     localStorage.setItem(JOB_STORE_KEY, jobId);
     if (!resume) {
       setGeneratedVideoUrl(null);
@@ -1546,22 +1559,48 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             
             {/* EXPORT PROGRESS (réel : download → encodage → upload) */}
             {isGeneratingVideo && (
-              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium text-[color:var(--ink)]">
+              <div className="mt-8 bg-[var(--paper)] border-2 border-[var(--accent)]/40 rounded-2xl p-5 shadow-sm" role="status" aria-live="polite">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-5 h-5 border-2 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin shrink-0" />
+                  <span className="font-semibold text-[color:var(--ink)]">
                     {exportPhase === 'downloading' && 'Récupération des rushes…'}
                     {exportPhase === 'encoding' && 'Encodage du montage…'}
                     {exportPhase === 'uploading' && 'Finalisation…'}
                     {(exportPhase === '' || exportPhase === 'pending') && 'Préparation…'}
                     {exportPhase === 'done' && 'Terminé'}
                   </span>
-                  <span className="text-[color:var(--accent-deep)] tabular-nums">{Math.round(exportProgress)}%</span>
+                  <span className="ml-auto flex items-center gap-3">
+                    <span className="text-xs text-[color:var(--muted)] tabular-nums">⏱ {Math.floor(exportElapsed / 60)}:{String(exportElapsed % 60).padStart(2, '0')}</span>
+                    <span className="text-[color:var(--accent-deep)] font-bold tabular-nums">{Math.round(exportProgress)}%</span>
+                  </span>
                 </div>
-                <div className="w-full bg-[var(--paper-2)] rounded-full h-2.5">
+                <div className="w-full bg-[var(--paper-2)] rounded-full h-3 overflow-hidden">
                   <div
-                    className="h-2.5 rounded-full bg-[color:var(--accent)] transition-all duration-300"
-                    style={{ width: `${exportProgress}%` }}
+                    className="h-3 rounded-full bg-[color:var(--accent)] transition-all duration-300"
+                    style={{ width: `${Math.max(3, exportProgress)}%` }}
                   />
+                </div>
+                <p className="text-[11px] text-[color:var(--muted)] mt-2">
+                  L'assemblage se poursuit sur le serveur — vous pouvez naviguer, il continuera en arrière-plan.
+                </p>
+              </div>
+            )}
+
+            {/* Erreur d'assemblage : message clair + relance. */}
+            {exportError && !isGeneratingVideo && (
+              <div className="mt-8 bg-[var(--signal)]/10 border-2 border-[var(--signal)]/40 rounded-2xl p-5 shadow-sm" role="alert">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="text-[var(--signal)] shrink-0 mt-0.5" size={20} />
+                  <div className="flex-1">
+                    <p className="font-semibold text-[color:var(--ink)]">L'assemblage a échoué</p>
+                    <p className="text-sm text-[color:var(--muted)] mt-1">{exportError}</p>
+                  </div>
+                  <button
+                    onClick={() => { setExportError(null); handleGenerateVideo(); }}
+                    className="btn btn-primary py-1.5 px-3 text-sm shrink-0"
+                  >
+                    Réessayer
+                  </button>
                 </div>
               </div>
             )}
@@ -1572,16 +1611,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <h3 className="text-lg font-bold text-[color:var(--ink)] mb-3 flex items-center gap-2">
                   <CheckCircle className="text-[var(--accent)]" /> Vidéo Assemblée
                 </h3>
-                <video 
-                  src={generatedVideoUrl} 
-                  controls 
+                <video
+                  src={generatedVideoUrl}
+                  controls
                   preload="metadata"
+                  onError={() => addToast("Lecture impossible ici — utilisez le bouton Télécharger.", 'info', 5000)}
                   className="w-full max-h-[400px] bg-black rounded-xl"
                 />
                 <div className="mt-4 flex justify-end">
-                  <a 
-                    href={generatedVideoUrl} 
+                  {/* Téléchargement direct (same-origin via Caddy → l'attribut
+                      download force l'enregistrement). Ouverture nouvel onglet
+                      en repli si le navigateur bloque. */}
+                  <a
+                    href={generatedVideoUrl}
                     download={`Assemblage_JT_${selectedWeek}.mp4`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="btn btn-primary flex items-center gap-2"
                   >
                     <Download size={18} /> Télécharger l'export (MP4)
