@@ -37,7 +37,10 @@ export function setProgress(jobId, percent, status = 'processing') {
   job.status = status;
   const payload = `data: ${JSON.stringify({ percent: job.percent, status: job.status })}\n\n`;
   for (const res of job.listeners) {
-    try { res.write(payload); } catch { /* client parti */ }
+    try { 
+      res.write(payload); 
+      res.flush?.();
+    } catch { /* client parti */ }
   }
 }
 
@@ -88,11 +91,15 @@ export function addListener(jobId, res) {
   job.listeners.add(res);
   // Pousse l'état courant immédiatement.
   res.write(`data: ${JSON.stringify({ percent: job.percent, status: job.status })}\n\n`);
+  res.flush?.();
   // Heartbeat (commentaire SSE) toutes les 15 s : empêche les proxies
   // (Render) de fermer la connexion idle pendant un encodage long sans
   // mise à jour de %.
   res._hb = setInterval(() => {
-    try { res.write(': ping\n\n'); } catch { /* ignore */ }
+    try { 
+      res.write(': ping\n\n'); 
+      res.flush?.();
+    } catch { /* ignore */ }
   }, 15000);
 }
 

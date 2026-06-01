@@ -97,6 +97,12 @@ app.post('/render', async (req, res) => {
       const r2Key = `exports/${outName}`;
       await uploadFile(outPath, r2Key, 'video/mp4');
       url = await presignRead(r2Key, 60 * 60 * 24);
+    } else {
+      // Local fallback: move file to shared volume /app/uploads
+      const exportsDir = path.join('/app/uploads', 'exports');
+      fs.mkdirSync(exportsDir, { recursive: true });
+      fs.copyFileSync(outPath, path.join(exportsDir, outName));
+      url = `/uploads/exports/${outName}`;
     }
     await callback(returnTo, jobId, { jobId, percent: 100, status: 'done', url }, 'done');
   } catch (err) {

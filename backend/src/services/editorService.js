@@ -246,9 +246,15 @@ export function buildRemotionPayload(clips, opts) {
       branding.live = { enabled: true, label: g.fields?.label || 'LIVE' };
     }
   }
+  
+  const apiUrl = publicApiUrl();
+  // Si R2 est inactif, le backend fournit directement les URLs pointant vers lui-même.
+  const resolve = (f) => (f && !process.env.R2_ACCOUNT_ID ? `${apiUrl}/uploads/${f}` : undefined);
+
   return {
     clips: clips.map((c) => ({
       filename: c.filename,
+      url: resolve(c.filename),
       inPoint: c.inPoint,
       outPoint: c.outPoint,
       // Durée du segment (sec) : fournie par le frontend (probe metadata).
@@ -262,9 +268,9 @@ export function buildRemotionPayload(clips, opts) {
       subtitleStyle: c.subtitleStyle,
     })),
     branding,
-    music: opts.music,
-    voiceover: opts.voiceover,
-    imageOverlays: opts.imageOverlays || [],
+    music: opts.music ? { ...opts.music, url: resolve(opts.music.filename) } : undefined,
+    voiceover: opts.voiceover ? { ...opts.voiceover, url: resolve(opts.voiceover.filename) } : undefined,
+    imageOverlays: (opts.imageOverlays || []).map(ov => ({ ...ov, url: resolve(ov.filename) })),
   };
 }
 

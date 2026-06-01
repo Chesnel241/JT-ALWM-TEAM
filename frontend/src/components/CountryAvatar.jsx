@@ -21,7 +21,7 @@ export default function CountryAvatar({ country, className = "w-10 h-10" }) {
     ? codeToIso[country.code.toUpperCase()] 
     : (country.id || '').toLowerCase();
   
-  const isAfrique = country.name && country.name.toLowerCase().includes('afrique');
+  const isAfrique = country.name && (country.name.toLowerCase().trim() === 'afrique' || country.name.toLowerCase().trim() === 'bureau afrique' || country.id === 'afrique');
 
   if (isAfrique) {
     return (

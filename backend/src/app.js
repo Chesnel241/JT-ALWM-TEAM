@@ -6,6 +6,7 @@ import { join } from 'path';
 import { initSentry, getSentryErrorHandler } from './monitoring/sentry.js';
 import { initMetrics } from './monitoring/metrics.js';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import countriesRouter from './routes/countries.js';
 import weeksRouter from './routes/weeks.js';
 import uploadsRouter from './routes/uploads.js';
@@ -24,6 +25,13 @@ import logger from './logger/index.js';
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter } from './middleware/rateLimiter.js';
 import { errorHandlerMiddleware, notFoundMiddleware } from './middleware/errorHandler.js';
+import { Server } from 'socket.io';
+
+export let io;
+
+export function initSocket(server) {
+  io = new Server(server, { cors: { origin: '*' } });
+}
 
 // Timeout par requête (en ms). Upload de gros fichiers : 10 min.
 // Reste : 30 s. Au-delà, on coupe pour éviter les Slowloris.
@@ -86,6 +94,8 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     initMetrics(app);
   }
 
+  app.use(compression());
+
   // Helmet : en-têtes de sécurité HTTP (X-Frame-Options, X-Content-Type,
   // Referrer-Policy, etc.). CSP désactivée car le backend ne sert pas
   // de HTML (le frontend Vercel applique sa propre CSP via vercel.json).
@@ -134,13 +144,15 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
         const url = await getR2PresignedUrl(`uploads/${filename}`);
         return res.redirect(302, url);
       } catch (err) {
+        const logger = (await import('./logger/index.js')).default;
+        logger.error(`Error in R2 get/proxy for ${filename}:`, err);
         // Ignorer l'erreur et laisser express.static chercher localement
       }
     }
     next();
   });
 
-  app.use('/uploads', express.static(dir));
+  app.use('/uploads', express.static(dir, { maxAge: '1y', immutable: true }));
 
   app.get('/', (req, res) => res.status(200).send('ALWM Backend API is running.'));
 

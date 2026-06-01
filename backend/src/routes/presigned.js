@@ -10,10 +10,9 @@ const router = express.Router();
 // s'échapper du préfixe `uploads/` dans la clé R2 (path traversal).
 function safeNamePart(name) {
   return String(name)
-    .replace(/[/\\]/g, '_')        // pas de séparateur de chemin
-    .replace(/\.{2,}/g, '_')        // pas de '..'
-    .replace(/[\x00-\x1f]/g, '')    // pas de caractère de contrôle
-    .slice(0, 200);                 // borne la longueur
+    .replace(/[^a-zA-Z0-9.-]/g, '_') // Safe characters only (alphanumeric, dot, dash)
+    .replace(/_+/g, '_')             // Collapse multiple underscores
+    .slice(0, 200);                  // Limit length
 }
 
 // GET /api/presigned/upload?filename=...&contentType=...

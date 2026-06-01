@@ -27,7 +27,7 @@ gcloud run deploy jt-render-worker \
   --region europe-west1 \
   --memory 2Gi --cpu 1 --timeout 1800 \
   --min-instances 0 --max-instances 2 \
-  --no-allow-unauthenticated \
+  --allow-unauthenticated \
   --set-env-vars "WORKER_KEY=<clé-partagée>,R2_ACCOUNT_ID=...,R2_ACCESS_KEY_ID=...,R2_SECRET_ACCESS_KEY=...,R2_BUCKET_NAME=jt-alwm-uploads"
 ```
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { io } from 'socket.io-client';
 import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -286,6 +287,27 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       .catch(console.error);
   }, [isActive, selectedWeek]);
 
+  // Connect socket.io for real-time updates when authenticated as admin
+  useEffect(() => {
+    if (!isAuthenticatedAdmin || !selectedWeek) return;
+
+    // Connect to the same origin/host as the API
+    const socketUrl = API_BASE || window.location.origin;
+    const socket = io(socketUrl);
+
+    socket.on('upload_update', (data) => {
+      if (data.weekId === selectedWeek) {
+        addToast('Nouveau fichier !', 'info');
+        api.getDashboard(selectedWeek).then(setDashboard).catch(console.error);
+        api.getDeliveries(selectedWeek).then(setDeliveries).catch(console.error);
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [isAuthenticatedAdmin, selectedWeek, addToast]);
+
   // Suit un job de montage (SSE temps réel + polling de secours). Réutilisé
   // pour démarrer un montage ET pour reprendre le suivi après refresh/onglet
   // (le rendu continue côté serveur, on récupère son résultat).
@@ -499,11 +521,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   
   const handleDeleteDelivery = async (fileId, fileName) => {
     if(!window.confirm(`Supprimer ${fileName} ?`)) return;
+    
+    let previousDeliveries = [];
+    setDeliveries((prev) => {
+      previousDeliveries = prev;
+      return prev.filter((f) => f.id !== fileId);
+    });
+
     try {
       await api.deleteDelivery(selectedWeek, fileId);
-      setDeliveries((prev) => prev.filter((f) => f.id !== fileId));
       addToast(t.delivery.deleteSuccess(fileName), 'success');
     } catch (err) {
+      setDeliveries(previousDeliveries);
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error');
     }
   };
@@ -521,61 +550,52 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setDownloadDialogOpen(true);
   };
 
-  const handleConfirmDownload = async () => {
+  const handleConfirmDownload = () => {
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
-    const isMj = selectedBin === 'mj';
-    const token = localStorage.getItem('app-password') || '';
-    // Les archives passent par /api (requireAuth) ; les fichiers bruts par
-    // /uploads (public, sauf mj admin-gated). Identifiants en EN-TÊTES, jamais
-    // dans l'URL (fuite logs/historique). Téléchargement via blob.
-    const base = isArchive
+    
+    // Le backend ne demande plus de mot de passe pour les téléchargements.
+    const url = isArchive
       ? `${API_BASE}/api/uploads/${fileToDownload.filename}`
       : `${API_BASE}/uploads/${fileToDownload.filename}`;
-    const headers = {};
-    if (isArchive) headers['X-App-Password'] = token;
-    if (isMj) headers['X-Admin-Password'] = authenticatedAdminPassword;
-
-    let blobUrl;
-    try {
-      const res = await fetch(base, { headers, credentials: 'include' });
-      if (!res.ok) throw new Error('Téléchargement refusé par le serveur.');
-      const blob = await res.blob();
-      blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = fileToDownload.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      addToast(err.message || 'Téléchargement échoué', 'error', 5000);
-    } finally {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      setDownloadDialogOpen(false);
-      setFileToDownload(null);
-    }
+      
+    // Au lieu de simuler un clic (bloqué par les anti-popups stricts sur PC),
+    // on redirige directement. Le navigateur recevant un "Content-Disposition: attachment"
+    // ne changera pas de page mais lancera le téléchargement instantanément.
+    window.location.assign(url);
+    
+    setDownloadDialogOpen(false);
+    setFileToDownload(null);
   };
 
   const handleConfirmDelete = async () => {
     if (!fileToDelete) return;
     setIsDeleting(true);
+
+    const targetFileId = fileToDelete.fileId;
+    const targetCountryId = fileToDelete.countryId;
+    const targetFileName = fileToDelete.fileName;
+    
+    let previousBinState = [];
+    
+    setDashboard((prev) => {
+      previousBinState = prev[targetCountryId] || [];
+      return {
+        ...prev,
+        [targetCountryId]: previousBinState.filter((f) => f.id !== targetFileId),
+      };
+    });
+    setDeleteDialogOpen(false);
+    setFileToDelete(null);
+
     try {
-      await api.deleteFile(selectedWeek, fileToDelete.countryId, fileToDelete.fileId, authenticatedAdminPassword);
-      // Sécurise contre l'erreur "Cannot read properties of undefined (reading
-      // 'filter')" : si l'entrée pays a été rafraîchie pendant la requête, on
-      // garde quand même la mise à jour cohérente.
-      setDashboard((prev) => {
-        const list = prev[fileToDelete.countryId] || [];
-        return {
-          ...prev,
-          [fileToDelete.countryId]: list.filter((f) => f.id !== fileToDelete.fileId),
-        };
-      });
-      addToast(t.dashboard.deleted(fileToDelete.name), 'success');
-      setDeleteDialogOpen(false);
-      setFileToDelete(null);
+      await api.deleteFile(selectedWeek, targetCountryId, targetFileId, authenticatedAdminPassword);
+      addToast(t.dashboard.deleted(targetFileName), 'success');
     } catch (err) {
+      setDashboard((prev) => ({
+        ...prev,
+        [targetCountryId]: previousBinState,
+      }));
       addToast(`${t.dashboard.deleteError} : ${err.message}`, 'error');
     } finally {
       setIsDeleting(false);
@@ -595,25 +615,38 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const handleConfirmFeedback = async () => {
     if (!fileToFeedback) return;
     setIsSubmittingFeedback(true);
-    try {
-      await api.updateFileStatus(selectedWeek, fileToFeedback.fileId, feedbackStatus, feedbackText, authenticatedAdminPassword);
-      setDashboard(prev => {
-        const binFiles = prev[selectedBin] || [];
-        const updatedFiles = binFiles.map(f => {
-          if (f.id === fileToFeedback.fileId) {
-            return { ...f, status: feedbackStatus, adminFeedback: feedbackText };
-          }
-          return f;
-        });
-        return { ...prev, [selectedBin]: updatedFiles };
+
+    const targetFileId = fileToFeedback.fileId;
+    const targetCountryId = fileToFeedback.countryId;
+    const targetStatus = feedbackStatus;
+    const targetText = feedbackText;
+
+    let previousBinState = [];
+
+    setDashboard(prev => {
+      previousBinState = prev[targetCountryId] || [];
+      const updatedFiles = previousBinState.map(f => {
+        if (f.id === targetFileId) {
+          return { ...f, status: targetStatus, adminFeedback: targetText };
+        }
+        return f;
       });
+      return { ...prev, [targetCountryId]: updatedFiles };
+    });
+    setFeedbackDialogOpen(false);
+    setFileToFeedback(null);
+    setFeedbackStatus('');
+    setFeedbackText('');
+
+    try {
+      await api.updateFileStatus(selectedWeek, targetFileId, targetStatus, targetText, authenticatedAdminPassword);
       addToast('Statut mis à jour avec succès', 'success');
-      setFeedbackDialogOpen(false);
-      setFileToFeedback(null);
-      setFeedbackStatus('');
-      setFeedbackText('');
     } catch (err) {
       console.error(err);
+      setDashboard(prev => ({
+        ...prev,
+        [targetCountryId]: previousBinState
+      }));
       addToast(`Erreur : ${err.message}`, 'error');
     } finally {
       setIsSubmittingFeedback(false);
@@ -1448,7 +1481,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
               }
               // If it's a new addition (from the top section), give it a unique instanceId
-              const newClip = { ...trimmedClip, instanceId: trimmedClip.instanceId || crypto.randomUUID() };
+              const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+              const newClip = { ...trimmedClip, instanceId: trimmedClip.instanceId || generateId() };
               return [...prev, newClip];
             });
             addToast('Clip ajouté à la timeline', 'success', 2000);
@@ -1474,8 +1508,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         isVideo={actionSheetFile?.type === 'video' || !!actionSheetFile?.name.match(/\.(mp4|mov|avi|mkv)$/i)}
         onApprove={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'approved')}
         onReject={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'rejected')}
-        onDownload={() => selectedBin === 'mj' ? openDownloadDialog(actionSheetFile) : null}
-        onDownloadHref={selectedBin !== 'mj' && actionSheetFile ? `${API_BASE}/uploads/${actionSheetFile.filename}` : null}
+        onDownload={() => {}}
+        onDownloadHref={actionSheetFile ? `${API_BASE}/uploads/${actionSheetFile.filename}` : null}
         onDelete={() => openDeleteDialog(selectedBin, actionSheetFile?.id)}
         onViewScript={(f) => setViewingScript(f)}
       />

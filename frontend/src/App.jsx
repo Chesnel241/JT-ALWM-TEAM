@@ -14,6 +14,7 @@ const UploaderView = lazy(() => import('./components/UploaderView.jsx'));
 const DashboardView = lazy(() => import('./components/DashboardView.jsx'));
 const DeliveryView = lazy(() => import('./components/DeliveryView.jsx'));
 const VoixOffView = lazy(() => import('./components/VoixOffView.jsx'));
+const EditorView = lazy(() => import('./components/EditorView.jsx'));
 import LoginView from './components/LoginView.jsx';
 
 function LoadingFallback() {
@@ -165,6 +166,11 @@ function AppShell() {
                 setSelectedWeek={setSelectedWeek}
                 countries={countries}
                 isActive={currentView === 'voixoff'}
+              />
+            </div>
+            <div className={currentView === 'editor' ? 'block' : 'hidden'}>
+              <EditorView
+                isActive={currentView === 'editor'}
               />
             </div>
           </Suspense>
