@@ -9,9 +9,11 @@ export function Ticker({ ticker }) {
   if (!ticker || !ticker.enabled || !ticker.texte) return null;
   const sep = '       •       ';
   const unit = ticker.texte + sep;
-  const speedLevel = Math.max(1, Math.min(5, Number(ticker.speed) || 3));
-  // Vitesses (px/s) : 1=60, 2=110, 3=170, 4=240, 5=320.
-  const PX_PER_SEC = [60, 110, 170, 240, 320][speedLevel - 1];
+  // Brief ALWM TV : 60 px/s STRICT (chaînes pros = défilement lent).
+  // On garde 5 niveaux disponibles dans l'UI mais le défaut tape à 1.
+  const speedLevel = Math.max(1, Math.min(5, Number(ticker.speed) || 1));
+  // Vitesses (px/s) : 1=60 (défaut brand), 2=90, 3=130, 4=180, 5=240.
+  const PX_PER_SEC = [60, 90, 130, 180, 240][speedLevel - 1];
   const speed = PX_PER_SEC / 30;
   const x = -((frame * speed) % 2000);
   const scale = (ticker.scale ?? 100) / 100;

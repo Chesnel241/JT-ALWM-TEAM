@@ -41,9 +41,13 @@ export function requireAuth(req, res, next) {
   if (req.method === 'OPTIONS') return next();
   if (IS_TEST) return next();
 
-  // EXCEPTION : Les routes de téléchargement d'archives ZIP sont publiques
-  // (La sécurité est désormais assurée par l'accès à l'Espace Montage)
-  if (req.method === 'GET' && req.originalUrl.endsWith('/archive')) {
+  // EXCEPTION : Le téléchargement d'archive ZIP d'un pays est public
+  // (décision produit — voir bypass dédié). On SCOPE le bypass à l'URL
+  // EXACTE attendue (`/api/uploads/:weekId/:countryId/archive`) pour éviter
+  // qu'une future route ou un path forgé finissant par `/archive` ne
+  // contourne l'auth.
+  if (req.method === 'GET'
+      && /^\/api\/uploads\/[^/?#]+\/[^/?#]+\/archive(?:[/?#]|$)/.test(req.originalUrl)) {
     return next();
   }
 

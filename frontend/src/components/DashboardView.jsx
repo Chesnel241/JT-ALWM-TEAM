@@ -24,7 +24,7 @@ const JOB_STORE_KEY = 'jt-editor-job';
 const timelineKey = (weekId) => `jt-timeline-${weekId}`;
 const brandingKey = (weekId) => `jt-branding-${weekId}`;
 const DEFAULT_BRANDING = {
-  ticker: { enabled: false, categorie: 'ALERTE', texte: '', speed: 3 },
+  ticker: { enabled: false, categorie: 'ALERTE', texte: '', speed: 1 },
   atmosphere: { vignette: 0, grain: 0, sweep: 0 },
   live: { enabled: false, label: 'DIRECT' },
   logo: false,
@@ -292,9 +292,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   useEffect(() => {
     if (!isAuthenticatedAdmin || !selectedWeek) return;
 
-    // Connect to the same origin/host as the API
+    // Connect to the same origin/host as the API.
+    // - transports: ['websocket'] : skip Engine.IO long-polling (sature les
+    //   liens 4G instables et double le trafic en parallèle de la WS).
+    // - auth.token : le backend valide le X-App-Password sur le handshake
+    //   (cf. backend/src/app.js initSocket).
+    // - reconnect exponentiel borné : évite les bursts CPU si le réseau saute.
     const socketUrl = API_BASE || window.location.origin;
-    const socket = io(socketUrl);
+    const token = localStorage.getItem('app-password') || '';
+    const socket = io(socketUrl, {
+      transports: ['websocket'],
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
+    });
+    socket.on('connect_error', (err) => {
+      console.warn('[socket] connect_error', err.message);
+    });
 
     socket.on('upload_update', (data) => {
       if (data.weekId === selectedWeek) {
@@ -410,7 +426,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         templateId: 'ticker', 
         posX: branding.ticker.posX, posY: branding.ticker.posY, scale: branding.ticker.scale,
         fontSize: branding.ticker.fontSize, lineHeight: branding.ticker.lineHeight,
-        fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte, speed: branding.ticker.speed || 3 } 
+        fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte, speed: branding.ticker.speed || 1 }
       });
     }
     if (branding.live.enabled) {

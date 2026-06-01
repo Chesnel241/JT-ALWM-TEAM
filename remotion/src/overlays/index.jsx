@@ -82,10 +82,10 @@ function NomInterview({ overlay, durationInFrames }) {
   return (
     <Box overlay={overlay} style={{ left: 100, top: 880, opacity: containerOpacity, transform: `translateX(${slideX}px)` }}>
       <div style={{ background: C.bg(COL.navy), borderLeft: `12px solid ${C.accent(COL.gold)}`, padding: '16px 42px', minWidth: 400 }}>
-        <div style={{ fontWeight: 800, fontSize: `${(overlay.fontSize || 100) / 100 * 52}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.text(COL.white), opacity: nameOpacity, fontFamily: 'Inter' }}>
+        <div style={{ fontWeight: 700, fontSize: `${(overlay.fontSize || 100) / 100 * 52}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.text(COL.white), opacity: nameOpacity, fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif") }}>
           {f.name || f.nom || "NOM INTERVIEW"}
         </div>
-        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 30}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.accent(COL.gold), marginTop: 8, opacity: funcOpacity, fontFamily: 'Inter', fontWeight: 600 }}>
+        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 30}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.accent(COL.blue), marginTop: 8, opacity: funcOpacity, fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"), fontWeight: 500 }}>
           {f.title || f.fonction || "FONCTION"}
         </div>
       </div>
@@ -154,12 +154,12 @@ function GrandTitre({ overlay, durationInFrames }) {
         opacity: titleOpacity,
         textAlign: 'center',
         color: C.text(COL.white),
-        fontFamily: "'Anton', sans-serif",
+        fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
         zIndex: 2,
         textShadow: '0 10px 30px rgba(0,0,0,0.5)'
       }}>
-        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 160}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, letterSpacing: '0.04em' }}>{f.titre || f.title || 'LE JOURNAL'}</div>
-        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 60}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.accent(COL.gold), fontFamily: "'Bebas Neue', sans-serif", marginTop: 15 }}>{f.sous_titre || f.subtitle || f.date || 'EDITION SPECIALE'}</div>
+        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 160}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, letterSpacing: '0.04em', fontWeight: 700 }}>{f.titre || f.title || 'LE JOURNAL'}</div>
+        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 60}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.accent(COL.light), fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"), fontWeight: 500, marginTop: 15 }}>{f.sous_titre || f.subtitle || f.date || 'EDITION SPECIALE'}</div>
       </div>
     </Box>
   );
@@ -232,10 +232,10 @@ function TitreReportage({ overlay, durationInFrames }) {
             transform: `translateX(${isOut ? 0 : titleSlide}px)`,
             filter: `blur(${isOut ? 0 : titleBlur}px)`,
             opacity: isOut ? 1 : titleOpacity,
-            fontWeight: 900, fontSize: `${(overlay.fontSize || 100) / 100 * 48}px`, 
+            fontWeight: 700, fontSize: `${(overlay.fontSize || 100) / 100 * 48}px`,
             lineHeight: `${(overlay.lineHeight || 110) / 100}`,
-            color: C.text(COL.ink),
-            fontFamily: 'Inter',
+            color: C.text(COL.navy),
+            fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
             marginBottom: 8
           }}>
              {f.titre || f.sujet || f.title || "TITRE REPORTAGE"}
@@ -246,7 +246,7 @@ function TitreReportage({ overlay, durationInFrames }) {
             fontSize: `${(overlay.fontSize || 100) / 100 * 28}px`,
             lineHeight: `${(overlay.lineHeight || 110) / 100}`,
             color: C.accent(COL.blue),
-            fontFamily: 'Inter', fontWeight: 600
+            fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"), fontWeight: 500
           }}>
              {f.subtitle || f.sous_titre || "SOUS-TITRE"}
           </div>
@@ -273,7 +273,7 @@ function SignatureReportage({ overlay, durationInFrames }) {
 
   return (
     <Box overlay={overlay} style={{ left: 1600, top: 950, transform: `translateY(${moveY}px)`, opacity: isOut ? outFade : opacity }}>
-      <div style={{ background: C.bg('rgba(0,0,0,0.7)'), color: C.text(COL.white), padding: '10px 24px', borderRadius: 4, fontSize: 26, fontFamily: 'Inter', fontWeight: 500, letterSpacing: '0.02em', border: `1px solid ${C.accent('rgba(255,255,255,0.15)')}` }}>
+      <div style={{ background: C.bg('rgba(0,0,0,0.7)'), color: C.text(COL.white), padding: '10px 24px', borderRadius: 4, fontSize: 26, fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"), fontWeight: 500, letterSpacing: '0.02em', border: `1px solid ${C.accent('rgba(255,255,255,0.15)')}` }}>
         {f.texte || f.signature || "SIGNATURE"}
       </div>
     </Box>
@@ -427,7 +427,7 @@ function ASuivre({ overlay, durationInFrames }) {
         boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
       }}>
         <div style={{ width: barWidth, height: 60, background: C.accent(COL.blue), marginRight: barWidth > 0 ? 20 : 0 }} />
-        <div style={{ color: C.text(COL.ink), fontSize: 40, fontFamily: 'Inter, sans-serif', fontWeight: 800 }}>
+        <div style={{ color: C.text(COL.ink), fontSize: 40, fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"), fontWeight: 700 }}>
           <Tx overlay={o} durationInFrames={durationInFrames}>{f.texte || 'VOTRE PROGRAMME'}</Tx>
         </div>
       </div>
@@ -460,7 +460,7 @@ function ToutDeSuite({ overlay, durationInFrames }) {
         borderLeft: `8px solid ${C.accent(COL.gold)}`
       }}>
         <div style={{ width: barWidth, height: 60, background: C.accent(COL.red), marginRight: barWidth > 0 ? 20 : 0 }} />
-        <div style={{ color: C.text(COL.ink), fontSize: 44, fontFamily: 'Inter, sans-serif', fontWeight: 900, transform: 'skewX(-10deg)' }}>
+        <div style={{ color: C.text(COL.ink), fontSize: 44, fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"), fontWeight: 700, transform: 'skewX(-10deg)' }}>
           <Tx overlay={o} durationInFrames={durationInFrames}>{f.texte || 'TOUT DE SUITE'}</Tx>
         </div>
       </div>
@@ -639,8 +639,8 @@ function FinMerci({ overlay, durationInFrames }) {
           <div style={{
             opacity: textOpacity,
             fontSize: 60,
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 300,
+            fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"),
+            fontWeight: 500,
             color: C.text(COL.white),
             letterSpacing: '4px'
           }}>

@@ -26,11 +26,59 @@ import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter } from './middleware/rateLimiter.js';
 import { errorHandlerMiddleware, notFoundMiddleware } from './middleware/errorHandler.js';
 import { Server } from 'socket.io';
+import { createHash, timingSafeEqual } from 'crypto';
 
 export let io;
 
+// Normalisation alignée sur middleware/auth.js (NFC + retrait des
+// caractères invisibles + trim + lowercase). Locale ici pour éviter
+// un import cyclique avec auth.js.
+function normalizeWsToken(s) {
+  if (typeof s !== 'string') return '';
+  return s.normalize('NFC').replace(/[\u0009\u00A0\u1680\u2000-\u200D\u202F\u205F\u2060\u3000\uFEFF]/g, '').trim().toLowerCase();
+}
+
+function safeEqualToken(a, b) {
+  if (a == null || b == null) return false;
+  const ha = createHash('sha256').update(normalizeWsToken(a)).digest();
+  const hb = createHash('sha256').update(normalizeWsToken(b)).digest();
+  return timingSafeEqual(ha, hb);
+}
+
+// Initialise Socket.io avec :
+// - allowlist d'origines (en prod, l'API est same-origin via Caddy ; on
+//   accepte aussi les CORS_ORIGIN explicites — pas de `*` par défaut).
+// - transport WebSocket uniquement (skip le long-polling Engine.IO qui
+//   sature les liens 4G instables et double le trafic en parallèle).
+// - middleware d'auth par token : un client doit fournir le même
+//   X-App-Password que sur l'API REST (passé en `auth.token` côté
+//   io-client) — sinon `connect_error`.
 export function initSocket(server) {
-  io = new Server(server, { cors: { origin: '*' } });
+  const allow = (process.env.CORS_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const corsOpts = allow.length === 0 || allow.includes('*')
+    ? { origin: true, credentials: false }
+    : { origin: allow, credentials: false };
+
+  io = new Server(server, {
+    cors: corsOpts,
+    transports: ['websocket'],
+    pingInterval: 25000,
+    pingTimeout: 20000,
+  });
+
+  // Auth WS : on accepte SOIT le token global (lecture publique : 30 users),
+  // SOIT le token admin (espace montage). Pas d'auth = pas de connexion.
+  io.use((socket, next) => {
+    const token = (socket.handshake.auth && socket.handshake.auth.token) || socket.handshake.headers['x-app-password'];
+    const GLOBAL = process.env.GLOBAL_PASSWORD;
+    const ADMIN = process.env.ADMIN_PASSWORD;
+    if (!GLOBAL) return next(); // dev local sans mdp configuré
+    if (!token) return next(new Error('unauthorized'));
+    if (safeEqualToken(token, GLOBAL) || (ADMIN && safeEqualToken(token, ADMIN))) {
+      return next();
+    }
+    return next(new Error('unauthorized'));
+  });
 }
 
 // Timeout par requête (en ms). Upload de gros fichiers : 10 min.

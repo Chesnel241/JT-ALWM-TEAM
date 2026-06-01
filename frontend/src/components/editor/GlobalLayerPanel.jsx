@@ -104,7 +104,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                   <label className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
                     <span>Vitesse de défilement</span>
                     <span className="text-[color:var(--ink)]">
-                      {['Très lent', 'Lent', 'Normal', 'Rapide', 'Très rapide'][(v.ticker.speed || 3) - 1]}
+                      {['Pro (60 px/s)', 'Lent', 'Standard', 'Rapide', 'Très rapide'][(v.ticker.speed || 1) - 1]}
                     </span>
                   </label>
                   <input
@@ -112,7 +112,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                     min="1"
                     max="5"
                     step="1"
-                    value={v.ticker.speed || 3}
+                    value={v.ticker.speed || 1}
                     onChange={(e) => setTicker({ speed: parseInt(e.target.value, 10) })}
                     className="w-full accent-[var(--accent)]"
                   />
