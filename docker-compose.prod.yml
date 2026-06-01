@@ -1,0 +1,75 @@
+# ============================================================================
+# Production VPS (Hetzner) — frontend nginx + backend Express, réseau interne.
+# Le frontend nginx proxifie /api et /uploads vers le backend : un seul port
+# public (80), pas de CORS cross-origin, pas de :3010 exposé.
+#
+# Lancement :
+#   cp .env.example .env   # puis renseigner GLOBAL_PASSWORD, R2_*, etc.
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Frontend buildé en API relative (VITE_API_URL vide) : le navigateur appelle
+# /api sur la même origine → nginx route vers le backend.
+# ============================================================================
+services:
+  backend:
+    container_name: jt-alwm-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    # Pas de port public : seul le frontend (réseau interne) parle au backend.
+    expose:
+      - "3010"
+    environment:
+      - NODE_ENV=production
+      - PORT=3010
+      # Origine du site = même hôte que l'API (proxy nginx) → on autorise
+      # l'IP/domaine public. Surchargé par .env si besoin.
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://178.105.250.97}
+      # Derrière le proxy nginx (1 hop) → req.ip correct pour rate-limit/logs.
+      - TRUST_PROXY=1
+    env_file:
+      - .env
+    volumes:
+      - uploads_volume:/app/uploads
+    networks:
+      - jt-alwm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3010/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    container_name: jt-alwm-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # API relative : le navigateur appelle /api sur la même origine.
+        - VITE_API_URL=
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    volumes:
+      # Config nginx prod (proxy /api + /uploads + SSE).
+      - ./frontend/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - jt-alwm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  uploads_volume:
+    driver: local
+
+networks:
+  jt-alwm-network:
+    driver: bridge

@@ -25,8 +25,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dumb-init to handle PID 1 signals properly
-RUN apk add --no-cache dumb-init
+# dumb-init : gestion correcte des signaux PID 1.
+# ffmpeg : rendu master JT (transitions xfade + overlays libass). Le binaire
+#   système alpine (musl, libass + fontconfig inclus) remplace ffmpeg-static
+#   dont le binaire glibc ne s'exécute pas sur alpine. lib/ffmpeg.js détecte
+#   /usr/bin/ffmpeg en priorité.
+# fontconfig + ttf-* : libass a besoin de fontconfig ; les polices du JT sont
+#   fournies via backend/fonts (passées en fontsdir), ttf-dejavu = fallback.
+RUN apk add --no-cache dumb-init ffmpeg fontconfig ttf-dejavu
 
 # Copy node_modules and source from builder stage
 COPY --from=builder /app/node_modules ./node_modules
