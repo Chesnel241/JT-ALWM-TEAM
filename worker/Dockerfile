@@ -27,19 +27,9 @@ COPY worker ./worker
 # Télécharge le navigateur headless de Remotion à la construction (cold start).
 RUN cd worker && node -e "import('@remotion/renderer').then(m=>m.ensureBrowser())"
 
-# Créer un utilisateur non-root pour que Chromium puisse utiliser son sandbox.
-# Chrome refuse catégoriquement de lancer le sandbox en tant que root.
-RUN useradd -m remotionuser \
-  && mkdir -p /app/uploads/files/exports \
-  && chown -R remotionuser:remotionuser /app/uploads \
-  && chown -R remotionuser:remotionuser /app/worker \
-  && chown -R remotionuser:remotionuser /app/remotion/build \
-  && chown -R remotionuser:remotionuser /tmp
-
-USER remotionuser
-
 ENV REMOTION_SERVE_URL=/app/remotion/build
 ENV PORT=8080
+ENV CHROMIUM_FLAGS="--no-sandbox --disable-setuid-sandbox"
 EXPOSE 8080
 WORKDIR /app/worker
 CMD ["node", "src/index.js"]

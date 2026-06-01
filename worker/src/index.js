@@ -80,7 +80,11 @@ app.post('/render', async (req, res) => {
   try {
     await ensureBrowser();
     const inputProps = HAS_R2 ? await resolveUrls(payload) : payload;
-    const sharedChromiumOptions = { gl: 'angle' };
+    const sharedChromiumOptions = { 
+      gl: 'angle',
+      enableMultiProcessOnLinux: false,
+      disableWebSecurity: true
+    };
     const composition = await selectComposition({
       serveUrl: SERVE_URL,
       id: 'JTMaster',
