@@ -275,4 +275,13 @@ export const api = {
     }),
 
   getAnalytics: () => request('/analytics'),
+
+  // === Themes ===
+  getThemes: () => request('/themes', { method: 'GET' }),
+  saveTheme: (theme) => request('/themes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(theme)
+  }),
+  deleteTheme: (id) => request(`/themes/${id}`, { method: 'DELETE' }),
 };

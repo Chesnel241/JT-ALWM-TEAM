@@ -208,6 +208,34 @@ export function addCustomCountry(country) {
   return country;
 }
 
+// ---- Gestion des Thèmes / Préférences ----
+export function getThemes() {
+  return Array.isArray(db._themes) ? db._themes.slice() : [];
+}
+
+export function saveTheme(theme) {
+  if (!db._themes) db._themes = [];
+  const existingIndex = db._themes.findIndex((t) => t.id === theme.id);
+  if (existingIndex >= 0) {
+    db._themes[existingIndex] = theme;
+  } else {
+    db._themes.push({ ...theme, id: theme.id || Date.now().toString() });
+  }
+  persistDb();
+  return theme;
+}
+
+export function deleteTheme(themeId) {
+  if (!db._themes) return false;
+  const initialLength = db._themes.length;
+  db._themes = db._themes.filter((t) => t.id !== themeId);
+  if (db._themes.length < initialLength) {
+    persistDb();
+    return true;
+  }
+  return false;
+}
+
 // Clés internes du modèle (db[weekId][...]) qui ne sont PAS des
 // correspondants. addUpload doit refuser tout countryId qui collide
 // avec ces clés — défense en profondeur si un appelant contourne la
@@ -286,7 +314,7 @@ export function updateFileStatus(weekId, fileId, status, feedback) {
 }
 
 // Clés réservées du store (méta-données qui ne sont pas des semaines).
-const META_KEYS = new Set(['_countries']);
+const META_KEYS = new Set(['_countries', '_themes']);
 
 export function getFileMetadata(filename) {
   for (const weekId of Object.keys(db)) {

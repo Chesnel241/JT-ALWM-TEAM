@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload, Sparkles, Layers } from 'lucide-react';
 import { GLOBAL_TEMPLATES } from '../../data/overlayTemplates.js';
 import { OverlayEditor } from './OverlayPanel.jsx';
+import { api } from '../../api/index.js';
 
 // Bouton d'upload d'un asset (musique/voix-off/image) → uploadAsset → {filename,name}.
 function UploadBtn({ accept, label, uploadAsset, onUploaded }) {
@@ -70,6 +71,54 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
     setOverlays((v.overlays || []).filter((_, i) => i !== idx));
   };
 
+  const [themes, setThemes] = useState([]);
+  const [themeName, setThemeName] = useState('');
+  const [loadingThemes, setLoadingThemes] = useState(false);
+
+  const loadThemes = async () => {
+    setLoadingThemes(true);
+    try {
+      const data = await api.getThemes();
+      setThemes(data || []);
+    } catch (err) {
+      console.error('Failed to load themes', err);
+    } finally {
+      setLoadingThemes(false);
+    }
+  };
+
+  const handleSaveTheme = async () => {
+    if (!themeName.trim()) return alert('Entrez un nom pour le thème');
+    try {
+      const payload = {
+        name: themeName,
+        branding: v,
+      };
+      await api.saveTheme(payload);
+      setThemeName('');
+      loadThemes();
+      alert('Thème sauvegardé avec succès !');
+    } catch (err) {
+      alert('Erreur lors de la sauvegarde du thème');
+    }
+  };
+
+  const handleDeleteTheme = async (id) => {
+    if (!confirm('Supprimer ce thème ?')) return;
+    try {
+      await api.deleteTheme(id);
+      loadThemes();
+    } catch (err) {
+      alert('Erreur lors de la suppression');
+    }
+  };
+
+  const handleApplyTheme = (theme) => {
+    if (confirm(`Appliquer le thème "${theme.name}" ? Cela écrasera votre configuration globale actuelle.`)) {
+      onChange(theme.branding);
+    }
+  };
+
   const field = 'w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]';
   const sectionCls = 'flex flex-col gap-3 border border-[var(--border)] rounded-xl p-4';
   const head = (icon, label, checked, onToggle) => (
@@ -93,6 +142,45 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+          {/* Section Modèles / Préférences */}
+          <section className={sectionCls}>
+            {head(<Layers size={15} />, 'Modèles & Préférences', null)}
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                <input 
+                  className={field} 
+                  placeholder="Nom du nouveau modèle..." 
+                  value={themeName} 
+                  onChange={(e) => setThemeName(e.target.value)} 
+                />
+                <button 
+                  onClick={handleSaveTheme}
+                  className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-sm whitespace-nowrap hover:opacity-90"
+                >
+                  Sauvegarder
+                </button>
+              </div>
+              
+              <div className="flex flex-col gap-2 mt-2">
+                <button onClick={loadThemes} className="text-xs text-[var(--accent)] font-medium text-left underline w-fit">
+                  Rafraîchir les modèles sauvegardés
+                </button>
+                {themes.length === 0 && !loadingThemes && (
+                  <p className="text-xs text-[var(--muted)]">Aucun modèle sauvegardé.</p>
+                )}
+                {themes.map(t => (
+                  <div key={t.id} className="flex items-center justify-between p-2 border border-[var(--border)] rounded-lg bg-[var(--paper-2)]">
+                    <span className="text-sm font-medium text-[var(--ink)]">{t.name}</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleApplyTheme(t)} className="px-3 py-1 bg-[var(--ink)] text-[var(--paper)] text-xs rounded-md">Appliquer</button>
+                      <button onClick={() => handleDeleteTheme(t.id)} className="p-1 text-[var(--muted)] hover:text-red-500 rounded"><Trash2 size={14}/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
           {/* Ticker */}
           <section className={sectionCls}>
             {head(<Newspaper size={15} />, 'Bande défilante (ticker)', v.ticker.enabled, (c) => setTicker({ enabled: c }))}

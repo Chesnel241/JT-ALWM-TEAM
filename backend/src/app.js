@@ -279,6 +279,10 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/weeks', weeksRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/analytics', analyticsRouter);
+
+  const themesRouter = (await import('./routes/themes.js')).default;
+  app.use('/api/themes', themesRouter);
+
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);
   app.use('/api/deliveries', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), deliveriesRouter);
   app.use('/api/editor', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), editorRouter);

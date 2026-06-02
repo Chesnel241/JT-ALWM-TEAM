@@ -4,12 +4,28 @@ import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 import { WorldMap } from '../worldmap.jsx';
 
-// Texte avec animation d'entrée (per-char ou bloc) + contour/halo + police.
+// Animated African Pattern Watermark
+function Watermark({ mode = 'overlay', opacity = 0.06 }) {
+  const frame = useCurrentFrame();
+  return (
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      pointerEvents: 'none',
+      backgroundImage: `url(${staticFile('images/african-pattern.png')})`,
+      backgroundSize: '300px',
+      opacity,
+      mixBlendMode: mode,
+      backgroundPosition: `${frame * 0.5}px ${frame * 0.5}px`
+    }} />
+  );
+}
+// Text with entrance animation (per-char or block) + outline/halo + font.
 function Tx({ children, overlay, durationInFrames, fontFamily, baseStyle }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const animIn = overlay.animation || 'fade';
-  const animOut = overlay.animationOut || 'fade';
+  const animIn = overlay.animation || 'mask_reveal';
+  const animOut = overlay.animationOut || 'slide_out';
   const fx = fxStyle(overlay.outline, overlay.glow);
   const wrapperStyle = { fontFamily: ff(overlay.font, fontFamily), ...baseStyle, ...fx, ...entranceStyle(overlay, frame, fps, durationInFrames) };
   const text = children == null ? '' : String(children);
@@ -26,7 +42,7 @@ function Tx({ children, overlay, durationInFrames, fontFamily, baseStyle }) {
   return <span style={wrapperStyle}>{text}</span>;
 }
 
-// Position d'un overlay : ancrage défaut + delta drag (overlay.position).
+// Position of an overlay: default anchor + drag delta.
 function shift(overlay) {
   const def = DEFAULT_ANCHOR[overlay.templateId] || { x: 0, y: 0 };
   const p = overlay.position;
@@ -36,14 +52,13 @@ function shift(overlay) {
 
 const px = (n) => `${n}px`;
 
-// Wrapper positionné en coords 1920×1080, applique le delta de drag + offset perso.
+// Position wrapper 1920x1080. Applies drag delta + slider offset.
 function Box({ overlay, style, children }) {
   const { dx, dy } = shift(overlay);
   const posX = overlay.posX || 0;
   const posY = overlay.posY || 0;
   const scale = (overlay.scale ?? 100) / 100;
   
-  // We merge transforms. dx/dy come from legacy dragging, posX/posY come from sliders.
   const customTransform = `translate(${px(dx + posX)}, ${px(dy + posY)}) scale(${scale})`;
   
   return (
@@ -66,29 +81,74 @@ function NomInterview({ overlay, durationInFrames }) {
   const isOut = frame > durationInFrames - outDur;
   const outFrame = isOut ? frame - (durationInFrames - outDur) : 0;
 
-  const inSpring = spring({ frame, fps, config: { damping: 14 } });
-  const outSpring = spring({ frame: outFrame, fps, config: { damping: 14 } });
+  // Staggered springs for high-end feel
+  const ribbonSpring = spring({ frame, fps, config: { damping: 16, stiffness: 100 } });
+  const contentSpring = spring({ frame: Math.max(0, frame - 5), fps, config: { damping: 16, stiffness: 90 } });
+  const outSpring = spring({ frame: outFrame, fps, config: { damping: 16, stiffness: 100 } });
   
-  const funcDelayFrames = Math.round(fps * 0.15);
-  const funcSpring = spring({ frame: Math.max(0, frame - funcDelayFrames), fps, config: { damping: 14 } });
+  const ribbonWidth = interpolate(ribbonSpring, [0, 1], [0, 100]);
+  const contentY = interpolate(contentSpring, [0, 1], [20, 0]);
+  const contentOp = interpolate(contentSpring, [0, 1], [0, 1]);
 
-  const slideX = isOut 
-    ? interpolate(outSpring, [0, 1], [0, -150]) 
-    : interpolate(inSpring, [0, 1], [-150, 0]);
-  
-  const containerOpacity = isOut ? interpolate(outSpring, [0, 1], [1, 0]) : 1;
-  const nameOpacity = interpolate(inSpring, [0, 1], [0, 1]);
-  const funcOpacity = interpolate(funcSpring, [0, 1], [0, 1]);
+  const slideOutX = isOut ? interpolate(outSpring, [0, 1], [0, -200]) : 0;
+  const slideOutOp = isOut ? interpolate(outSpring, [0, 1], [1, 0]) : 1;
 
   return (
-    <Box overlay={overlay} style={{ left: 100, top: 880, opacity: containerOpacity, transform: `translateX(${slideX}px)` }}>
-      <div style={{ background: C.bg(COL.navy), borderLeft: `12px solid ${C.accent(COL.gold)}`, padding: '16px 42px', minWidth: 400 }}>
-        <div style={{ fontWeight: 700, fontSize: `${(overlay.fontSize || 100) / 100 * 52}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.text(COL.white), opacity: nameOpacity, fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif") }}>
-          {f.name || f.nom || "NOM INTERVIEW"}
+    <Box overlay={overlay} style={{ left: 120, top: 880, opacity: slideOutOp, transform: `translateX(${slideOutX}px)` }}>
+      {/* Skewed background elements - no bulky rectangles */}
+      <div style={{ display: 'flex', flexDirection: 'column', filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.4))' }}>
+        
+        {/* Name ribbon */}
+        <div style={{
+          background: `linear-gradient(90deg, ${C.bg(COL.navy)} 0%, ${C.bg(COL.dark)} 100%)`,
+          padding: '16px 40px',
+          clipPath: `polygon(0 0, ${ribbonWidth}% 0, calc(${ribbonWidth}% - 10px) 100%, 0 100%)`,
+          display: 'inline-flex',
+          borderLeft: `6px solid ${C.accent(COL.gold)}`,
+          position: 'relative', overflow: 'hidden'
+        }}>
+          <Watermark opacity={0.08} mode="overlay" />
+          <div style={{ 
+            opacity: contentOp, 
+            transform: `translateY(${contentY}px)`,
+            fontWeight: 800, 
+            fontSize: `${(overlay.fontSize || 100) / 100 * 52}px`, 
+            color: C.text(COL.white), 
+            fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+            textTransform: 'uppercase',
+            letterSpacing: '0.02em',
+            position: 'relative'
+          }}>
+            {f.name || f.nom || "NOM INTERVIEW"}
+          </div>
         </div>
-        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 30}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.accent(COL.blue), marginTop: 8, opacity: funcOpacity, fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"), fontWeight: 500 }}>
-          {f.title || f.fonction || "FONCTION"}
+
+        {/* Title ribbon - folds down */}
+        <div style={{
+          background: C.accent(COL.blue),
+          padding: '8px 40px',
+          clipPath: `polygon(0 0, ${ribbonWidth}% 0, calc(${ribbonWidth}% - 8px) 100%, 0 100%)`,
+          display: 'inline-flex',
+          marginTop: -2,
+          marginLeft: 12,
+          borderLeft: `4px solid ${C.text(COL.white)}`,
+          position: 'relative', overflow: 'hidden'
+        }}>
+          <Watermark opacity={0.06} mode="multiply" />
+          <div style={{ 
+            opacity: contentOp, 
+            transform: `translateY(${contentY}px)`,
+            fontSize: `${(overlay.fontSize || 100) / 100 * 30}px`, 
+            color: COL.white, 
+            fontFamily: ff(overlay.font, "'Montserrat', sans-serif"), 
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            position: 'relative'
+          }}>
+            {f.title || f.fonction || "FONCTION"}
+          </div>
         </div>
+
       </div>
     </Box>
   );
@@ -97,12 +157,60 @@ function NomInterview({ overlay, durationInFrames }) {
 function LowerThirdPro({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // AE style staggered reveal
+  const barIn = spring({ frame, fps, config: { damping: 16, stiffness: 120 } });
+  const textIn = spring({ frame: Math.max(0, frame - 8), fps, config: { damping: 14, stiffness: 100 } });
+  
+  const barW = interpolate(barIn, [0, 1], [0, 100]);
+  const textY = interpolate(textIn, [0, 1], [40, 0]);
+  const textOp = interpolate(textIn, [0, 1], [0, 1]);
+
   return (
-    <Box overlay={overlay} style={{ left: 72, top: 892 }}>
-      <div style={{ background: C.bg(COL.white), color: C.text(COL.ink), fontFamily: ff(overlay.font, "'Archivo Black', sans-serif"), fontWeight: 900, fontSize: `${(overlay.fontSize || 100) / 100 * 44}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, padding: '10px 18px', borderLeft: `14px solid ${C.accent(COL.blue)}` }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="'Archivo Black', sans-serif">{f.titre}</Tx>
+    <Box overlay={overlay} style={{ left: 100, top: 860 }}>
+      {/* Glowing neon line instead of solid background */}
+      <div style={{ 
+        height: 4, 
+        width: `${barW}%`, 
+        minWidth: 400,
+        background: C.accent(COL.blue),
+        boxShadow: `0 0 15px ${C.accent(COL.blue)}, 0 0 30px ${C.accent(COL.blue)}`,
+        marginBottom: 16
+      }} />
+      
+      <div style={{ overflow: 'hidden', padding: '0 10px' }}>
+        <div style={{ 
+          transform: `translateY(${textY}px)`, 
+          opacity: textOp,
+          color: C.text(COL.white), 
+          fontFamily: ff(overlay.font, "'Archivo Black', sans-serif"), 
+          fontWeight: 900, 
+          fontSize: `${(overlay.fontSize || 100) / 100 * 56}px`, 
+          textShadow: '0 8px 16px rgba(0,0,0,0.8)',
+          textTransform: 'uppercase',
+          letterSpacing: '-0.02em'
+        }}>
+          {f.titre}
+        </div>
       </div>
-      <div style={{ background: C.accent(COL.blue), color: COL.white, fontWeight: 700, fontSize: `${(overlay.fontSize || 100) / 100 * 30}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, padding: '8px 18px', display: 'inline-block', marginTop: 6 }}>{f.sous_titre}</div>
+
+      <div style={{ overflow: 'hidden', padding: '0 10px', marginTop: 4 }}>
+        <div style={{ 
+          transform: `translateY(${textY}px)`, 
+          opacity: textOp,
+          color: C.accent(COL.gold), 
+          fontWeight: 700, 
+          fontSize: `${(overlay.fontSize || 100) / 100 * 32}px`, 
+          fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+          textShadow: '0 4px 8px rgba(0,0,0,0.8)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em'
+        }}>
+          {f.sous_titre}
+        </div>
+      </div>
     </Box>
   );
 }
@@ -113,57 +221,79 @@ function GrandTitre({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const isOut = frame > durationInFrames - 20;
-  const outFrame = isOut ? frame - (durationInFrames - 20) : 0;
-  const outOpacity = interpolate(outFrame, [0, 20], [1, 0]);
+  const isOut = frame > durationInFrames - 30;
+  const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
+  const outOpacity = interpolate(outFrame, [0, 30], [1, 0]);
 
-  // bg zoom slightly
-  const bgScale = interpolate(frame, [0, durationInFrames], [1, 1.05]);
-  // slow 3D rotation
-  const rotateX = interpolate(frame, [0, durationInFrames], [5, -5]);
-  const rotateY = interpolate(frame, [0, durationInFrames], [-2, 2]);
+  // bg cinematic zoom
+  const bgScale = interpolate(frame, [0, durationInFrames], [1, 1.08]);
+  const rotateX = interpolate(frame, [0, durationInFrames], [8, -4]);
+  const rotateY = interpolate(frame, [0, durationInFrames], [-4, 4]);
 
-  // Title scales 80->100, op 0->1
-  const titleSpring = spring({ frame, fps, config: { damping: 20 } });
+  // Title snappy scale + drift
+  const titleSpring = spring({ frame, fps, config: { damping: 24, stiffness: 90 } });
   const titleScale = interpolate(titleSpring, [0, 1], [0.8, 1]);
   const titleOpacity = interpolate(titleSpring, [0, 1], [0, 1]);
+  const titleDrift = interpolate(frame, [0, durationInFrames], [0, -30]);
 
-  // Light reflection sweep
-  const lightPos = interpolate(frame, [0, 60], [-100, 200], { extrapolateRight: 'clamp' }); // sweeps across
+  // Light sweep
+  const lightPos = interpolate(frame, [0, 80], [-100, 200], { extrapolateRight: 'clamp' });
 
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, perspective: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, perspective: 1200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        background: `radial-gradient(ellipse at center, ${COL.blue} 0%, ${C.bg(COL.navy)} 100%)`,
+        background: `radial-gradient(circle at center, ${C.bg(COL.blue)} 0%, ${C.bg(COL.navy)} 100%)`,
         transform: `scale(${bgScale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
         transformStyle: 'preserve-3d',
         overflow: 'hidden',
         zIndex: 1
       }}>
-         {/* Globe filaire animé (identité ALWM TV) */}
-         <WorldMap rotateSpeed={0.18} opacity={0.4} color={COL.light} glow={COL.blue} />
-         {/* Light sweep par-dessus */}
+         <Watermark opacity={0.08} mode="overlay" />
+         <WorldMap rotateSpeed={0.2} opacity={0.3} color={COL.light} glow={COL.blue} />
+         {/* Volumetric light beam */}
          <div style={{
-           position: 'absolute', top: 0, bottom: 0, width: '40%',
-           background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent)',
-           transform: `translateX(${lightPos}%) skewX(-20deg)`,
+           position: 'absolute', top: '-50%', bottom: '-50%', width: '60%', left: '20%',
+           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+           transform: `translateX(${lightPos}%) skewX(-35deg)`,
            zIndex: 2,
+           filter: 'blur(40px)'
          }} />
       </div>
 
       <div style={{
         position: 'relative',
-        transform: `scale(${titleScale})`,
+        transform: `scale(${titleScale}) translateY(${titleDrift}px)`,
         opacity: titleOpacity,
         textAlign: 'center',
         color: C.text(COL.white),
-        fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
+        fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
         zIndex: 2,
-        textShadow: '0 10px 30px rgba(0,0,0,0.5)'
+        textShadow: '0 20px 40px rgba(0,0,0,0.6)'
       }}>
-        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 160}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, letterSpacing: '0.04em', fontWeight: 700 }}>{f.titre || f.title || 'LE JOURNAL'}</div>
-        <div style={{ fontSize: `${(overlay.fontSize || 100) / 100 * 60}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, color: C.accent(COL.light), fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"), fontWeight: 500, marginTop: 15 }}>{f.sous_titre || f.subtitle || f.date || 'EDITION SPECIALE'}</div>
+        <div style={{ 
+          fontSize: `${(overlay.fontSize || 100) / 100 * 180}px`, 
+          fontWeight: 900, 
+          letterSpacing: '0.02em', 
+          lineHeight: 1.1,
+          background: `linear-gradient(180deg, #FFFFFF 0%, #E0E0E0 100%)`,
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          textTransform: 'uppercase'
+        }}>
+          {f.titre || f.title || 'LE JOURNAL'}
+        </div>
+        <div style={{ 
+          fontSize: `${(overlay.fontSize || 100) / 100 * 50}px`, 
+          color: C.accent(COL.gold), 
+          fontWeight: 600, 
+          marginTop: 20,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          WebkitTextFillColor: 'initial' // override gradient
+        }}>
+          {f.sous_titre || f.subtitle || f.date || 'EDITION SPECIALE'}
+        </div>
       </div>
     </Box>
   );
@@ -172,10 +302,21 @@ function GrandTitre({ overlay, durationInFrames }) {
 function TitreKaraoke({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
-  const o = { ...overlay, animation: overlay.animation || 'cascade' };
+  const o = { ...overlay, animation: overlay.animation || 'kinetic_type' };
+  
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 455, width: 1920, textAlign: 'center' }}>
-      <div style={{ borderTop: `6px solid ${C.accent(COL.gold)}`, background: C.bg('rgba(0,0,0,.55)'), padding: '28px 0', width: 1920, fontSize: 92, color: C.text(COL.white) }}>
+    <Box overlay={overlay} style={{ left: 0, top: 450, width: 1920, textAlign: 'center' }}>
+      <div style={{ 
+        display: 'inline-block',
+        background: `linear-gradient(90deg, transparent, ${C.bg('rgba(0,0,0,.7)')} 20%, ${C.bg('rgba(0,0,0,.7)')} 80%, transparent)`,
+        padding: '30px 100px', 
+        fontSize: 100, 
+        color: C.text(COL.white),
+        borderTop: `2px solid ${C.accent(COL.gold)}`,
+        borderBottom: `2px solid ${C.accent(COL.gold)}`,
+        boxShadow: '0 0 40px rgba(0,0,0,0.5)',
+        textTransform: 'uppercase'
+      }}>
         <Tx overlay={o} durationInFrames={durationInFrames} fontFamily="Anton">{f.title}</Tx>
       </div>
     </Box>
@@ -188,72 +329,72 @@ function TitreReportage({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const inDuration = Math.round(fps * 0.4);
-  const subDelay = Math.round(fps * 0.2);
-  const outDuration = Math.round(fps * 0.5);
+  const isOut = frame > durationInFrames - 30;
+  const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
+
+  // Staggered reveals for ribbons
+  const ribbon1 = spring({ frame, fps, config: { damping: 18, stiffness: 100 } });
+  const ribbon2 = spring({ frame: Math.max(0, frame - 5), fps, config: { damping: 18, stiffness: 100 } });
   
-  const isOut = frame > durationInFrames - outDuration;
-  const outFrame = isOut ? frame - (durationInFrames - outDuration) : 0;
+  const clip1 = interpolate(ribbon1, [0, 1], [100, 0]);
+  const clip2 = interpolate(ribbon2, [0, 1], [100, 0]);
 
-  const barProgress = spring({ frame, fps, config: { damping: 14 } });
-  const whiteProgress = spring({ frame: Math.max(0, frame - 5), fps, config: { damping: 14 } });
-  
-  const titleFrame = Math.max(0, frame - 5);
-  const titleSlide = interpolate(spring({ frame: titleFrame, fps, config: { damping: 12 } }), [0, 1], [-60, 0]);
-  const titleBlur = interpolate(titleFrame, [0, 10], [10, 0], { extrapolateRight: 'clamp' });
-  const titleOpacity = interpolate(titleFrame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
-
-  const subFrame = Math.max(0, frame - (5 + subDelay));
-  const subSlide = interpolate(spring({ frame: subFrame, fps, config: { damping: 12 } }), [0, 1], [-40, 0]);
-  const subOpacity = interpolate(subFrame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
-
-  const outProgress = spring({ frame: outFrame, fps, config: { damping: 14 } });
-
-  const clipLeft = interpolate(barProgress, [0, 1], [100, 0]);
-  const clipRight = isOut ? interpolate(outProgress, [0, 1], [0, 100]) : 0;
-  
-  const whiteClipLeft = interpolate(whiteProgress, [0, 1], [100, 0]);
+  const outProgress = spring({ frame: outFrame, fps, config: { damping: 18 } });
+  const clipOut = isOut ? interpolate(outProgress, [0, 1], [0, 100]) : 0;
 
   return (
-    <Box overlay={overlay} style={{ left: 100, top: 850, width: 1400, height: 'auto', minHeight: 140 }}>
-       {/* Blue bar */}
-       <div style={{
-         position: 'absolute', top: 0, left: 0, bottom: 0,
-         width: '100%',
-         background: C.accent(COL.blue),
-         clipPath: `inset(0 ${clipRight}% 0 ${isOut ? 0 : clipLeft}%)`,
-       }} />
-       {/* White background */}
-       <div style={{
-         position: 'relative',
-         width: '100%',
-         background: C.bg(COL.white),
-         clipPath: `inset(0 ${clipRight}% 0 ${isOut ? 0 : whiteClipLeft}%)`,
-         padding: '24px 40px', boxSizing: 'border-box',
-         display: 'flex', flexDirection: 'column', justifyContent: 'center'
-       }}>
-          <div style={{
-            transform: `translateX(${isOut ? 0 : titleSlide}px)`,
-            filter: `blur(${isOut ? 0 : titleBlur}px)`,
-            opacity: isOut ? 1 : titleOpacity,
-            fontWeight: 700, fontSize: `${(overlay.fontSize || 100) / 100 * 48}px`,
-            lineHeight: `${(overlay.lineHeight || 110) / 100}`,
-            color: C.text(COL.navy),
-            fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
-            marginBottom: 8
-          }}>
-             {f.titre || f.sujet || f.title || "TITRE REPORTAGE"}
-          </div>
-          <div style={{
-            transform: `translateX(${isOut ? 0 : subSlide}px)`,
-            opacity: isOut ? 1 : subOpacity,
-            fontSize: `${(overlay.fontSize || 100) / 100 * 28}px`,
-            lineHeight: `${(overlay.lineHeight || 110) / 100}`,
-            color: C.accent(COL.blue),
-            fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"), fontWeight: 500
-          }}>
-             {f.subtitle || f.sous_titre || "SOUS-TITRE"}
-          </div>
+    <Box overlay={overlay} style={{ left: 120, top: 820, width: 1400 }}>
+       {/* Background structural ribbons */}
+       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+         
+         {/* Main ribbon (Title) */}
+         <div style={{
+           background: C.bg(COL.white),
+           padding: '24px 40px',
+           clipPath: `polygon(0 0, calc(100% - ${isOut ? clipOut : clip1}%) 0, calc(100% - ${isOut ? clipOut : clip1}% - 15px) 100%, 0 100%)`,
+           display: 'inline-flex',
+           borderLeft: `8px solid ${C.accent(COL.blue)}`,
+           boxShadow: '20px 20px 40px rgba(0,0,0,0.2)',
+           position: 'relative', overflow: 'hidden'
+         }}>
+            <Watermark opacity={0.06} mode="multiply" />
+            <div style={{
+              fontWeight: 800, fontSize: `${(overlay.fontSize || 100) / 100 * 50}px`,
+              color: C.text(COL.navy),
+              fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+              textTransform: 'uppercase',
+              letterSpacing: '0.01em',
+              position: 'relative'
+            }}>
+               <Tx overlay={{...overlay, animation: 'kinetic_type'}} durationInFrames={durationInFrames}>{f.titre || f.sujet || f.title || "TITRE REPORTAGE"}</Tx>
+            </div>
+         </div>
+
+         {/* Subtitle ribbon */}
+         <div style={{
+           background: C.accent(COL.blue),
+           padding: '12px 40px',
+           clipPath: `polygon(0 0, calc(100% - ${isOut ? clipOut : clip2}%) 0, calc(100% - ${isOut ? clipOut : clip2}% - 10px) 100%, 0 100%)`,
+           display: 'inline-flex',
+           marginTop: -4,
+           marginLeft: 16,
+           borderLeft: `4px solid ${C.accent(COL.gold)}`,
+           position: 'relative', overflow: 'hidden'
+         }}>
+            <Watermark opacity={0.06} mode="multiply" />
+            <div style={{
+              fontSize: `${(overlay.fontSize || 100) / 100 * 28}px`,
+              color: COL.white,
+              fontFamily: ff(overlay.font, "'Montserrat', sans-serif"), 
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              position: 'relative'
+            }}>
+               <Tx overlay={{...overlay, animation: 'fade'}} durationInFrames={durationInFrames}>{f.subtitle || f.sous_titre || "SOUS-TITRE"}</Tx>
+            </div>
+         </div>
+
        </div>
     </Box>
   );
@@ -265,19 +406,32 @@ function SignatureReportage({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const outDur = 15;
+  const outDur = 20;
   const isOut = frame > durationInFrames - outDur;
   const outFrame = isOut ? frame - (durationInFrames - outDur) : 0;
 
-  const inPop = spring({ frame, fps, config: { damping: 12, stiffness: 100 } });
+  const inSpring = spring({ frame, fps, config: { damping: 14, stiffness: 100 } });
   const outFade = interpolate(outFrame, [0, outDur], [1, 0], { extrapolateRight: 'clamp' });
   
-  const moveY = interpolate(inPop, [0, 1], [20, 0]);
-  const opacity = interpolate(inPop, [0, 1], [0, 1]);
+  const moveX = interpolate(inSpring, [0, 1], [50, 0]);
+  const opacity = interpolate(inSpring, [0, 1], [0, 1]);
 
   return (
-    <Box overlay={overlay} style={{ left: 1600, top: 950, transform: `translateY(${moveY}px)`, opacity: isOut ? outFade : opacity }}>
-      <div style={{ background: C.bg('rgba(0,0,0,0.7)'), color: C.text(COL.white), padding: '10px 24px', borderRadius: 4, fontSize: 26, fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"), fontWeight: 500, letterSpacing: '0.02em', border: `1px solid ${C.accent('rgba(255,255,255,0.15)')}` }}>
+    <Box overlay={overlay} style={{ left: 1550, top: 950, transform: `translateX(${moveX}px)`, opacity: isOut ? outFade : opacity }}>
+      {/* Sleek pill instead of box */}
+      <div style={{ 
+        background: `linear-gradient(90deg, ${C.bg('rgba(0,0,0,0.8)')} 0%, ${C.bg('rgba(0,0,0,0.4)')} 100%)`, 
+        color: C.text(COL.white), 
+        padding: '12px 30px', 
+        borderRadius: 30, 
+        fontSize: 28, 
+        fontFamily: ff(overlay.font, "'Montserrat', sans-serif"), 
+        fontWeight: 600, 
+        letterSpacing: '0.04em',
+        border: `1px solid ${C.accent('rgba(255,255,255,0.1)')}`,
+        backdropFilter: 'blur(10px)',
+        boxShadow: '0 10px 20px rgba(0,0,0,0.3)'
+      }}>
         {f.texte || f.signature || "SIGNATURE"}
       </div>
     </Box>
@@ -295,55 +449,58 @@ function RappelTitres({ overlay, durationInFrames }) {
     titres.push("PREMIER TITRE DE L'ACTUALITÉ", "DEUXIÈME INFORMATION MAJEURE", "TROISIÈME SUJET IMPORTANT");
   }
   
-  const isOut = frame > durationInFrames - 20;
-  const outFrame = isOut ? frame - (durationInFrames - 20) : 0;
-  const outOpacity = interpolate(outFrame, [0, 20], [1, 0]);
+  const isOut = frame > durationInFrames - 30;
+  const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
+  const outOpacity = interpolate(outFrame, [0, 30], [1, 0]);
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1 }}>
-      {/* Fond brand ALWM : dégradé marine + globe filaire en transparence */}
-      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${C.bg(COL.navy)} 0%, ${COL.blue} 100%)`, zIndex: 0 }} />
-      <WorldMap rotateSpeed={0.12} opacity={0.35} color={COL.light} glow={COL.blue} />
-      {/* Liste des titres */}
-      <div style={{ position: 'absolute', left: 150, top: 250, zIndex: 2 }}>
+      {/* Brand background */}
+      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${C.bg(COL.navy)} 0%, ${C.bg(COL.dark)} 100%)`, zIndex: 0 }} />
+      <WorldMap rotateSpeed={0.12} opacity={0.25} color={COL.light} glow={COL.blue} />
+      
+      {/* List items staggered */}
+      <div style={{ position: 'absolute', left: 160, top: 220, zIndex: 2 }}>
         {titres.map((titre, i) => {
-          const delay = Math.round(fps * 0.2) * i;
+          const delay = Math.round(fps * 0.15) * i;
           const itemFrame = Math.max(0, frame - delay);
-          const slideIn = spring({ frame: itemFrame, fps, config: { damping: 14 } });
-          const x = interpolate(slideIn, [0, 1], [-150, 0]);
-          const opacity = interpolate(slideIn, [0, 1], [0, 1]);
+          const slideIn = spring({ frame: itemFrame, fps, config: { damping: 16, stiffness: 100 } });
+          const x = interpolate(slideIn, [0, 1], [-100, 0]);
+          const op = interpolate(slideIn, [0, 1], [0, 1]);
           const numStr = String(i + 1).padStart(2, '0');
 
           return (
             <div key={i} style={{
               transform: `translateX(${x}px)`,
-              opacity,
+              opacity: op,
               display: 'flex',
-              alignItems: 'stretch',
-              background: 'rgba(255,255,255,0.97)',
-              color: C.text(COL.navy),
-              fontSize: 44,
-              fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
-              fontWeight: 700,
-              marginBottom: 24,
-              boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
-              maxWidth: 1280,
-              overflow: 'hidden',
-              borderRadius: 4,
+              alignItems: 'center',
+              marginBottom: 32,
+              maxWidth: 1300,
             }}>
-              {/* Pastille numérotée bleu électrique (charte) */}
+              {/* Bold glowing number */}
               <div style={{
-                background: C.accent(COL.blue),
-                color: COL.white,
-                padding: '16px 22px',
-                fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
-                fontWeight: 700,
-                fontSize: 44,
-                letterSpacing: '0.05em',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                minWidth: 100,
+                color: C.accent(COL.blue),
+                fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+                fontWeight: 900,
+                fontSize: 80,
+                letterSpacing: '-0.02em',
+                marginRight: 40,
+                textShadow: `0 0 20px ${C.accent('rgba(0,123,255,0.4)')}`
               }}>{numStr}</div>
-              <div style={{ padding: '20px 32px', display: 'flex', alignItems: 'center' }}>{titre}</div>
+              
+              {/* Clean text instead of boxed card */}
+              <div style={{ 
+                color: C.text(COL.white), 
+                fontSize: 52, 
+                fontFamily: ff(overlay.font, "'Montserrat', sans-serif"), 
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.01em',
+                lineHeight: 1.2
+              }}>
+                {titre}
+              </div>
             </div>
           );
         })}
@@ -356,10 +513,19 @@ function SousTitre({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
-    <Box overlay={overlay} style={{ left: 200, top: 972, width: 1520, textAlign: 'center' }}>
-      <span style={{ background: C.bg('rgba(0,0,0,.7)'), color: C.text(COL.white), fontSize: 40, padding: '6px 16px' }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.texte}</Tx>
-      </span>
+    <Box overlay={overlay} style={{ left: 0, top: 970, width: 1920, textAlign: 'center', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ 
+        background: `linear-gradient(90deg, transparent, ${C.bg('rgba(0,0,0,0.85)')} 15%, ${C.bg('rgba(0,0,0,0.85)')} 85%, transparent)`, 
+        color: C.text(COL.white), 
+        fontSize: 38, 
+        padding: '12px 80px',
+        fontFamily: ff(overlay.font, "'Inter', sans-serif"),
+        fontWeight: 500,
+        letterSpacing: '0.02em',
+        textShadow: '0 4px 10px rgba(0,0,0,0.8)'
+      }}>
+        <Tx overlay={overlay} durationInFrames={durationInFrames}>{f.texte}</Tx>
+      </div>
     </Box>
   );
 }
@@ -367,9 +533,29 @@ function SousTitre({ overlay, durationInFrames }) {
 function BandeauPays({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  
+  const inSpring = spring({ frame, fps, config: { damping: 14 } });
+  const x = interpolate(inSpring, [0, 1], [200, 0]);
+
   return (
-    <Box overlay={overlay} style={{ left: 1660, top: 20 }}>
-      <div style={{ background: C.bg(COL.red), borderBottom: `6px solid ${C.accent(COL.gold)}`, width: 260, height: 64, color: C.text(COL.white), fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, textAlign: 'center', lineHeight: '64px' }}>{f.pays}</div>
+    <Box overlay={overlay} style={{ left: 1600, top: 40, transform: `translateX(${x}px)` }}>
+      <div style={{ 
+        background: C.bg(COL.red), 
+        padding: '12px 40px',
+        color: C.text(COL.white), 
+        fontFamily: "'Montserrat', sans-serif", 
+        fontWeight: 900,
+        fontSize: 36, 
+        textAlign: 'center', 
+        textTransform: 'uppercase',
+        letterSpacing: '0.1em',
+        boxShadow: '0 10px 20px rgba(0,0,0,0.3)',
+        borderLeft: `6px solid ${C.accent(COL.gold)}`
+      }}>
+        {f.pays}
+      </div>
     </Box>
   );
 }
@@ -378,10 +564,33 @@ function FlashInfo({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, display: 'flex', height: 72 }}>
-      <div style={{ background: C.accent(COL.black), color: C.text(COL.white), fontFamily: 'Anton, sans-serif', fontSize: 40, width: 230, textAlign: 'center', lineHeight: '72px' }}>FLASH</div>
-      <div style={{ background: C.bg(COL.red), color: C.text(COL.white), fontWeight: 800, fontSize: `${(overlay.fontSize || 100) / 100 * 38}px`, lineHeight: `${(overlay.lineHeight || 120) / 100 * 72}px`, flex: 1, paddingLeft: 30 }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.texte}</Tx>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, display: 'flex', height: 80, boxShadow: '0 15px 30px rgba(0,0,0,0.4)' }}>
+      <div style={{ 
+        background: C.accent(COL.black), 
+        color: C.text(COL.red), 
+        fontFamily: "'Archivo Black', sans-serif", 
+        fontSize: 44, 
+        width: 260, 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        letterSpacing: '0.05em'
+      }}>
+        FLASH
+      </div>
+      <div style={{ 
+        background: C.bg(COL.red), 
+        color: C.text(COL.white), 
+        fontWeight: 700, 
+        fontSize: `${(overlay.fontSize || 100) / 100 * 42}px`, 
+        flex: 1, 
+        display: 'flex',
+        alignItems: 'center',
+        paddingLeft: 40,
+        fontFamily: ff(overlay.font, "'Inter', sans-serif"),
+        textTransform: 'uppercase'
+      }}>
+        <Tx overlay={overlay} durationInFrames={durationInFrames}>{f.texte}</Tx>
       </div>
     </Box>
   );
@@ -391,12 +600,32 @@ function BreakingNews({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
-    <Box overlay={overlay} style={{ left: 120, top: 150 }}>
-      <div style={{ background: C.bg(COL.red), color: COL.white, fontFamily: 'Anton, sans-serif', fontSize: `${(overlay.fontSize || 100) / 100 * 66}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, padding: '6px 40px', transform: 'skewX(-12deg)', display: 'inline-block' }}>
-        <span style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>{f.titre || 'DERNIÈRE MINUTE'}</span>
+    <Box overlay={overlay} style={{ left: 120, top: 120 }}>
+      <div style={{ 
+        background: C.bg(COL.red), 
+        color: COL.white, 
+        fontFamily: "'Archivo Black', sans-serif", 
+        fontSize: `${(overlay.fontSize || 100) / 100 * 70}px`, 
+        padding: '12px 40px', 
+        transform: 'skewX(-15deg)', 
+        display: 'inline-block',
+        boxShadow: `0 0 30px ${C.bg('rgba(220,38,38,0.5)')}`
+      }}>
+        <span style={{ display: 'inline-block', transform: 'skewX(15deg)', letterSpacing: '0.02em' }}>{f.titre || 'DERNIÈRE MINUTE'}</span>
       </div>
-      <div style={{ marginTop: 12, background: C.accent(COL.white), color: C.text(COL.ink), fontWeight: 800, fontSize: `${(overlay.fontSize || 100) / 100 * 40}px`, lineHeight: `${(overlay.lineHeight || 120) / 100}`, padding: '8px 18px', display: 'inline-block' }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames} fontFamily="Inter">{f.texte || f.sujet}</Tx>
+      <div style={{ 
+        marginTop: 16, 
+        marginLeft: 20,
+        background: C.accent(COL.white), 
+        color: C.text(COL.ink), 
+        fontWeight: 800, 
+        fontSize: `${(overlay.fontSize || 100) / 100 * 44}px`, 
+        padding: '12px 30px', 
+        display: 'inline-block',
+        fontFamily: ff(overlay.font, "'Inter', sans-serif"),
+        boxShadow: '10px 10px 30px rgba(0,0,0,0.3)'
+      }}>
+        <Tx overlay={{...overlay, animation: 'typewriter'}} durationInFrames={durationInFrames}>{f.texte || f.sujet}</Tx>
       </div>
     </Box>
   );
@@ -406,10 +635,30 @@ function ScoreResultat({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
-    <Box overlay={overlay} style={{ left: 500, top: 40, width: 920, textAlign: 'center' }}>
-      <span style={{ background: C.bg(COL.navy), color: C.text(COL.white), padding: '14px 22px', fontFamily: "'Bebas Neue', sans-serif", fontSize: 56, display: 'inline-block' }}>
-        {f.gauche} <span style={{ color: C.accent(COL.gold), fontFamily: 'Anton, sans-serif' }}>{f.score}</span> {f.droite}
-      </span>
+    <Box overlay={overlay} style={{ left: 500, top: 60, width: 920, textAlign: 'center' }}>
+      <div style={{ 
+        display: 'inline-flex',
+        alignItems: 'center',
+        background: `linear-gradient(180deg, ${C.bg(COL.navy)} 0%, ${C.bg(COL.dark)} 100%)`, 
+        color: C.text(COL.white), 
+        padding: '16px 40px', 
+        fontFamily: "'Montserrat', sans-serif", 
+        fontWeight: 800,
+        fontSize: 50,
+        borderRadius: 12,
+        border: `2px solid ${C.accent('rgba(255,255,255,0.1)')}`,
+        boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+      }}>
+        <span style={{ flex: 1, textAlign: 'right', paddingRight: 30, textTransform: 'uppercase' }}>{f.gauche}</span>
+        <span style={{ 
+          color: C.accent(COL.gold), 
+          fontSize: 64, 
+          padding: '0 30px',
+          borderLeft: `2px solid ${C.accent('rgba(255,255,255,0.2)')}`,
+          borderRight: `2px solid ${C.accent('rgba(255,255,255,0.2)')}`
+        }}>{f.score}</span>
+        <span style={{ flex: 1, textAlign: 'left', paddingLeft: 30, textTransform: 'uppercase' }}>{f.droite}</span>
+      </div>
     </Box>
   );
 }
@@ -418,74 +667,77 @@ function HorlogeDate({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   return (
-    <Box overlay={overlay} style={{ left: 20, top: 20, display: 'flex', alignItems: 'center', background: C.bg(COL.red), padding: '4px 14px', height: 70 }}>
-      <span style={{ color: C.text(COL.white), fontFamily: "'Bebas Neue', sans-serif", fontSize: 48 }}>{f.heure}</span>
-      <span style={{ color: C.accent(COL.gold), fontSize: 26, marginLeft: 12 }}>{f.date}</span>
+    <Box overlay={overlay} style={{ left: 40, top: 40 }}>
+      <div style={{
+        display: 'flex', 
+        alignItems: 'center', 
+        background: C.bg('rgba(0,0,0,0.7)'),
+        backdropFilter: 'blur(10px)',
+        padding: '8px 24px', 
+        borderRadius: 8,
+        border: `1px solid ${C.accent('rgba(255,255,255,0.15)')}`,
+        boxShadow: '0 10px 20px rgba(0,0,0,0.3)'
+      }}>
+        <span style={{ color: C.text(COL.white), fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 36, letterSpacing: '0.05em' }}>{f.heure}</span>
+        <span style={{ color: C.accent(COL.gold), fontSize: 22, marginLeft: 16, fontFamily: "'Inter', sans-serif", fontWeight: 600, textTransform: 'uppercase' }}>{f.date}</span>
+      </div>
     </Box>
   );
 }
 
-// 6. ASuivre
 function ASuivre({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // White card slides in from right
-  const cardX = interpolate(spring({ frame, fps, config: { damping: 14 } }), [0, 1], [1000, 0]);
+  // Snappy slide in
+  const cardX = interpolate(spring({ frame, fps, config: { damping: 16, stiffness: 120 } }), [0, 1], [1000, 0]);
   
-  // Blue bar pushes text
-  const barWidth = interpolate(spring({ frame: Math.max(0, frame - 10), fps, config: { damping: 12 } }), [0, 1], [0, 20]);
-  
-  // Typewriter effect handled by Tx (with animation: 'typewriter')
-  const o = { ...overlay, animation: overlay.animation || 'typewriter' };
+  const o = { ...overlay, animation: overlay.animation || 'kinetic_type' };
 
   return (
     <Box overlay={overlay} style={{ left: 1400, top: 800 }}>
       <div style={{ 
         transform: `translateX(${cardX}px)`, 
-        background: C.bg(COL.white), 
-        padding: '20px 40px',
+        background: `linear-gradient(90deg, ${C.bg(COL.white)} 0%, #F5F5F5 100%)`, 
+        padding: '24px 40px',
         display: 'flex',
         alignItems: 'center',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+        boxShadow: '-20px 20px 40px rgba(0,0,0,0.2)',
+        clipPath: 'polygon(20px 0, 100% 0, 100% 100%, 0 100%)',
+        borderLeft: `6px solid ${C.accent(COL.blue)}`
       }}>
-        <div style={{ width: barWidth, height: 60, background: C.accent(COL.blue), marginRight: barWidth > 0 ? 20 : 0 }} />
-        <div style={{ color: C.text(COL.ink), fontSize: 40, fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"), fontWeight: 700 }}>
-          <Tx overlay={o} durationInFrames={durationInFrames}>{f.texte || 'VOTRE PROGRAMME'}</Tx>
+        <div style={{ color: C.text(COL.ink), fontSize: 44, fontFamily: ff(overlay.font, "'Montserrat', sans-serif"), fontWeight: 800, textTransform: 'uppercase' }}>
+          <Tx overlay={o} durationInFrames={durationInFrames}>{f.texte || 'À SUIVRE'}</Tx>
         </div>
       </div>
     </Box>
   );
 }
 
-// 7. ToutDeSuite
 function ToutDeSuite({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Faster sliding
-  const cardX = interpolate(spring({ frame, fps, config: { damping: 10, stiffness: 180 } }), [0, 1], [1000, 0]);
-  const barWidth = interpolate(spring({ frame: Math.max(0, frame - 5), fps, config: { damping: 10, stiffness: 180 } }), [0, 1], [0, 24]);
+  // Fast aggressive slide
+  const cardX = interpolate(spring({ frame, fps, config: { damping: 14, stiffness: 150 } }), [0, 1], [1000, 0]);
   
-  const o = { ...overlay, animation: overlay.animation || 'typewriter' };
+  const o = { ...overlay, animation: overlay.animation || 'skew_slide' };
 
   return (
-    <Box overlay={overlay} style={{ left: 1400, top: 800 }}>
+    <Box overlay={overlay} style={{ left: 1350, top: 800 }}>
       <div style={{ 
-        transform: `translateX(${cardX}px)`, 
-        background: C.bg(COL.white), 
-        padding: '20px 40px',
+        transform: `translateX(${cardX}px) skewX(-12deg)`, 
+        background: C.bg(COL.red), 
+        padding: '20px 50px',
         display: 'flex',
         alignItems: 'center',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-        borderLeft: `8px solid ${C.accent(COL.gold)}`
+        boxShadow: '-20px 20px 40px rgba(0,0,0,0.3)',
       }}>
-        <div style={{ width: barWidth, height: 60, background: C.accent(COL.red), marginRight: barWidth > 0 ? 20 : 0 }} />
-        <div style={{ color: C.text(COL.ink), fontSize: 44, fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"), fontWeight: 700, transform: 'skewX(-10deg)' }}>
+        <div style={{ color: C.text(COL.white), fontSize: 48, fontFamily: ff(overlay.font, "'Archivo Black', sans-serif"), transform: 'skewX(12deg)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
           <Tx overlay={o} durationInFrames={durationInFrames}>{f.texte || 'TOUT DE SUITE'}</Tx>
         </div>
       </div>
@@ -493,15 +745,14 @@ function ToutDeSuite({ overlay, durationInFrames }) {
   );
 }
 
-// 8. Publicite
 function Publicite({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Zoom in text
-  const textScale = interpolate(spring({ frame, fps, config: { damping: 12 } }), [0, 1], [0, 1]);
+  const textScale = interpolate(spring({ frame, fps, config: { damping: 20, stiffness: 80 } }), [0, 1], [0.9, 1]);
+  const textOp = interpolate(frame, [0, 20], [0, 1]);
   
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080 }}>
@@ -511,17 +762,19 @@ function Publicite({ overlay, durationInFrames }) {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         position: 'relative', overflow: 'hidden'
       }}>
-        {/* Globe filaire animé (réseau mondial) */}
-        <WorldMap rotateSpeed={0.3} opacity={0.55} />
+        <WorldMap rotateSpeed={0.2} opacity={0.4} color={COL.light} glow={COL.blue} />
+        
         <div style={{
           position: 'relative', zIndex: 2,
           transform: `scale(${textScale})`,
-          fontSize: 180,
-          fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
-          fontWeight: 700,
+          opacity: textOp,
+          fontSize: 160,
+          fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+          fontWeight: 900,
           color: C.text(COL.white),
-          letterSpacing: '10px',
-          textShadow: '0 10px 40px rgba(0,0,0,0.5)'
+          letterSpacing: '0.15em',
+          textShadow: '0 20px 50px rgba(0,0,0,0.6)',
+          textTransform: 'uppercase'
         }}>
           {f.texte || 'PUBLICITÉ'}
         </div>
@@ -530,21 +783,16 @@ function Publicite({ overlay, durationInFrames }) {
   );
 }
 
-// Cellule "flip clock" pour un seul chiffre : roll vertical pro façon
-// compteur TV. Le chiffre courant glisse vers le haut sur les ~7 dernières
-// frames de la seconde, révélant le suivant en dessous.
 function FlipDigit({ current, next, progress, color, bg, accent }) {
-  // progress 0→1 sur la transition ; -100% = chiffre suivant entièrement révélé.
   const y = -progress * 100;
   return (
     <div style={{
       position: 'relative', width: '0.62em', height: '1em', overflow: 'hidden',
-      background: bg, borderRadius: 8, margin: '0 3px',
-      boxShadow: 'inset 0 -2px 6px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.35)',
-      borderBottom: `3px solid ${accent}`,
+      background: bg, borderRadius: 12, margin: '0 4px',
+      boxShadow: 'inset 0 -2px 10px rgba(0,0,0,0.6), 0 10px 20px rgba(0,0,0,0.4)',
+      borderBottom: `4px solid ${accent}`,
     }}>
-      {/* ligne médiane (split-flap) */}
-      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.35)', zIndex: 3 }} />
+      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 2, background: 'rgba(0,0,0,0.5)', zIndex: 3 }} />
       <div style={{ transform: `translateY(${y}%)`, willChange: 'transform' }}>
         <div style={{ height: '1em', lineHeight: '1em', textAlign: 'center', color }}>{current}</div>
         <div style={{ height: '1em', lineHeight: '1em', textAlign: 'center', color }}>{next}</div>
@@ -553,8 +801,6 @@ function FlipDigit({ current, next, progress, color, bg, accent }) {
   );
 }
 
-// 9. CompteARebours — vrai flip numérique (roll vertical par chiffre),
-// couleurs brand (carte marine, accent bleu électrique), Montserrat.
 function CompteARebours({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
@@ -570,9 +816,8 @@ function CompteARebours({ overlay, durationInFrames }) {
   const cur = mmss(secondsLeft);
   const nxt = mmss(nextSeconds);
 
-  // Transition sur les 7 dernières frames de chaque seconde.
   const frameInSecond = frame % fps;
-  const FLIP_FRAMES = 7;
+  const FLIP_FRAMES = 8;
   const progress = frameInSecond >= fps - FLIP_FRAMES
     ? interpolate(frameInSecond, [fps - FLIP_FRAMES, fps - 1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     : 0;
@@ -582,17 +827,21 @@ function CompteARebours({ overlay, durationInFrames }) {
   const accent = C.accent(COL.blue);
 
   return (
-    <Box overlay={overlay} style={{ left: 1480, top: 880 }}>
+    <Box overlay={overlay} style={{ left: 1450, top: 860 }}>
       <div style={{
         display: 'inline-flex', alignItems: 'center',
-        fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
-        fontWeight: 700,
-        fontSize: `${(overlay.fontSize || 100) / 100 * 76}px`,
-        padding: '14px 20px', background: 'rgba(0,0,0,0.35)', borderRadius: 14,
+        fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+        fontWeight: 800,
+        fontSize: `${(overlay.fontSize || 100) / 100 * 84}px`,
+        padding: '20px 30px', 
+        background: 'rgba(0,0,0,0.4)', 
+        borderRadius: 20,
+        backdropFilter: 'blur(12px)',
+        border: `1px solid ${C.accent('rgba(255,255,255,0.1)')}`
       }}>
         {[...cur].map((ch, i) => (
           ch === ':'
-            ? <span key={i} style={{ color: accent, margin: '0 2px' }}>:</span>
+            ? <span key={i} style={{ color: accent, margin: '0 4px', textShadow: `0 0 15px ${accent}` }}>:</span>
             : <FlipDigit key={i} current={ch} next={nxt[i] ?? ch} progress={nxt[i] === ch ? 0 : progress} color={color} bg={cellBg} accent={accent} />
         ))}
       </div>
@@ -600,23 +849,18 @@ function CompteARebours({ overlay, durationInFrames }) {
   );
 }
 
-// 10. LaSpeciale
 function LaSpeciale({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Text LA SPÉCIALE scales 90->100% with impact shake
-  const scale = interpolate(spring({ frame, fps, config: { damping: 10 } }), [0, 1], [0.9, 1]);
-  // Impact shake right after scale completes
-  const isShaking = frame > 10 && frame < 20;
-  const shakeX = isShaking ? Math.sin(frame * 2) * 10 : 0;
-  const shakeY = isShaking ? Math.cos(frame * 2) * 10 : 0;
+  // Dramatic cinematic entrance
+  const scale = interpolate(spring({ frame, fps, config: { damping: 18, stiffness: 60 } }), [0, 1], [0.85, 1]);
+  const op = interpolate(frame, [0, 30], [0, 1]);
   
-  // Sliding cross bars
-  const bar1X = interpolate(spring({ frame, fps, config: { damping: 14 } }), [0, 1], [-1920, 0]);
-  const bar2X = interpolate(spring({ frame, fps, config: { damping: 14 } }), [0, 1], [1920, 0]);
+  // Cinematic light flare
+  const flareX = interpolate(frame, [0, 90], [-100, 200]);
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080 }}>
@@ -626,84 +870,88 @@ function LaSpeciale({ overlay, durationInFrames }) {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         position: 'relative', overflow: 'hidden'
       }}>
-        {/* Globe filaire qui tourne lentement (habillage premium) */}
-        <WorldMap rotateSpeed={0.15} opacity={0.45} color={COL.light} glow={COL.blue} />
+        <WorldMap rotateSpeed={0.1} opacity={0.2} color={COL.gold} glow={COL.gold} />
         
-        {/* Sliding cross bars */}
-        <div style={{ position: 'absolute', width: '100%', height: 4, background: C.accent(COL.gold), top: '40%', transform: `translateX(${bar1X}px)` }} />
-        <div style={{ position: 'absolute', width: '100%', height: 4, background: C.accent(COL.gold), top: '60%', transform: `translateX(${bar2X}px)` }} />
-        
-        {/* Impact shake text */}
+        {/* Glow behind text */}
         <div style={{
-          transform: `scale(${scale}) translate(${shakeX}px, ${shakeY}px)`,
-          fontSize: 160,
+          position: 'absolute',
+          width: 800, height: 400,
+          background: `radial-gradient(ellipse, ${C.accent('rgba(212,175,55,0.15)')} 0%, transparent 70%)`,
+          filter: 'blur(40px)',
+          zIndex: 1
+        }} />
+        
+        {/* Text */}
+        <div style={{
+          position: 'relative',
+          zIndex: 2,
+          transform: `scale(${scale})`,
+          opacity: op,
+          fontSize: 170,
           fontFamily: "'Archivo Black', sans-serif",
           color: C.text(COL.gold),
-          textShadow: '0 0 40px rgba(255,215,0,0.3), 0 20px 40px rgba(0,0,0,0.8)',
-          letterSpacing: '5px'
+          textShadow: '0 20px 40px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.4)',
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          overflow: 'hidden'
         }}>
           {f.texte || 'LA SPÉCIALE'}
+          
+          {/* Flare sweeping across text */}
+          <div style={{
+            position: 'absolute', top: 0, bottom: 0, width: '30%',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+            transform: `translateX(${flareX}%) skewX(-20deg)`,
+            mixBlendMode: 'overlay'
+          }} />
         </div>
       </div>
     </Box>
   );
 }
 
-// 11. FinMerci
 function FinMerci({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Slower animations
-  // Banner slides gently
-  const bannerY = interpolate(spring({ frame, fps, config: { damping: 20, stiffness: 60 } }), [0, 1], [200, 0]);
+  // Elegant slow reveal
+  const textOp = interpolate(frame, [20, 60], [0, 1], { extrapolateRight: 'clamp' });
+  const textY = interpolate(spring({ frame: Math.max(0, frame - 20), fps, config: { damping: 20 } }), [0, 1], [30, 0]);
   
-  // Text fades in
-  const textOpacity = interpolate(frame, [30, 60], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  
-  // ALWM TV logo appears last
-  const logoOpacity = interpolate(frame, [70, 100], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const logoScale = interpolate(spring({ frame: Math.max(0, frame - 70), fps, config: { damping: 12 } }), [0, 1], [0.8, 1]);
+  const logoOp = interpolate(frame, [60, 90], [0, 1], { extrapolateRight: 'clamp' });
+  const logoScale = interpolate(spring({ frame: Math.max(0, frame - 60), fps, config: { damping: 14 } }), [0, 1], [0.9, 1]);
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080 }}>
       <div style={{ 
         width: 1920, height: 1080, 
-        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center',
-        paddingBottom: 100
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+        background: `radial-gradient(circle at center, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.9) 100%)`,
+        backdropFilter: 'blur(8px)'
       }}>
         <div style={{
-          transform: `translateY(${bannerY}px)`,
-          background: C.bg('rgba(0,0,0,0.85)'),
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '40px 0',
-          borderTop: `2px solid ${C.accent(COL.gold)}`
+          opacity: textOp,
+          transform: `translateY(${textY}px)`,
+          fontSize: 64,
+          fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+          fontWeight: 600,
+          color: C.text(COL.white),
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          textShadow: '0 10px 20px rgba(0,0,0,0.5)',
+          marginBottom: 60
         }}>
-          <div style={{
-            opacity: textOpacity,
-            fontSize: 60,
-            fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"),
-            fontWeight: 500,
-            color: C.text(COL.white),
-            letterSpacing: '4px'
-          }}>
-            {f.texte || 'MERCI DE NOUS AVOIR SUIVIS'}
-          </div>
-          
-          <div style={{
-            opacity: logoOpacity,
-            transform: `scale(${logoScale})`,
-            marginTop: 30,
-            display: 'flex',
-            justifyContent: 'center'
-          }}>
-            <Img src={staticFile('images/alwm-logo.png')} style={{ width: 400, objectFit: 'contain' }} />
-          </div>
+          {f.texte || 'MERCI DE NOUS AVOIR SUIVIS'}
+        </div>
+        
+        <div style={{
+          opacity: logoOp,
+          transform: `scale(${logoScale})`,
+          filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.6))'
+        }}>
+          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 450, objectFit: 'contain' }} />
         </div>
       </div>
     </Box>
