@@ -1,47 +1,75 @@
 import { describe, it, expect } from 'vitest';
+import {
+  OVERLAY_TEMPLATES,
+  CLIP_TEMPLATES,
+  GLOBAL_TEMPLATES,
+  TEXT_ANIMATIONS,
+  TEXT_ANIMATIONS_IN,
+  TEXT_ANIMATIONS_LOOP,
+  TEXT_ANIMATIONS_OUT,
+  FONT_FAMILIES,
+} from '../src/data/overlayTemplates.js';
 
-// SKIP : la liste TEXT_ANIMATIONS a été refondue lors du redesign brand ALWM
-// (commit b06b352). Les IDs `charpop`, `outline_morph`, etc. ne sont plus
-// exposés tels quels — test à réécrire contre la nouvelle liste.
-import { TEXT_ANIMATIONS, FONT_FAMILIES } from '../src/data/overlayTemplates.js';
+// Mirror frontend du registre brand ALWM (ne doit pas dériver des templates
+// servis au backend / Remotion). Garde-fou minimal.
 
-// La liste UI doit rester un sur-ensemble cohérent : tout ID exposé au
-// front doit correspondre à une entrée Remotion ou à un fallback libass.
-// On vérifie ici uniquement la présence ; le test backend
-// (ticker-and-anims.test.js) garantit que le validator backend accepte
-// ces IDs.
+describe('OVERLAY_TEMPLATES (front)', () => {
+  const ids = OVERLAY_TEMPLATES.map((t) => t.id);
 
-describe.skip('TEXT_ANIMATIONS (front)', () => {
-  const ids = TEXT_ANIMATIONS.map((a) => a.id);
+  it('expose les 14 modèles brand ALWM', () => {
+    [
+      'titre_reportage', 'nom_interview', 'signature_reportage',
+      'grand_titre', 'rappel_titres',
+      'a_suivre', 'tout_de_suite',
+      'publicite', 'compte_a_rebours', 'la_speciale', 'fin_merci',
+      'bandeau_infos', 'flash_info', 'alerte_info',
+    ].forEach((id) => expect(ids).toContain(id));
+  });
 
-  it('contient les animations classiques', () => {
-    ['fade', 'scale', 'pop', 'bounce', 'blurin', 'rotate']
+  it('CLIP_TEMPLATES + GLOBAL_TEMPLATES couvrent l\'intégralité du registre', () => {
+    expect(CLIP_TEMPLATES.length + GLOBAL_TEMPLATES.length).toBe(OVERLAY_TEMPLATES.length);
+  });
+
+  it('aucun id dupliqué', () => {
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('TEXT_ANIMATIONS (front)', () => {
+  it('TEXT_ANIMATIONS = TEXT_ANIMATIONS_IN', () => {
+    expect(TEXT_ANIMATIONS).toBe(TEXT_ANIMATIONS_IN);
+  });
+
+  it('TEXT_ANIMATIONS_IN contient fade + Remotion-only (mask_reveal, glitch_in, letterspread)', () => {
+    const ids = TEXT_ANIMATIONS_IN.map((a) => a.id);
+    ['fade', 'mask_reveal', 'glitch_in', 'letterspread', 'cascade', 'typewriter']
       .forEach((id) => expect(ids).toContain(id));
   });
 
-  it('contient les 3 animations per-char', () => {
-    ['cascade', 'charpop', 'wave'].forEach((id) => expect(ids).toContain(id));
+  it('TEXT_ANIMATIONS_LOOP contient les loops permanents', () => {
+    const ids = TEXT_ANIMATIONS_LOOP.map((a) => a.id);
+    ['none', 'float', 'pulse', 'kerning_shake'].forEach((id) => expect(ids).toContain(id));
   });
 
-  it('contient les 6 animations broadcast Remotion-only', () => {
-    ['mask_reveal', 'outline_morph', 'letterspread', 'weight_pulse', 'kerning_shake', 'glitch_in']
-      .forEach((id) => expect(ids).toContain(id));
+  it('TEXT_ANIMATIONS_OUT contient fade + glitch_out', () => {
+    const ids = TEXT_ANIMATIONS_OUT.map((a) => a.id);
+    ['fade', 'glitch_out', 'blurout'].forEach((id) => expect(ids).toContain(id));
   });
 
-  it('chaque entrée a un label non vide', () => {
-    TEXT_ANIMATIONS.forEach((a) => {
+  it('chaque animation a un label non vide', () => {
+    [...TEXT_ANIMATIONS_IN, ...TEXT_ANIMATIONS_LOOP, ...TEXT_ANIMATIONS_OUT].forEach((a) => {
       expect(typeof a.label).toBe('string');
       expect(a.label.length).toBeGreaterThan(0);
     });
   });
 });
 
-describe.skip('FONT_FAMILIES (front)', () => {
-  it('contient les polices historiques + le pack broadcast 2026', () => {
-    ['Inter', 'Bebas Neue', 'Anton', 'Archivo Black', 'Barlow',
-     'Oswald', 'Roboto Condensed', 'Russo One',
-     'Playfair Display', 'IBM Plex Sans', 'JetBrains Mono']
-      .forEach((f) => expect(FONT_FAMILIES).toContain(f));
+describe('FONT_FAMILIES (front)', () => {
+  it('contient les polices brand (Montserrat) + iconiques broadcast', () => {
+    [
+      'Montserrat Bold', 'Montserrat Medium',
+      'Inter', 'Anton', 'Bebas Neue', 'Archivo Black', 'Oswald',
+    ].forEach((f) => expect(FONT_FAMILIES).toContain(f));
   });
 
   it('aucune entrée dupliquée', () => {
