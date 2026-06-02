@@ -3,7 +3,7 @@ import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
 
 const baseFontConfig = {
-  fontFamily: 'system-ui, -apple-system, sans-serif',
+  fontFamily: 'var(--ov-font) "Montserrat ExtraBold", system-ui, sans-serif',
   textTransform: 'uppercase',
   fontWeight: '800',
   lineHeight: 1,

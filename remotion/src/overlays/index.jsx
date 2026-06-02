@@ -161,6 +161,12 @@ function NomInterview({ overlay, durationInFrames }) {
   
   const categorie = (f.categorie || f.title || f.fonction || 'POLITIQUE').toUpperCase();
   const corps = f.name || f.nom || f.texte || 'Titre de l’information';
+  // Personnalisable : accent = bloc + catégorie, bg = panneau, text = corps.
+  const C = pickColors(overlay);
+  const cAccent = C.accent(COL.blue);
+  const cBg = C.bg(COL.white);
+  const cText = C.text(COL.black);
+  const ffont = overlay.font || null;
 
   return (
     <Box overlay={overlay} style={{ left: 180, top: 800, width: '65%', opacity: slideOutOp, transform: `translateX(${outX}%)` }}>
@@ -169,21 +175,21 @@ function NomInterview({ overlay, durationInFrames }) {
         transform: `translateX(${barX}%)`,
         filter: 'drop-shadow(0 14px 26px rgba(0,0,0,0.4))',
       }}>
-        {/* Bloc gauche bleu ALWM TV */}
+        {/* Bloc gauche (accent) ALWM TV */}
         <div style={{
-          width: 160, background: COL.blue, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: COL.white, fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontSize: 24, letterSpacing: '0.04em'
+          width: 160, background: cAccent, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: COL.white, fontFamily: ff(ffont, "'Montserrat ExtraBold', sans-serif"), fontSize: 24, letterSpacing: '0.04em'
         }}>
           ALWM TV
         </div>
-        {/* Panneau droit blanc : catégorie (bleu) + corps (noir) */}
+        {/* Panneau droit (bg) : catégorie (accent) + corps (text) */}
         <div style={{
-          background: COL.white, padding: '14px 40px 14px 32px',
+          background: cBg, padding: '14px 40px 14px 32px',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1,
           opacity: contentOp, transform: `translateY(${contentY}px)`,
         }}>
-          <div style={{ fontFamily: ff(null, "'Inter', sans-serif"), fontWeight: 800, fontSize: `${fs * 22}px`, color: COL.blue, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{categorie}</div>
-          <div style={{ fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontSize: `${fs * 36}px`, color: COL.black, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</div>
+          <div style={{ fontFamily: ff(ffont, "'Inter', sans-serif"), fontWeight: 800, fontSize: `${fs * 22}px`, color: cAccent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{categorie}</div>
+          <div style={{ fontFamily: ff(ffont, "'Montserrat ExtraBold', sans-serif"), fontSize: `${fs * 36}px`, color: cText, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</div>
         </div>
       </div>
     </Box>
@@ -389,32 +395,37 @@ function TitreReportage({ overlay, durationInFrames }) {
   const fs = (overlay.fontSize || 100) / 100;
   const fontB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
   const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  // Personnalisable : bg = bandeau titre, text = titre, accent = chevron +
+  // sous-titre. Défauts = charte (navy / blanc / bleu).
+  const cBand = C.bg(COL.navy);
+  const cTitle = C.text(COL.white);
+  const cAccent = C.accent(COL.blue);
 
   return (
     <Box overlay={overlay} style={{ left: 110, top: 820, width: 1300, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-      {/* Bandeau titre : parallélogramme navy + texte blanc */}
+      {/* Bandeau titre */}
       <div style={{ display: 'flex', alignItems: 'stretch' }}>
-        <Para bg={COL.navy} reveal={reveal} padding="0" style={{ boxShadow: '0 18px 40px rgba(0,0,0,0.35)' }}>
+        <Para bg={cBand} reveal={reveal} padding="0" style={{ boxShadow: '0 18px 40px rgba(0,0,0,0.35)' }}>
           <div style={{
             padding: '18px 56px 18px 48px',
             fontFamily: fontB, fontWeight: 800,
-            fontSize: `${fs * 50}px`, color: COL.white,
+            fontSize: `${fs * 50}px`, color: cTitle,
             textTransform: 'uppercase', letterSpacing: '0.01em', whiteSpace: 'nowrap',
           }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</div>
         </Para>
-        {/* accent diagonal bleu électrique */}
+        {/* accent diagonal */}
         <div style={{ opacity: reveal > 0.7 ? 1 : 0, transition: 'opacity .2s' }}>
-          <AccentSlash height={Math.round(fs * 50 + 36)} />
+          <AccentSlash height={Math.round(fs * 50 + 36)} color={cAccent} />
         </div>
       </div>
-      {/* Sous-titre : sur fond blanc, texte bleu + petit carré bleu à gauche */}
+      {/* Sous-titre : fond blanc, texte accent + petit carré accent à gauche */}
       <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 6, marginLeft: 18 }}>
-        <div style={{ width: 14, background: COL.light, clipPath: `polygon(${SLANT * 0.5}px 0,100% 0,calc(100% - ${SLANT * 0.5}px) 100%,0 100%)` }} />
+        <div style={{ width: 14, background: cAccent, clipPath: `polygon(${SLANT * 0.5}px 0,100% 0,calc(100% - ${SLANT * 0.5}px) 100%,0 100%)` }} />
         <Para bg={COL.white} reveal={subSp} padding="0" style={{ boxShadow: '0 10px 24px rgba(0,0,0,0.2)' }}>
           <div style={{
             padding: '8px 40px 8px 28px',
             fontFamily: fontM, fontWeight: 600,
-            fontSize: `${fs * 26}px`, color: COL.blue,
+            fontSize: `${fs * 26}px`, color: cAccent,
             textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
           }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</div>
         </Para>
@@ -1042,7 +1053,49 @@ const REGISTRY = {
   envato_quote: EnvatoQuoteBlock,
 };
 
+// Templates Envato : composants fullscreen qui n'utilisent pas Box ni
+// pickColors en interne. On les enveloppe ici pour rendre position / échelle /
+// couleurs / police PERSONNALISABLES (color-pickers + sliders de l'UI).
+const ENVATO_IDS = new Set([
+  'envato_presenter', 'envato_news', 'envato_big_title', 'envato_ticker',
+  'envato_split_screen', 'envato_rep_minimal', 'envato_rep_skew',
+  'envato_rep_swipe', 'envato_rep_glass', 'envato_rep_massif',
+  'envato_lt_compact', 'envato_lt_corporate', 'envato_lt_interview',
+  'envato_loc_pin', 'envato_quote',
+]);
+
+// Mappe les 3 slots couleur de l'UI (text / bg / accent) sur les noms de
+// champs couleur internes des composants Envato.
+const ACCENT_FIELDS = ['colorMain', 'colorAccent', 'colorHighlight', 'colorTop', 'colorBottom'];
+const TEXT_FIELDS = ['colorTextMain', 'colorTextAccent', 'colorTextFirst', 'colorTextLast', 'colorTextTop', 'colorTextBottom'];
+const BG_FIELDS = ['colorBg', 'bgColor'];
+
+function injectColors(overlay) {
+  const c = overlay.colors || {};
+  if (!c.text && !c.bg && !c.accent) return overlay;
+  const fields = { ...(overlay.fields || {}) };
+  if (c.accent) ACCENT_FIELDS.forEach((k) => { fields[k] = c.accent; });
+  if (c.text) TEXT_FIELDS.forEach((k) => { fields[k] = c.text; });
+  if (c.bg) BG_FIELDS.forEach((k) => { fields[k] = c.bg; });
+  return { ...overlay, fields };
+}
+
 export function Overlay({ overlay, durationInFrames }) {
   const Comp = REGISTRY[overlay.templateId];
-  return Comp ? <Comp overlay={overlay} durationInFrames={durationInFrames} /> : null;
+  if (!Comp) return null;
+
+  // Composants Envato : on enveloppe dans Box (position/échelle) + on injecte
+  // les couleurs UI + la police via variable CSS héritée par les enfants.
+  if (ENVATO_IDS.has(overlay.templateId)) {
+    const merged = injectColors(overlay);
+    const fontVar = overlay.font ? { '--ov-font': `'${overlay.font}', ` } : {};
+    return (
+      <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, ...fontVar }}>
+        <Comp overlay={merged} durationInFrames={durationInFrames} />
+      </Box>
+    );
+  }
+
+  // Composants natifs ALWM : Box + pickColors déjà intégrés en interne.
+  return <Comp overlay={overlay} durationInFrames={durationInFrames} />;
 }
