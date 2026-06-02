@@ -5,8 +5,6 @@ import { pipeline } from 'stream/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
-import { uploadsDir } from '../lib/upload.js';
-import { HAS_R2, getR2ReadStream, uploadToR2, getR2PresignedUrl } from '../lib/s3.js';
 import logger from '../logger/index.js';
 import { generateAssFile } from '../data/overlayTemplates.js';
 import { setProgress } from './editorProgress.js';
@@ -171,12 +169,6 @@ function kenBurnsFilters(mode, durSec) {
   ];
 }
 
-// Télécharge un fichier R2 vers un chemin local. Retourne destPath.
-async function downloadFromR2(r2Key, destPath) {  const stream = await getR2ReadStream(r2Key);
-  const out = fs.createWriteStream(destPath);
-  await pipeline(stream, out);
-  return destPath;
-}
 
 // Réduit un nom de fichier reçu du client à son basename et rejette toute
 // tentative de traversée (`..`, séparateurs). Empêche de lire/écrire hors des
@@ -196,12 +188,6 @@ function safeFilename(filename) {
  */
 async function resolveClipPath(filename, workDir) {
   const base = safeFilename(filename);
-  if (HAS_R2) {
-    const dest = path.join(workDir, base);
-    // Timeout : un download R2 qui pend ne doit pas bloquer le verrou isRendering.
-    await withTimeout(downloadFromR2(`uploads/${base}`, dest), IO_TIMEOUT_MS, `Téléchargement R2 ${base}`);
-    return dest;
-  }
   const local = path.join(uploadsDir, base);
   if (!fs.existsSync(local)) {
     throw new Error(`Le fichier "${base}" n'existe pas sur le serveur.`);
@@ -372,17 +358,6 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
     });
     setProgress(jobId, 90, 'uploading');
 
-    // Mode R2 : push le rendu sur R2 + URL présignée 24h. Timeout pour ne
-    // pas pendre indéfiniment si le réseau R2 décroche (sinon isRendering
-    // resterait bloqué).
-    if (HAS_R2) {
-      const r2Key = `exports/${outputFilename}`;
-      logger.info('Upload du master vers R2', { r2Key });
-      await withTimeout(uploadToR2(finalPath, r2Key, 'video/mp4'), IO_TIMEOUT_MS, 'Upload R2 du master');
-      const url = await withTimeout(getR2PresignedUrl(r2Key, 60 * 60 * 24), 30 * 1000, 'URL présignée R2');
-      logger.info('Master uploadé sur R2 avec succès', { r2Key });
-      return { url };
-    }
 
     // Mode local (dev) : déplace le rendu dans uploadsDir/exports.
     const exportsDir = path.join(uploadsDir, 'exports');
