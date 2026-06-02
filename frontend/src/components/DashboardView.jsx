@@ -1571,7 +1571,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   </span>
                   <span className="ml-auto flex items-center gap-3">
                     <span className="text-xs text-[color:var(--muted)] tabular-nums">⏱ {Math.floor(exportElapsed / 60)}:{String(exportElapsed % 60).padStart(2, '0')}</span>
-                    <span className="text-[color:var(--accent-deep)] font-bold tabular-nums">{Math.round(exportProgress)}%</span>
+                    <span className="text-[color:var(--accent)] font-bold tabular-nums">{Math.round(exportProgress)}%</span>
                   </span>
                 </div>
                 <div className="w-full bg-[var(--paper-2)] rounded-full h-3 overflow-hidden">

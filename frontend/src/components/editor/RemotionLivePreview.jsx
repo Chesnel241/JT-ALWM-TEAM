@@ -39,7 +39,7 @@ export default function RemotionLivePreview({ clips, global, branding, onClose, 
   }, [clips, global, branding]);
 
   const durationInFrames = useMemo(() => {
-    return totalDurationInFrames(inputProps.clips, 30);
+    return Math.max(30, totalDurationInFrames(inputProps.clips, 30));
   }, [inputProps.clips]);
 
   if (inline) {

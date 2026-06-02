@@ -176,7 +176,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
         </div>
 
         {/* Controls */}
-        <div className="px-5 pt-5 pb-4 flex flex-col gap-4">
+        <div className="px-5 pt-5 pb-4 flex flex-col gap-4 overflow-y-auto flex-1">
 
           {/* Progress / Trim Bar */}
           <div className="flex flex-col gap-1">
