@@ -380,8 +380,10 @@ export const OVERLAY_TEMPLATES = [
     emoji: '✂️',
     preview: 'Séparation diagonale animée avec labels géographiques.',
     fields: [
-      { key: 'locLeft', label: 'Lieu Gauche', placeholder: 'New York // USA' },
-      { key: 'locRight', label: 'Lieu Droit', placeholder: 'California // USA' }
+      { key: 'leftLocation', label: 'Titre Gauche', placeholder: 'NEW YORK' },
+      { key: 'leftSub', label: 'Sous-titre Gauche', placeholder: 'USA' },
+      { key: 'rightLocation', label: 'Titre Droit', placeholder: 'CALIFORNIA' },
+      { key: 'rightSub', label: 'Sous-titre Droit', placeholder: 'USA' }
     ]
   },
   {
