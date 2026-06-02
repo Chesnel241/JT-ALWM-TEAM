@@ -1,8 +1,6 @@
 import React from 'react';
 import { useCurrentFrame } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
-import { Box } from './index.jsx';
-import { pickColors } from '../theme.js';
 
 const baseFontConfig = {
   fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -20,10 +18,9 @@ export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
   const parts = fullNom.split(' ');
   const firstName = parts[0] || 'EMIL';
   const lastName = parts.slice(1).join(' ') || '';
-  const C = pickColors(overlay);
-  const colorMain = C.main || '#fcfcfc';
-  const colorTextFirst = C.bg || '#111111';
-  const colorTextLast = C.text || '#666666';
+  const colorMain = fields.colorMain || '#fcfcfc';
+  const colorTextFirst = fields.colorTextFirst || '#111111';
+  const colorTextLast = fields.colorTextLast || '#666666';
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -33,7 +30,8 @@ export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
   const outOpacity = isOut ? (1 - outEase) : 1;
 
   return (
-    <Box overlay={overlay} style={{
+    <div style={{
+      position: 'absolute',
       bottom: 80,
       left: 80,
       display: 'flex',
@@ -61,7 +59,7 @@ export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
-    </Box>
+    </div>
   );
 }
 
@@ -71,11 +69,10 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const name = fields.nom || 'MICHAEL SCOTT';
   const title = fields.fonction || 'REGIONAL MANAGER';
-  const C = pickColors(overlay);
-  const colorTop = C.main || '#0047AB'; // Corporate Blue
-  const colorBottom = C.bg || '#fcfcfc';
-  const colorTextTop = C.text || '#ffffff';
-  const colorTextBottom = C.text || '#111111';
+  const colorTop = fields.colorTop || '#0047AB'; // Corporate Blue
+  const colorBottom = fields.colorBottom || '#fcfcfc';
+  const colorTextTop = fields.colorTextTop || '#ffffff';
+  const colorTextBottom = fields.colorTextBottom || '#111111';
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -85,7 +82,8 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
   const outOpacity = isOut ? (1 - outEase) : 1;
 
   return (
-    <Box overlay={overlay} style={{
+    <div style={{
+      position: 'absolute',
       bottom: 80,
       left: 80,
       display: 'flex',
@@ -123,7 +121,7 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
-    </Box>
+    </div>
   );
 }
 
@@ -132,10 +130,9 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
   const leftName = fields.leftName || 'JANE DOE';
-  const leftRole = fields.leftRole || 'HÔTE';
+  const leftRole = fields.leftRole || 'HOST';
   const rightName = fields.rightName || 'JOHN SMITH';
-  const rightRole = fields.rightRole || 'INVITÉ';
-  const C = pickColors(overlay);
+  const rightRole = fields.rightRole || 'GUEST';
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -145,9 +142,10 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
   const outOpacity = isOut ? (1 - outEase) : 1;
 
   return (
-    <Box overlay={overlay} style={{
+    <div style={{
+      position: 'absolute',
       bottom: 80,
-      width: 1920,
+      width: '100%',
       display: 'flex',
       justifyContent: 'space-between',
       padding: '0 80px',
@@ -187,7 +185,7 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
           </div>
         </div>
       </EnvatoMaskReveal>
-    </Box>
+    </div>
   );
 }
 
@@ -196,7 +194,6 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
   const location = fields.location || 'PARIS, FRANCE';
-  const C = pickColors(overlay);
   
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -206,7 +203,8 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
   const outOpacity = isOut ? (1 - outEase) : 1;
 
   return (
-    <Box overlay={overlay} style={{
+    <div style={{
+      position: 'absolute',
       top: 60,
       left: 60,
       display: 'flex',
@@ -247,7 +245,7 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
-    </Box>
+    </div>
   );
 }
 
@@ -257,7 +255,6 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const quote = fields.quote || 'DESIGN IS NOT JUST WHAT IT LOOKS LIKE. DESIGN IS HOW IT WORKS.';
   const author = fields.author || 'STEVE JOBS';
-  const C = pickColors(overlay);
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -267,7 +264,8 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
   const outOpacity = isOut ? (1 - outEase) : 1;
 
   return (
-    <Box overlay={overlay} style={{
+    <div style={{
+      position: 'absolute',
       top: '50%',
       left: '50%',
       transform: `translate(-50%, -50%) scale(${outScale})`,
@@ -330,6 +328,6 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
           </div>
         </div>
       </EnvatoMaskReveal>
-    </Box>
+    </div>
   );
 }

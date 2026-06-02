@@ -1,8 +1,6 @@
 import React from 'react';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
-import { Box } from './index.jsx';
-import { pickColors } from '../theme.js';
 
 const baseFontConfig = {
   fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -18,10 +16,9 @@ export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const title = fields.titre || "INVESTIGATIVE REPORT";
   const subtitle = fields.sous_titre || "UNCOVERING THE TRUTH";
-  const C = pickColors(overlay);
-  const colorMain = C.main;
-  const colorTextMain = C.text;
-  const colorTextAccent = C.bg;
+  const colorMain = fields.colorMain || "#d61f1f";
+  const colorTextMain = fields.colorTextMain || "#ffffff";
+  const colorTextAccent = fields.colorTextAccent || "#111111";
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -34,8 +31,8 @@ export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
   const lineWidth = lineEase * 100; // percentage of maximum width we define below
 
   return (
-    <Box overlay={overlay} style={{
-      width: 1920, height: 1080,
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       opacity: outOpacity, transform: `scale(${outScale})`
     }}>
@@ -68,7 +65,7 @@ export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
         </div>
         
       </div>
-    </Box>
+    </div>
   );
 }
 
@@ -79,9 +76,8 @@ export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const line1 = fields.titre || "BREAKING";
   const line2 = fields.sous_titre || "NEWS TODAY";
-  const C = pickColors(overlay);
-  const colorMain = C.main;
-  const colorAccent = C.accent || "#fcfcfc";
+  const colorMain = fields.colorMain || "#d61f1f";
+  const colorAccent = fields.colorAccent || "#fcfcfc";
   
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -97,8 +93,8 @@ export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
   const x2 = (1 - ease2) * 200;
 
   return (
-    <Box overlay={overlay} style={{
-      width: 1920, height: 1080,
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       opacity: outOpacity
     }}>
@@ -127,7 +123,7 @@ export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
           </EnvatoMaskReveal>
         </div>
       </div>
-    </Box>
+    </div>
   );
 }
 
@@ -138,7 +134,6 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const text = fields.titre || "EXCLUSIVE INTERVIEW";
   const subtitle = fields.sous_titre || "WITH THE PRESIDENT";
-  const C = pickColors(overlay);
   
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -150,8 +145,8 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
   const swipeLeft = (swipeEase * 140) - 20; // moves from -20% to 120%
 
   return (
-    <Box overlay={overlay} style={{
-      width: 1920, height: 1080,
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       opacity: outOpacity
     }}>
@@ -174,13 +169,13 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
           </EnvatoMaskReveal>
           
           <EnvatoMaskReveal frame={frame} delay={20} direction="right" duration={35}>
-            <div style={{ ...baseFontConfig, fontSize: '40px', color: C.main, fontWeight: '800', textShadow: '0 4px 10px rgba(0,0,0,0.5)', marginTop: '10px' }}>
+            <div style={{ ...baseFontConfig, fontSize: '40px', color: '#d61f1f', fontWeight: '800', textShadow: '0 4px 10px rgba(0,0,0,0.5)', marginTop: '10px' }}>
               {subtitle}
             </div>
           </EnvatoMaskReveal>
         </div>
       </div>
-    </Box>
+    </div>
   );
 }
 
@@ -191,7 +186,6 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const title = fields.titre || "UNDERCOVER";
   const subtitle = fields.sous_titre || "INSIDE THE CARTEL";
-  const C = pickColors(overlay);
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -200,8 +194,8 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
   const outY = isOut ? outEase * 50 : 0;
 
   return (
-    <Box overlay={overlay} style={{
-      width: 1920, height: 1080,
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       opacity: outOpacity, transform: `translateY(${outY}px)`
     }}>
@@ -235,7 +229,7 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
-    </Box>
+    </div>
   );
 }
 
@@ -246,10 +240,9 @@ export function EnvatoReportageMassif({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const line1 = fields.titre || "STATE OF";
   const line2 = fields.sous_titre || "EMERGENCY";
-  const C = pickColors(overlay);
-  const colorMain = C.bg || "#111111";
-  const colorText = C.text || "#ffffff";
-  const colorHighlight = C.main || "#d61f1f";
+  const colorMain = fields.colorMain || "#111111";
+  const colorText = fields.colorTextMain || "#ffffff";
+  const colorHighlight = fields.colorHighlight || "#d61f1f";
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -261,8 +254,8 @@ export function EnvatoReportageMassif({ overlay, durationInFrames }) {
   const boxY = (1 - boxEase) * 300;
 
   return (
-    <Box overlay={overlay} style={{
-      width: 1920, height: 1080,
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       opacity: outOpacity
     }}>
@@ -289,6 +282,6 @@ export function EnvatoReportageMassif({ overlay, durationInFrames }) {
           </EnvatoMaskReveal>
         </div>
       </div>
-    </Box>
+    </div>
   );
 }

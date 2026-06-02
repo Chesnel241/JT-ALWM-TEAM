@@ -121,7 +121,7 @@ function AccentSlash({ height = 60, color = ELEC, marginLeft = 8, slant = SLANT 
 
 
 // Position wrapper 1920x1080. Applies drag delta + slider offset.
-export function Box({ overlay, style, children }) {
+function Box({ overlay, style, children }) {
   const { dx, dy } = shift(overlay);
   const posX = overlay.posX || 0;
   const posY = overlay.posY || 0;
