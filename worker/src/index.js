@@ -94,9 +94,14 @@ app.post('/render', async (req, res) => {
   try {
     await ensureBrowser();
     const inputProps = HAS_R2 ? await resolveUrls(payload) : payload;
+    // disableWebSecurity n'est PAS activé par défaut. Le pipeline normal
+    // (URLs servies via backend same-origin) n'en a pas besoin. Si ton
+    // bucket R2 refuse les requêtes cross-origin de Chromium, configure
+    // CORS sur le bucket (méthode propre) plutôt que désactiver la sécu
+    // Chromium. Opt-in via env si vraiment nécessaire (rendu test rapide).
     const sharedChromiumOptions = {
       gl: 'angle',
-      disableWebSecurity: true,
+      ...(process.env.CHROMIUM_DISABLE_WEB_SECURITY === 'true' ? { disableWebSecurity: true } : {}),
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     };
     const composition = await selectComposition({
