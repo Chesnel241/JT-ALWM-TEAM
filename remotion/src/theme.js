@@ -11,12 +11,12 @@ import { staticFile } from 'remotion';
 export const COL = {
   white: '#FFFFFF',
   black: '#0A0A0A',
-  gold: '#FFD700',          // accent premium ponctuel (rétro-compat)
-  navy: '#031A3A',          // alwm-dark-blue (fond bleu nuit)
-  red: '#D81818',           // rétro-compat (anciens templates)
+  gold: '#FFD700',
+  navy: '#031A3A',          // alwm-dark-blue
+  red: '#D81818',
   dark: '#031A3A',
-  blue: '#0057D9',          // alwm-blue (principal)
-  light: '#4AA3FF',         // alwm-blue-light (highlights, lignes)
+  blue: '#0057D9',          // alwm-blue
+  light: '#4AA3FF',         // alwm-blue-light
   grey: '#1E293B',          // alwm-grey
   ink: '#0A0A0A',
   ticker: '#031A3A',
@@ -104,5 +104,5 @@ export const DEFAULT_ANCHOR = {
 };
 
 export const FPS = 30;
-export const WIDTH = 1280;
-export const HEIGHT = 720;
+export const WIDTH = 1920;
+export const HEIGHT = 1080;

@@ -9,10 +9,7 @@ export function Ticker({ ticker }) {
   if (!ticker || !ticker.enabled || !ticker.texte) return null;
   const sep = '       •       ';
   const unit = ticker.texte + sep;
-  // Brief ALWM TV : 60 px/s STRICT (chaînes pros = défilement lent).
-  // On garde 5 niveaux disponibles dans l'UI mais le défaut tape à 1.
   const speedLevel = Math.max(1, Math.min(5, Number(ticker.speed) || 1));
-  // Vitesses (px/s) : 1=60 (défaut brand), 2=90, 3=130, 4=180, 5=240.
   const PX_PER_SEC = [60, 90, 130, 180, 240][speedLevel - 1];
   const speed = PX_PER_SEC / 30;
   const x = -((frame * speed) % 2000);
@@ -20,15 +17,17 @@ export function Ticker({ ticker }) {
   const px = ticker.posX || 0;
   const py = ticker.posY || 0;
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, background: COL.ticker, display: 'flex', alignItems: 'center', overflow: 'hidden', transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'bottom left', borderTop: `2px solid ${COL.light}33` }}>
-      <span style={{ width: 160, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Img src={staticFile('habillage-logo.png')} style={{ height: '350%', objectFit: 'contain' }} />
-      </span>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 40, background: COL.navy, display: 'flex', alignItems: 'center', overflow: 'hidden', transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'bottom left', borderTop: `1px solid rgba(255,255,255,0.1)` }}>
+      <div style={{ background: COL.blue, color: COL.white, fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 24px', flexShrink: 0, fontFamily: ff(null, "'Montserrat', sans-serif"), fontSize: 16, letterSpacing: '0.04em', zIndex: 2 }}>
+        ALWM TV
+      </div>
       {ticker.categorie && (
-        <span style={{ background: COL.white, color: COL.blue, fontWeight: 700, height: '100%', display: 'flex', alignItems: 'center', padding: '0 18px', flexShrink: 0, fontFamily: ff(null, "'Montserrat Bold', sans-serif"), fontSize: 26, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{ticker.categorie}</span>
+        <div style={{ background: COL.white, color: COL.blue, fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 18px', flexShrink: 0, fontFamily: ff(null, "'Montserrat', sans-serif"), fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.03em', zIndex: 2 }}>
+          {ticker.categorie}
+        </div>
       )}
-      <div style={{ position: 'relative', flex: 1, overflow: 'hidden', height: '100%' }}>
-        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${x}px)`, top: 0, lineHeight: '76px', color: COL.white, fontFamily: "'Montserrat Medium', sans-serif", fontSize: 30 }}>
+      <div style={{ position: 'relative', flex: 1, overflow: 'hidden', height: '100%', zIndex: 1 }}>
+        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${x}px)`, top: 0, lineHeight: '40px', color: COL.white, fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 500, letterSpacing: '0.02em' }}>
           <span style={{ padding: '0 30px' }}>{unit}</span>
           <span style={{ padding: '0 30px' }}>{unit}</span>
           <span style={{ padding: '0 30px' }}>{unit}</span>
@@ -125,32 +124,19 @@ export function BandeauInfos({ ticker, timeString = "18:45" }) {
 
 export function FlashInfo({ ticker }) {
   const frame = useCurrentFrame();
-  if (!ticker || !ticker.enabled || !ticker.texte) return null;
+  if (!ticker || !ticker.enabled) return null;
   
-  const speed = 5; 
-  const x = -((frame * speed) % 2000);
-  const sep = '       FLASH       ';
-  const unit = ticker.texte + sep;
-
-  // Red/Blue flash
-  const isRed = Math.floor(frame / 15) % 2 === 0;
-  const bgColor = isRed ? '#D32F2F' : '#1976D2';
-
-  // Tremor
-  const tremorX = Math.sin(frame * 2.1) * 2;
-  const tremorY = Math.cos(frame * 1.8) * 2;
+  // Animation d'entrée : glissement + fade
+  const y = interpolate(frame, [0, 15], [-20, 0], { extrapolateRight: 'clamp' });
+  const op = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
 
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 80, height: 90, background: bgColor, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-      <div style={{ background: '#000', color: '#FFF', fontWeight: 900, height: '100%', display: 'flex', alignItems: 'center', padding: '0 30px', flexShrink: 0, fontFamily: ff(null, 'Inter, sans-serif'), fontSize: 36, zIndex: 2, transform: `translate(${tremorX}px, ${tremorY}px)` }}>
-        FLASH INFO
+    <div style={{ position: 'absolute', left: 120, top: 120, width: 220, height: 80, display: 'flex', flexDirection: 'column', opacity: op, transform: `translateY(${y}px)`, boxShadow: '0 20px 40px rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden' }}>
+      <div style={{ background: COL.blue, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.white, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 28, letterSpacing: '0.05em' }}>
+        FLASH
       </div>
-      <div style={{ position: 'relative', flex: 1, overflow: 'hidden', height: '100%', zIndex: 1 }}>
-        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${x}px)`, top: 0, lineHeight: '90px', color: COL.white, fontFamily: 'Inter, sans-serif', fontSize: 34, fontWeight: 700 }}>
-          <span style={{ padding: '0 30px' }}>{unit}</span>
-          <span style={{ padding: '0 30px' }}>{unit}</span>
-          <span style={{ padding: '0 30px' }}>{unit}</span>
-        </div>
+      <div style={{ background: COL.white, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.black, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 28, letterSpacing: '0.05em' }}>
+        INFO
       </div>
     </div>
   );

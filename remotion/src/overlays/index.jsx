@@ -124,7 +124,6 @@ function Box({ overlay, style, children }) {
 
 function NomInterview({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
-  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -132,28 +131,22 @@ function NomInterview({ overlay, durationInFrames }) {
   const isOut = frame > durationInFrames - outDur;
   const outFrame = isOut ? frame - (durationInFrames - outDur) : 0;
 
-  // Staggered springs for high-end feel
-  const ribbonSpring = spring({ frame, fps, config: { damping: 16, stiffness: 100 } });
   const contentSpring = spring({ frame: Math.max(0, frame - 5), fps, config: { damping: 16, stiffness: 90 } });
   const outSpring = spring({ frame: outFrame, fps, config: { damping: 16, stiffness: 100 } });
   
-  const ribbonWidth = interpolate(ribbonSpring, [0, 1], [0, 100]);
   const contentY = interpolate(contentSpring, [0, 1], [20, 0]);
   const contentOp = interpolate(contentSpring, [0, 1], [0, 1]);
 
-  // Charte #4 lower third : barre qui entre translateX(-100%)→0 (~15 frames),
-  // bloc bleu "ALWM TV" (160px) + panneau blanc (catégorie bleu + corps noir).
   const barX = eo(frame, [0, 15], [-100, 0]); // %
   const outX = isOut ? interpolate(outSpring, [0, 1], [0, -120]) : 0;
   const slideOutOp = isOut ? interpolate(outSpring, [0, 1], [1, 0]) : 1;
   const fs = (overlay.fontSize || 100) / 100;
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  
   const categorie = (f.categorie || f.title || f.fonction || 'POLITIQUE').toUpperCase();
   const corps = f.name || f.nom || f.texte || 'Titre de l’information';
 
   return (
-    <Box overlay={overlay} style={{ left: 120, top: 900, opacity: slideOutOp, transform: `translateX(${outX}%)` }}>
+    <Box overlay={overlay} style={{ left: 180, top: 800, width: '65%', opacity: slideOutOp, transform: `translateX(${outX}%)` }}>
       <div style={{
         display: 'flex', alignItems: 'stretch', height: 110,
         transform: `translateX(${barX}%)`,
@@ -161,18 +154,19 @@ function NomInterview({ overlay, durationInFrames }) {
       }}>
         {/* Bloc gauche bleu ALWM TV */}
         <div style={{
-          width: 200, background: COL.blue, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 160, background: COL.blue, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: COL.white, fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontSize: 24, letterSpacing: '0.04em'
         }}>
-          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 150, objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+          ALWM TV
         </div>
         {/* Panneau droit blanc : catégorie (bleu) + corps (noir) */}
         <div style={{
           background: COL.white, padding: '14px 40px 14px 32px',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 600,
+          display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1,
           opacity: contentOp, transform: `translateY(${contentY}px)`,
         }}>
-          <div style={{ fontFamily: fontB, fontWeight: 800, fontSize: `${fs * 24}px`, color: COL.blue, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{categorie}</div>
-          <div style={{ fontFamily: fontM, fontWeight: 600, fontSize: `${fs * 36}px`, color: COL.black, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</div>
+          <div style={{ fontFamily: ff(null, "'Inter', sans-serif"), fontWeight: 800, fontSize: `${fs * 22}px`, color: COL.blue, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{categorie}</div>
+          <div style={{ fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontSize: `${fs * 36}px`, color: COL.black, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</div>
         </div>
       </div>
     </Box>
@@ -246,27 +240,30 @@ function GrandTitre({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
+function GrandTitre({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
   const isOut = frame > durationInFrames - 24;
   const outFrame = isOut ? frame - (durationInFrames - 24) : 0;
   const outOpacity = eo(outFrame, [0, 24], [1, 0]);
 
-  // Titre principal (charte) : scale 1.06 → 1, opacity 0 → 1, ~1 s, easeOutCubic.
-  const titleScale = eo(frame, [0, fps], [1.06, 1]);
-  const titleOpacity = eo(frame, [0, fps * 0.7], [0, 1]);
-  // Balayage lumineux gauche → droite (sobre).
+  // Animation: opacity 0 -> 100, scale 1.05 -> 1 over 1 second (fps frames)
+  const titleScale = eo(frame, [0, fps], [1.05, 1]);
+  const titleOpacity = eo(frame, [0, fps], [0, 1]);
+  
   const lightPos = eo(frame, [10, 70], [-120, 220]);
   const fs = (overlay.fontSize || 100) / 100;
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      {/* Fond institutionnel officiel : gradient nuit + globe + lignes. */}
       <BackdropALWM />
-      {/* Faisceau lumineux volumétrique discret. */}
       <div style={{
         position: 'absolute', top: '-50%', bottom: '-50%', width: '50%', left: '25%',
-        background: 'linear-gradient(90deg, transparent, rgba(74,163,255,0.10), transparent)',
+        background: 'linear-gradient(90deg, transparent, rgba(74,163,255,0.15), transparent)',
         transform: `translateX(${lightPos}%) skewX(-30deg)`,
-        filter: 'blur(50px)', zIndex: 2,
+        filter: 'blur(60px)', zIndex: 2,
       }} />
 
       <div style={{
@@ -275,34 +272,69 @@ function GrandTitre({ overlay, durationInFrames }) {
         opacity: titleOpacity,
         textAlign: 'center',
         color: COL.white,
-        fontFamily: ff(overlay.font, "'Montserrat ExtraBold', sans-serif"),
+        fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"),
         zIndex: 3,
-        textShadow: '0 14px 40px rgba(0,0,0,0.55)'
+        textShadow: '0 10px 30px rgba(0,0,0,0.8)'
       }}>
-        {/* sweep lumineux SUR le texte */}
         <div style={{
-          fontSize: `${fs * 150}px`,
+          fontSize: `${fs * 96}px`,
           fontWeight: 800,
-          letterSpacing: '0.01em',
-          lineHeight: 1.05,
-          color: COL.white,
+          letterSpacing: '0.02em',
+          lineHeight: 1.1,
           textTransform: 'uppercase'
         }}>
           {f.titre || f.title || 'LE JOURNAL'}
         </div>
         {(f.sous_titre || f.subtitle || f.date) && (
           <div style={{
-            fontSize: `${fs * 44}px`,
+            fontSize: `${fs * 42}px`,
             color: COL.light,
-            fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"),
-            fontWeight: 500,
-            marginTop: 18,
-            letterSpacing: '0.12em',
+            fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"),
+            marginTop: 16,
+            letterSpacing: '0.1em',
             textTransform: 'uppercase',
           }}>
             {f.sous_titre || f.subtitle || f.date}
           </div>
         )}
+      </div>
+    </Box>
+  );
+}
+
+function EditionSpeciale({ overlay, durationInFrames }) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const isOut = frame > durationInFrames - 24;
+  const outFrame = isOut ? frame - (durationInFrames - 24) : 0;
+  const outOpacity = eo(outFrame, [0, 24], [1, 0]);
+
+  const titleScale = eo(frame, [0, fps], [1.05, 1]);
+  const titleOpacity = eo(frame, [0, fps], [0, 1]);
+  const fs = (overlay.fontSize || 100) / 100;
+
+  return (
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+      <BackdropALWM darker={true} globeOpacity={0.2} />
+      <div style={{
+        position: 'relative',
+        transform: `scale(${titleScale})`,
+        opacity: titleOpacity,
+        textAlign: 'center',
+        fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"),
+        zIndex: 3,
+        textShadow: '0 10px 40px rgba(0,0,0,0.9)'
+      }}>
+        <div style={{ fontSize: `${fs * 96}px`, color: COL.white, lineHeight: 1.1, textTransform: 'uppercase' }}>
+          ÉDITION
+        </div>
+        <div style={{ fontSize: `${fs * 96}px`, color: COL.blue, lineHeight: 1.1, textTransform: 'uppercase' }}>
+          SPÉCIALE
+        </div>
+      </div>
+      <div style={{ position: 'absolute', bottom: 120, opacity: titleOpacity, zIndex: 3 }}>
+        <Img src={staticFile('images/alwm-logo.png')} style={{ width: 180, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))' }} />
       </div>
     </Box>
   );
@@ -334,48 +366,48 @@ function TitreKaraoke({ overlay, durationInFrames }) {
 
 function TitreReportage({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
-  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const isOut = frame > durationInFrames - 18;
-  const inSp = spring({ frame, fps, config: { damping: 20, stiffness: 110 } });
-  const subSp = spring({ frame: Math.max(0, frame - 6), fps, config: { damping: 20, stiffness: 110 } });
-  const outSp = isOut ? interpolate(frame - (durationInFrames - 18), [0, 18], [0, 1], { extrapolateRight: 'clamp' }) : 0;
-  const reveal = isOut ? 1 - outSp : inSp;
+  const isOut = frame > durationInFrames - 24;
+  const outFrame = isOut ? frame - (durationInFrames - 24) : 0;
+  const outOpacity = eo(outFrame, [0, 24], [1, 0]);
+
+  // Animation: scale 0.9 -> 1, opacity 0 -> 100 over 1s
+  const titleScale = eo(frame, [0, fps], [0.9, 1]);
+  const titleOpacity = eo(frame, [0, fps], [0, 1]);
+  
+  // Globe Zoom lent (scale from 1 to 1.1)
+  const globeZoom = interpolate(frame, [0, durationInFrames], [1, 1.1]);
+  
   const fs = (overlay.fontSize || 100) / 100;
-  const titleColor = C.text(NAVY);
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  const text = (f.titre || f.title || 'REPORTAGE').toUpperCase();
 
   return (
-    <Box overlay={overlay} style={{ left: 110, top: 820, width: 1300, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-      {/* Bandeau titre : parallélogramme navy + texte blanc */}
-      <div style={{ display: 'flex', alignItems: 'stretch' }}>
-        <Para bg={NAVY} reveal={reveal} padding="0" style={{ boxShadow: '0 18px 40px rgba(0,0,0,0.35)' }}>
-          <div style={{
-            padding: '18px 56px 18px 48px',
-            fontFamily: fontB, fontWeight: 700,
-            fontSize: `${fs * 50}px`, color: COL.white,
-            textTransform: 'uppercase', letterSpacing: '0.01em', whiteSpace: 'nowrap',
-          }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</div>
-        </Para>
-        {/* accent diagonal bleu électrique */}
-        <div style={{ opacity: reveal > 0.7 ? 1 : 0, transition: 'opacity .2s' }}>
-          <AccentSlash height={Math.round(fs * 50 + 36)} />
-        </div>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', inset: 0, transform: `scale(${globeZoom})`, transformOrigin: 'center center' }}>
+        <BackdropALWM darker={true} lines={false} globeOpacity={0.25} />
       </div>
-      {/* Sous-titre : sur fond blanc, texte bleu + petit carré bleu à gauche */}
-      <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 6, marginLeft: 18 }}>
-        <div style={{ width: 14, background: ELEC, clipPath: `polygon(${SLANT * 0.5}px 0,100% 0,calc(100% - ${SLANT * 0.5}px) 100%,0 100%)` }} />
-        <Para bg={COL.white} reveal={subSp} padding="0" style={{ boxShadow: '0 10px 24px rgba(0,0,0,0.2)' }}>
-          <div style={{
-            padding: '8px 40px 8px 28px',
-            fontFamily: fontM, fontWeight: 600,
-            fontSize: `${fs * 26}px`, color: ELEC,
-            textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-          }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</div>
-        </Para>
+
+      <div style={{
+        position: 'relative',
+        transform: `scale(${titleScale})`,
+        opacity: titleOpacity,
+        textAlign: 'center',
+        color: COL.white,
+        fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"),
+        zIndex: 3,
+        textShadow: '0 10px 40px rgba(0,0,0,0.8)'
+      }}>
+        <div style={{
+          fontSize: `${fs * 72}px`,
+          fontWeight: 800,
+          letterSpacing: '0.15em',
+          lineHeight: 1.1,
+          textTransform: 'uppercase'
+        }}>
+          {text}
+        </div>
       </div>
     </Box>
   );
@@ -418,11 +450,9 @@ function SignatureReportage({ overlay, durationInFrames }) {
 
 function RappelTitres({ overlay, durationInFrames }) {
   const f = overlay.fields || {}; 
-  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Jusqu'à 5 titres (charte). Sources : tableau titres ou champs titre1..5.
   let titres = Array.isArray(f.titres) ? f.titres : [f.titre1, f.titre2, f.titre3, f.titre4, f.titre5].filter(Boolean);
   if (titres.length === 0) {
     titres = ['Crise diplomatique entre…', 'Sommet économique…', 'Élections…', 'Sport…'];
@@ -432,31 +462,27 @@ function RappelTitres({ overlay, durationInFrames }) {
   const isOut = frame > durationInFrames - 24;
   const outFrame = isOut ? frame - (durationInFrames - 24) : 0;
   const outOpacity = eo(outFrame, [0, 24], [1, 0]);
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
-  // Colombe : signature, traverse AVANT l'apparition des titres (charte).
+  
   const doveTo = Math.round(fps * 1.8);
   const listStart = Math.round(fps * 0.9);
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1 }}>
       <BackdropALWM />
-      <DoveFlyThrough fromF={6} toF={doveTo} y={20} size={180} />
+      <DoveFlyThrough fromF={6} toF={doveTo} y={20} size={240} />
 
-      {/* En-tête RAPPEL DES TITRES (haut centre) */}
       <div style={{
         position: 'absolute', left: 0, right: 0, top: 120, textAlign: 'center', zIndex: 2,
         opacity: eo(frame, [listStart - 6, listStart + 8], [0, 1]),
       }}>
         <span style={{
-          fontFamily: fontB, fontWeight: 800, fontSize: 54, color: COL.white,
+          fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 64, color: COL.white,
           textTransform: 'uppercase', letterSpacing: '0.06em',
           borderBottom: `4px solid ${COL.blue}`, paddingBottom: 14,
         }}>{f.titre || 'RAPPEL DES TITRES'}</span>
       </div>
 
-      {/* Liste : chaque ligne slide-right + fade, delay 200 ms (charte) */}
-      <div style={{ position: 'absolute', left: 360, right: 360, top: 300, zIndex: 2 }}>
+      <div style={{ position: 'absolute', left: 400, right: 400, top: 320, zIndex: 2 }}>
         {titres.map((titre, i) => {
           const delay = listStart + Math.round(fps * 0.2) * i;
           const itemFrame = Math.max(0, frame - delay);
@@ -466,11 +492,11 @@ function RappelTitres({ overlay, durationInFrames }) {
             <div key={i} style={{
               transform: `translateX(${x}px)`, opacity: op,
               display: 'flex', alignItems: 'center', gap: 24,
-              padding: '16px 0', borderBottom: '1px solid rgba(74,163,255,0.18)',
+              padding: '24px 0', borderBottom: '1px solid rgba(74,163,255,0.18)',
             }}>
-              <span style={{ width: 10, height: 10, background: COL.blue, transform: 'rotate(45deg)', flexShrink: 0 }} />
+              <span style={{ width: 16, height: 16, background: COL.blue, transform: 'rotate(45deg)', flexShrink: 0 }} />
               <span style={{
-                color: COL.white, fontSize: 38, fontFamily: fontM, fontWeight: 500, lineHeight: 1.2,
+                color: COL.white, fontSize: 42, fontFamily: ff(null, "'Inter', sans-serif"), fontWeight: 500, lineHeight: 1.2,
               }}>{titre}</span>
             </div>
           );
@@ -531,22 +557,15 @@ function BandeauPays({ overlay, durationInFrames }) {
   );
 }
 
-// FLASH INFO — petit cartouche bleu en haut à gauche (charte #6).
 function FlashInfo({ overlay, durationInFrames }) {
-  const f = overlay.fields || {};
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const op = eo(frame, [0, 8], [0, 1]);
-  const x = eo(frame, [0, 12], [-40, 0]);
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
-  const txt = (f.texte || 'FLASH INFO').toUpperCase();
-  const [w1, ...rest] = txt.split(' ');
-  const w2 = rest.join(' ') || 'INFO';
+  const y = interpolate(frame, [0, 15], [-20, 0], { extrapolateRight: 'clamp' });
+  const op = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
   return (
-    <Box overlay={overlay} style={{ left: 80, top: 80, opacity: op, transform: `translateX(${x}px)` }}>
-      <div style={{ display: 'inline-flex', flexDirection: 'column', fontFamily: fontB, fontWeight: 800, lineHeight: 1, boxShadow: '0 12px 26px rgba(0,0,0,0.4)' }}>
-        <span style={{ background: COL.blue, color: COL.white, padding: '8px 16px', fontSize: 38, letterSpacing: '0.04em' }}>{w1}</span>
-        <span style={{ background: COL.white, color: COL.blue, padding: '6px 16px', fontSize: 34, letterSpacing: '0.04em' }}>{w2}</span>
+    <Box overlay={overlay} style={{ left: 80, top: 80, opacity: op, transform: `translateY(${y}px)` }}>
+      <div style={{ width: 220, height: 80, display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ background: COL.blue, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.white, fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 28, letterSpacing: '0.05em' }}>FLASH</div>
+        <div style={{ background: COL.white, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.black, fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 28, letterSpacing: '0.05em' }}>INFO</div>
       </div>
     </Box>
   );
@@ -949,6 +968,7 @@ const REGISTRY = {
   nom_interview: NomInterview,
   lower_third_pro: LowerThirdPro,
   grand_titre: GrandTitre,
+  edition_speciale: EditionSpeciale,
   titre_karaoke: TitreKaraoke,
   titre_reportage: TitreReportage,
   signature_reportage: SignatureReportage,
