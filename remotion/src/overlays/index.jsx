@@ -471,6 +471,7 @@ function SignatureReportage({ overlay, durationInFrames }) {
 
 function RappelTitres({ overlay, durationInFrames }) {
   const f = overlay.fields || {}; 
+  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -497,9 +498,9 @@ function RappelTitres({ overlay, durationInFrames }) {
         opacity: eo(frame, [listStart - 6, listStart + 8], [0, 1]),
       }}>
         <span style={{
-          fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 64, color: COL.white,
+          fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 64, color: C.text(COL.white),
           textTransform: 'uppercase', letterSpacing: '0.06em',
-          borderBottom: `4px solid ${COL.blue}`, paddingBottom: 14,
+          borderBottom: `4px solid ${C.accent(COL.blue)}`, paddingBottom: 14,
         }}>{f.titre || 'RAPPEL DES TITRES'}</span>
       </div>
 
@@ -513,11 +514,11 @@ function RappelTitres({ overlay, durationInFrames }) {
             <div key={i} style={{
               transform: `translateX(${x}px)`, opacity: op,
               display: 'flex', alignItems: 'center', gap: 24,
-              padding: '24px 0', borderBottom: '1px solid rgba(74,163,255,0.18)',
+              padding: '24px 0', borderBottom: `1px solid ${C.accent('rgba(74,163,255,0.18)')}`,
             }}>
-              <span style={{ width: 16, height: 16, background: COL.blue, transform: 'rotate(45deg)', flexShrink: 0 }} />
+              <span style={{ width: 16, height: 16, background: C.accent(COL.blue), transform: 'rotate(45deg)', flexShrink: 0 }} />
               <span style={{
-                color: COL.white, fontSize: 42, fontFamily: ff(null, "'Inter', sans-serif"), fontWeight: 500, lineHeight: 1.2,
+                color: C.text(COL.white), fontSize: 42, fontFamily: ff(null, "'Inter', sans-serif"), fontWeight: 500, lineHeight: 1.2,
               }}>{titre}</span>
             </div>
           );
@@ -579,14 +580,16 @@ function BandeauPays({ overlay, durationInFrames }) {
 }
 
 function FlashInfo({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const y = interpolate(frame, [0, 15], [-20, 0], { extrapolateRight: 'clamp' });
   const op = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
   return (
     <Box overlay={overlay} style={{ left: 80, top: 80, opacity: op, transform: `translateY(${y}px)` }}>
-      <div style={{ width: 220, height: 80, display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{ background: COL.blue, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.white, fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 28, letterSpacing: '0.05em' }}>FLASH</div>
-        <div style={{ background: COL.white, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.black, fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 28, letterSpacing: '0.05em' }}>INFO</div>
+      <div style={{ width: 340, height: 80, display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ background: C.bg(COL.blue), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.white), fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.titre || 'FLASH'}</div>
+        <div style={{ background: C.accent(COL.white), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.black), fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.texte || 'INFO'}</div>
       </div>
     </Box>
   );
@@ -595,16 +598,18 @@ function FlashInfo({ overlay, durationInFrames }) {
 // BREAKING NEWS / ALERTE INFO — plein écran bleu + flash + marquee (charte #5).
 function BreakingNews({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
+  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const text = (f.titre || f.texte || 'ALERTE INFO').toUpperCase();
+  const title = (f.titre || 'BREAKING NEWS').toUpperCase();
+  const subtitle = (f.texte || 'ALERTE INFO').toUpperCase();
   const fontB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
   // Flash bleu d'entrée ~200 ms.
   const flash = eo(frame, [0, fps * 0.2, fps * 0.45], [1, 0.5, 0]);
   const titleScale = eo(frame, [fps * 0.1, fps * 0.9], [1.05, 1]);
   const titleOp = eo(frame, [fps * 0.1, fps * 0.6], [0, 1]);
   // Marquee bas (continu, ~120 px/s).
-  const marqueeText = `${text}   •   `.repeat(8);
+  const marqueeText = `${subtitle}   •   `.repeat(8);
   const mx = -((frame * (120 / fps)) % 1600);
   const fs = (overlay.fontSize || 100) / 100;
 
@@ -615,17 +620,17 @@ function BreakingNews({ overlay, durationInFrames }) {
       <div style={{ position: 'absolute', width: 1100, height: 360, background: 'radial-gradient(ellipse, rgba(0,87,217,0.45) 0%, transparent 70%)', filter: 'blur(50px)' }} />
       <div style={{
         position: 'relative', zIndex: 3, transform: `scale(${titleScale})`, opacity: titleOp,
-        fontFamily: fontB, fontWeight: 800, fontSize: `${fs * 130}px`, color: COL.white,
+        fontFamily: fontB, fontWeight: 800, fontSize: `${fs * 130}px`, color: C.text(COL.white),
         textTransform: 'uppercase', letterSpacing: '0.02em', textShadow: '0 14px 40px rgba(0,0,0,0.6)',
-      }}>{text}</div>
+      }}>{title}</div>
       {/* Bandeau marquee bas */}
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 60, height: 64, background: COL.blue, display: 'flex', alignItems: 'center', overflow: 'hidden', zIndex: 3 }}>
-        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${mx}px)`, color: COL.white, fontFamily: fontB, fontWeight: 700, fontSize: 30, letterSpacing: '0.06em' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 60, height: 64, background: C.bg(COL.blue), display: 'flex', alignItems: 'center', overflow: 'hidden', zIndex: 3 }}>
+        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${mx}px)`, color: C.text(COL.white), fontFamily: fontB, fontWeight: 700, fontSize: 30, letterSpacing: '0.06em' }}>
           {marqueeText}{marqueeText}
         </div>
       </div>
       {/* Flash bleu d'entrée */}
-      <AbsoluteFill style={{ background: COL.blue, opacity: flash, pointerEvents: 'none', zIndex: 5 }} />
+      <AbsoluteFill style={{ background: C.accent(COL.blue), opacity: flash, pointerEvents: 'none', zIndex: 5 }} />
     </Box>
   );
 }
@@ -914,6 +919,7 @@ function FinMerci({ overlay, durationInFrames }) {
 // s'adapte proportionnellement.
 function IntroJT({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
+  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   const D = durationInFrames || fps * 10;
@@ -963,7 +969,7 @@ function IntroJT({ overlay, durationInFrames }) {
               const op = interpolate(wf, [0, 6, step - 4, step], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
               if (op <= 0) return null;
               const y = eo(wf, [0, 8], [40, 0]);
-              return <div key={i} style={{ position: 'absolute', inset: 0, textAlign: 'center', opacity: op, transform: `translateY(${y}px)`, fontFamily: fontXB, fontWeight: 800, fontSize: 88, color: COL.white, letterSpacing: '0.04em', lineHeight: '120px', textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>{w}</div>;
+              return <div key={i} style={{ position: 'absolute', inset: 0, textAlign: 'center', opacity: op, transform: `translateY(${y}px)`, fontFamily: fontXB, fontWeight: 800, fontSize: 88, color: C.text(COL.white), letterSpacing: '0.04em', lineHeight: '120px', textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>{w}</div>;
             })}
           </div>
         </AbsoluteFill>
@@ -974,7 +980,7 @@ function IntroJT({ overlay, durationInFrames }) {
       {frame >= s3 && (
         <AbsoluteFill style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
           <Img src={staticFile('images/alwm-logo.png')} style={{ width: 460, objectFit: 'contain', opacity: logoOp, transform: `scale(${logoScale})`, filter: 'drop-shadow(0 14px 30px rgba(0,0,0,0.6))' }} />
-          <div style={{ opacity: jtOp, transform: `scale(${jtScale})`, fontFamily: fontXB, fontWeight: 800, fontSize: 84, color: COL.white, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <div style={{ opacity: jtOp, transform: `scale(${jtScale})`, fontFamily: fontXB, fontWeight: 800, fontSize: 84, color: C.text(COL.white), letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {f.titre || 'LE JOURNAL'}
           </div>
         </AbsoluteFill>
@@ -987,6 +993,7 @@ function IntroJT({ overlay, durationInFrames }) {
 // Plein écran, globe zoom lent, "REPORTAGE"
 function TransitionReportage({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
+  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -1014,7 +1021,7 @@ function TransitionReportage({ overlay, durationInFrames }) {
           fontFamily: ff(overlay.font, "'Montserrat ExtraBold', sans-serif"),
           fontWeight: 800,
           fontSize: 100,
-          color: COL.white,
+          color: C.text(COL.white),
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           textShadow: '0 10px 30px rgba(0,0,0,0.8)'
