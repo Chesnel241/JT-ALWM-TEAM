@@ -164,7 +164,8 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
         <div className="bg-black">
           <video
             ref={videoRef}
-            src={`${API_BASE}/uploads/${file.filename}`}
+            src={`${API_BASE}/uploads/${file.filename}?cors=2&t=${Date.now()}`}
+            crossOrigin="anonymous"
             className="w-full max-h-[320px] object-contain"
             onLoadedMetadata={handleLoadedMetadata}
             onTimeUpdate={handleTimeUpdate}

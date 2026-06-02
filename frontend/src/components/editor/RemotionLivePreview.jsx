@@ -10,7 +10,7 @@ export default function RemotionLivePreview({ clips, global, branding, onClose, 
     // On résout les URLs relatives pour que Remotion puisse lire les vidéos depuis l'API locale.
     const resolvedClips = clips.map(clip => {
       const isExternal = clip.filename.startsWith('http') || clip.filename.startsWith('blob:');
-      const url = isExternal ? clip.filename : `${API_BASE}/uploads/${clip.filename}`;
+      const url = isExternal ? clip.filename : `${API_BASE}/uploads/${clip.filename}?cors=2`;
       return {
         ...clip,
         url,
