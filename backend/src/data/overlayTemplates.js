@@ -37,6 +37,8 @@ export const FONT_FAMILIES = [
   'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
   'Oswald', 'Roboto Condensed', 'Russo One', 'Playfair Display',
   'IBM Plex Sans', 'JetBrains Mono',
+  // Pack Montserrat (charte ALWM TV).
+  'Montserrat ExtraBold', 'Montserrat Bold', 'Montserrat Medium',
 ];
 
 // Tag \fn si la police demandée est valide, sinon vide (garde le défaut du modèle).

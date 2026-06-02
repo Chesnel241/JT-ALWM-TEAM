@@ -19,14 +19,19 @@ function readAss(overlays, ctx = {}) {
 describe('OVERLAY_TEMPLATES (registre brand ALWM)', () => {
   const ids = OVERLAY_TEMPLATES.map((t) => t.id);
 
-  it('expose les 14 modèles brand ALWM (charte officielle)', () => {
+  it('expose les modèles core brand ALWM (charte officielle)', () => {
     [
-      'titre_reportage', 'nom_interview', 'signature_reportage',
-      'grand_titre', 'rappel_titres',
-      'a_suivre', 'tout_de_suite',
-      'publicite', 'compte_a_rebours', 'la_speciale', 'fin_merci',
-      'bandeau_infos', 'flash_info', 'alerte_info',
+      'intro_jt', 'titre_reportage', 'transition_reportage',
+      'nom_interview', 'rappel_titres', 'fin_merci',
+      'flash_info', 'breaking_news',
+      // Pack Envato : titres / split / ticker / présentateur / news
+      'envato_presenter', 'envato_news', 'envato_big_title',
+      'envato_ticker', 'envato_split_screen',
     ].forEach((id) => expect(ids).toContain(id));
+  });
+
+  it('compte au moins 13 templates exposés', () => {
+    expect(OVERLAY_TEMPLATES.length).toBeGreaterThanOrEqual(13);
   });
 
   it('chaque template a id + label + fields[] non vides', () => {

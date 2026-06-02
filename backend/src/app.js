@@ -156,16 +156,10 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     crossOriginEmbedderPolicy: false,
   }));
 
-  // credentials:true requis pour que le navigateur envoie/reçoive le
-  // cookie d'auth (sameSite=none impose credentials).
-  app.use(cors({ origin: corsOrigins, credentials: true }));
-  app.use(globalLimiter);
-  app.use(timeoutMiddleware(REQUEST_TIMEOUT_MS));
-  app.use(express.json({ limit: '100kb' }));
-  app.use(cookieParser());
-  app.use(sanitizerMiddleware);
-
-  // Forcer les headers CORS explicites pour Remotion <Video crossOrigin="anonymous">
+  // CORS médias /uploads — IMPÉRATIVEMENT avant `cors()` global, car
+  // celui-ci intercepte les OPTIONS quand l'origine n'est pas whitelistée
+  // et répond préalablement (sans Allow-Origin) → cause de l'écran noir
+  // Remotion <Video crossOrigin="anonymous">.
   app.use('/uploads', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, OPTIONS, HEAD');
@@ -176,6 +170,15 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     }
     next();
   });
+
+  // credentials:true requis pour que le navigateur envoie/reçoive le
+  // cookie d'auth (sameSite=none impose credentials).
+  app.use(cors({ origin: corsOrigins, credentials: true }));
+  app.use(globalLimiter);
+  app.use(timeoutMiddleware(REQUEST_TIMEOUT_MS));
+  app.use(express.json({ limit: '100kb' }));
+  app.use(cookieParser());
+  app.use(sanitizerMiddleware);
 
   // Redirection vers Cloudflare R2 pour lire les vidéos, avec sécurisation MOT DU JT
   app.get('/uploads/*', async (req, res, next) => {
