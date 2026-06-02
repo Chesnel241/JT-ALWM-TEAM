@@ -215,7 +215,9 @@ export const OVERLAY_TEMPLATES = [
     preview: 'Bandeau double pour afficher qui parle face à qui.',
     fields: [
       { key: 'leftName', label: 'Nom Gauche', placeholder: 'JOURNALISTE' },
-      { key: 'rightName', label: 'Nom Droit', placeholder: 'INVITÉ' }
+      { key: 'leftRole', label: 'Rôle Gauche', placeholder: 'HÔTE' },
+      { key: 'rightName', label: 'Nom Droit', placeholder: 'INVITÉ' },
+      { key: 'rightRole', label: 'Rôle Droit', placeholder: 'EXPERT' }
     ]
   },
   {
@@ -233,7 +235,8 @@ export const OVERLAY_TEMPLATES = [
     emoji: '❝',
     preview: 'Magnifique pavé avec des guillemets animés.',
     fields: [
-      { key: 'quote', label: 'Citation', placeholder: 'Texte de la citation ici...' }
+      { key: 'quote', label: 'Citation', placeholder: 'Texte de la citation ici...' },
+      { key: 'author', label: 'Auteur', placeholder: 'Nom de l\'auteur' }
     ]
   }
 ];

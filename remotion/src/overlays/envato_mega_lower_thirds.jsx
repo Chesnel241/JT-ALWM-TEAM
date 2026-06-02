@@ -14,8 +14,10 @@ const baseFontConfig = {
 export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const firstName = fields.firstName || 'EMIL';
-  const lastName = fields.lastName || 'KOWALSKI';
+  const fullNom = fields.nom || 'EMIL KOWALSKI';
+  const parts = fullNom.split(' ');
+  const firstName = parts[0] || 'EMIL';
+  const lastName = parts.slice(1).join(' ') || '';
   const colorMain = fields.colorMain || '#fcfcfc';
   const colorTextFirst = fields.colorTextFirst || '#111111';
   const colorTextLast = fields.colorTextLast || '#666666';
@@ -65,8 +67,8 @@ export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
 export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const name = fields.name || 'MICHAEL SCOTT';
-  const title = fields.title || 'REGIONAL MANAGER';
+  const name = fields.nom || 'MICHAEL SCOTT';
+  const title = fields.fonction || 'REGIONAL MANAGER';
   const colorTop = fields.colorTop || '#0047AB'; // Corporate Blue
   const colorBottom = fields.colorBottom || '#fcfcfc';
   const colorTextTop = fields.colorTextTop || '#ffffff';
