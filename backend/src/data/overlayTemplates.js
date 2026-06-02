@@ -167,16 +167,13 @@ function buildPerCharLines({ text, x, y, fontTagStr = '', baseTags = '', fs = 40
 // drag de repositionnement. Sert de référence pour calculer dx/dy.
 const DEFAULT_ANCHOR = {
   lower_third: { x: 0, y: 950 },
-  lower_third_pro: { x: 72, y: 892 },
+  nom_interview: { x: 0, y: 950 },
   grand_titre: { x: 960, y: 540 },
-  titre_karaoke: { x: 960, y: 540 },
-  bandeau_pays: { x: 1660, y: 20 },
   titre_reportage: { x: 0, y: 1000 },
+  transition_reportage: { x: 960, y: 540 },
   flash_info: { x: 0, y: 0 },
-  sous_titre: { x: 960, y: 1014 },
-  score_resultat: { x: 960, y: 40 },
-  horloge_date: { x: 20, y: 20 },
   breaking_news: { x: 120, y: 150 },
+  rappel_titres: { x: 0, y: 0 },
 };
 
 // Décale et met à l'échelle tous les \pos / \move d'une liste de Dialogue strings.
@@ -290,132 +287,42 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 export const OVERLAY_TEMPLATES = [
   {
     id: 'intro_jt',
-    label: 'Intro du JT (générique)',
+    label: 'Intro du JT (Générique)',
     emoji: '🌍',
     scope: 'global',
-    preview: 'Générique 10 s : réseau mondial, globe, mots-clés, colombe + logo + LE JOURNAL.',
+    preview: 'Générique d\'ouverture officiel ALWM TV.',
     fields: [
       { key: 'titre', label: 'Titre final', placeholder: 'LE JOURNAL' },
-      { key: 'mots', label: 'Mots-clés (séparés par •)', placeholder: 'ACTUALITÉ • POLITIQUE • ÉCONOMIE • SPORT • CULTURE • MONDE' }
+      { key: 'mots', label: 'Mots-clés', placeholder: 'ACTUALITÉ • MONDE' }
     ]
   },
   {
     id: 'titre_reportage',
-    label: 'Titre Reportage',
+    label: 'Titre Reportage (Lower Third)',
     emoji: '📰',
-    preview: 'Barre bleue glissante, titre avec flou de mouvement.',
+    preview: 'Bandeau inférieur bleu pour le nom du reportage.',
     fields: [
       { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Un sous-titre ou précision' }
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+    ]
+  },
+  {
+    id: 'transition_reportage',
+    label: 'Transition Reportage (Plein Écran)',
+    emoji: '🎬',
+    preview: 'Transition plein écran avec Globe et titre.',
+    fields: [
+      { key: 'titre', label: 'Texte Transition', placeholder: 'REPORTAGE' }
     ]
   },
   {
     id: 'nom_interview',
-    label: 'Nom Interview (Lower Third)',
+    label: 'Nom Personne (Lower Third)',
     emoji: '🗣️',
-    preview: 'Style France 24 : le cartouche glisse, nom apparaît en fondu.',
+    preview: 'Bandeau pour présenter un invité ou journaliste.',
     fields: [
       { key: 'nom', label: 'Prénom & Nom', placeholder: 'PRÉNOM NOM' },
-      { key: 'fonction', label: 'Fonction / Qualité', placeholder: 'FONCTION / QUALITÉ' }
-    ]
-  },
-  {
-    id: 'signature_reportage',
-    label: 'Signature Reportage',
-    emoji: '✍️',
-    preview: 'Apparition très rapide et sobre du nom du reporter.',
-    fields: [
-      { key: 'nom', label: 'Nom du journaliste', placeholder: 'PRÉNOM NOM' }
-    ]
-  },
-  {
-    id: 'grand_titre',
-    label: 'Grands Titres du JT',
-    emoji: '🎬',
-    preview: 'Zoom, rotation 3D faible et reflet lumineux.',
-    fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'LE JOURNAL' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'GRAND TITRE' }
-    ]
-  },
-  {
-    id: 'rappel_titres',
-    label: 'Rappel des Titres',
-    emoji: '📑',
-    preview: 'Titres glissant séquentiellement en cascade.',
-    fields: [
-      { key: 'titre1', label: 'Titre 1', placeholder: 'TITRE DU SUJET À LA UNE' },
-      { key: 'titre2', label: 'Titre 2', placeholder: 'AUTRE TITRE DU SUJET' },
-      { key: 'titre3', label: 'Titre 3', placeholder: 'DERNIER TITRE DU JOURNAL' }
-    ]
-  },
-  {
-    id: 'a_suivre',
-    label: 'À Suivre',
-    emoji: '⏩',
-    preview: 'Carte blanche, barre bleue pousse le texte machine à écrire.',
-    fields: [
-      { key: 'texte', label: 'Texte d\'annonce', placeholder: 'VOTRE PROGRAMME' }
-    ]
-  },
-  {
-    id: 'tout_de_suite',
-    label: 'Tout De Suite',
-    emoji: '⚡',
-    preview: 'Identique à À Suivre, mais plus rapide.',
-    fields: [
-      { key: 'texte', label: 'Texte d\'annonce', placeholder: 'VOTRE PROGRAMME' }
-    ]
-  },
-  {
-    id: 'publicite',
-    label: 'Publicité',
-    emoji: '📺',
-    preview: 'Transition plein écran, fond globe, zoom léger.',
-    fields: [
-      { key: 'texte', label: 'Texte', placeholder: 'PUBLICITÉ' }
-    ]
-  },
-  {
-    id: 'compte_a_rebours',
-    label: 'Compte à rebours',
-    emoji: '⏳',
-    preview: 'Décompte avec flip numérique ou transition verticale.',
-    fields: [
-      { key: 'texte', label: 'Texte', placeholder: 'NOUS REVENONS DANS UN INSTANT' },
-      { key: 'secondes', label: 'Durée (sec)', placeholder: '45' }
-    ]
-  },
-  {
-    id: 'la_speciale',
-    label: 'La Spéciale',
-    emoji: '⭐',
-    preview: 'Habillage premium, glissement croisé, scale impact.',
-    fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'LA SPÉCIALE' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'ÉMISSION SPÉCIALE' }
-    ]
-  },
-  {
-    id: 'fin_merci',
-    label: 'Fin / Merci',
-    emoji: '👋',
-    preview: 'Bandeau glisse doucement, texte fondu, logo ALWM.',
-    fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
-    ]
-  },
-  {
-    id: 'bandeau_infos',
-    label: 'Bandeau Infos (Défilement)',
-    emoji: '📜',
-    scope: 'global',
-    preview: 'Heure, info, texte qui défile lentement.',
-    fields: [
-      { key: 'heure', label: 'Heure', placeholder: '20:30' },
-      { key: 'info', label: 'Catégorie', placeholder: 'INFO' },
-      { key: 'texte', label: 'Texte défilant', placeholder: 'Texte de l\'information qui défile...' }
+      { key: 'fonction', label: 'Fonction / Qualité', placeholder: 'FONCTION' }
     ]
   },
   {
@@ -423,21 +330,42 @@ export const OVERLAY_TEMPLATES = [
     label: 'Flash Info',
     emoji: '🔴',
     scope: 'clip',
-    preview: 'Flash rouge/bleu lumineux, tremblement, texte.',
+    preview: 'Bandeau info dynamique rouge/bleu.',
     fields: [
       { key: 'titre', label: 'Titre', placeholder: 'FLASH INFO' },
       { key: 'texte', label: 'Texte', placeholder: 'Sujet du flash' }
     ]
   },
   {
-    id: 'alerte_info',
-    label: 'Alerte Info',
+    id: 'breaking_news',
+    label: 'Breaking News',
     emoji: '🚨',
     scope: 'clip',
-    preview: 'Pulsation rouge, bandeau urgent.',
+    preview: 'Alerte Breaking News premium avec glitch.',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'ALERTE' },
-      { key: 'texte', label: 'Texte urgent', placeholder: 'Sujet urgent' }
+      { key: 'titre', label: 'Titre', placeholder: 'BREAKING NEWS' },
+      { key: 'texte', label: 'Texte urgent', placeholder: 'Texte de l\'alerte' }
+    ]
+  },
+  {
+    id: 'rappel_titres',
+    label: 'Rappel des Titres',
+    emoji: '📑',
+    preview: 'Sommaire avec cascade de titres.',
+    fields: [
+      { key: 'titre1', label: 'Titre 1', placeholder: 'Sujet 1' },
+      { key: 'titre2', label: 'Titre 2', placeholder: 'Sujet 2' },
+      { key: 'titre3', label: 'Titre 3', placeholder: 'Sujet 3' }
+    ]
+  },
+  {
+    id: 'fin_merci',
+    label: 'Générique de Fin',
+    emoji: '👋',
+    preview: 'Générique de conclusion de journal.',
+    fields: [
+      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
     ]
   }
 ];

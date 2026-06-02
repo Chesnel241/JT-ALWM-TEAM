@@ -1000,27 +1000,13 @@ function TransitionReportage({ overlay, durationInFrames }) {
 
 const REGISTRY = {
   intro_jt: IntroJT,
-  lower_third: NomInterview,
+  lower_third: NomInterview, // Keep as alias
   nom_interview: NomInterview,
-  lower_third_pro: LowerThirdPro,
-  grand_titre: GrandTitre,
-  edition_speciale: EditionSpeciale,
-  titre_karaoke: TitreKaraoke,
   titre_reportage: TitreReportage,
   transition_reportage: TransitionReportage,
-  signature_reportage: SignatureReportage,
-  rappel_titres: RappelTitres,
-  sous_titre: SousTitre,
-  bandeau_pays: BandeauPays,
   flash_info: FlashInfo,
   breaking_news: BreakingNews,
-  score_resultat: ScoreResultat,
-  horloge_date: HorlogeDate,
-  a_suivre: ASuivre,
-  tout_de_suite: ToutDeSuite,
-  publicite: Publicite,
-  compte_a_rebours: CompteARebours,
-  la_speciale: LaSpeciale,
+  rappel_titres: RappelTitres,
   fin_merci: FinMerci,
 };
 
