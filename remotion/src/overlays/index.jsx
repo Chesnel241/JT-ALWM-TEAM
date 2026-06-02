@@ -275,7 +275,7 @@ function GrandTitre({ overlay, durationInFrames }) {
         opacity: titleOpacity,
         textAlign: 'center',
         color: COL.white,
-        fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
+        fontFamily: ff(overlay.font, "'Montserrat ExtraBold', sans-serif"),
         zIndex: 3,
         textShadow: '0 14px 40px rgba(0,0,0,0.55)'
       }}>
@@ -558,7 +558,7 @@ function BreakingNews({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const text = (f.titre || f.texte || 'ALERTE INFO').toUpperCase();
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
+  const fontB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
   // Flash bleu d'entrée ~200 ms.
   const flash = eo(frame, [0, fps * 0.2, fps * 0.45], [1, 0.5, 0]);
   const titleScale = eo(frame, [fps * 0.1, fps * 0.9], [1.05, 1]);
@@ -796,7 +796,7 @@ function LaSpeciale({ overlay, durationInFrames }) {
   const scale = eo(frame, [0, fps], [1.05, 1]);
   const op = eo(frame, [0, fps * 0.7], [0, 1]);
   const fs = (overlay.fontSize || 100) / 100;
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
+  const fontB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
   // Découpe "ÉDITION SPÉCIALE" → ligne 1 blanche, ligne 2 (dernier mot) bleu.
   const raw = (f.texte || 'ÉDITION SPÉCIALE').trim();
   const words = raw.split(/\s+/);
@@ -869,7 +869,82 @@ function FinMerci({ overlay, durationInFrames }) {
   );
 }
 
+// INTRO DU JT — générique 10 s en 4 séquences (charte). Colombe + globe +
+// bleu. Composition pensée pour durationInFrames ≈ 300 (10 s @30fps) mais
+// s'adapte proportionnellement.
+function IntroJT({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  const D = durationInFrames || fps * 10;
+  // Bornes des 4 séquences (proportionnelles à la durée totale).
+  const s1 = D * 0.2, s2 = D * 0.5, s3 = D * 0.7;
+  const fontXB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
+  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  const words = (f.mots && String(f.mots).trim())
+    ? String(f.mots).split(/[•,\n]+/).map((w) => w.trim()).filter(Boolean)
+    : ['ACTUALITÉ', 'POLITIQUE', 'ÉCONOMIE', 'SPORT', 'CULTURE', 'MONDE'];
+
+  // Globe : apparaît séq.2, reste ensuite.
+  const globeOp = eo(frame, [s1, s2], [0, 0.35]);
+  // Logo + LE JOURNAL : séq.4.
+  const logoOp = eo(frame, [s3, s3 + fps * 0.5], [0, 1]);
+  const logoScale = eo(frame, [s3, s3 + fps * 0.8], [0.92, 1]);
+  const jtOp = eo(frame, [s3 + fps * 0.6, D - fps * 0.3], [0, 1]);
+  const jtScale = eo(frame, [s3 + fps * 0.6, D], [0.95, 1]);
+  const fadeOut = eo(frame, [D - fps * 0.4, D], [1, 0]);
+
+  return (
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: fadeOut }}>
+      {/* Fond noir → bleu nuit (séq.1 puis backdrop). */}
+      <AbsoluteFill style={{ background: COL.black }} />
+      <div style={{ opacity: eo(frame, [s1 * 0.6, s2], [0, 1]) }}>
+        <BackdropALWM globeOpacity={0} />
+      </div>
+      {/* Globe (séq.2+) */}
+      <div style={{ position: 'absolute', inset: 0, opacity: globeOp }}>
+        <WorldMap rotateSpeed={0.15} opacity={1} color={COL.light} glow={COL.blue} />
+      </div>
+
+      {/* Séq.1 : lignes bleues qui traversent (réseau mondial) */}
+      {frame < s2 && [0.3, 0.45, 0.6, 0.75].map((y, i) => {
+        const lx = eo(frame, [0, s2], [-30, 130]) + i * 6;
+        const op = eo(frame, [0, s1 * 0.4, s2 * 0.9, s2], [0, 1, 1, 0]);
+        return <div key={i} style={{ position: 'absolute', left: `${lx % 160 - 30}%`, top: `${y * 100}%`, width: '50%', height: 2, background: `rgba(74,163,255,${0.5 - i * 0.08})`, transform: 'skewX(-24deg)', opacity: op, boxShadow: '0 0 12px rgba(74,163,255,0.6)' }} />;
+      })}
+
+      {/* Séq.3 : mots clés slide-up + fade-in successifs */}
+      {frame >= s2 && frame < s3 + fps * 0.3 && (
+        <AbsoluteFill style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ position: 'relative', width: 1200, height: 120 }}>
+            {words.map((w, i) => {
+              const step = (s3 - s2) / words.length;
+              const wf = frame - (s2 + i * step);
+              const op = interpolate(wf, [0, 6, step - 4, step], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+              if (op <= 0) return null;
+              const y = eo(wf, [0, 8], [40, 0]);
+              return <div key={i} style={{ position: 'absolute', inset: 0, textAlign: 'center', opacity: op, transform: `translateY(${y}px)`, fontFamily: fontXB, fontWeight: 800, fontSize: 88, color: COL.white, letterSpacing: '0.04em', lineHeight: '120px', textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>{w}</div>;
+            })}
+          </div>
+        </AbsoluteFill>
+      )}
+
+      {/* Séq.4 : colombe traverse + logo + LE JOURNAL */}
+      <DoveFlyThrough fromF={s3} toF={s3 + fps * 1.6} y={28} size={240} />
+      {frame >= s3 && (
+        <AbsoluteFill style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
+          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 460, objectFit: 'contain', opacity: logoOp, transform: `scale(${logoScale})`, filter: 'drop-shadow(0 14px 30px rgba(0,0,0,0.6))' }} />
+          <div style={{ opacity: jtOp, transform: `scale(${jtScale})`, fontFamily: fontXB, fontWeight: 800, fontSize: 84, color: COL.white, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {f.titre || 'LE JOURNAL'}
+          </div>
+        </AbsoluteFill>
+      )}
+    </Box>
+  );
+}
+
 const REGISTRY = {
+  intro_jt: IntroJT,
   lower_third: NomInterview,
   nom_interview: NomInterview,
   lower_third_pro: LowerThirdPro,

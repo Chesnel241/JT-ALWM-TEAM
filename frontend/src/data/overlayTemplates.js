@@ -4,6 +4,17 @@
  */
 export const OVERLAY_TEMPLATES = [
   {
+    id: 'intro_jt',
+    label: 'Intro du JT (générique)',
+    emoji: '🌍',
+    scope: 'global',
+    preview: 'Générique 10 s : réseau, globe, mots-clés, colombe + logo + LE JOURNAL.',
+    fields: [
+      { key: 'titre', label: 'Titre final', placeholder: 'LE JOURNAL' },
+      { key: 'mots', label: 'Mots-clés (séparés par •)', placeholder: 'ACTUALITÉ • POLITIQUE • ÉCONOMIE • SPORT • CULTURE • MONDE' }
+    ]
+  },
+  {
     id: 'titre_reportage',
     label: 'Titre Reportage',
     emoji: '📰',
@@ -150,7 +161,7 @@ export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'globa
 export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'global');
 
 export const FONT_FAMILIES = [
-  'Montserrat Bold', 'Montserrat Medium',
+  'Montserrat ExtraBold', 'Montserrat Bold', 'Montserrat Medium',
   'Inter', 'Bebas Neue', 'Anton', 'Archivo Black', 'Barlow',
   'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
   'Oswald', 'Roboto Condensed', 'Russo One', 'Playfair Display',

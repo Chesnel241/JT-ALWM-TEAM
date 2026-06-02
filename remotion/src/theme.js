@@ -41,6 +41,7 @@ export const FONT_FILES = {
   'Playfair Display': 'PlayfairDisplay-ExtraBold.ttf',
   'IBM Plex Sans': 'IBMPlexSans-SemiBold.ttf',
   'JetBrains Mono': 'JetBrainsMono-Medium.ttf',
+  'Montserrat ExtraBold': 'Montserrat-ExtraBold.ttf',
   'Montserrat Bold': 'Montserrat-Bold.ttf',
   'Montserrat Medium': 'Montserrat-Medium.ttf',
 };

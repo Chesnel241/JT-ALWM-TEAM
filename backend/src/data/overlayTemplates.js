@@ -289,6 +289,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 export const OVERLAY_TEMPLATES = [
   {
+    id: 'intro_jt',
+    label: 'Intro du JT (générique)',
+    emoji: '🌍',
+    scope: 'global',
+    preview: 'Générique 10 s : réseau mondial, globe, mots-clés, colombe + logo + LE JOURNAL.',
+    fields: [
+      { key: 'titre', label: 'Titre final', placeholder: 'LE JOURNAL' },
+      { key: 'mots', label: 'Mots-clés (séparés par •)', placeholder: 'ACTUALITÉ • POLITIQUE • ÉCONOMIE • SPORT • CULTURE • MONDE' }
+    ]
+  },
+  {
     id: 'titre_reportage',
     label: 'Titre Reportage',
     emoji: '📰',
