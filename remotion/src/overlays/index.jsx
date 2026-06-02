@@ -360,48 +360,47 @@ function TitreKaraoke({ overlay, durationInFrames }) {
 
 function TitreReportage({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
+  const C = pickColors(overlay);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const isOut = frame > durationInFrames - 24;
-  const outFrame = isOut ? frame - (durationInFrames - 24) : 0;
-  const outOpacity = eo(outFrame, [0, 24], [1, 0]);
-
-  // Animation: scale 0.9 -> 1, opacity 0 -> 100 over 1s
-  const titleScale = eo(frame, [0, fps], [0.9, 1]);
-  const titleOpacity = eo(frame, [0, fps], [0, 1]);
-  
-  // Globe Zoom lent (scale from 1 to 1.1)
-  const globeZoom = interpolate(frame, [0, durationInFrames], [1, 1.1]);
-  
+  const isOut = frame > durationInFrames - 18;
+  const inSp = spring({ frame, fps, config: { damping: 20, stiffness: 110 } });
+  const subSp = spring({ frame: Math.max(0, frame - 6), fps, config: { damping: 20, stiffness: 110 } });
+  const outSp = isOut ? interpolate(frame - (durationInFrames - 18), [0, 18], [0, 1], { extrapolateRight: 'clamp' }) : 0;
+  const reveal = isOut ? 1 - outSp : inSp;
   const fs = (overlay.fontSize || 100) / 100;
-  const text = (f.titre || f.title || 'REPORTAGE').toUpperCase();
+  const fontB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
+  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
 
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ position: 'absolute', inset: 0, transform: `scale(${globeZoom})`, transformOrigin: 'center center' }}>
-        <BackdropALWM darker={true} lines={false} globeOpacity={0.25} />
-      </div>
-
-      <div style={{
-        position: 'relative',
-        transform: `scale(${titleScale})`,
-        opacity: titleOpacity,
-        textAlign: 'center',
-        color: COL.white,
-        fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"),
-        zIndex: 3,
-        textShadow: '0 10px 40px rgba(0,0,0,0.8)'
-      }}>
-        <div style={{
-          fontSize: `${fs * 72}px`,
-          fontWeight: 800,
-          letterSpacing: '0.15em',
-          lineHeight: 1.1,
-          textTransform: 'uppercase'
-        }}>
-          {text}
+    <Box overlay={overlay} style={{ left: 110, top: 820, width: 1300, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      {/* Bandeau titre : parallélogramme navy + texte blanc */}
+      <div style={{ display: 'flex', alignItems: 'stretch' }}>
+        <Para bg={COL.navy} reveal={reveal} padding="0" style={{ boxShadow: '0 18px 40px rgba(0,0,0,0.35)' }}>
+          <div style={{
+            padding: '18px 56px 18px 48px',
+            fontFamily: fontB, fontWeight: 800,
+            fontSize: `${fs * 50}px`, color: COL.white,
+            textTransform: 'uppercase', letterSpacing: '0.01em', whiteSpace: 'nowrap',
+          }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</div>
+        </Para>
+        {/* accent diagonal bleu électrique */}
+        <div style={{ opacity: reveal > 0.7 ? 1 : 0, transition: 'opacity .2s' }}>
+          <AccentSlash height={Math.round(fs * 50 + 36)} />
         </div>
+      </div>
+      {/* Sous-titre : sur fond blanc, texte bleu + petit carré bleu à gauche */}
+      <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 6, marginLeft: 18 }}>
+        <div style={{ width: 14, background: COL.light, clipPath: `polygon(${SLANT * 0.5}px 0,100% 0,calc(100% - ${SLANT * 0.5}px) 100%,0 100%)` }} />
+        <Para bg={COL.white} reveal={subSp} padding="0" style={{ boxShadow: '0 10px 24px rgba(0,0,0,0.2)' }}>
+          <div style={{
+            padding: '8px 40px 8px 28px',
+            fontFamily: fontM, fontWeight: 600,
+            fontSize: `${fs * 26}px`, color: COL.blue,
+            textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
+          }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</div>
+        </Para>
       </div>
     </Box>
   );
@@ -956,6 +955,49 @@ function IntroJT({ overlay, durationInFrames }) {
   );
 }
 
+// TRANSITION REPORTAGE (v3.0)
+// Plein écran, globe zoom lent, "REPORTAGE"
+function TransitionReportage({ overlay, durationInFrames }) {
+  const f = overlay.fields || {};
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const isOut = frame > durationInFrames - 24;
+  const outFrame = isOut ? frame - (durationInFrames - 24) : 0;
+  const outOpacity = eo(outFrame, [0, 24], [1, 0]);
+
+  // Animation: scale 0.9 -> 1, opacity 0 -> 100 over 1s
+  const titleScale = eo(frame, [0, fps], [0.9, 1]);
+  const titleOpacity = eo(frame, [0, fps], [0, 1]);
+  
+  // Globe Zoom lent (scale from 1 to 1.1)
+  const globeZoom = interpolate(frame, [0, durationInFrames], [1, 1.1]);
+
+  return (
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1 }}>
+      <div style={{ position: 'absolute', inset: 0, transform: `scale(${globeZoom})`, transformOrigin: 'center center' }}>
+        <BackdropALWM darker={true} lines={false} globeOpacity={0.25} />
+      </div>
+      
+      <AbsoluteFill style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ 
+          opacity: titleOpacity, 
+          transform: `scale(${titleScale})`,
+          fontFamily: ff(overlay.font, "'Montserrat ExtraBold', sans-serif"),
+          fontWeight: 800,
+          fontSize: 100,
+          color: COL.white,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          textShadow: '0 10px 30px rgba(0,0,0,0.8)'
+        }}>
+          {f.titre || f.texte || 'REPORTAGE'}
+        </div>
+      </AbsoluteFill>
+    </Box>
+  );
+}
+
 const REGISTRY = {
   intro_jt: IntroJT,
   lower_third: NomInterview,
@@ -965,6 +1007,7 @@ const REGISTRY = {
   edition_speciale: EditionSpeciale,
   titre_karaoke: TitreKaraoke,
   titre_reportage: TitreReportage,
+  transition_reportage: TransitionReportage,
   signature_reportage: SignatureReportage,
   rappel_titres: RappelTitres,
   sous_titre: SousTitre,
