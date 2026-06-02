@@ -10,17 +10,16 @@ const baseFontConfig = {
   margin: 0,
 };
 
-export function EnvatoBigTitle({
-  line1 = 'WHAT IS GOING ON',
-  line2 = 'IN THE WORLD',
-  subtitle = 'BREAKING NEWS',
-  colorMain = '#d61f1f', // Broadcast red
-  colorAccent = '#fcfcfc', // Off-white
-  colorTextMain = '#fcfcfc',
-  colorTextAccent = '#111111' // Off-black
-}) {
+export function EnvatoBigTitle({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
+  const fields = overlay?.fields || {};
+  const line1 = fields.line1 || 'WHAT IS GOING ON';
+  const line2 = fields.line2 || 'IN THE WORLD';
+  const subtitle = fields.subtitle || 'BREAKING NEWS';
+  const colorMain = fields.colorMain || '#d61f1f';
+  const colorAccent = fields.colorAccent || '#fcfcfc';
+  const colorTextMain = fields.colorTextMain || '#fcfcfc';
+  const colorTextAccent = fields.colorTextAccent || '#111111';
 
   // Out phase logic
   const OUT_DUR = 30;
@@ -92,16 +91,16 @@ export function EnvatoBigTitle({
   );
 }
 
-export function EnvatoTicker({
-  tag = 'LIVE',
-  items = ['MARKETS REACH NEW HIGHS', 'GLOBAL SUMMIT BEGINS TODAY', 'TECH STOCKS RALLY', 'WEATHER UPDATE: STORM APPROACHING COAST'],
-  colorMain = '#d61f1f',
-  colorAccent = '#111111',
-  colorTextMain = '#fcfcfc',
-  colorTextAccent = '#fcfcfc'
-}) {
+export function EnvatoTicker({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
+  const fields = overlay?.fields || {};
+  const tag = fields.tag || 'LIVE';
+  let items = fields.items || ['MARKETS REACH NEW HIGHS', 'GLOBAL SUMMIT BEGINS TODAY', 'TECH STOCKS RALLY', 'WEATHER UPDATE: STORM APPROACHING COAST'];
+  if (typeof items === 'string') items = items.split(',').map(s => s.trim());
+  const colorMain = fields.colorMain || '#d61f1f';
+  const colorAccent = fields.colorAccent || '#111111';
+  const colorTextMain = fields.colorTextMain || '#fcfcfc';
+  const colorTextAccent = fields.colorTextAccent || '#fcfcfc';
 
   const isOut = frame > durationInFrames - 20;
   const outFrame = isOut ? frame - (durationInFrames - 20) : 0;

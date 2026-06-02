@@ -36,18 +36,17 @@ function LocationLabel({ frame, delay, location, sub, colorMain, colorAccent, co
     );
 }
 
-export function EnvatoSplitScreen({
-  leftLocation = 'CALIFORNIA',
-  leftSub = 'USA',
-  rightLocation = 'NEW YORK',
-  rightSub = 'USA',
-  colorMain = '#d61f1f',
-  colorAccent = '#fcfcfc',
-  colorTextMain = '#fcfcfc',
-  colorTextAccent = '#111111'
-}) {
+export function EnvatoSplitScreen({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
+  const fields = overlay?.fields || {};
+  const leftLocation = fields.leftLocation || 'CALIFORNIA';
+  const leftSub = fields.leftSub || 'USA';
+  const rightLocation = fields.rightLocation || 'NEW YORK';
+  const rightSub = fields.rightSub || 'USA';
+  const colorMain = fields.colorMain || '#d61f1f';
+  const colorAccent = fields.colorAccent || '#fcfcfc';
+  const colorTextMain = fields.colorTextMain || '#fcfcfc';
+  const colorTextAccent = fields.colorTextAccent || '#111111';
 
   // Out phase logic
   const OUT_DUR = 30;

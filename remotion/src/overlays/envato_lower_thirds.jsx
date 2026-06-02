@@ -10,17 +10,16 @@ const baseFontConfig = {
   margin: 0,
 };
 
-export function EnvatoPresenterLowerThird({ 
-  context = 'TONY NIGHT SHOW',
-  name = 'MARINA FORESTER',
-  title = 'ADMINISTRATOR',
-  colorMain = '#5a1d96', // deep purple
-  colorAccent = '#fcfcfc', // off-white
-  colorTextMain = '#fcfcfc',
-  colorTextAccent = '#111111' // off-black
-}) {
+export function EnvatoPresenterLowerThird({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
+  const fields = overlay?.fields || {};
+  const context = fields.context || 'TONY NIGHT SHOW';
+  const name = fields.name || 'MARINA FORESTER';
+  const title = fields.title || 'ADMINISTRATOR';
+  const colorMain = fields.colorMain || '#5a1d96';
+  const colorAccent = fields.colorAccent || '#fcfcfc';
+  const colorTextMain = fields.colorTextMain || '#fcfcfc';
+  const colorTextAccent = fields.colorTextAccent || '#111111';
   
   // Stagger delays
   const contextDelay = 10;
@@ -91,16 +90,15 @@ export function EnvatoPresenterLowerThird({
   );
 }
 
-export function EnvatoNewsLowerThird({ 
-  tag = 'BREAKING NEWS',
-  headline = 'ENVATO - THE WORLD\'S LEADING MARKETPLACE',
-  colorMain = '#d61f1f', // broadcast red
-  colorAccent = '#fcfcfc', // off-white
-  colorTextMain = '#fcfcfc',
-  colorTextAccent = '#111111'
-}) {
+export function EnvatoNewsLowerThird({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
+  const fields = overlay?.fields || {};
+  const tag = fields.tag || 'BREAKING NEWS';
+  const headline = fields.headline || 'ENVATO - THE WORLD\'S LEADING MARKETPLACE';
+  const colorMain = fields.colorMain || '#d61f1f';
+  const colorAccent = fields.colorAccent || '#fcfcfc';
+  const colorTextMain = fields.colorTextMain || '#fcfcfc';
+  const colorTextAccent = fields.colorTextAccent || '#111111';
   
   // Stagger delays
   const tagDelay = 5;
