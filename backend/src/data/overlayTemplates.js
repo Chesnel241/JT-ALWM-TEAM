@@ -170,6 +170,9 @@ const DEFAULT_ANCHOR = {
   nom_interview: { x: 0, y: 950 },
   envato_presenter: { x: 0, y: 900 },
   envato_news: { x: 0, y: 900 },
+  envato_big_title: { x: 960, y: 540 },
+  envato_ticker: { x: 0, y: 1000 },
+  envato_split_screen: { x: 960, y: 540 },
   grand_titre: { x: 960, y: 540 },
   titre_reportage: { x: 0, y: 1000 },
   transition_reportage: { x: 960, y: 540 },
@@ -336,6 +339,37 @@ export const OVERLAY_TEMPLATES = [
     fields: [
       { key: 'tag', label: 'Label (ex: BREAKING NEWS)', placeholder: 'BREAKING NEWS' },
       { key: 'headline', label: 'Gros titre', placeholder: 'LE GROS TITRE DE L\'ACTUALITÉ' }
+    ]
+  },
+  {
+    id: 'envato_big_title',
+    label: 'Grand Titre (Envato Premium)',
+    emoji: '💥',
+    preview: 'Titre massif plein écran avec animation élastique biseautée.',
+    fields: [
+      { key: 'titre', label: 'Gros Titre', placeholder: 'WHAT IS GOING ON IN THE WORLD?' }
+    ]
+  },
+  {
+    id: 'envato_ticker',
+    label: 'Barre Défilante (Envato Premium)',
+    emoji: '📜',
+    scope: 'global',
+    preview: 'Bandeau d\'information continu en bas de l\'écran.',
+    fields: [
+      { key: 'tag', label: 'Label (ex: LIVE)', placeholder: 'LIVE' },
+      { key: 'text1', label: 'Info 1', placeholder: 'Texte défilant...' },
+      { key: 'text2', label: 'Info 2', placeholder: 'Texte défilant...' }
+    ]
+  },
+  {
+    id: 'envato_split_screen',
+    label: 'Écran Scindé (Envato Premium)',
+    emoji: '✂️',
+    preview: 'Séparation diagonale animée avec labels géographiques.',
+    fields: [
+      { key: 'locLeft', label: 'Lieu Gauche', placeholder: 'New York // USA' },
+      { key: 'locRight', label: 'Lieu Droit', placeholder: 'California // USA' }
     ]
   },
   {
