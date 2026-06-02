@@ -80,6 +80,15 @@ function ClipVideo({ clip }) {
   //   crossOrigin requis pour que le <video> charge l'URL same-origin/CORS.
   const isRendering = getRemotionEnvironment().isRendering;
   const videoStyle = { width: '100%', height: '100%', objectFit: 'contain' };
+  
+  if (!clip.url) {
+    return (
+      <AbsoluteFill style={{ backgroundColor: '#000' }}>
+        <ClipLayer clip={clip} />
+      </AbsoluteFill>
+    );
+  }
+
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
       {isRendering ? (
@@ -160,7 +169,7 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
           const dur = o.duration != null ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
           return (
             <Sequence key={`g-ov-${i}`} from={start} durationInFrames={dur}>
-              <Overlay overlay={o} fps={fps} clipDurationSec={Number.MAX_VALUE} />
+              <Overlay overlay={o} fps={fps} durationInFrames={dur} clipDurationSec={Number.MAX_VALUE} />
             </Sequence>
           );
         })}
