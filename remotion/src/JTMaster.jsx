@@ -171,7 +171,8 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
         <Audio
           src={music.url}
           volume={(() => {
-            const base = music.volume != null ? Number(music.volume) : 0.2;
+            const nVol = Number(music.volume);
+            const base = music.volume != null ? (isNaN(nVol) ? 0.2 : nVol) : 0.2;
             // Ducking : si voix-off présente, on baisse la musique (approx du
             // sidechain ; pas de vrai keying dans le chemin Remotion).
             const ducked = music.duck && voiceover && voiceover.filename ? base * 0.35 : base;
@@ -183,7 +184,7 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
       )}
       {voiceover && voiceover.filename && voiceover.url && (
         <Sequence from={secToFrames(voiceover.startTime || 0, fps)}>
-          <Audio src={voiceover.url} volume={voiceover.volume != null ? Number(voiceover.volume) : 1} crossOrigin="anonymous" />
+          <Audio src={voiceover.url} volume={voiceover.volume != null ? (isNaN(Number(voiceover.volume)) ? 1 : Number(voiceover.volume)) : 1} crossOrigin="anonymous" />
         </Sequence>
       )}
     </AbsoluteFill>

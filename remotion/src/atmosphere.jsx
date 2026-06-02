@@ -3,7 +3,8 @@ import { AbsoluteFill, useCurrentFrame } from 'remotion';
 
 // Vignette douce : dégradé radial multiplié sur l'image. `strength` 0→1.
 export function Vignette({ strength = 0 }) {
-  const s = Math.max(0, Math.min(1, Number(strength) || 0));
+  const nStr = Number(strength);
+  const s = Math.max(0, Math.min(1, isNaN(nStr) ? 0 : nStr));
   if (s <= 0) return null;
   // Plus s est fort, plus le centre reste clair et les bords sombres.
   const inner = 40 + (1 - s) * 20;
@@ -24,7 +25,8 @@ export function Vignette({ strength = 0 }) {
 export function Grain({ strength = 0 }) {
   const frame = useCurrentFrame();
   const uid = useId().replace(/:/g, '');
-  const s = Math.max(0, Math.min(1, Number(strength) || 0));
+  const nStr = Number(strength);
+  const s = Math.max(0, Math.min(1, isNaN(nStr) ? 0 : nStr));
   if (s <= 0) return null;
   const seed = frame % 12;
   const opacity = 0.06 + s * 0.18;
@@ -48,7 +50,8 @@ export function Grain({ strength = 0 }) {
 // `period` en secondes (défaut 8). `strength` 0→1.
 export function LightSweep({ strength = 0, periodSec = 8, fps = 30 }) {
   const frame = useCurrentFrame();
-  const s = Math.max(0, Math.min(1, Number(strength) || 0));
+  const nStr = Number(strength);
+  const s = Math.max(0, Math.min(1, isNaN(nStr) ? 0 : nStr));
   if (s <= 0) return null;
   const period = Math.max(1, periodSec) * fps;
   const t = (frame % period) / period;

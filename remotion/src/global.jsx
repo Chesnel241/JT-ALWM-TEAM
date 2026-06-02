@@ -9,7 +9,8 @@ export function Ticker({ ticker }) {
   if (!ticker || !ticker.enabled || !ticker.texte) return null;
   const sep = '       •       ';
   const unit = ticker.texte + sep;
-  const speedLevel = Math.max(1, Math.min(5, Number(ticker.speed) || 1));
+  const nSpeed = Number(ticker.speed);
+  const speedLevel = Math.max(1, Math.min(5, isNaN(nSpeed) ? 1 : nSpeed));
   const PX_PER_SEC = [60, 90, 130, 180, 240][speedLevel - 1];
   const speed = PX_PER_SEC / 30;
   const x = -((frame * speed) % 2000);
