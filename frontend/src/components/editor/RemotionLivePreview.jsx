@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { JTMaster, totalDurationInFrames } from '../../../../remotion/src/JTMaster.jsx';
 import { API_BASE } from '../../api/index.js';
 
-export default function RemotionLivePreview({ clips, global, branding, onClose, inline = false, playerRef = null }) {
+export default function RemotionLivePreview({ clips, global, branding, timelineOverlays, onClose, inline = false, playerRef = null }) {
   // Prépare les données pour le Player (exactement comme pour le backend)
   const inputProps = useMemo(() => {
     // On résout les URLs relatives pour que Remotion puisse lire les vidéos depuis l'API locale.
@@ -24,6 +24,7 @@ export default function RemotionLivePreview({ clips, global, branding, onClose, 
       clips: resolvedClips,
       global: global || {},
       branding: branding || {},
+      timelineOverlays: timelineOverlays || [],
       music: branding?.music?.enabled && branding.music.filename ? {
         filename: branding.music.filename,
         url: branding.music.filename.startsWith('http') ? branding.music.filename : `${API_BASE}/uploads/${branding.music.filename}`,
@@ -36,7 +37,7 @@ export default function RemotionLivePreview({ clips, global, branding, onClose, 
         volume: branding.voiceover.volume
       } : null
     };
-  }, [clips, global, branding]);
+  }, [clips, global, branding, timelineOverlays]);
 
   const durationInFrames = useMemo(() => {
     return Math.max(30, totalDurationInFrames(inputProps.clips, 30));

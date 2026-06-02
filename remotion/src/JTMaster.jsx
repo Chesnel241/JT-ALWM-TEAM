@@ -34,27 +34,34 @@ function presentation(type) {
   return fade();
 }
 
-// Couche overlays + sous-titres d'un clip (temps local au clip).
+// Couche sous-titres d'un clip (temps local au clip).
 function ClipLayer({ clip }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const overlays = clip.overlays || [];
   return (
     <AbsoluteFill>
+      <Subtitles subtitles={clip.subtitles} style={clip.subtitleStyle} clipTimeSec={(clip.inPoint || 0) + frame / fps} />
+    </AbsoluteFill>
+  );
+}
+
+export function GlobalTimelineOverlays({ timelineOverlays }) {
+  const { fps } = useVideoConfig();
+  if (!timelineOverlays || timelineOverlays.length === 0) return null;
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none' }}>
       <Stage>
-        {overlays.map((o, i) => {
-          const start = secToFrames(o.startTime || 0, fps);
-          const clipDur = secToFrames(clip.durationSec || 5, fps);
-          const dur = o.duration != null ? secToFrames(o.duration, fps) : clipDur - start;
-          const finalDur = Math.max(1, Math.min(dur, clipDur - start));
+        {timelineOverlays.map((o, i) => {
+          const start = Math.max(0, secToFrames(o.startTime || 0, fps));
+          const dur = o.duration ? secToFrames(o.duration, fps) : Infinity;
           return (
-            <Sequence key={o.id || i} from={start} durationInFrames={finalDur} layout="none">
-              <Overlay overlay={o} durationInFrames={finalDur} />
+            <Sequence key={o.id || `glo-${i}`} from={start} durationInFrames={dur} layout="none">
+              <Overlay overlay={o} durationInFrames={dur} fps={fps} />
             </Sequence>
           );
         })}
       </Stage>
-      <Subtitles subtitles={clip.subtitles} style={clip.subtitleStyle} clipTimeSec={(clip.inPoint || 0) + frame / fps} />
     </AbsoluteFill>
   );
 }
@@ -76,7 +83,7 @@ function ClipVideo({ clip }) {
   );
 }
 
-export function JTMaster({ clips = [], branding = {}, music, voiceover }) {
+export function JTMaster({ clips = [], branding = {}, music, voiceover, timelineOverlays = [] }) {
   const fps = FPS;
   const list = clips.length ? clips : [{ url: '', durationSec: 1, overlays: [] }];
   const tickerOn = !!(branding.ticker && branding.ticker.enabled);
@@ -103,6 +110,8 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover }) {
           return tr ? [seq, tr] : [seq];
         })}
       </TransitionSeries>
+
+      <GlobalTimelineOverlays timelineOverlays={timelineOverlays} />
 
       {/* Atmosphère cinéma (sous l'habillage, au-dessus des clips). */}
       {branding.atmosphere && (

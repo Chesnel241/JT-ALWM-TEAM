@@ -197,6 +197,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   
   // Editor State
   const [timelineClips, setTimelineClips] = useState([]);
+  const [timelineOverlays, setTimelineOverlays] = useState([]);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [showGlobalPanel, setShowGlobalPanel] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -246,6 +247,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       setTimelineClips(saved ? JSON.parse(saved) : []);
     } catch { setTimelineClips([]); }
     try {
+      const savedOverlays = localStorage.getItem(`jt-timeline-overlays-${selectedWeek}`);
+      setTimelineOverlays(savedOverlays ? JSON.parse(savedOverlays) : []);
+    } catch { setTimelineOverlays([]); }
+    try {
       const b = localStorage.getItem(brandingKey(selectedWeek));
       setBranding(b ? { ...DEFAULT_BRANDING, ...JSON.parse(b) } : DEFAULT_BRANDING);
     } catch { setBranding(DEFAULT_BRANDING); }
@@ -272,6 +277,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       else localStorage.removeItem(timelineKey(selectedWeek));
     } catch { /* quota / mode privé : on ignore */ }
   }, [timelineClips, selectedWeek]);
+
+  // Persiste les overlays globaux
+  useEffect(() => {
+    if (!selectedWeek) return;
+    try {
+      if (timelineOverlays.length) localStorage.setItem(`jt-timeline-overlays-${selectedWeek}`, JSON.stringify(timelineOverlays));
+      else localStorage.removeItem(`jt-timeline-overlays-${selectedWeek}`);
+    } catch { /* ignore */ }
+  }, [timelineOverlays, selectedWeek]);
 
   // Persiste l'habillage global du JT.
   useEffect(() => {
@@ -450,7 +464,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         fields: { label: branding.live.label } 
       });
     }
-    globalOverlays.push(...(branding.overlays || []));
+    globalOverlays.push(...(branding.overlays || []), ...timelineOverlays);
     const music = branding.music.enabled && branding.music.filename
       ? { filename: branding.music.filename, volume: branding.music.volume, duck: branding.music.duck }
       : undefined;
@@ -1144,6 +1158,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     playerRef={playerRef} 
                     inline={true} 
                     clips={timelineClips} 
+                    timelineOverlays={timelineOverlays}
                     branding={branding} 
                     onClose={() => {}} 
                   />
@@ -1157,11 +1172,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       clip={overlayTarget}
                       onClose={() => setOverlayTarget(null)}
                       onSave={(updatedClip) => {
-                        setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                        if (updatedClip.isTimelineOverlays) {
+                          setTimelineOverlays(updatedClip.overlays || []);
+                        } else {
+                          setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                        }
                         addToast('Animations mises à jour', 'success', 2000);
                       }}
                       onChangePreview={(updatedClip) => {
-                        setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                        if (updatedClip.isTimelineOverlays) {
+                          setTimelineOverlays(updatedClip.overlays || []);
+                        } else {
+                          setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                        }
                       }}
                     />
                   ) : showGlobalPanel ? (
@@ -1222,6 +1245,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <Timeline
                   clips={timelineClips}
                   setClips={setTimelineClips}
+                  timelineOverlays={timelineOverlays}
+                  setTimelineOverlays={setTimelineOverlays}
                   onGenerate={handleGenerateVideo}
                   isGenerating={isGeneratingVideo}
                   onTrimClip={(file) => setTrimTarget(file)}
