@@ -280,7 +280,6 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/weeks', weeksRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/analytics', analyticsRouter);
-
   app.use('/api/themes', themesRouter);
 
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);
