@@ -246,20 +246,29 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       const saved = localStorage.getItem(timelineKey(selectedWeek));
       if (saved) {
         const parsed = JSON.parse(saved);
-        const mapped = parsed.map(clip => {
-          const isExternal = clip.filename?.startsWith('http') || clip.filename?.startsWith('blob:');
-          const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
-          const url = isExternal ? clip.filename : `${API_BASE}/uploads/${clip.filename || clip.name}?cors=2${authQuery}`;
-          return { ...clip, url };
-        });
-        setTimelineClips(mapped);
+        if (Array.isArray(parsed)) {
+          const mapped = parsed.map(clip => {
+            const isExternal = clip.filename?.startsWith('http') || clip.filename?.startsWith('blob:');
+            const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
+            const url = isExternal ? clip.filename : `${API_BASE}/uploads/${clip.filename || clip.name}?cors=2${authQuery}`;
+            return { ...clip, url };
+          });
+          setTimelineClips(mapped);
+        } else {
+          setTimelineClips([]);
+        }
       } else {
         setTimelineClips([]);
       }
     } catch { setTimelineClips([]); }
     try {
       const savedOverlays = localStorage.getItem(`jt-timeline-overlays-${selectedWeek}`);
-      setTimelineOverlays(savedOverlays ? JSON.parse(savedOverlays) : []);
+      if (savedOverlays) {
+        const p = JSON.parse(savedOverlays);
+        setTimelineOverlays(Array.isArray(p) ? p : []);
+      } else {
+        setTimelineOverlays([]);
+      }
     } catch { setTimelineOverlays([]); }
     try {
       const b = localStorage.getItem(brandingKey(selectedWeek));
@@ -459,7 +468,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
     // Habillage global → overlays appliqués à tout le master.
     const globalOverlays = [];
-    if (branding.ticker.enabled && branding.ticker.texte.trim()) {
+    if (branding?.ticker?.enabled && typeof branding.ticker.texte === 'string' && branding.ticker.texte.trim()) {
       globalOverlays.push({ 
         templateId: 'ticker', 
         posX: branding.ticker.posX, posY: branding.ticker.posY, scale: branding.ticker.scale,
@@ -467,20 +476,20 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         fields: { categorie: branding.ticker.categorie, texte: branding.ticker.texte, speed: branding.ticker.speed || 1 }
       });
     }
-    if (branding.live.enabled) {
+    if (branding?.live?.enabled) {
       globalOverlays.push({ 
         templateId: 'live_badge', 
         posX: branding.live.posX, posY: branding.live.posY, scale: branding.live.scale,
         fontSize: branding.live.fontSize, lineHeight: branding.live.lineHeight,
-        fields: { label: branding.live.label } 
+        fields: { label: branding.live.label || 'LIVE' } 
       });
     }
-    globalOverlays.push(...(branding.overlays || []), ...timelineOverlays);
-    const music = branding.music.enabled && branding.music.filename
+    globalOverlays.push(...(branding?.overlays || []), ...timelineOverlays);
+    const music = branding?.music?.enabled && branding.music.filename
       ? { filename: branding.music.filename, volume: branding.music.volume, duck: branding.music.duck }
       : undefined;
-    const voiceover = branding.voiceover.enabled && branding.voiceover.filename
-      ? { filename: branding.voiceover.filename, volume: branding.voiceover.volume, startTime: branding.voiceover.startTime }
+    const voiceover = branding?.voiceover?.enabled && branding.voiceover.filename
+      ? { filename: branding.voiceover.filename, startTime: branding.voiceover.startTime, volume: branding.voiceover.volume }
       : undefined;
     const imageOverlays = (branding.imageOverlays || []).filter((o) => o.filename);
 

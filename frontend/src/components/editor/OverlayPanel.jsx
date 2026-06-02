@@ -113,7 +113,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
             min="50"
             max="200"
             value={overlay.fontSize || 100}
-            onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) })}
+            onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
             className="w-full accent-[color:var(--accent)]"
           />
         </div>
@@ -127,7 +127,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
             min="50"
             max="200"
             value={overlay.lineHeight || 100}
-            onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) })}
+            onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) || 100 })}
             className="w-full accent-[color:var(--accent)]"
           />
         </div>
@@ -260,7 +260,8 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
     if (onChangePreview) {
       onChangePreview({ ...clip, overlays });
     }
-  }, [overlays, clip, onChangePreview]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlays]);
 
   const addOverlay = (templateId) => {
     setOverlays([

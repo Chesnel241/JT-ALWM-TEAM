@@ -201,7 +201,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                     max="5"
                     step="1"
                     value={v.ticker.speed || 1}
-                    onChange={(e) => setTicker({ speed: parseInt(e.target.value, 10) })}
+                    onChange={(e) => setTicker({ speed: parseInt(e.target.value, 10) || 1 })}
                     className="w-full accent-[var(--accent)]"
                   />
                 </div>

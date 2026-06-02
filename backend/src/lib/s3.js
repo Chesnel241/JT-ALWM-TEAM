@@ -172,8 +172,17 @@ export async function listR2Objects(prefix = 'uploads/') {
       allKeys.push(...response.Contents.map(obj => obj.Key));
     }
     
-    isTruncated = response.IsTruncated;
+    isTruncated = response.IsTruncated === true;
     continuationToken = response.NextContinuationToken;
+    
+    if (isTruncated && !continuationToken) {
+      logger.warn(`R2 returned IsTruncated without NextContinuationToken. Stopping to prevent infinite loop.`);
+      break;
+    }
+    if (allKeys.length > 50000) {
+      logger.warn(`listR2Objects capped at 50000 objects to prevent OOM for prefix ${prefix}`);
+      break;
+    }
   }
 
   return allKeys;
