@@ -25,112 +25,75 @@ export const OVERLAY_TEMPLATES = [
     ]
   },
   {
+    id: 'transition_reportage',
+    label: 'Transition Reportage',
+    emoji: '🎬',
+    scope: 'global',
+    preview: 'Plein écran, globe lent, texte avec tracking très serré.',
+    fields: [
+      { key: 'titre', label: 'Texte Transition', placeholder: 'REPORTAGE' }
+    ]
+  },
+  {
+    id: 'envato_presenter',
+    label: 'Présentateur (Envato Premium)',
+    emoji: '🎙️',
+    preview: 'Bandeau 3 lignes élégant avec masques de révélation.',
+    fields: [
+      { key: 'context', label: 'Contexte (Surtitre)', placeholder: 'TONY NIGHT SHOW' },
+      { key: 'name', label: 'Prénom & Nom', placeholder: 'MARINA FORESTER' },
+      { key: 'title', label: 'Fonction (Sous-titre)', placeholder: 'ADMINISTRATOR' }
+    ]
+  },
+  {
+    id: 'envato_news',
+    label: 'Alerte News (Envato Premium)',
+    emoji: '🔥',
+    preview: 'Bandeau bicolore à glissement pour les titres chauds.',
+    fields: [
+      { key: 'tag', label: 'Label (ex: BREAKING NEWS)', placeholder: 'BREAKING NEWS' },
+      { key: 'headline', label: 'Gros titre', placeholder: 'LE GROS TITRE DE L\'ACTUALITÉ' }
+    ]
+  },
+  {
+    id: 'envato_big_title',
+    label: 'Grand Titre (Envato Premium)',
+    emoji: '💥',
+    preview: 'Titre massif plein écran avec animation élastique biseautée.',
+    fields: [
+      { key: 'titre', label: 'Gros Titre', placeholder: 'WHAT IS GOING ON IN THE WORLD?' }
+    ]
+  },
+  {
+    id: 'envato_ticker',
+    label: 'Barre Défilante (Envato Premium)',
+    emoji: '📜',
+    scope: 'global',
+    preview: 'Bandeau d\'information continu en bas de l\'écran.',
+    fields: [
+      { key: 'tag', label: 'Label (ex: LIVE)', placeholder: 'LIVE' },
+      { key: 'text1', label: 'Info 1', placeholder: 'Texte défilant...' },
+      { key: 'text2', label: 'Info 2', placeholder: 'Texte défilant...' }
+    ]
+  },
+  {
+    id: 'envato_split_screen',
+    label: 'Écran Scindé (Envato Premium)',
+    emoji: '✂️',
+    preview: 'Séparation diagonale animée avec labels géographiques.',
+    fields: [
+      { key: 'locLeft', label: 'Lieu Gauche', placeholder: 'New York // USA' },
+      { key: 'locRight', label: 'Lieu Droit', placeholder: 'California // USA' }
+    ]
+  },
+  {
     id: 'nom_interview',
-    label: 'Nom Interview (Lower Third)',
+    label: 'Nom Personne (Lower Third)',
     emoji: '🗣️',
     preview: 'Style France 24 : le cartouche glisse, nom apparaît en fondu.',
     fields: [
       { key: 'nom', label: 'Prénom & Nom', placeholder: 'PRÉNOM NOM' },
       { key: 'fonction', label: 'Fonction / Qualité', placeholder: 'FONCTION / QUALITÉ' }
-    ]
-  },
-  {
-    id: 'signature_reportage',
-    label: 'Signature Reportage',
-    emoji: '✍️',
-    preview: 'Apparition très rapide et sobre du nom du reporter.',
-    fields: [
-      { key: 'nom', label: 'Nom du journaliste', placeholder: 'PRÉNOM NOM' }
-    ]
-  },
-  {
-    id: 'grand_titre',
-    label: 'Grands Titres du JT',
-    emoji: '🎬',
-    preview: 'Zoom, rotation 3D faible et reflet lumineux.',
-    fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'LE JOURNAL' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'GRAND TITRE' }
-    ]
-  },
-  {
-    id: 'rappel_titres',
-    label: 'Rappel des Titres',
-    emoji: '📑',
-    preview: 'Titres glissant séquentiellement en cascade.',
-    fields: [
-      { key: 'titre1', label: 'Titre 1', placeholder: 'TITRE DU SUJET À LA UNE' },
-      { key: 'titre2', label: 'Titre 2', placeholder: 'AUTRE TITRE DU SUJET' },
-      { key: 'titre3', label: 'Titre 3', placeholder: 'DERNIER TITRE DU JOURNAL' }
-    ]
-  },
-  {
-    id: 'a_suivre',
-    label: 'À Suivre',
-    emoji: '⏩',
-    preview: 'Carte blanche, barre bleue pousse le texte machine à écrire.',
-    fields: [
-      { key: 'texte', label: 'Texte d\'annonce', placeholder: 'VOTRE PROGRAMME' }
-    ]
-  },
-  {
-    id: 'tout_de_suite',
-    label: 'Tout De Suite',
-    emoji: '⚡',
-    preview: 'Identique à À Suivre, mais plus rapide.',
-    fields: [
-      { key: 'texte', label: 'Texte d\'annonce', placeholder: 'VOTRE PROGRAMME' }
-    ]
-  },
-  {
-    id: 'publicite',
-    label: 'Publicité',
-    emoji: '📺',
-    preview: 'Transition plein écran, fond globe, zoom léger.',
-    fields: [
-      { key: 'texte', label: 'Texte', placeholder: 'PUBLICITÉ' }
-    ]
-  },
-  {
-    id: 'compte_a_rebours',
-    label: 'Compte à rebours',
-    emoji: '⏳',
-    preview: 'Décompte avec flip numérique ou transition verticale.',
-    fields: [
-      { key: 'texte', label: 'Texte', placeholder: 'NOUS REVENONS DANS UN INSTANT' },
-      { key: 'secondes', label: 'Durée (sec)', placeholder: '45' }
-    ]
-  },
-  {
-    id: 'la_speciale',
-    label: 'La Spéciale',
-    emoji: '⭐',
-    preview: 'Habillage premium, glissement croisé, scale impact.',
-    fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'LA SPÉCIALE' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'ÉMISSION SPÉCIALE' }
-    ]
-  },
-  {
-    id: 'fin_merci',
-    label: 'Fin / Merci',
-    emoji: '👋',
-    preview: 'Bandeau glisse doucement, texte fondu, logo ALWM.',
-    fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
-    ]
-  },
-  {
-    id: 'bandeau_infos',
-    label: 'Bandeau Infos (Défilement)',
-    emoji: '📜',
-    scope: 'global',
-    preview: 'Heure, info, texte qui défile lentement.',
-    fields: [
-      { key: 'heure', label: 'Heure', placeholder: '20:30' },
-      { key: 'info', label: 'Catégorie', placeholder: 'INFO' },
-      { key: 'texte', label: 'Texte défilant', placeholder: 'Texte de l\'information qui défile...' }
     ]
   },
   {
@@ -145,14 +108,35 @@ export const OVERLAY_TEMPLATES = [
     ]
   },
   {
-    id: 'alerte_info',
-    label: 'Alerte Info',
+    id: 'breaking_news',
+    label: 'Breaking News',
     emoji: '🚨',
     scope: 'global',
     preview: 'Pulsation rouge, bandeau urgent.',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'ALERTE' },
+      { key: 'titre', label: 'Titre', placeholder: 'BREAKING NEWS' },
       { key: 'texte', label: 'Texte urgent', placeholder: 'Sujet urgent' }
+    ]
+  },
+  {
+    id: 'rappel_titres',
+    label: 'Rappel des Titres',
+    emoji: '📑',
+    preview: 'Titres glissant séquentiellement en cascade.',
+    fields: [
+      { key: 'titre1', label: 'Titre 1', placeholder: 'TITRE DU SUJET À LA UNE' },
+      { key: 'titre2', label: 'Titre 2', placeholder: 'AUTRE TITRE DU SUJET' },
+      { key: 'titre3', label: 'Titre 3', placeholder: 'DERNIER TITRE DU JOURNAL' }
+    ]
+  },
+  {
+    id: 'fin_merci',
+    label: 'Fin / Merci',
+    emoji: '👋',
+    preview: 'Bandeau glisse doucement, texte fondu, logo ALWM.',
+    fields: [
+      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
+      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
     ]
   }
 ];
