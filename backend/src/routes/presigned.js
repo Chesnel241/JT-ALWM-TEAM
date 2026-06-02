@@ -74,4 +74,46 @@ router.get('/upload', async (req, res) => {
   }
 });
 
+// GET /api/presigned/download?filename=...&countryId=...
+router.get('/download', async (req, res) => {
+  try {
+    const { filename, countryId } = req.query;
+    if (!filename) return res.status(400).json({ error: 'filename is required' });
+
+    // Verify admin password if country is 'mj' (Mot du JT)
+    if (countryId === 'mj') {
+      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
+      let providedToken = req.header('x-admin-password');
+      if (ADMIN_PASSWORD) {
+        const { safeEqual } = await import('../middleware/auth.js');
+        if (!providedToken || !safeEqual(providedToken.trim(), ADMIN_PASSWORD)) {
+          return res.status(403).json({ error: 'Mot de passe administrateur requis pour ce téléchargement' });
+        }
+      }
+    }
+
+    const { HAS_R2, getR2PresignedUrl, checkR2Exists } = await import('../lib/s3.js');
+    const r2Key = `uploads/${filename}`;
+
+    if (HAS_R2) {
+      const exists = await checkR2Exists(r2Key);
+      if (exists) {
+        // Return R2 presigned URL directly (valid for 1 hour)
+        const url = await getR2PresignedUrl(r2Key, 3600);
+        return res.json({ url });
+      }
+    }
+
+    // Fallback to local download with temporary token
+    const { generateDownloadToken } = await import('../lib/downloadTokens.js');
+    const dlToken = generateDownloadToken(filename);
+    const localUrl = `/uploads/${encodeURIComponent(filename)}?dl_token=${encodeURIComponent(dlToken)}`;
+    res.json({ url: localUrl });
+
+  } catch (error) {
+    logger.error(`Error generating download URL: ${error.message}`);
+    res.status(500).json({ error: 'Failed to generate download URL' });
+  }
+});
+
 export default router;

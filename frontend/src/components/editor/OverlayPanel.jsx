@@ -99,7 +99,39 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
               <option key={f} value={f}>{f}</option>
             ))}
           </select>
+      </div>
+
+      {/* Taille et Interligne */}
+      <div className="grid grid-cols-2 gap-3 mt-1">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Taille</label>
+            <span className="text-[10px] font-medium text-[color:var(--muted)]">{overlay.fontSize || 100}%</span>
+          </div>
+          <input
+            type="range"
+            min="50"
+            max="200"
+            value={overlay.fontSize || 100}
+            onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) })}
+            className="w-full accent-[color:var(--accent)]"
+          />
         </div>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Interligne</label>
+            <span className="text-[10px] font-medium text-[color:var(--muted)]">{overlay.lineHeight || 100}%</span>
+          </div>
+          <input
+            type="range"
+            min="50"
+            max="200"
+            value={overlay.lineHeight || 100}
+            onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) })}
+            className="w-full accent-[color:var(--accent)]"
+          />
+        </div>
+      </div>
 
       {/* Typographie étendue */}
       <div className="grid grid-cols-2 gap-3 mt-2 mb-2">

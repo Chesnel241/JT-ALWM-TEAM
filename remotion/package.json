@@ -8,13 +8,13 @@
     "bundle": "node scripts/bundle.js"
   },
   "dependencies": {
-    "@remotion/transitions": "4.0.290",
+    "@remotion/transitions": "4.0.471",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "remotion": "4.0.290"
+    "remotion": "4.0.471"
   },
   "devDependencies": {
-    "@remotion/bundler": "4.0.290",
-    "@remotion/cli": "4.0.290"
+    "@remotion/bundler": "4.0.471",
+    "@remotion/cli": "4.0.471"
   }
 }

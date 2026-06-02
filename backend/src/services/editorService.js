@@ -256,6 +256,8 @@ export function buildRemotionPayload(clips, opts) {
   // si R2 est activé côté backend seulement.
   const resolve = (f) => (f ? `${apiUrl}/uploads/${f}` : undefined);
 
+  const timelineOverlays = (opts.globalOverlays || []).filter(g => g.templateId !== 'ticker' && g.templateId !== 'live_badge');
+
   return {
     clips: clips.map((c) => ({
       filename: c.filename,
@@ -273,6 +275,7 @@ export function buildRemotionPayload(clips, opts) {
       subtitleStyle: c.subtitleStyle,
     })),
     branding,
+    timelineOverlays,
     music: opts.music ? { ...opts.music, url: resolve(opts.music.filename) } : undefined,
     voiceover: opts.voiceover ? { ...opts.voiceover, url: resolve(opts.voiceover.filename) } : undefined,
     imageOverlays: (opts.imageOverlays || []).map(ov => ({ ...ov, url: resolve(ov.filename) })),

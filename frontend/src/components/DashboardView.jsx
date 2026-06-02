@@ -665,19 +665,35 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setDownloadDialogOpen(true);
   };
 
-  const handleConfirmDownload = () => {
+  const handleConfirmDownload = async () => {
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
     
-    // Le backend ne demande plus de mot de passe pour les téléchargements.
-    const url = isArchive
-      ? `${API_BASE}/api/uploads/${fileToDownload.filename}`
-      : `${API_BASE}/uploads/${fileToDownload.filename}`;
-      
-    // Au lieu de simuler un clic (bloqué par les anti-popups stricts sur PC),
-    // on redirige directement. Le navigateur recevant un "Content-Disposition: attachment"
-    // ne changera pas de page mais lancera le téléchargement instantanément.
-    window.location.assign(url);
+    try {
+      if (isArchive) {
+        // Pour les archives, on utilise l'API standard avec le jeton X-Admin-Password si mj
+        const headers = {};
+        if (selectedBin === 'mj' && authenticatedAdminPassword) headers['X-Admin-Password'] = authenticatedAdminPassword;
+        
+        const res = await fetch(`${API_BASE}/api/uploads/${fileToDownload.filename}`, { headers });
+        if (!res.ok) throw new Error('Accès refusé');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Archive_${selectedBin || 'export'}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Pour les fichiers uniques, on génère une URL présignée ou un token temporaire
+        const countryId = fileToDownload.countryId || selectedBin; // Assurez-vous d'avoir countryId
+        const url = await api.getDownloadUrl(fileToDownload.filename, countryId, authenticatedAdminPassword);
+        window.location.assign(url);
+      }
+    } catch (err) {
+      console.error('Erreur de téléchargement', err);
+      addToast('Erreur de téléchargement (vérifiez vos droits)', 'error');
+    }
     
     setDownloadDialogOpen(false);
     setFileToDownload(null);
@@ -971,7 +987,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 setTrimTarget(file);
                 setSelectedBin('studio');
               }}
-              className="mt-2 w-full text-sm font-medium py-2 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-transparent transition-colors shadow-sm flex items-center justify-center gap-2"
+              className="mt-2 w-full text-sm font-bold py-2 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
             >
               ✂️ Ajouter à la Timeline
             </button>
@@ -1130,6 +1146,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     timelineOverlays={timelineOverlays}
                     branding={branding} 
                     onClose={() => {}} 
+                    adminPassword={authenticatedAdminPassword}
                   />
                 </div>
 
@@ -1553,26 +1570,32 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             
             {/* EXPORT PROGRESS (réel : download → encodage → upload) */}
             {isGeneratingVideo && (
-              <div className="mt-8 bg-[var(--paper)] border-2 border-[var(--accent)]/40 rounded-2xl p-5 shadow-sm" role="status" aria-live="polite">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-5 h-5 border-2 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin shrink-0" />
-                  <span className="font-semibold text-[color:var(--ink)]">
-                    {exportPhase === 'downloading' && 'Récupération des rushes…'}
-                    {exportPhase === 'encoding' && 'Encodage du montage…'}
-                    {exportPhase === 'uploading' && 'Finalisation…'}
-                    {(exportPhase === '' || exportPhase === 'pending') && 'Préparation…'}
-                    {exportPhase === 'done' && 'Terminé'}
-                  </span>
-                  <span className="ml-auto flex items-center gap-3">
-                    <span className="text-xs text-[color:var(--muted)] tabular-nums">⏱ {Math.floor(exportElapsed / 60)}:{String(exportElapsed % 60).padStart(2, '0')}</span>
-                    <span className="text-[color:var(--accent)] font-bold tabular-nums">{Math.round(exportProgress)}%</span>
-                  </span>
+              <div className="mt-8 bg-[var(--accent)]/5 border border-[var(--accent)] rounded-2xl p-6 shadow-md" role="status" aria-live="polite">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 border-4 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin shrink-0" />
+                    <span className="text-lg font-bold text-[color:var(--ink)]">
+                      {exportPhase === 'downloading' && 'Récupération des rushes…'}
+                      {exportPhase === 'encoding' && 'Encodage en cours…'}
+                      {exportPhase === 'uploading' && 'Finalisation…'}
+                      {(exportPhase === '' || exportPhase === 'pending') && 'Préparation du Master…'}
+                      {exportPhase === 'done' && 'Terminé !'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 bg-[var(--paper)] px-4 py-2 rounded-xl shadow-sm">
+                    <span className="text-sm font-medium text-[color:var(--muted)] tabular-nums flex items-center gap-1">
+                      <span>⏱</span> {Math.floor(exportElapsed / 60)}:{String(exportElapsed % 60).padStart(2, '0')}
+                    </span>
+                    <span className="text-xl text-[color:var(--accent)] font-black tabular-nums">{Math.round(exportProgress)}%</span>
+                  </div>
                 </div>
-                <div className="w-full bg-[var(--paper-2)] rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-[var(--paper-2)] border border-[var(--border)] rounded-full h-4 overflow-hidden shadow-inner">
                   <div
-                    className="h-3 rounded-full bg-[color:var(--accent)] transition-all duration-300"
+                    className="h-full rounded-full bg-[color:var(--accent)] transition-all duration-300 relative overflow-hidden"
                     style={{ width: `${Math.max(3, exportProgress)}%` }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                  </div>
                 </div>
                 <p className="text-[11px] text-[color:var(--muted)] mt-2">
                   L'assemblage se poursuit sur le serveur — vous pouvez naviguer, il continuera en arrière-plan.
@@ -1740,8 +1763,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         isVideo={actionSheetFile?.type === 'video' || !!actionSheetFile?.name.match(/\.(mp4|mov|avi|mkv)$/i)}
         onApprove={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'approved')}
         onReject={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'rejected')}
-        onDownload={() => {}}
-        onDownloadHref={actionSheetFile ? `${API_BASE}/uploads/${actionSheetFile.filename}` : null}
+        onDownload={() => openDownloadDialog(actionSheetFile)}
         onDelete={() => openDeleteDialog(selectedBin, actionSheetFile?.id)}
         onViewScript={(f) => setViewingScript(f)}
       />

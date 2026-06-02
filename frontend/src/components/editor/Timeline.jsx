@@ -312,68 +312,71 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
       onPointerEnter={() => setIsHovered(true)}
       onPointerLeave={() => setIsHovered(false)}
       aria-label={`Clip ${index != null ? index + 1 : ''} : ${clip.name}, durée ${fmtTime(dur)}${isActive ? ', en lecture' : ''}`}
-      className={`group relative flex flex-col justify-center h-16 bg-[var(--paper)] border overflow-visible ${
-        isDragging ? 'border-[var(--accent)] shadow-xl' : isActive ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/40 shadow-md' : 'border-[var(--border)] shadow-sm'
-      } rounded-2xl shrink-0 transition-shadow`}
+      className={`group relative flex flex-col overflow-visible shrink-0 transition-shadow`}
     >
-      {/* Filmstrip Background */}
-      {thumbnails.length > 0 ? (
-        <div className="absolute inset-0 flex opacity-60 overflow-hidden pointer-events-none rounded-2xl">
-          {thumbnails.map((t, i) => (
-            <img key={i} src={t} alt="" className="h-full object-cover flex-1 min-w-0" />
-          ))}
-        </div>
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-          <Video size={24} />
-        </div>
-      )}
+      {/* Label du clip (nom + durée) - Détaché au dessus */}
+      <div className="text-[10px] text-[color:var(--muted)] font-medium mb-1 truncate px-1 pointer-events-none select-none">
+        {clip.name} <span className="opacity-70">({fmtTime(dur)})</span>
+      </div>
 
-      {/* Zone de Drag centrale pour réordonner (couvre tout sauf les poignées) */}
-      <div 
-        {...attributes}
-        {...listeners}
-        className="absolute inset-x-2 inset-y-0 cursor-grab active:cursor-grabbing z-10"
-        aria-label={`Réordonner le clip ${clip.name}`}
-      />
+      <div className={`relative flex flex-col justify-center h-16 bg-[var(--paper)] border ${
+        isDragging ? 'border-[var(--accent)] shadow-xl' : isActive ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/40 shadow-md' : 'border-[var(--border)] shadow-sm'
+      } rounded-xl overflow-hidden`}>
 
-      {/* Poignée trim gauche */}
-      {onClipResize && (
-        <div
-          onPointerDown={startEdgeDrag('left')}
-          role="separator"
-          aria-label="Rogner début du clip"
-          title="Glisser pour rogner le début"
-          className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-[var(--accent)]/20 hover:bg-[var(--accent)]/90 rounded-l-2xl z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ touchAction: 'none' }}
-        >
-          <div className="w-1 h-4 bg-white/80 rounded-full pointer-events-none" />
-        </div>
-      )}
-      
-      {/* Poignée trim droite */}
-      {onClipResize && (
-        <div
-          onPointerDown={startEdgeDrag('right')}
-          role="separator"
-          aria-label="Rogner fin du clip"
-          title="Glisser pour rogner la fin"
-          className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-[var(--accent)]/20 hover:bg-[var(--accent)]/90 rounded-r-2xl z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ touchAction: 'none' }}
-        >
-          <div className="w-1 h-4 bg-white/80 rounded-full pointer-events-none" />
-        </div>
-      )}
+        {/* Filmstrip Background */}
+        {thumbnails.length > 0 ? (
+          <div className="absolute inset-0 flex opacity-80 pointer-events-none">
+            {thumbnails.map((t, i) => (
+              <img key={i} src={t} alt="" className="h-full object-cover flex-1 min-w-0" />
+            ))}
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+            <Video size={24} />
+          </div>
+        )}
 
-      {/* Label du clip (nom + durée) */}
-      <div className="absolute bottom-1 left-3 right-3 truncate text-[10px] font-bold text-white drop-shadow-md pointer-events-none z-20">
-        {clip.name} <span className="font-normal opacity-80">({fmtTime(dur)})</span>
+        {/* Zone de Drag centrale pour réordonner (couvre tout sauf les poignées) */}
+        <div 
+          {...attributes}
+          {...listeners}
+          className="absolute inset-x-2 inset-y-0 cursor-grab active:cursor-grabbing z-10"
+          aria-label={`Réordonner le clip ${clip.name}`}
+        />
+
+        {/* Poignée trim gauche */}
+        {onClipResize && (
+          <div
+            onPointerDown={startEdgeDrag('left')}
+            role="separator"
+            aria-label="Rogner début du clip"
+            title="Glisser pour rogner le début"
+            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-[var(--accent)]/20 hover:bg-[var(--accent)]/90 z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ touchAction: 'none' }}
+          >
+            <div className="w-1 h-4 bg-white/80 rounded-full pointer-events-none" />
+          </div>
+        )}
+        
+        {/* Poignée trim droite */}
+        {onClipResize && (
+          <div
+            onPointerDown={startEdgeDrag('right')}
+            role="separator"
+            aria-label="Rogner fin du clip"
+            title="Glisser pour rogner la fin"
+            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-[var(--accent)]/20 hover:bg-[var(--accent)]/90 z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ touchAction: 'none' }}
+          >
+            <div className="w-1 h-4 bg-white/80 rounded-full pointer-events-none" />
+          </div>
+        )}
       </div>
 
       {/* Floating Toolbar (apparaît au hover ou si actif) */}
       <div 
-        className={`absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[var(--paper)] p-1 rounded-xl border border-[var(--border)] shadow-lg z-50 transition-all duration-200 ${
-          isHovered || isActive ? 'opacity-100 translate-y-0 visible' : 'opacity-0 translate-y-2 invisible pointer-events-none'
+        className={`absolute top-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[var(--paper)] p-1 rounded-xl border border-[var(--border)] shadow-lg z-50 transition-all duration-200 ${
+          isHovered || isActive ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-2 invisible pointer-events-none'
         }`}
       >
         <button

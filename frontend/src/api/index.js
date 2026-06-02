@@ -205,6 +205,14 @@ export const api = {
       adminPassword
     }),
 
+  getDownloadUrl: async (filename, countryId, adminPassword) => {
+    const res = await request(`/presigned/download?filename=${encodeURIComponent(filename)}&countryId=${encodeURIComponent(countryId)}`, {
+      method: 'GET',
+      adminPassword
+    });
+    return res.url;
+  },
+
   // === JT Prêt (deliveries) ===
   getDeliveries: (weekId) => request(`/deliveries/${weekId}`),
 
