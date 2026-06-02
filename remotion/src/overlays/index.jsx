@@ -4,6 +4,7 @@ import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 import { WorldMap } from '../worldmap.jsx';
 import { BackdropALWM, Dove, DoveFlyThrough, eo } from '../broadcast.jsx';
+import { EnvatoPresenterLowerThird, EnvatoNewsLowerThird } from './envato_lower_thirds';
 
 // Animated African Pattern Watermark
 function Watermark({ mode = 'overlay', opacity = 0.06 }) {
@@ -1008,6 +1009,8 @@ const REGISTRY = {
   breaking_news: BreakingNews,
   rappel_titres: RappelTitres,
   fin_merci: FinMerci,
+  envato_presenter: EnvatoPresenterLowerThird,
+  envato_news: EnvatoNewsLowerThird,
 };
 
 export function Overlay({ overlay, durationInFrames }) {

@@ -168,6 +168,8 @@ function buildPerCharLines({ text, x, y, fontTagStr = '', baseTags = '', fs = 40
 const DEFAULT_ANCHOR = {
   lower_third: { x: 0, y: 950 },
   nom_interview: { x: 0, y: 950 },
+  envato_presenter: { x: 0, y: 900 },
+  envato_news: { x: 0, y: 900 },
   grand_titre: { x: 960, y: 540 },
   titre_reportage: { x: 0, y: 1000 },
   transition_reportage: { x: 960, y: 540 },
@@ -313,6 +315,27 @@ export const OVERLAY_TEMPLATES = [
     preview: 'Transition plein écran avec Globe et titre.',
     fields: [
       { key: 'titre', label: 'Texte Transition', placeholder: 'REPORTAGE' }
+    ]
+  },
+  {
+    id: 'envato_presenter',
+    label: 'Présentateur (Envato Premium)',
+    emoji: '🎙️',
+    preview: 'Bandeau 3 lignes élégant avec masques de révélation.',
+    fields: [
+      { key: 'context', label: 'Contexte (Surtitre)', placeholder: 'TONY NIGHT SHOW' },
+      { key: 'name', label: 'Prénom & Nom', placeholder: 'MARINA FORESTER' },
+      { key: 'title', label: 'Fonction (Sous-titre)', placeholder: 'ADMINISTRATOR' }
+    ]
+  },
+  {
+    id: 'envato_news',
+    label: 'Alerte News (Envato Premium)',
+    emoji: '🔥',
+    preview: 'Bandeau bicolore à glissement pour les titres chauds.',
+    fields: [
+      { key: 'tag', label: 'Label (ex: BREAKING NEWS)', placeholder: 'BREAKING NEWS' },
+      { key: 'headline', label: 'Gros titre', placeholder: 'LE GROS TITRE DE L\'ACTUALITÉ' }
     ]
   },
   {
