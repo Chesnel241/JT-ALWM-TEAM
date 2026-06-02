@@ -6,7 +6,7 @@ import { FPS, WIDTH, HEIGHT } from './theme.js';
 const DEMO = {
   clips: [
     {
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+      url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
       durationSec: 5,
       inPoint: 0,
       transition: { type: 'fade', duration: 0.5 },
@@ -17,7 +17,7 @@ const DEMO = {
       subtitleStyle: { position: 'bottom', size: 'M' },
     },
     {
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      url: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
       durationSec: 5,
       inPoint: 0,
       overlays: [{ id: 'b', templateId: 'breaking_news', fields: { titre: 'DERNIÈRE MINUTE', sujet: 'Sommet à Libreville' }, startTime: 0, duration: 5 }],

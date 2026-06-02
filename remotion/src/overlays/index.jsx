@@ -236,12 +236,6 @@ function LowerThirdPro({ overlay, durationInFrames }) {
 
 function GrandTitre({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
-  const C = pickColors(overlay);
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-function GrandTitre({ overlay, durationInFrames }) {
-  const f = overlay.fields || {};
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
