@@ -6,17 +6,20 @@ import { staticFile } from 'remotion';
 // - light : bleu clair (highlights, dégradés)
 // Le rouge reste réservé à FLASH INFO / ALERTE INFO ; le gold est un accent
 // premium ponctuel (LA SPÉCIALE, score, horloge).
+// Palette officielle ALWM TV — Broadcast Package v1.0.
+// 60% bleu · 30% blanc · 10% noir. Globe + colombe + bleu = signature.
 export const COL = {
   white: '#FFFFFF',
-  black: '#000000',
-  gold: '#FFD700',
-  navy: '#14143C',
-  red: '#D81818',
-  dark: '#0A0A1F',
-  blue: '#0046C0',
-  light: '#5BA9F7',
-  ink: '#1A1A1A',
-  ticker: '#14143C',
+  black: '#0A0A0A',
+  gold: '#FFD700',          // accent premium ponctuel (rétro-compat)
+  navy: '#031A3A',          // alwm-dark-blue (fond bleu nuit)
+  red: '#D81818',           // rétro-compat (anciens templates)
+  dark: '#031A3A',
+  blue: '#0057D9',          // alwm-blue (principal)
+  light: '#4AA3FF',         // alwm-blue-light (highlights, lignes)
+  grey: '#1E293B',          // alwm-grey
+  ink: '#0A0A0A',
+  ticker: '#031A3A',
 };
 
 // Polices bundlées → familles CSS. Chargées via @font-face injecté (loadFonts).
