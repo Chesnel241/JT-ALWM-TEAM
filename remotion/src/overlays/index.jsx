@@ -1,8 +1,9 @@
 import React from 'react';
-import { useCurrentFrame, useVideoConfig, spring, interpolate, Img, staticFile } from 'remotion';
+import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Img, staticFile } from 'remotion';
 import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 import { WorldMap } from '../worldmap.jsx';
+import { BackdropALWM, Dove, DoveFlyThrough, eo } from '../broadcast.jsx';
 
 // Animated African Pattern Watermark
 function Watermark({ mode = 'overlay', opacity = 0.06 }) {
@@ -140,37 +141,39 @@ function NomInterview({ overlay, durationInFrames }) {
   const contentY = interpolate(contentSpring, [0, 1], [20, 0]);
   const contentOp = interpolate(contentSpring, [0, 1], [0, 1]);
 
-  const slideOutX = isOut ? interpolate(outSpring, [0, 1], [0, -200]) : 0;
+  // Charte #4 lower third : barre qui entre translateX(-100%)→0 (~15 frames),
+  // bloc bleu "ALWM TV" (160px) + panneau blanc (catégorie bleu + corps noir).
+  const barX = eo(frame, [0, 15], [-100, 0]); // %
+  const outX = isOut ? interpolate(outSpring, [0, 1], [0, -120]) : 0;
   const slideOutOp = isOut ? interpolate(outSpring, [0, 1], [1, 0]) : 1;
   const fs = (overlay.fontSize || 100) / 100;
   const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
   const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
-  const reveal = isOut ? 0 : ribbonSpring;
+  const categorie = (f.categorie || f.title || f.fonction || 'POLITIQUE').toUpperCase();
+  const corps = f.name || f.nom || f.texte || 'Titre de l’information';
 
   return (
-    <Box overlay={overlay} style={{ left: 120, top: 880, opacity: slideOutOp, transform: `translateX(${slideOutX}px)` }}>
-      <div style={{ display: 'flex', flexDirection: 'column', filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.35))' }}>
-        {/* Bandeau NOM : navy + accent diagonal */}
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          <Para bg={NAVY} reveal={reveal} >
-            <div style={{
-              opacity: contentOp, transform: `translateY(${contentY}px)`,
-              padding: '14px 52px 14px 40px',
-              fontWeight: 700, fontSize: `${fs * 46}px`, color: COL.white,
-              fontFamily: fontB, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap',
-            }}>{f.name || f.nom || 'PRÉNOM NOM'}</div>
-          </Para>
-          <div style={{ opacity: reveal > 0.7 ? 1 : 0 }}><AccentSlash height={Math.round(fs * 46 + 28)} /></div>
+    <Box overlay={overlay} style={{ left: 120, top: 900, opacity: slideOutOp, transform: `translateX(${outX}%)` }}>
+      <div style={{
+        display: 'flex', alignItems: 'stretch', height: 110,
+        transform: `translateX(${barX}%)`,
+        filter: 'drop-shadow(0 14px 26px rgba(0,0,0,0.4))',
+      }}>
+        {/* Bloc gauche bleu ALWM TV */}
+        <div style={{
+          width: 200, background: COL.blue, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 150, objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
         </div>
-        {/* Ligne FONCTION : fond blanc, texte bleu électrique */}
-        <Para bg={COL.white} reveal={contentSpring} style={{ marginLeft: 14, marginTop: 5 }}>
-          <div style={{
-            opacity: contentOp,
-            padding: '7px 40px 7px 30px',
-            fontSize: `${fs * 26}px`, color: ELEC, fontFamily: fontM, fontWeight: 600,
-            textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap',
-          }}>{f.title || f.fonction || 'FONCTION / QUALITÉ'}</div>
-        </Para>
+        {/* Panneau droit blanc : catégorie (bleu) + corps (noir) */}
+        <div style={{
+          background: COL.white, padding: '14px 40px 14px 32px',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 600,
+          opacity: contentOp, transform: `translateY(${contentY}px)`,
+        }}>
+          <div style={{ fontFamily: fontB, fontWeight: 800, fontSize: `${fs * 24}px`, color: COL.blue, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{categorie}</div>
+          <div style={{ fontFamily: fontM, fontWeight: 600, fontSize: `${fs * 36}px`, color: COL.black, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</div>
+        </div>
       </div>
     </Box>
   );
@@ -243,79 +246,63 @@ function GrandTitre({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const isOut = frame > durationInFrames - 30;
-  const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
-  const outOpacity = interpolate(outFrame, [0, 30], [1, 0]);
+  const isOut = frame > durationInFrames - 24;
+  const outFrame = isOut ? frame - (durationInFrames - 24) : 0;
+  const outOpacity = eo(outFrame, [0, 24], [1, 0]);
 
-  // bg cinematic zoom
-  const bgScale = interpolate(frame, [0, durationInFrames], [1, 1.08]);
-  const rotateX = interpolate(frame, [0, durationInFrames], [8, -4]);
-  const rotateY = interpolate(frame, [0, durationInFrames], [-4, 4]);
-
-  // Title snappy scale + drift
-  const titleSpring = spring({ frame, fps, config: { damping: 24, stiffness: 90 } });
-  const titleScale = interpolate(titleSpring, [0, 1], [0.8, 1]);
-  const titleOpacity = interpolate(titleSpring, [0, 1], [0, 1]);
-  const titleDrift = interpolate(frame, [0, durationInFrames], [0, -30]);
-
-  // Light sweep
-  const lightPos = interpolate(frame, [0, 80], [-100, 200], { extrapolateRight: 'clamp' });
+  // Titre principal (charte) : scale 1.06 → 1, opacity 0 → 1, ~1 s, easeOutCubic.
+  const titleScale = eo(frame, [0, fps], [1.06, 1]);
+  const titleOpacity = eo(frame, [0, fps * 0.7], [0, 1]);
+  // Balayage lumineux gauche → droite (sobre).
+  const lightPos = eo(frame, [10, 70], [-120, 220]);
+  const fs = (overlay.fontSize || 100) / 100;
 
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, perspective: 1200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      {/* Fond institutionnel officiel : gradient nuit + globe + lignes. */}
+      <BackdropALWM />
+      {/* Faisceau lumineux volumétrique discret. */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        background: `radial-gradient(circle at center, ${C.bg(COL.blue)} 0%, ${C.bg(COL.navy)} 100%)`,
-        transform: `scale(${bgScale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
-        transformStyle: 'preserve-3d',
-        overflow: 'hidden',
-        zIndex: 1
-      }}>
-         <Watermark opacity={0.08} mode="overlay" />
-         <WorldMap rotateSpeed={0.2} opacity={0.3} color={COL.light} glow={COL.blue} />
-         {/* Volumetric light beam */}
-         <div style={{
-           position: 'absolute', top: '-50%', bottom: '-50%', width: '60%', left: '20%',
-           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
-           transform: `translateX(${lightPos}%) skewX(-35deg)`,
-           zIndex: 2,
-           filter: 'blur(40px)'
-         }} />
-      </div>
+        position: 'absolute', top: '-50%', bottom: '-50%', width: '50%', left: '25%',
+        background: 'linear-gradient(90deg, transparent, rgba(74,163,255,0.10), transparent)',
+        transform: `translateX(${lightPos}%) skewX(-30deg)`,
+        filter: 'blur(50px)', zIndex: 2,
+      }} />
 
       <div style={{
         position: 'relative',
-        transform: `scale(${titleScale}) translateY(${titleDrift}px)`,
+        transform: `scale(${titleScale})`,
         opacity: titleOpacity,
         textAlign: 'center',
-        color: C.text(COL.white),
-        fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
-        zIndex: 2,
-        textShadow: '0 20px 40px rgba(0,0,0,0.6)'
+        color: COL.white,
+        fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
+        zIndex: 3,
+        textShadow: '0 14px 40px rgba(0,0,0,0.55)'
       }}>
-        <div style={{ 
-          fontSize: `${(overlay.fontSize || 100) / 100 * 180}px`, 
-          fontWeight: 900, 
-          letterSpacing: '0.02em', 
-          lineHeight: 1.1,
-          background: `linear-gradient(180deg, #FFFFFF 0%, #E0E0E0 100%)`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+        {/* sweep lumineux SUR le texte */}
+        <div style={{
+          fontSize: `${fs * 150}px`,
+          fontWeight: 800,
+          letterSpacing: '0.01em',
+          lineHeight: 1.05,
+          color: COL.white,
           textTransform: 'uppercase'
         }}>
           {f.titre || f.title || 'LE JOURNAL'}
         </div>
-        <div style={{ 
-          fontSize: `${(overlay.fontSize || 100) / 100 * 50}px`, 
-          color: C.accent(COL.gold), 
-          fontWeight: 600, 
-          marginTop: 20,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          WebkitTextFillColor: 'initial' // override gradient
-        }}>
-          {f.sous_titre || f.subtitle || f.date || 'EDITION SPECIALE'}
-        </div>
+        {(f.sous_titre || f.subtitle || f.date) && (
+          <div style={{
+            fontSize: `${fs * 44}px`,
+            color: COL.light,
+            fontFamily: ff(overlay.font, "'Montserrat Medium', sans-serif"),
+            fontWeight: 500,
+            marginTop: 18,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+          }}>
+            {f.sous_titre || f.subtitle || f.date}
+          </div>
+        )}
       </div>
     </Box>
   );
@@ -435,63 +422,56 @@ function RappelTitres({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const titres = Array.isArray(f.titres) ? f.titres : [f.titre1, f.titre2, f.titre3].filter(Boolean);
+  // Jusqu'à 5 titres (charte). Sources : tableau titres ou champs titre1..5.
+  let titres = Array.isArray(f.titres) ? f.titres : [f.titre1, f.titre2, f.titre3, f.titre4, f.titre5].filter(Boolean);
   if (titres.length === 0) {
-    titres.push("PREMIER TITRE DE L'ACTUALITÉ", "DEUXIÈME INFORMATION MAJEURE", "TROISIÈME SUJET IMPORTANT");
+    titres = ['Crise diplomatique entre…', 'Sommet économique…', 'Élections…', 'Sport…'];
   }
-  
-  const isOut = frame > durationInFrames - 30;
-  const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
-  const outOpacity = interpolate(outFrame, [0, 30], [1, 0]);
+  titres = titres.slice(0, 5);
+
+  const isOut = frame > durationInFrames - 24;
+  const outFrame = isOut ? frame - (durationInFrames - 24) : 0;
+  const outOpacity = eo(outFrame, [0, 24], [1, 0]);
+  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
+  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  // Colombe : signature, traverse AVANT l'apparition des titres (charte).
+  const doveTo = Math.round(fps * 1.8);
+  const listStart = Math.round(fps * 0.9);
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1 }}>
-      {/* Brand background */}
-      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${C.bg(COL.navy)} 0%, ${C.bg(COL.dark)} 100%)`, zIndex: 0 }} />
-      <WorldMap rotateSpeed={0.12} opacity={0.25} color={COL.light} glow={COL.blue} />
-      
-      {/* List items staggered */}
-      <div style={{ position: 'absolute', left: 160, top: 220, zIndex: 2 }}>
-        {titres.map((titre, i) => {
-          const delay = Math.round(fps * 0.15) * i;
-          const itemFrame = Math.max(0, frame - delay);
-          const slideIn = spring({ frame: itemFrame, fps, config: { damping: 16, stiffness: 100 } });
-          const x = interpolate(slideIn, [0, 1], [-100, 0]);
-          const op = interpolate(slideIn, [0, 1], [0, 1]);
-          const numStr = String(i + 1).padStart(2, '0');
+      <BackdropALWM />
+      <DoveFlyThrough fromF={6} toF={doveTo} y={20} size={180} />
 
+      {/* En-tête RAPPEL DES TITRES (haut centre) */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, top: 120, textAlign: 'center', zIndex: 2,
+        opacity: eo(frame, [listStart - 6, listStart + 8], [0, 1]),
+      }}>
+        <span style={{
+          fontFamily: fontB, fontWeight: 800, fontSize: 54, color: COL.white,
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+          borderBottom: `4px solid ${COL.blue}`, paddingBottom: 14,
+        }}>{f.titre || 'RAPPEL DES TITRES'}</span>
+      </div>
+
+      {/* Liste : chaque ligne slide-right + fade, delay 200 ms (charte) */}
+      <div style={{ position: 'absolute', left: 360, right: 360, top: 300, zIndex: 2 }}>
+        {titres.map((titre, i) => {
+          const delay = listStart + Math.round(fps * 0.2) * i;
+          const itemFrame = Math.max(0, frame - delay);
+          const x = eo(itemFrame, [0, 14], [-60, 0]);
+          const op = eo(itemFrame, [0, 14], [0, 1]);
           return (
             <div key={i} style={{
-              transform: `translateX(${x}px)`,
-              opacity: op,
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: 32,
-              maxWidth: 1300,
+              transform: `translateX(${x}px)`, opacity: op,
+              display: 'flex', alignItems: 'center', gap: 24,
+              padding: '16px 0', borderBottom: '1px solid rgba(74,163,255,0.18)',
             }}>
-              {/* Bold glowing number */}
-              <div style={{
-                color: C.accent(COL.blue),
-                fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
-                fontWeight: 900,
-                fontSize: 80,
-                letterSpacing: '-0.02em',
-                marginRight: 40,
-                textShadow: `0 0 20px ${C.accent('rgba(0,123,255,0.4)')}`
-              }}>{numStr}</div>
-              
-              {/* Clean text instead of boxed card */}
-              <div style={{ 
-                color: C.text(COL.white), 
-                fontSize: 52, 
-                fontFamily: ff(overlay.font, "'Montserrat', sans-serif"), 
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.01em',
-                lineHeight: 1.2
-              }}>
-                {titre}
-              </div>
+              <span style={{ width: 10, height: 10, background: COL.blue, transform: 'rotate(45deg)', flexShrink: 0 }} />
+              <span style={{
+                color: COL.white, fontSize: 38, fontFamily: fontM, fontWeight: 500, lineHeight: 1.2,
+              }}>{titre}</span>
             </div>
           );
         })}
@@ -551,73 +531,61 @@ function BandeauPays({ overlay, durationInFrames }) {
   );
 }
 
+// FLASH INFO — petit cartouche bleu en haut à gauche (charte #6).
 function FlashInfo({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
-  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const op = eo(frame, [0, 8], [0, 1]);
+  const x = eo(frame, [0, 12], [-40, 0]);
+  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
+  const txt = (f.texte || 'FLASH INFO').toUpperCase();
+  const [w1, ...rest] = txt.split(' ');
+  const w2 = rest.join(' ') || 'INFO';
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, display: 'flex', height: 80, boxShadow: '0 15px 30px rgba(0,0,0,0.4)' }}>
-      <div style={{ 
-        background: C.accent(COL.black), 
-        color: C.text(COL.red), 
-        fontFamily: "'Archivo Black', sans-serif", 
-        fontSize: 44, 
-        width: 260, 
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        letterSpacing: '0.05em'
-      }}>
-        FLASH
-      </div>
-      <div style={{ 
-        background: C.bg(COL.red), 
-        color: C.text(COL.white), 
-        fontWeight: 700, 
-        fontSize: `${(overlay.fontSize || 100) / 100 * 42}px`, 
-        flex: 1, 
-        display: 'flex',
-        alignItems: 'center',
-        paddingLeft: 40,
-        fontFamily: ff(overlay.font, "'Inter', sans-serif"),
-        textTransform: 'uppercase'
-      }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames}>{f.texte}</Tx>
+    <Box overlay={overlay} style={{ left: 80, top: 80, opacity: op, transform: `translateX(${x}px)` }}>
+      <div style={{ display: 'inline-flex', flexDirection: 'column', fontFamily: fontB, fontWeight: 800, lineHeight: 1, boxShadow: '0 12px 26px rgba(0,0,0,0.4)' }}>
+        <span style={{ background: COL.blue, color: COL.white, padding: '8px 16px', fontSize: 38, letterSpacing: '0.04em' }}>{w1}</span>
+        <span style={{ background: COL.white, color: COL.blue, padding: '6px 16px', fontSize: 34, letterSpacing: '0.04em' }}>{w2}</span>
       </div>
     </Box>
   );
 }
 
+// BREAKING NEWS / ALERTE INFO — plein écran bleu + flash + marquee (charte #5).
 function BreakingNews({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
-  const C = pickColors(overlay);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const text = (f.titre || f.texte || 'ALERTE INFO').toUpperCase();
+  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
+  // Flash bleu d'entrée ~200 ms.
+  const flash = eo(frame, [0, fps * 0.2, fps * 0.45], [1, 0.5, 0]);
+  const titleScale = eo(frame, [fps * 0.1, fps * 0.9], [1.05, 1]);
+  const titleOp = eo(frame, [fps * 0.1, fps * 0.6], [0, 1]);
+  // Marquee bas (continu, ~120 px/s).
+  const marqueeText = `${text}   •   `.repeat(8);
+  const mx = -((frame * (120 / fps)) % 1600);
+  const fs = (overlay.fontSize || 100) / 100;
+
   return (
-    <Box overlay={overlay} style={{ left: 120, top: 120 }}>
-      <div style={{ 
-        background: C.bg(COL.red), 
-        color: COL.white, 
-        fontFamily: "'Archivo Black', sans-serif", 
-        fontSize: `${(overlay.fontSize || 100) / 100 * 70}px`, 
-        padding: '12px 40px', 
-        transform: 'skewX(-15deg)', 
-        display: 'inline-block',
-        boxShadow: `0 0 30px ${C.bg('rgba(220,38,38,0.5)')}`
-      }}>
-        <span style={{ display: 'inline-block', transform: 'skewX(15deg)', letterSpacing: '0.02em' }}>{f.titre || 'DERNIÈRE MINUTE'}</span>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <BackdropALWM globeOpacity={0.16} />
+      {/* Lueur centrale */}
+      <div style={{ position: 'absolute', width: 1100, height: 360, background: 'radial-gradient(ellipse, rgba(0,87,217,0.45) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+      <div style={{
+        position: 'relative', zIndex: 3, transform: `scale(${titleScale})`, opacity: titleOp,
+        fontFamily: fontB, fontWeight: 800, fontSize: `${fs * 130}px`, color: COL.white,
+        textTransform: 'uppercase', letterSpacing: '0.02em', textShadow: '0 14px 40px rgba(0,0,0,0.6)',
+      }}>{text}</div>
+      {/* Bandeau marquee bas */}
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 60, height: 64, background: COL.blue, display: 'flex', alignItems: 'center', overflow: 'hidden', zIndex: 3 }}>
+        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${mx}px)`, color: COL.white, fontFamily: fontB, fontWeight: 700, fontSize: 30, letterSpacing: '0.06em' }}>
+          {marqueeText}{marqueeText}
+        </div>
       </div>
-      <div style={{ 
-        marginTop: 16, 
-        marginLeft: 20,
-        background: C.accent(COL.white), 
-        color: C.text(COL.ink), 
-        fontWeight: 800, 
-        fontSize: `${(overlay.fontSize || 100) / 100 * 44}px`, 
-        padding: '12px 30px', 
-        display: 'inline-block',
-        fontFamily: ff(overlay.font, "'Inter', sans-serif"),
-        boxShadow: '10px 10px 30px rgba(0,0,0,0.3)'
-      }}>
-        <Tx overlay={{...overlay, animation: 'typewriter'}} durationInFrames={durationInFrames}>{f.texte || f.sujet}</Tx>
-      </div>
+      {/* Flash bleu d'entrée */}
+      <AbsoluteFill style={{ background: COL.blue, opacity: flash, pointerEvents: 'none', zIndex: 5 }} />
     </Box>
   );
 }
@@ -824,55 +792,33 @@ function LaSpeciale({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Dramatic cinematic entrance
-  const scale = interpolate(spring({ frame, fps, config: { damping: 18, stiffness: 60 } }), [0, 1], [0.85, 1]);
-  const op = interpolate(frame, [0, 30], [0, 1]);
-  
-  // Cinematic light flare
-  const flareX = interpolate(frame, [0, 90], [-100, 200]);
+  // Entrée premium sobre : scale 1.05 → 1, fade, easeOutCubic.
+  const scale = eo(frame, [0, fps], [1.05, 1]);
+  const op = eo(frame, [0, fps * 0.7], [0, 1]);
+  const fs = (overlay.fontSize || 100) / 100;
+  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
+  // Découpe "ÉDITION SPÉCIALE" → ligne 1 blanche, ligne 2 (dernier mot) bleu.
+  const raw = (f.texte || 'ÉDITION SPÉCIALE').trim();
+  const words = raw.split(/\s+/);
+  const line2 = words.length > 1 ? words.pop() : (f.sous_titre || 'SPÉCIALE');
+  const line1 = words.length ? words.join(' ') : 'ÉDITION';
 
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080 }}>
-      <div style={{ 
-        width: 1920, height: 1080, 
-        background: `radial-gradient(circle at center, ${C.bg(COL.dark)} 0%, ${COL.black} 100%)`,
-        display: 'flex', justifyContent: 'center', alignItems: 'center',
-        position: 'relative', overflow: 'hidden'
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      {/* Globe géant, fond plus sombre (charte édition spéciale). */}
+      <BackdropALWM darker globeOpacity={0.18} />
+      <div style={{
+        position: 'relative', zIndex: 3,
+        transform: `scale(${scale})`, opacity: op,
+        textAlign: 'center', fontFamily: fontB, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 0.98,
+        textShadow: '0 16px 44px rgba(0,0,0,0.6)',
       }}>
-        <WorldMap rotateSpeed={0.1} opacity={0.2} color={COL.gold} glow={COL.gold} />
-        
-        {/* Glow behind text */}
-        <div style={{
-          position: 'absolute',
-          width: 800, height: 400,
-          background: `radial-gradient(ellipse, ${C.accent('rgba(212,175,55,0.15)')} 0%, transparent 70%)`,
-          filter: 'blur(40px)',
-          zIndex: 1
-        }} />
-        
-        {/* Text */}
-        <div style={{
-          position: 'relative',
-          zIndex: 2,
-          transform: `scale(${scale})`,
-          opacity: op,
-          fontSize: 170,
-          fontFamily: "'Archivo Black', sans-serif",
-          color: C.text(COL.gold),
-          textShadow: '0 20px 40px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.4)',
-          letterSpacing: '0.05em',
-          textTransform: 'uppercase',
-          overflow: 'hidden'
-        }}>
-          {f.texte || 'LA SPÉCIALE'}
-          
-          {/* Flare sweeping across text */}
-          <div style={{
-            position: 'absolute', top: 0, bottom: 0, width: '30%',
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-            transform: `translateX(${flareX}%) skewX(-20deg)`,
-            mixBlendMode: 'overlay'
-          }} />
+        <div style={{ fontSize: `${fs * 110}px`, color: COL.white }}>{line1}</div>
+        <div style={{ fontSize: `${fs * 130}px`, color: COL.blue }}>{line2}</div>
+        {/* Logo ALWM TV sous le titre */}
+        <div style={{ marginTop: 28, opacity: eo(frame, [fps * 0.6, fps * 1.1], [0, 1]) }}>
+          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 260, objectFit: 'contain' }} />
         </div>
       </div>
     </Box>
@@ -885,44 +831,40 @@ function FinMerci({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Elegant slow reveal
-  const textOp = interpolate(frame, [20, 60], [0, 1], { extrapolateRight: 'clamp' });
-  const textY = interpolate(spring({ frame: Math.max(0, frame - 20), fps, config: { damping: 20 } }), [0, 1], [30, 0]);
-  
-  const logoOp = interpolate(frame, [60, 90], [0, 1], { extrapolateRight: 'clamp' });
-  const logoScale = interpolate(spring({ frame: Math.max(0, frame - 60), fps, config: { damping: 14 } }), [0, 1], [0.9, 1]);
+  // Clôture (charte) : colombe traverse gauche→droite, "Merci de votre
+  // fidélité" en fondu, puis logo + signature. Fade out général.
+  const doveFrom = Math.round(fps * 0.3);
+  const doveTo = Math.round(fps * 2.6);
+  const textOp = eo(frame, [fps * 1.0, fps * 1.8], [0, 1]);
+  const logoOp = eo(frame, [fps * 2.4, fps * 3.2], [0, 1]);
+  const logoScale = eo(frame, [fps * 2.4, fps * 3.4], [0.95, 1]);
+  // Fade out général sur la dernière seconde.
+  const globalOut = durationInFrames > fps ? eo(frame, [durationInFrames - fps, durationInFrames], [1, 0]) : 1;
+  const fs = (overlay.fontSize || 100) / 100;
+  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
 
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080 }}>
-      <div style={{ 
-        width: 1920, height: 1080, 
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-        background: `radial-gradient(circle at center, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.9) 100%)`,
-        backdropFilter: 'blur(8px)'
-      }}>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: globalOut }}>
+      <BackdropALWM />
+      <DoveFlyThrough fromF={doveFrom} toF={doveTo} y={30} size={240} />
+      <AbsoluteFill style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 50 }}>
         <div style={{
           opacity: textOp,
-          transform: `translateY(${textY}px)`,
-          fontSize: 64,
-          fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
-          fontWeight: 600,
-          color: C.text(COL.white),
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          textShadow: '0 10px 20px rgba(0,0,0,0.5)',
-          marginBottom: 60
+          fontSize: `${fs * 56}px`, fontFamily: fontM, fontWeight: 500,
+          color: COL.white, letterSpacing: '0.02em',
+          textShadow: '0 10px 24px rgba(0,0,0,0.5)',
         }}>
-          {f.texte || 'MERCI DE NOUS AVOIR SUIVIS'}
+          {f.texte || 'Merci de votre fidélité'}
         </div>
-        
-        <div style={{
-          opacity: logoOp,
-          transform: `scale(${logoScale})`,
-          filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.6))'
-        }}>
-          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 450, objectFit: 'contain' }} />
+        <div style={{ width: 2, height: 90, background: 'rgba(74,163,255,0.5)', opacity: logoOp }} />
+        <div style={{ opacity: logoOp, transform: `scale(${logoScale})`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 320, objectFit: 'contain', filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.6))' }} />
+          <div style={{ fontFamily: fontM, fontWeight: 500, fontSize: `${fs * 22}px`, color: COL.light, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+            {f.sous_titre || "L'ACTUALITÉ EN CONTINU"}
+          </div>
         </div>
-      </div>
+      </AbsoluteFill>
     </Box>
   );
 }
