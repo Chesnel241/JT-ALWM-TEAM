@@ -134,6 +134,9 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const text = fields.titre || "EXCLUSIVE INTERVIEW";
   const subtitle = fields.sous_titre || "WITH THE PRESIDENT";
+  const colorMain = fields.colorMain || "#d61f1f";
+  const colorTextMain = fields.colorTextMain || "#ffffff";
+  const colorBg = fields.colorBg || "rgba(255,255,255,0.4)";
   
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -155,7 +158,7 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
         {/* Luminous sweep background */}
         <div style={{
           position: 'absolute', top: 0, bottom: 0, left: `${swipeLeft}%`, width: '30%',
-          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+          background: `linear-gradient(90deg, transparent, ${colorBg}, transparent)`,
           transform: `skewX(-20deg)`,
           filter: 'blur(10px)',
           zIndex: 1
@@ -163,13 +166,13 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
 
         <div style={{ zIndex: 2, position: 'relative' }}>
           <EnvatoMaskReveal frame={frame} delay={10} direction="right" duration={35}>
-            <div style={{ ...baseFontConfig, fontSize: '70px', color: '#fff', textShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
+            <div style={{ ...baseFontConfig, fontSize: '70px', color: colorTextMain, textShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
               {text}
             </div>
           </EnvatoMaskReveal>
           
           <EnvatoMaskReveal frame={frame} delay={20} direction="right" duration={35}>
-            <div style={{ ...baseFontConfig, fontSize: '40px', color: '#d61f1f', fontWeight: '800', textShadow: '0 4px 10px rgba(0,0,0,0.5)', marginTop: '10px' }}>
+            <div style={{ ...baseFontConfig, fontSize: '40px', color: colorMain, fontWeight: '800', textShadow: '0 4px 10px rgba(0,0,0,0.5)', marginTop: '10px' }}>
               {subtitle}
             </div>
           </EnvatoMaskReveal>
@@ -186,6 +189,9 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const title = fields.titre || "UNDERCOVER";
   const subtitle = fields.sous_titre || "INSIDE THE CARTEL";
+  const colorBg = fields.colorBg || "rgba(20, 20, 20, 0.4)";
+  const colorTextMain = fields.colorTextMain || "#ffffff";
+  const colorAccent = fields.colorAccent || "#ffffff";
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -201,29 +207,29 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
     }}>
       <EnvatoMaskReveal frame={frame} delay={0} direction="bottom" duration={30}>
         <div style={{
-          background: 'rgba(20, 20, 20, 0.4)',
+          background: colorBg,
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: `1px solid ${colorAccent}`,
           padding: '60px 100px',
           borderRadius: '2px',
           boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
           display: 'flex', flexDirection: 'column', alignItems: 'center'
         }}>
           <EnvatoMaskReveal frame={frame} delay={15} direction="right" duration={30}>
-            <div style={{ ...baseFontConfig, fontSize: '100px', color: '#fff', letterSpacing: '4px' }}>
+            <div style={{ ...baseFontConfig, fontSize: '100px', color: colorTextMain, letterSpacing: '4px' }}>
               {title}
             </div>
           </EnvatoMaskReveal>
           
-          <div style={{ width: '100%', height: '2px', background: 'rgba(255,255,255,0.2)', margin: '20px 0' }}>
+          <div style={{ width: '100%', height: '2px', background: colorAccent, margin: '20px 0' }}>
             <EnvatoMaskReveal frame={frame} delay={25} direction="horizontal" duration={30}>
-              <div style={{ width: '100%', height: '100%', background: '#fff' }} />
+              <div style={{ width: '100%', height: '100%', background: colorTextMain }} />
             </EnvatoMaskReveal>
           </div>
           
           <EnvatoMaskReveal frame={frame} delay={35} direction="left" duration={30}>
-            <div style={{ ...baseFontConfig, fontSize: '30px', color: 'rgba(255,255,255,0.8)', letterSpacing: '8px', fontWeight: '500' }}>
+            <div style={{ ...baseFontConfig, fontSize: '30px', color: colorTextMain, letterSpacing: '8px', fontWeight: '500' }}>
               {subtitle}
             </div>
           </EnvatoMaskReveal>

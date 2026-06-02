@@ -69,10 +69,10 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const name = fields.nom || 'MICHAEL SCOTT';
   const title = fields.fonction || 'REGIONAL MANAGER';
-  const colorTop = fields.colorTop || '#0047AB'; // Corporate Blue
-  const colorBottom = fields.colorBottom || '#fcfcfc';
-  const colorTextTop = fields.colorTextTop || '#ffffff';
-  const colorTextBottom = fields.colorTextBottom || '#111111';
+  const colorTop = fields.colorMain || '#0047AB'; // Corporate Blue
+  const colorBottom = fields.colorBg || '#fcfcfc';
+  const colorTextTop = fields.colorTextMain || '#ffffff';
+  const colorTextBottom = fields.colorTextAccent || '#111111';
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -133,6 +133,11 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
   const leftRole = fields.leftRole || 'HOST';
   const rightName = fields.rightName || 'JOHN SMITH';
   const rightRole = fields.rightRole || 'GUEST';
+  const colorBg = fields.colorBg || '#111111';
+  const colorMain = fields.colorMain || '#d61f1f';
+  const colorAccent = fields.colorAccent || '#fcfcfc';
+  const colorTextMain = fields.colorTextMain || '#ffffff';
+  const colorTextAccent = fields.colorTextAccent || '#111111';
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -157,14 +162,14 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
       {/* Left Interviewer */}
       <EnvatoMaskReveal frame={frame} delay={5} direction="right" duration={25}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <div style={{ backgroundColor: '#111111', padding: '12px 24px', boxShadow: '4px 4px 12px rgba(0,0,0,0.3)' }}>
+          <div style={{ backgroundColor: colorBg, padding: '12px 24px', boxShadow: '4px 4px 12px rgba(0,0,0,0.3)' }}>
             <EnvatoMaskReveal frame={frame} delay={15} direction="bottom" duration={20}>
-               <div style={{ ...baseFontConfig, fontSize: '36px', color: '#ffffff' }}>{leftName}</div>
+               <div style={{ ...baseFontConfig, fontSize: '36px', color: colorTextMain }}>{leftName}</div>
             </EnvatoMaskReveal>
           </div>
-          <div style={{ backgroundColor: '#fcfcfc', padding: '8px 24px', marginTop: '-2px', boxShadow: '2px 2px 8px rgba(0,0,0,0.1)' }}>
+          <div style={{ backgroundColor: colorAccent, padding: '8px 24px', marginTop: '-2px', boxShadow: '2px 2px 8px rgba(0,0,0,0.1)' }}>
             <EnvatoMaskReveal frame={frame} delay={20} direction="bottom" duration={20}>
-               <div style={{ ...baseFontConfig, fontSize: '18px', color: '#111111', letterSpacing: '2px' }}>{leftRole}</div>
+               <div style={{ ...baseFontConfig, fontSize: '18px', color: colorTextAccent, letterSpacing: '2px' }}>{leftRole}</div>
             </EnvatoMaskReveal>
           </div>
         </div>
@@ -173,14 +178,14 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
       {/* Right Interviewee */}
       <EnvatoMaskReveal frame={frame} delay={10} direction="left" duration={25}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-          <div style={{ backgroundColor: '#d61f1f', padding: '12px 24px', boxShadow: '-4px 4px 12px rgba(0,0,0,0.3)' }}>
+          <div style={{ backgroundColor: colorMain, padding: '12px 24px', boxShadow: '-4px 4px 12px rgba(0,0,0,0.3)' }}>
             <EnvatoMaskReveal frame={frame} delay={20} direction="bottom" duration={20}>
-               <div style={{ ...baseFontConfig, fontSize: '36px', color: '#ffffff' }}>{rightName}</div>
+               <div style={{ ...baseFontConfig, fontSize: '36px', color: colorTextMain }}>{rightName}</div>
             </EnvatoMaskReveal>
           </div>
-          <div style={{ backgroundColor: '#fcfcfc', padding: '8px 24px', marginTop: '-2px', boxShadow: '-2px 2px 8px rgba(0,0,0,0.1)' }}>
+          <div style={{ backgroundColor: colorAccent, padding: '8px 24px', marginTop: '-2px', boxShadow: '-2px 2px 8px rgba(0,0,0,0.1)' }}>
             <EnvatoMaskReveal frame={frame} delay={25} direction="bottom" duration={20}>
-               <div style={{ ...baseFontConfig, fontSize: '18px', color: '#111111', letterSpacing: '2px' }}>{rightRole}</div>
+               <div style={{ ...baseFontConfig, fontSize: '18px', color: colorTextAccent, letterSpacing: '2px' }}>{rightRole}</div>
             </EnvatoMaskReveal>
           </div>
         </div>
@@ -194,6 +199,10 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
   const location = fields.location || 'PARIS, FRANCE';
+  const colorBg = fields.colorBg || '#111111';
+  const colorMain = fields.colorMain || '#fcfcfc';
+  const colorTextMain = fields.colorTextMain || '#fcfcfc';
+  const colorTextAccent = fields.colorTextAccent || '#111111';
   
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -215,7 +224,7 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
     }}>
       <EnvatoMaskReveal frame={frame} delay={5} direction="bottom" duration={20} style={{ zIndex: 2 }}>
         <div style={{
-          backgroundColor: '#fcfcfc',
+          backgroundColor: colorMain,
           borderRadius: '50%',
           width: '56px',
           height: '56px',
@@ -224,7 +233,7 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
           alignItems: 'center',
           boxShadow: '0 4px 16px rgba(0,0,0,0.15)'
         }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={colorTextAccent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
@@ -233,13 +242,13 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
 
       <EnvatoMaskReveal frame={frame} delay={15} direction="right" duration={25} style={{ zIndex: 1, marginLeft: '-16px' }}>
         <div style={{
-          backgroundColor: '#111111',
+          backgroundColor: colorBg,
           padding: '12px 24px 12px 32px',
           borderRadius: '0 24px 24px 0',
           boxShadow: '4px 4px 12px rgba(0,0,0,0.2)'
         }}>
           <EnvatoMaskReveal frame={frame} delay={25} direction="bottom" duration={20}>
-            <div style={{ ...baseFontConfig, fontSize: '20px', color: '#fcfcfc', letterSpacing: '1px' }}>
+            <div style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, letterSpacing: '1px' }}>
               {location}
             </div>
           </EnvatoMaskReveal>
@@ -255,6 +264,9 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const quote = fields.quote || 'DESIGN IS NOT JUST WHAT IT LOOKS LIKE. DESIGN IS HOW IT WORKS.';
   const author = fields.author || 'STEVE JOBS';
+  const colorBg = fields.colorBg || '#111111';
+  const colorMain = fields.colorMain || '#d61f1f';
+  const colorTextMain = fields.colorTextMain || '#ffffff';
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -281,8 +293,8 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
         <div style={{ 
           position: 'relative', 
           padding: '60px 80px', 
-          backgroundColor: '#111111', 
-          borderLeft: '8px solid #d61f1f',
+          backgroundColor: colorBg, 
+          borderLeft: `8px solid ${colorMain}`,
           boxShadow: '0 24px 64px rgba(0,0,0,0.4)'
         }}>
           {/* Huge Quote Mark Background */}
@@ -300,31 +312,18 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
             “
           </div>
           
-          <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
-             <EnvatoMaskReveal frame={frame} delay={20} direction="bottom" duration={30}>
-               <div style={{
-                 ...baseFontConfig,
-                 fontSize: '48px',
-                 color: '#ffffff',
-                 textTransform: 'none',
-                 fontWeight: '700',
-                 lineHeight: 1.3
-               }}>
-                 "{quote}"
-               </div>
-             </EnvatoMaskReveal>
-             
-             <EnvatoMaskReveal frame={frame} delay={40} direction="bottom" duration={20}>
-               <div style={{
-                 ...baseFontConfig,
-                 fontSize: '24px',
-                 color: '#d61f1f',
-                 marginTop: '32px',
-                 letterSpacing: '2px'
-               }}>
-                 — {author}
-               </div>
-             </EnvatoMaskReveal>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <EnvatoMaskReveal frame={frame} delay={15} direction="right" duration={35}>
+              <div style={{ ...baseFontConfig, fontSize: '50px', color: colorTextMain, lineHeight: '1.2', textTransform: 'none', fontWeight: '700' }}>
+                "{quote}"
+              </div>
+            </EnvatoMaskReveal>
+            
+            <EnvatoMaskReveal frame={frame} delay={30} direction="right" duration={25}>
+              <div style={{ ...baseFontConfig, fontSize: '24px', color: colorMain, letterSpacing: '4px', marginTop: '30px' }}>
+                — {author}
+              </div>
+            </EnvatoMaskReveal>
           </div>
         </div>
       </EnvatoMaskReveal>
