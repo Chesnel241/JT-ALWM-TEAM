@@ -7,6 +7,20 @@ import { BackdropALWM, Dove, DoveFlyThrough, eo } from '../broadcast.jsx';
 import { EnvatoPresenterLowerThird, EnvatoNewsLowerThird } from './envato_lower_thirds';
 import { EnvatoBigTitle, EnvatoTicker } from './envato_titles';
 import { EnvatoSplitScreen } from './envato_split_screens';
+import {
+  EnvatoReportageMinimalLine,
+  EnvatoReportageDoubleSkew,
+  EnvatoReportageGradientSwipe,
+  EnvatoReportageGlassmorphism,
+  EnvatoReportageMassif,
+} from './envato_mega_titles';
+import {
+  EnvatoLowerThirdCompact,
+  EnvatoLowerThirdDuoCorporate,
+  EnvatoLowerThirdInterview,
+  EnvatoLocationPin,
+  EnvatoQuoteBlock,
+} from './envato_mega_lower_thirds';
 
 // Animated African Pattern Watermark
 function Watermark({ mode = 'overlay', opacity = 0.06 }) {
@@ -1016,6 +1030,16 @@ const REGISTRY = {
   envato_big_title: EnvatoBigTitle,
   envato_ticker: EnvatoTicker,
   envato_split_screen: EnvatoSplitScreen,
+  envato_rep_minimal: EnvatoReportageMinimalLine,
+  envato_rep_skew: EnvatoReportageDoubleSkew,
+  envato_rep_swipe: EnvatoReportageGradientSwipe,
+  envato_rep_glass: EnvatoReportageGlassmorphism,
+  envato_rep_massif: EnvatoReportageMassif,
+  envato_lt_compact: EnvatoLowerThirdCompact,
+  envato_lt_corporate: EnvatoLowerThirdDuoCorporate,
+  envato_lt_interview: EnvatoLowerThirdInterview,
+  envato_loc_pin: EnvatoLocationPin,
+  envato_quote: EnvatoQuoteBlock,
 };
 
 export function Overlay({ overlay, durationInFrames }) {
