@@ -54,7 +54,7 @@ export function GlobalTimelineOverlays({ timelineOverlays }) {
       <Stage>
         {timelineOverlays.map((o, i) => {
           const start = Math.max(0, secToFrames(o.startTime || 0, fps));
-          const dur = o.duration ? secToFrames(o.duration, fps) : Infinity;
+          const dur = o.duration ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
           return (
             <Sequence key={o.id || `glo-${i}`} from={start} durationInFrames={dur} layout="none">
               <Overlay overlay={o} durationInFrames={dur} fps={fps} />
@@ -137,7 +137,7 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
         {(branding.overlays || []).map((o, i) => {
           const fps = FPS;
           const start = Math.max(0, secToFrames(o.startTime || 0, fps));
-          const dur = o.duration ? secToFrames(o.duration, fps) : Infinity;
+          const dur = o.duration != null ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
           return (
             <Sequence key={`g-ov-${i}`} from={start} durationInFrames={dur}>
               <Overlay overlay={o} fps={fps} clipDurationSec={Number.MAX_VALUE} />
