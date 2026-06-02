@@ -9,6 +9,11 @@ import {
 } from '@dnd-kit/core';
 
 const FPS = 30;
+// Largeur des clips proportionnelle à leur durée. Zoom utilisateur via
+// le slider PxPerSecSlider — défaut 60 px/sec (lisible jusqu'à ~2 min de
+// timeline sur écran desktop, scrollable au-delà).
+const PX_PER_SEC_DEFAULT = 60;
+const MIN_CLIP_PX = 120; // garde un minimum lisible pour les très courts clips.
 // Durée effective d'un clip (sec) — miroir de getClipDur/buildRemotionPayload.
 const clipDurSec = (c) => c.durationSec || (c.outPoint != null ? Math.max(0.3, c.outPoint - (c.inPoint || 0)) : 10);
 // Format mm:ss pour le timecode.
@@ -16,6 +21,38 @@ const fmtTime = (sec) => {
   const s = Math.max(0, Math.floor(sec || 0));
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 };
+
+// Règle temporelle (graduations chaque seconde, label tous les 5 s) au-dessus
+// de la timeline. La largeur totale (px) suit la durée du JT à l'échelle.
+function Ruler({ totalSec, pxPerSec }) {
+  if (!totalSec || totalSec <= 0) return null;
+  const totalPx = totalSec * pxPerSec;
+  // Espacement label : on évite de tasser quand pxPerSec est petit.
+  const labelEvery = pxPerSec >= 80 ? 1 : pxPerSec >= 40 ? 2 : 5;
+  const ticks = [];
+  for (let s = 0; s <= Math.ceil(totalSec); s++) {
+    const isLabel = s % labelEvery === 0;
+    ticks.push(
+      <div
+        key={s}
+        className="absolute top-0 bottom-0"
+        style={{ left: `${s * pxPerSec}px`, width: isLabel ? 1 : 1 }}
+      >
+        <div className={`absolute top-0 ${isLabel ? 'h-3' : 'h-1.5'} w-px bg-[var(--border)]`} />
+        {isLabel && (
+          <div className="absolute top-3 text-[9px] tabular-nums text-[color:var(--muted)] -translate-x-1/2 whitespace-nowrap">
+            {fmtTime(s)}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="relative h-6 mb-1" style={{ width: `${totalPx}px`, minWidth: '100%' }} aria-hidden="true">
+      {ticks}
+    </div>
+  );
+}
 import {
   arrayMove,
   SortableContext,
@@ -176,7 +213,7 @@ function OverlayBlock({ overlay, index, clipDur, overlays, onChange, onOpen }) {
   );
 }
 
-function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle, onOverlaysChange }) {
+function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle, onOverlaysChange, onClipResize, clipStart = 0, playheadSec = null, pxPerSec = PX_PER_SEC_DEFAULT }) {
   const {
     attributes,
     listeners,
@@ -186,18 +223,71 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
     isDragging,
   } = useSortable({ id: clip.instanceId || clip.id });
 
+  const getClipDur = clipDurSec;
+  const dur = getClipDur(clip);
+  // Largeur proportionnelle à la durée (échelle pxPerSec). Plancher pour les
+  // clips très courts qui resteraient illisibles.
+  const widthPx = Math.max(MIN_CLIP_PX, Math.round(dur * pxPerSec));
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : 1,
+    width: `${widthPx}px`,
   };
 
-  const getClipDur = clipDurSec;
-  const dur = getClipDur(clip);
   // Le clip est "actif" si le playhead (temps global) tombe dans sa plage.
   const localSec = playheadSec != null ? playheadSec - clipStart : null;
   const isActive = localSec != null && localSec >= 0 && localSec <= dur;
   const playheadPct = isActive ? Math.max(0, Math.min(100, (localSec / dur) * 100)) : null;
+
+  // Trim au drag sur le bord droit/gauche du clip lui-même. Convertit le
+  // delta px en delta secondes via pxPerSec puis met à jour inPoint/outPoint
+  // ou durationSec (selon ce qui est défini sur le clip). Plancher 0.3 s.
+  const startEdgeDrag = (edge) => (e) => {
+    if (!onClipResize) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const orig = {
+      inPoint: clip.inPoint || 0,
+      outPoint: clip.outPoint,
+      durationSec: clip.durationSec,
+      dur,
+    };
+    const onMove = (ev) => {
+      const dxSec = (ev.clientX - startX) / pxPerSec;
+      let next;
+      if (edge === 'right') {
+        // Augmente/diminue la fin.
+        if (orig.outPoint != null) {
+          const np = Math.max(orig.inPoint + 0.3, orig.outPoint + dxSec);
+          next = { outPoint: Math.round(np * 100) / 100, durationSec: undefined };
+        } else {
+          const nd = Math.max(0.3, (orig.durationSec || orig.dur) + dxSec);
+          next = { durationSec: Math.round(nd * 100) / 100 };
+        }
+      } else {
+        // edge === 'left' : on déplace inPoint, on garde outPoint (si défini)
+        // ou on raccourcit la durationSec d'autant.
+        if (orig.outPoint != null) {
+          const ni = Math.max(0, Math.min(orig.outPoint - 0.3, orig.inPoint + dxSec));
+          next = { inPoint: Math.round(ni * 100) / 100, durationSec: undefined };
+        } else {
+          const nd = Math.max(0.3, (orig.durationSec || orig.dur) - dxSec);
+          const ni = Math.max(0, orig.inPoint + dxSec);
+          next = { inPoint: Math.round(ni * 100) / 100, durationSec: Math.round(nd * 100) / 100 };
+        }
+      }
+      onClipResize(clip, next);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
 
   return (
     <div
@@ -207,8 +297,30 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
       aria-label={`Clip ${index != null ? index + 1 : ''} : ${clip.name}, durée ${fmtTime(dur)}${isActive ? ', en lecture' : ''}`}
       className={`relative flex flex-col gap-1 bg-[var(--paper)] border ${
         isDragging ? 'border-[var(--accent)] shadow-xl' : isActive ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/40 shadow-md' : 'border-[var(--border)] shadow-sm'
-      } rounded-xl p-2 min-w-[200px] shrink-0 transition-shadow`}
+      } rounded-xl p-2 shrink-0 transition-shadow`}
     >
+      {/* Poignée trim gauche (étire/raccourcit le début du clip) */}
+      {onClipResize && (
+        <div
+          onPointerDown={startEdgeDrag('left')}
+          role="separator"
+          aria-label="Rogner début du clip"
+          title="Glisser pour rogner le début"
+          className="absolute left-0 top-2 bottom-2 w-1.5 cursor-ew-resize bg-[var(--accent)]/20 hover:bg-[var(--accent)]/70 rounded-l-md z-30"
+          style={{ touchAction: 'none' }}
+        />
+      )}
+      {/* Poignée trim droite (étire/raccourcit la fin du clip) */}
+      {onClipResize && (
+        <div
+          onPointerDown={startEdgeDrag('right')}
+          role="separator"
+          aria-label="Rogner fin du clip"
+          title="Glisser pour rogner la fin"
+          className="absolute right-0 top-2 bottom-2 w-1.5 cursor-ew-resize bg-[var(--accent)]/20 hover:bg-[var(--accent)]/70 rounded-r-md z-30"
+          style={{ touchAction: 'none' }}
+        />
+      )}
       <div className="flex items-center gap-2">
         <button
           {...attributes}
@@ -268,7 +380,7 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
       </div>
 
       {/* TEXT TRACK */}
-      <div data-text-track className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-visible flex items-center group">
+      <div data-text-track aria-label="Piste texte — glisser pour déplacer, poignées pour rogner" className="mt-1 h-8 bg-[var(--paper-2)]/50 rounded border border-[var(--border)] relative overflow-visible flex items-center group">
         <div className="absolute inset-0 flex items-center px-2 text-[8px] text-[color:var(--muted)] uppercase font-bold tracking-wider pointer-events-none">
           Piste Texte
         </div>
@@ -283,6 +395,12 @@ function SortableClip({ clip, onRemove, onTrim, onOverlay, onKenBurns, onSubtitl
             onOpen={() => onOverlay(clip)}
           />
         ))}
+        {/* Ligne de playhead — montre exactement où "Couper Texte" coupe. */}
+        {playheadPct != null && (
+          <div className="absolute top-0 bottom-0 w-0.5 bg-[var(--signal)] pointer-events-none z-20" style={{ left: `${playheadPct}%` }}>
+            <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 rounded-full bg-[var(--signal)]" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -328,6 +446,27 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [playerRef]);
+
+  // Zoom horizontal de la timeline (px/sec). Mémorisé pour la session.
+  const [pxPerSec, setPxPerSec] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem('jt-timeline-zoom'));
+      return Number.isFinite(v) && v >= 20 && v <= 200 ? v : PX_PER_SEC_DEFAULT;
+    } catch { return PX_PER_SEC_DEFAULT; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('jt-timeline-zoom', String(pxPerSec)); } catch { /* ignore */ }
+  }, [pxPerSec]);
+
+  // Met à jour les propriétés d'un clip (rogner aux bords). On respecte la
+  // structure existante : inPoint/outPoint si présents, sinon durationSec.
+  const updateClipResize = (clip, patch) => {
+    const cid = clip.instanceId || clip.id;
+    setClips(clips.map((c) => ((c.instanceId || c.id) === cid ? { ...c, ...patch } : c)));
+  };
+
+  // Position du playhead global sur la timeline (en px depuis le début).
+  const globalPlayheadPx = playheadSec != null ? playheadSec * pxPerSec : null;
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -443,9 +582,27 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
         </div>
       </div>
 
-      <div className="bg-[var(--app-bg)] rounded-xl border border-[var(--border)] p-4 min-h-[100px] flex items-center overflow-x-auto overflow-y-hidden">
+      {/* Slider de zoom horizontal (px par seconde). Persistant localStorage. */}
+      {clips.length > 0 && (
+        <div className="flex items-center gap-2 text-xs text-[color:var(--muted)] -mb-2">
+          <span>Zoom</span>
+          <input
+            type="range"
+            min="20"
+            max="160"
+            step="10"
+            value={pxPerSec}
+            onChange={(e) => setPxPerSec(Number(e.target.value))}
+            className="w-32 accent-[var(--accent)]"
+            aria-label={`Zoom horizontal de la timeline, ${pxPerSec} pixels par seconde`}
+          />
+          <span className="tabular-nums">{pxPerSec} px/s</span>
+        </div>
+      )}
+
+      <div className="bg-[var(--app-bg)] rounded-xl border border-[var(--border)] p-4 min-h-[100px] overflow-x-auto overflow-y-hidden relative">
         {clips.length === 0 ? (
-          <p className="text-sm text-[color:var(--muted)] italic text-center w-full">
+          <p className="text-sm text-[color:var(--muted)] italic text-center w-full py-6">
             Cliquez sur "Trim & Ajouter" sur les vidéos ci-dessus pour les ajouter ici.
           </p>
         ) : (
@@ -458,7 +615,20 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
               items={clips.map((c) => c.instanceId || c.id)}
               strategy={horizontalListSortingStrategy}
             >
-              <div className="flex gap-2 items-center">
+              {/* Règle temporelle */}
+              <Ruler totalSec={total} pxPerSec={pxPerSec} />
+              <div className="flex gap-2 items-center relative">
+                {/* Ligne de playhead globale (traverse tous les clips à
+                    l'échelle exacte). Cachée si pas de lecteur monté. */}
+                {globalPlayheadPx != null && (
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-[var(--signal)] pointer-events-none z-30"
+                    style={{ left: `${globalPlayheadPx}px` }}
+                    aria-hidden="true"
+                  >
+                    <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 rounded-full bg-[var(--signal)]" />
+                  </div>
+                )}
                 {clips.map((clip, idx) => (
                   <React.Fragment key={clip.instanceId || clip.id}>
                     <SortableClip
@@ -466,12 +636,14 @@ export default function Timeline({ clips, setClips, onGenerate, isGenerating, on
                       index={idx}
                       clipStart={starts[idx]}
                       playheadSec={playheadSec}
+                      pxPerSec={pxPerSec}
                       onRemove={removeClip}
                       onTrim={onTrimClip}
                       onOverlay={onOverlayClip}
                       onKenBurns={cycleKenBurns}
                       onSubtitle={onSubtitleClip}
                       onOverlaysChange={updateClipOverlays}
+                      onClipResize={updateClipResize}
                     />
                     {idx < clips.length - 1 && (
                       <TransitionPicker
