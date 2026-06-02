@@ -175,11 +175,12 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
             return ducked;
           })()}
           loop
+          crossOrigin="anonymous"
         />
       )}
       {voiceover && voiceover.filename && voiceover.url && (
         <Sequence from={secToFrames(voiceover.startTime || 0, fps)}>
-          <Audio src={voiceover.url} volume={voiceover.volume != null ? Number(voiceover.volume) : 1} />
+          <Audio src={voiceover.url} volume={voiceover.volume != null ? Number(voiceover.volume) : 1} crossOrigin="anonymous" />
         </Sequence>
       )}
     </AbsoluteFill>

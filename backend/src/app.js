@@ -165,6 +165,18 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use(cookieParser());
   app.use(sanitizerMiddleware);
 
+  // Forcer les headers CORS explicites pour Remotion <Video crossOrigin="anonymous">
+  app.use('/uploads', (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS, HEAD');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range, x-admin-password');
+    res.header('Access-Control-Expose-Headers', 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    next();
+  });
+
   // Redirection vers Cloudflare R2 pour lire les vidéos, avec sécurisation MOT DU JT
   app.get('/uploads/*', async (req, res, next) => {
     const filename = req.params[0];
