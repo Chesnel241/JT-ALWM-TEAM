@@ -60,10 +60,6 @@ SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id   # optionnel
 MAX_FILE_SIZE=209715200                                   # 200 MB
 UPSTASH_REDIS_REST_URL=https://...                        # Requis pour plan Free
 UPSTASH_REDIS_REST_TOKEN=...
-R2_ACCOUNT_ID=...
-R2_ACCESS_KEY_ID=...
-R2_SECRET_ACCESS_KEY=...
-R2_BUCKET_NAME=jt-alwm-uploads
 ```
 
 ⚠️ `CORS_ORIGIN` doit être l'URL **exacte** du frontend Vercel (incluant `https://`).
@@ -155,12 +151,7 @@ SENTRY_DSN=https://xxxx@sentry.io/xxxx
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 
-# Cloudflare R2 Storage (Pour Render Free)
-R2_ACCOUNT_ID=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-R2_BUCKET_NAME=
-```
+
 
 ### Frontend (.env.production)
 
@@ -219,7 +210,6 @@ app.use(cors({
 **Solutions**:
 - Render Free supprime les fichiers sur le disque éphémère après 15 min d'inactivité ou entre redéploiements.
 - Les données (pays) survivent grâce à Upstash Redis.
-- Les fichiers vidéos sont automatiquement synchronisés vers **Cloudflare R2** si les variables d'environnement sont configurées. Vérifiez que `R2_ACCOUNT_ID` etc. sont bien renseignés.
 
 ### Problème: Frontend vide
 

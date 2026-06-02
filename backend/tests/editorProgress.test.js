@@ -15,27 +15,27 @@ describe('editorProgress recoverable jobs', () => {
   it('garde le résultat (url) interrogeable après finishJob', () => {
     const id = `job-${Math.random()}`;
     setProgress(id, 50, 'encoding');
-    finishJob(id, 'done', 'https://r2.example/export.mp4');
+    finishJob(id, 'done', 'https://local.example/export.mp4');
 
     const state = getJobState(id);
-    expect(state).toEqual({ percent: 100, status: 'done', url: 'https://r2.example/export.mp4' });
+    expect(state).toEqual({ percent: 100, status: 'done', url: 'https://local.example/export.mp4' });
   });
 
   it('pousse immédiatement l\'état final à un listener qui se (re)connecte après la fin', () => {
     const id = `job-${Math.random()}`;
-    finishJob(id, 'done', 'https://r2.example/late.mp4');
+    finishJob(id, 'done', 'https://local.example/late.mp4');
 
     const res = fakeRes();
     addListener(id, res); // reconnexion SSE après coupure pendant le rendu
 
     expect(res.ended).toBe(true);
     const payload = JSON.parse(res.written.at(-1).replace(/^data: /, '').trim());
-    expect(payload).toMatchObject({ status: 'done', url: 'https://r2.example/late.mp4', percent: 100 });
+    expect(payload).toMatchObject({ status: 'done', url: 'https://local.example/late.mp4', percent: 100 });
   });
 
   it('ne régresse pas un job déjà terminé', () => {
     const id = `job-${Math.random()}`;
-    finishJob(id, 'done', 'https://r2.example/final.mp4');
+    finishJob(id, 'done', 'https://local.example/final.mp4');
     setProgress(id, 10, 'encoding'); // event tardif ignoré
     expect(getJobState(id).status).toBe('done');
     expect(getJobState(id).percent).toBe(100);

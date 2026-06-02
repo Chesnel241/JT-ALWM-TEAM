@@ -69,7 +69,6 @@ cd frontend && npm test    # vitest + RTL (8 tests)
 - `LOG_DIR` — dossier des logs Winston.
 - `SENTRY_DSN` — error tracking (no-op si absent)
 - `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` — requis sur plan Free pour persister les métadonnées.
-- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` — requis pour persister les fichiers vidéos sur Cloudflare R2.
 
 ### Frontend
 - `VITE_API_URL` — URL absolue du backend en prod (ex: `https://jt-alwm-backend.onrender.com`). Vide en dev (proxy Vite).
@@ -88,7 +87,7 @@ cd frontend && npm test    # vitest + RTL (8 tests)
   Choix produit assumé pour un hub interne, mais ne diffuser l'URL
   qu'aux personnes concernées et envisager un mot de passe partagé
   côté Vercel (Vercel Password Protection) si l'URL devient connue.
-- **Aucune persistance des fichiers locaux sur le plan Free.** Render supprime les fichiers du disque à chaque mise en veille. Cependant, le backend transfère automatiquement les fichiers vers **Cloudflare R2** et stocke les métadonnées sur **Upstash Redis**. L'architecture est donc 100% robuste sur le plan Free.
+- **Aucune persistance des fichiers locaux sur le plan Free.** Render supprime les fichiers du disque à chaque mise en veille. Cependant, les métadonnées sont stockées sur **Upstash Redis**.
 
 ### Smoke tests post-déploiement
 

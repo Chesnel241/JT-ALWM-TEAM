@@ -88,7 +88,7 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
   // Sécurisation retirée à la demande de l'utilisateur : le téléchargement est public
 
   const uploads = getCountryUploads(weekId, countryId);
-  // Si R2 est actif, on assume que le fichier existe dans le cloud (ou on tentera de l'attraper).
+  // On assume que le fichier existe dans le volume local.
   // Sinon, on vérifie l'existence locale.
   const files = uploads.filter((u) => u.filename && existsSync(path.join(uploadsDir, u.filename)));
   

@@ -58,7 +58,7 @@ const OUT_FPS = Number(process.env.EDITOR_FPS) || 30;
 const PRESET = process.env.EDITOR_PRESET || 'veryfast';
 const THREADS = Number(process.env.EDITOR_THREADS) || 1; // 1 = RAM mini (512 Mo)
 
-// Rejette si `promise` ne se règle pas dans `ms` (protège les I/O R2 qui
+// Rejette si `promise` ne se règle pas dans `ms` (protège les I/O qui
 // peuvent pendre indéfiniment sur coupure réseau).
 function withTimeout(promise, ms, label) {
   let timer;
@@ -182,7 +182,7 @@ function safeFilename(filename) {
 }
 
 /**
- * Résout le chemin local d'un clip. En mode R2, télécharge le fichier
+ * Résout le chemin local d'un clip.
  * dans workDir et retourne ce chemin temporaire. Sinon, retourne le
  * chemin local sous uploadsDir.
  */
@@ -197,7 +197,7 @@ async function resolveClipPath(filename, workDir) {
 
 /**
  * Concatène et trim une liste de clips, applique les overlays.
- * Retourne { url } : URL présignée R2 (prod) ou chemin relatif (dev).
+ * Retourne { url } : URL locale vers le flux.
  */
 // Sélecteur de moteur de rendu : 'remotion' délègue à Cloud Run, sinon
 // 'libass' (pipeline ffmpeg/libass local, défaut). Lecture LAZY de l'env
@@ -236,10 +236,7 @@ export function buildRemotionPayload(clips, opts) {
   const apiUrl = publicApiUrl();
   // URL de lecture des médias TOUJOURS routée via le backend
   // (`${PUBLIC_API_URL}/uploads/<f>`) : le backend sert le fichier depuis le
-  // volume local OU redirige (302) vers R2 présigné si HAS_R2. Le worker
-  // (Chromium) suit la redirection. Avantage : le worker n'a PAS besoin des
-  // creds R2 — un seul point de vérité pour l'accès médias, pas de rupture
-  // si R2 est activé côté backend seulement.
+  // volume local. Le worker accède directement au backend via l'API,
   const resolve = (f) => (f ? `${apiUrl}/uploads/${f}` : undefined);
 
   const timelineOverlays = (opts.globalOverlays || []).filter(g => g.templateId !== 'ticker' && g.templateId !== 'live_badge');

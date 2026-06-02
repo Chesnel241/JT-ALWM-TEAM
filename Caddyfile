@@ -19,8 +19,8 @@ jt-alwm-team.duckdns.org {
 		X-Frame-Options "DENY"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
-		# Le SW + l'app appellent l'API same-origin ; les médias viennent de R2
-		# (https) et de same-origin. Pas d'inline script (Vite hash les bundles).
+		# Le SW + l'app appellent l'API same-origin ; les médias viennent de
+		# same-origin. Pas d'inline script (Vite hash les bundles).
 		Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'"
 		# Ne pas divulguer le serveur.
 		-Server

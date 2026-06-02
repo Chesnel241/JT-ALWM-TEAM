@@ -40,4 +40,4 @@ jobs:
             --memory 2Gi --cpu 1 --timeout 1800 \
             --min-instances 0 --max-instances 2 \
             --no-allow-unauthenticated \
-            --set-env-vars "WORKER_KEY=${{ secrets.WORKER_KEY }},R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }},R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }},R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }},R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}"
+            --set-env-vars "WORKER_KEY=${{ secrets.WORKER_KEY }}"

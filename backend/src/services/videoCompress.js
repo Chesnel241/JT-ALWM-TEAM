@@ -9,7 +9,7 @@ const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm']);
  * Compresse une vidéo à 720p max si elle dépasse cette hauteur.
  * - N'upscale jamais (expression scale conditionnelle).
  * - Réencode H.264 CRF 28 preset veryfast → poids fortement réduit,
- *   crucial quand 20-30 rushes s'accumulent (budget disque/R2/RAM).
+ *   crucial quand 20-30 rushes s'accumulent (budget disque/RAM).
  * - Remplace le fichier d'origine sur place (même filename).
  *
  * Retourne { compressed: boolean, newSize: number } (taille en octets).
