@@ -11,6 +11,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVE_URL = process.env.REMOTION_SERVE_URL || path.join(__dirname, '../../remotion/build');
 const WORKER_KEY = process.env.WORKER_KEY || '';
 const PORT = process.env.PORT || 8080;
+// Allowlist des origines de callback (anti-SSRF si WORKER_KEY fuite : le
+// worker détient les creds R2, on ne le laisse pas POSTer vers un hôte
+// arbitraire). Défaut : l'API publique connue + les hôtes internes Docker.
+const ALLOWED_RETURN_TO = (process.env.ALLOWED_RETURN_TO
+  || process.env.PUBLIC_API_URL
+  || 'http://backend:3010')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+
+function isAllowedReturnTo(url) {
+  if (typeof url !== 'string' || !url) return false;
+  return ALLOWED_RETURN_TO.some((allowed) => url === allowed || url.startsWith(`${allowed}/`));
+}
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -77,6 +89,10 @@ app.post('/render', async (req, res) => {
   const { payload, jobId, returnTo } = req.body || {};
   if (!payload || !Array.isArray(payload.clips) || payload.clips.length === 0) {
     return res.status(400).json({ error: 'payload.clips requis' });
+  }
+  if (returnTo && !isAllowedReturnTo(returnTo)) {
+    console.warn('[/render] 400 returnTo non autorisé (anti-SSRF)', { jobId, returnTo });
+    return res.status(400).json({ error: 'returnTo non autorisé' });
   }
   if (rendering) {
     console.warn('[/render] 429 busy — un rendu est déjà en cours', { jobId });

@@ -265,9 +265,15 @@ export function buildRemotionPayload(clips, opts) {
       inPoint: c.inPoint,
       outPoint: c.outPoint,
       // Durée du segment (sec) : fournie par le frontend (probe metadata).
-      durationSec: c.durationSec != null
-        ? c.durationSec
-        : (c.outPoint != null ? c.outPoint - (c.inPoint || 0) : (c.duration || 5)),
+      // Clamp à un minimum réaliste : un calcul outPoint-inPoint négatif/NaN
+      // (out<in, valeurs corrompues) ferait disparaître le clip en 1 frame
+      // silencieusement. On garantit >= 0.3 s.
+      durationSec: (() => {
+        const raw = c.durationSec != null
+          ? Number(c.durationSec)
+          : (c.outPoint != null ? Number(c.outPoint) - Number(c.inPoint || 0) : (Number(c.duration) || 5));
+        return Number.isFinite(raw) && raw >= 0.3 ? raw : 0.3;
+      })(),
       overlays: c.overlays || [],
       transition: c.transition,
       kenBurns: c.kenBurns,
