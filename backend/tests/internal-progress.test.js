@@ -72,9 +72,9 @@ describe('POST /api/editor/internal/progress (callback worker Cloud Run)', () =>
     expect(getJobState(jobId)).toMatchObject({ percent: 73, status: 'encoding' });
   });
 
-  it('finalise via finishJob sur status=done avec URL R2 autorisée', async () => {
+  it('finalise via finishJob sur status=done avec URL locale autorisée', async () => {
     const jobId = `job-done-${Math.random()}`;
-    const url = 'https://acc123.r2.cloudflarestorage.com/exports/out.mp4?X-Amz-Signature=abc';
+    const url = '/uploads/exports/out.mp4';
     setProgress(jobId, 90, 'encoding');
     const res = await request(app)
       .post('/api/editor/internal/progress')
