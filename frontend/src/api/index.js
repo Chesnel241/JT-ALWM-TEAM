@@ -108,55 +108,19 @@ export const api = {
     request(`/notifications/${weekId}`),
 
   uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, adminPassword } = {}) => {
-    let useDirectUpload = false;
-    let url, r2Key, filename;
+    if (typeof onPhase === 'function') onPhase('processing');
+    const formData = new FormData();
+    formData.append('file', file);
+    if (reportage) formData.append('reportage', reportage);
 
-    // 1. GET presigned url
+    const headers = {};
+    const token = localStorage.getItem('app-password');
+    if (token) headers['X-App-Password'] = token;
+    if (adminPassword) headers['X-Admin-Password'] = adminPassword;
+
     try {
-      const presignedRes = await request(`/presigned/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`, {
-        method: 'GET',
-        adminPassword
-      });
-      url = presignedRes.url;
-      r2Key = presignedRes.r2Key;
-      filename = presignedRes.filename;
-    } catch (err) {
-      // Fallback vers upload direct local si R2 n'est pas configuré
-      useDirectUpload = true;
-    }
-
-    if (useDirectUpload) {
-      if (typeof onPhase === 'function') onPhase('processing');
-      const formData = new FormData();
-      formData.append('file', file);
-      if (reportage) formData.append('reportage', reportage);
-
-      const headers = {};
-      const token = localStorage.getItem('app-password');
-      if (token) headers['X-App-Password'] = token;
-      if (adminPassword) headers['X-Admin-Password'] = adminPassword;
-
-      try {
-        const res = await axios.post(`${API_BASE}/api/uploads/${weekId}/${countryId}`, formData, {
-          headers,
-          onUploadProgress: (e) => {
-            if (e.lengthComputable && typeof onProgress === 'function') {
-              onProgress((e.loaded / e.total) * 100);
-            }
-          },
-          signal,
-        });
-        return res.data;
-      } catch (err) {
-        if (axios.isCancel(err)) throw new Error(tStatic().errors.uploadCancelled);
-        throw new Error(err.response?.data?.message || tStatic().errors.networkError);
-      }
-    }
-
-    // 2. PUT to Cloudflare using axios
-    try {
-      await axios.put(url, file, {
-        headers: { 'Content-Type': file.type },
+      const res = await axios.post(`${API_BASE}/api/uploads/${weekId}/${countryId}`, formData, {
+        headers,
         onUploadProgress: (e) => {
           if (e.lengthComputable && typeof onProgress === 'function') {
             onProgress((e.loaded / e.total) * 100);
@@ -164,32 +128,11 @@ export const api = {
         },
         signal,
       });
+      return res.data;
     } catch (err) {
       if (axios.isCancel(err)) throw new Error(tStatic().errors.uploadCancelled);
-      throw new Error(tStatic().errors.networkError);
+      throw new Error(err.response?.data?.message || tStatic().errors.networkError);
     }
-    
-    if (typeof onPhase === 'function') onPhase('processing');
-
-    // 3. POST finalize
-    let type = 'document';
-    if (file.type.startsWith('video/') || file.name.match(/\.(mp4|mov|avi|webm|mkv)$/i)) type = 'video';
-    else if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|ogg|m4a)$/i)) type = 'audio';
-    else if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) type = 'image';
-
-    const finalizeRes = await request(`/uploads/${weekId}/${countryId}/finalize${reportage ? `?reportage=${encodeURIComponent(reportage)}` : ''}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: file.name,
-        filename: filename,
-        size: file.size,
-        type: type,
-      }),
-      adminPassword
-    });
-
-    return finalizeRes;
   },
 
   submitScript: (weekId, countryId, content, reportage) =>
@@ -205,28 +148,22 @@ export const api = {
       adminPassword
     }),
 
-  getDownloadUrl: async (filename, countryId, adminPassword) => {
-    const res = await request(`/presigned/download?filename=${encodeURIComponent(filename)}&countryId=${encodeURIComponent(countryId)}`, {
-      method: 'GET',
-      adminPassword
-    });
-    return res.url;
-  },
-
   // === JT Prêt (deliveries) ===
   getDeliveries: (weekId) => request(`/deliveries/${weekId}`),
 
   uploadDelivery: async (weekId, file, { onProgress, onPhase, signal } = {}) => {
-    // 1. GET presigned url
-    const presignedRes = await request(`/presigned/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`, {
-      method: 'GET'
-    });
-    const { url, r2Key, filename } = presignedRes;
+    if (typeof onPhase === 'function') onPhase('processing');
+    const formData = new FormData();
+    formData.append('file', file);
 
-    // 2. PUT using axios
+    const headers = {};
+    const token = localStorage.getItem('app-password');
+    if (token) headers['X-App-Password'] = token;
+
     try {
-      await axios.put(url, file, {
-        headers: { 'Content-Type': file.type },
+      // Local direct upload for delivery via /api/deliveries/:weekId
+      const res = await axios.post(`${API_BASE}/api/deliveries/${weekId}`, formData, {
+        headers,
         onUploadProgress: (e) => {
           if (e.lengthComputable && typeof onProgress === 'function') {
             onProgress((e.loaded / e.total) * 100);
@@ -234,31 +171,11 @@ export const api = {
         },
         signal,
       });
+      return res.data;
     } catch (err) {
       if (axios.isCancel(err)) throw new Error(tStatic().errors.uploadCancelled);
-      throw new Error(tStatic().errors.networkError);
+      throw new Error(err.response?.data?.message || tStatic().errors.networkError);
     }
-
-    if (typeof onPhase === 'function') onPhase('processing');
-
-    // 3. POST finalize
-    let type = 'document';
-    if (file.type.startsWith('video/') || file.name.match(/\.(mp4|mov|avi|webm|mkv)$/i)) type = 'video';
-    else if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|ogg|m4a)$/i)) type = 'audio';
-    else if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) type = 'image';
-
-    const finalizeRes = await request(`/deliveries/${weekId}/finalize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: file.name,
-        filename: filename,
-        size: file.size,
-        type: type,
-      })
-    });
-
-    return finalizeRes;
   },
 
   deleteDelivery: (weekId, fileId) =>

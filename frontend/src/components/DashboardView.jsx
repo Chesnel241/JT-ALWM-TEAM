@@ -705,9 +705,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         a.click();
         URL.revokeObjectURL(url);
       } else {
-        // Pour les fichiers uniques, on génère une URL présignée ou un token temporaire
-        const countryId = fileToDownload.countryId || selectedBin; // Assurez-vous d'avoir countryId
-        const url = await api.getDownloadUrl(fileToDownload.filename, countryId, authenticatedAdminPassword);
+        // Pour les fichiers uniques, on utilise l'URL locale directement
+        let url = `${API_BASE}/uploads/${fileToDownload.filename}`;
+        if (selectedBin === 'mj' && authenticatedAdminPassword) {
+          url += `?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}`;
+        }
         window.location.assign(url);
       }
     } catch (err) {

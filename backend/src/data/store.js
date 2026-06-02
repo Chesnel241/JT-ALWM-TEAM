@@ -6,7 +6,7 @@ import logger from '../logger/index.js';
 import { weekExpiryDate } from './constants.js';
 import { storePath } from '../lib/paths.js';
 import { Redis } from '@upstash/redis';
-import { HAS_R2, deleteManyFromR2, listR2Objects } from '../lib/s3.js';
+
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = storePath();
@@ -370,7 +370,7 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
   let removedCount = 0;
   let removedFromDb = 0;
   const removedFiles = [];
-  const r2KeysToDelete = new Set();
+
   const weeksToDelete = [];
   const details = {
     startTime: now.toISOString(),
@@ -379,7 +379,7 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
 
   logger.info('Starting cleanup of expired uploads', { context: { uploadsDir } });
 
-  // 1. Identify expired weeks and their R2 keys
+  // 1. Identify expired weeks
   for (const weekId of Object.keys(db)) {
     if (META_KEYS.has(weekId)) continue;
 
@@ -390,32 +390,10 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
       context: { weekId, expiryDate: expiry.toISOString() },
     });
 
-    const weekUploads = db[weekId];
-    if (weekUploads) {
-      for (const countryId of Object.keys(weekUploads)) {
-        for (const upload of weekUploads[countryId]) {
-          if (HAS_R2 && upload.filename) {
-            r2KeysToDelete.add(`uploads/${upload.filename}`);
-          }
-        }
-      }
-    }
     weeksToDelete.push(weekId);
   }
 
-  // 2. Delete from R2 FIRST (Fix Issue #1: Delete-Before-Confirm Flaw)
-  if (r2KeysToDelete.size > 0) {
-    try {
-      await deleteManyFromR2(Array.from(r2KeysToDelete));
-      logger.info(`Deleted ${r2KeysToDelete.size} files from R2 during cleanup`);
-    } catch (err) {
-      logger.error('Failed to delete files from R2, aborting DB cleanup to prevent orphans', { error: err.message });
-      details.errors.push({ phase: 'r2_cleanup_abort', error: err.message });
-      return 0; // Abort DB cleanup to ensure we retry next time
-    }
-  }
-
-  // 3. R2 deletion succeeded. Now delete local files and DB entries.
+  // 3. Delete local files and DB entries.
   for (const weekId of weeksToDelete) {
     const weekUploads = db[weekId];
     if (weekUploads) {
@@ -424,9 +402,6 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
           if (await deleteUploadFile(upload, uploadsDir)) {
             removedCount++;
             removedFiles.push({ weekId, countryId, filename: upload.filename });
-          } else if (HAS_R2) {
-             removedCount++;
-             removedFiles.push({ weekId, countryId, filename: upload.filename });
           }
         }
       }
@@ -475,32 +450,6 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
     }
   }
 
-  // 5. Cleanup True R2 Orphans (Fix Issue #2: Orphan Cleanup is Local-Only)
-  if (HAS_R2) {
-    try {
-      const allR2Keys = await listR2Objects('uploads/');
-      const activeFilenames = new Set();
-      
-      for (const weekId of Object.keys(db)) {
-        if (META_KEYS.has(weekId)) continue;
-        for (const countryId of Object.keys(db[weekId])) {
-           for (const upload of db[weekId][countryId]) {
-              if (upload.filename) activeFilenames.add(`uploads/${upload.filename}`);
-           }
-        }
-      }
-      
-      const r2Orphans = allR2Keys.filter(key => !activeFilenames.has(key));
-      if (r2Orphans.length > 0) {
-        // Optionnel : on pourrait utiliser deleteManyFromR2 si c'est supporté par S3 en mode silencieux
-        await deleteManyFromR2(r2Orphans);
-        logger.info(`Deleted ${r2Orphans.length} true orphan files from R2`);
-      }
-    } catch(err) {
-      logger.error('Error during R2 orphan cleanup', { error: err.message });
-      details.errors.push({ phase: 'r2_orphan_cleanup', error: err.message });
-    }
-  }
 
   // 6. Cleanup Editor Exports (older than 48h)
   try {

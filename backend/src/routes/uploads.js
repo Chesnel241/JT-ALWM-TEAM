@@ -16,35 +16,12 @@ import { requireAdmin, safeEqual } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
-import { HAS_R2, uploadToR2, uploadBufferToR2, getR2ReadStream, deleteFromR2, checkR2Exists } from '../lib/s3.js';
+
 import { Readable } from 'stream';
 import { processVoiceover } from '../services/audioProcessor.js';
 import { broadcastNotification } from './webpush.js';
 import { io } from '../app.js';
 
-function createLazyStream(factory) {
-  let stream = null;
-  let initiating = false;
-
-  return new Readable({
-    async read(size) {
-      if (stream) return stream.resume();
-      if (initiating) return;
-      
-      initiating = true;
-      try {
-        stream = await factory();
-        stream.on('data', chunk => {
-          if (!this.push(chunk)) stream.pause();
-        });
-        stream.on('end', () => this.push(null));
-        stream.on('error', err => this.destroy(err));
-      } catch (err) {
-        this.destroy(err);
-      }
-    }
-  });
-}
 
 const router = Router();
 
@@ -113,7 +90,7 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
   const uploads = getCountryUploads(weekId, countryId);
   // Si R2 est actif, on assume que le fichier existe dans le cloud (ou on tentera de l'attraper).
   // Sinon, on vérifie l'existence locale.
-  const files = uploads.filter((u) => u.filename && (HAS_R2 || existsSync(path.join(uploadsDir, u.filename))));
+  const files = uploads.filter((u) => u.filename && existsSync(path.join(uploadsDir, u.filename)));
   
   if (files.length === 0) {
     logger.warn('Archive request with no files', {
@@ -179,28 +156,15 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
     const safeName = path.basename(file.name);
     const safeReportage = file.reportage ? file.reportage.replace(/[/\\]/g, '') : null;
     const archivePath = safeReportage ? `${safeReportage}/${safeName}` : safeName;
-    if (HAS_R2) {
-      const exists = await checkR2Exists(`uploads/${file.filename}`);
-      if (!exists) {
-        logger.warn(`Skipping missing R2 file in ZIP: ${file.filename}`);
-        continue;
-      }
-      const lazyStream = createLazyStream(() => getR2ReadStream(`uploads/${file.filename}`));
-      archive.append(lazyStream, { name: archivePath });
-      logger.debug(`Added lazy R2 stream to archive: ${file.name}`, {
-        context: { filename: file.filename, size: file.size },
-      });
-    } else {
-      const filePath = path.join(uploadsDir, file.filename);
-      if (!existsSync(filePath)) {
-        logger.warn(`Skipping missing local file in ZIP: ${file.filename}`);
-        continue;
-      }
-      archive.append(createReadStream(filePath), { name: archivePath });
-      logger.debug(`Added local to archive: ${file.name}`, {
-        context: { filename: file.filename, size: file.size },
-      });
+    const filePath = path.join(uploadsDir, file.filename);
+    if (!existsSync(filePath)) {
+      logger.warn(`Skipping missing local file in ZIP: ${file.filename}`);
+      continue;
     }
+    archive.append(createReadStream(filePath), { name: archivePath });
+    logger.debug(`Added local to archive: ${file.name}`, {
+      context: { filename: file.filename, size: file.size },
+    });
   }
   archive.finalize();
 }));
@@ -336,25 +300,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
         size: file.size,
       });
 
-      // --- NOUVEAU: Upload vers R2 ---
-      if (HAS_R2) {
-        try {
-          const filePath = path.join(uploadsDir, file.filename);
-          logger.info(`Starting R2 upload for ${file.filename}`);
-          await uploadToR2(filePath, `uploads/${file.filename}`, file.mimetype);
-          logger.info(`R2 upload complete for ${file.filename}, deleting local temporary file`);
-          // Supprimer le fichier local après succès
-          unlinkSync(filePath);
-        } catch (r2Err) {
-          logger.error(`R2 upload failed for ${file.filename}`, { error: r2Err.message });
-          // Rollback: on annule l'upload DB car le fichier n'est pas dans le Cloud
-          deleteUpload(weekId, countryId, fileData.id);
-          const filePath = path.join(uploadsDir, file.filename);
-          if (existsSync(filePath)) unlinkSync(filePath);
-          return next(createErrors.internalError('Erreur lors du transfert vers Cloudflare R2'));
-        }
-      }
-      // ---------------------------------
+
       
       logger.info('Upload completed and persisted', {
         context: {
@@ -406,69 +352,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
   });
 }));
 
-// POST /api/uploads/:weekId/:countryId/finalize — finalisation d'upload direct R2
-router.post('/:weekId/:countryId/finalize', uploadMiddleware, asyncHandler(async (req, res, next) => {
-  const { weekId, countryId } = req.params;
-  const { name, filename, size, type, reportage } = req.body;
 
-  if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
-    logger.warn('Finalize attempt with invalid week or country', { context: { weekId, countryId, ip: req.ip } });
-    return next(createErrors.notFound('Week ou Country'));
-  }
-
-  if (!name || !filename || !size || !type) {
-    return next(createErrors.badRequest('Paramètres manquants: name, filename, size, type'));
-  }
-
-  // `filename` est réutilisé tel quel comme clé R2 et stocké en base. On
-  // refuse tout séparateur de chemin / '..' / caractère de contrôle pour
-  // empêcher le path traversal (échapper le préfixe uploads/) et le
-  // poisoning de la base.
-  if (typeof filename !== 'string' || /[/\\\x00-\x1f]/.test(filename) || filename.includes('..') || filename.length > 300) {
-    logger.warn('Finalize attempt with unsafe filename', { context: { weekId, countryId, ip: req.ip } });
-    return next(createErrors.badRequest('filename invalide'));
-  }
-
-  if (HAS_R2) {
-    const r2Key = `uploads/${filename}`;
-    const exists = await checkR2Exists(r2Key);
-    if (!exists) {
-      return next(createErrors.badRequest(`Le fichier n'existe pas sur R2.`));
-    }
-  }
-
-  const fileData = {
-    id: uuidv4(),
-    name,
-    filename,
-    type,
-    size,
-    status: 'pending',
-    reportage: reportage || null,
-    uploadedAt: new Date().toISOString(),
-  };
-
-  try {
-    const result = addUpload(weekId, countryId, fileData);
-    recordUpload(0, true);
-    logger.uploadReceived(weekId, countryId, name, size);
-    audit('upload.finalize', req, { weekId, countryId, fileId: fileData.id, filename, size });
-
-    broadcastNotification({
-      title: 'Nouveau fichier reçu',
-      body: `Un fichier a été envoyé par ${countryId} pour la semaine ${weekId}.`,
-      url: `/?week=${weekId}`
-    }).catch(err => logger.error('Push notification failed', { error: err.message }));
-
-    io?.emit('upload_update', { weekId, countryId });
-
-    return res.status(201).json(result);
-  } catch (storeErr) {
-    recordUpload(0, false);
-    logger.uploadFailed(weekId, countryId, name, storeErr);
-    return next(createErrors.internalError('Erreur lors de la sauvegarde des métadonnées'));
-  }
-}));
 
 // POST /api/uploads/:weekId/:countryId/script — saisie manuelle de script
 router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) => {
@@ -503,11 +387,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
   const filePath = path.join(uploadsDir, filename);
 
   try {
-    if (HAS_R2) {
-      await uploadBufferToR2(content, `uploads/${filename}`, 'text/plain; charset=utf-8');
-    } else {
-      writeFileSync(filePath, content, 'utf-8');
-    }
+    writeFileSync(filePath, content, 'utf-8');
   } catch (err) {
     logger.error(`Failed to write script file: ${filename}`, {
       error: err.message,
@@ -600,39 +480,25 @@ router.delete('/:weekId/:countryId/:fileId', requireAdmin, asyncHandler(async (r
 
     // Supprimer le fichier physique si présent
     if (deleted.filename) {
-      if (HAS_R2) {
+      const filePath = path.join(uploadsDir, deleted.filename);
+      if (existsSync(filePath)) {
         try {
-          await deleteFromR2(`uploads/${deleted.filename}`);
+          unlinkSync(filePath);
+          logger.info('File deleted successfully', {
+            context: { 
+              weekId, 
+              countryId, 
+              filename: deleted.filename, 
+              fileId,
+              deletedSize: deleted.size,
+            },
+          });
         } catch (delErr) {
-          logger.warn(`Failed to delete R2 file: ${deleted.filename}, rolling back DB deletion`, {
+          // Log mais ne pas échouer la requête si le fichier ne peut pas être supprimé
+          logger.warn(`Failed to delete physical file: ${deleted.filename}`, {
             error: delErr.message,
             context: { weekId, countryId, fileId },
           });
-          // Rollback: Re-insert into DB
-          addUpload(weekId, countryId, deleted);
-          return next(createErrors.internalError('Erreur de suppression du fichier distant'));
-        }
-      } else {
-        const filePath = path.join(uploadsDir, deleted.filename);
-        if (existsSync(filePath)) {
-          try {
-            unlinkSync(filePath);
-            logger.info('File deleted successfully', {
-              context: { 
-                weekId, 
-                countryId, 
-                filename: deleted.filename, 
-                fileId,
-                deletedSize: deleted.size,
-              },
-            });
-          } catch (delErr) {
-            // Log mais ne pas échouer la requête si le fichier ne peut pas être supprimé
-            logger.warn(`Failed to delete physical file: ${deleted.filename}`, {
-              error: delErr.message,
-              context: { weekId, countryId, fileId },
-            });
-          }
         }
       }
     }
@@ -759,13 +625,6 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     // Save Script
     if (script) {
       writeFileSync(scriptPath, script, 'utf8');
-    }
-
-    if (HAS_R2) {
-      await uploadToR2(finalAudioPath, `uploads/${weekId}/${countryId}/${audioFilename}`, 'audio/mpeg');
-      if (script) {
-        await uploadToR2(scriptPath, `uploads/${weekId}/${countryId}/${scriptFilename}`, 'text/plain');
-      }
     }
 
     // Clean up raw recording
