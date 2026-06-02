@@ -20,12 +20,14 @@ export function Ticker({ ticker }) {
   const px = ticker.posX || 0;
   const py = ticker.posY || 0;
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, background: COL.ticker, display: 'flex', alignItems: 'center', overflow: 'hidden', transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'bottom left' }}>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, background: COL.ticker, display: 'flex', alignItems: 'center', overflow: 'hidden', transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'bottom left', borderTop: `2px solid ${COL.light}33` }}>
+      {/* Bloc fixe ALWM TV (charte bandeau défilant #9) */}
+      <span style={{ background: COL.blue, color: COL.white, fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 22px', flexShrink: 0, fontFamily: ff(null, "'Montserrat Bold', sans-serif"), fontSize: 30, letterSpacing: '0.04em' }}>ALWM TV</span>
       {ticker.categorie && (
-        <span style={{ background: COL.red, color: COL.white, fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 18px', flexShrink: 0, fontFamily: ff(null, 'Inter, sans-serif'), fontSize: 30 }}>{ticker.categorie}</span>
+        <span style={{ background: COL.white, color: COL.blue, fontWeight: 700, height: '100%', display: 'flex', alignItems: 'center', padding: '0 18px', flexShrink: 0, fontFamily: ff(null, "'Montserrat Bold', sans-serif"), fontSize: 26, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{ticker.categorie}</span>
       )}
       <div style={{ position: 'relative', flex: 1, overflow: 'hidden', height: '100%' }}>
-        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${x}px)`, top: 0, lineHeight: '76px', color: COL.white, fontFamily: 'Inter, sans-serif', fontSize: 32 }}>
+        <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${x}px)`, top: 0, lineHeight: '76px', color: COL.white, fontFamily: "'Montserrat Medium', sans-serif", fontSize: 30 }}>
           <span style={{ padding: '0 30px' }}>{unit}</span>
           <span style={{ padding: '0 30px' }}>{unit}</span>
           <span style={{ padding: '0 30px' }}>{unit}</span>
