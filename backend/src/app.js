@@ -13,6 +13,7 @@ import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
 import notificationsRouter from './routes/notifications.js';
 import analyticsRouter from './routes/analytics.js';
+import themesRouter from './routes/themes.js';
 import authRouter from './routes/auth.js';
 import editorRouter from './routes/editor.js';
 import webpushRouter from './routes/webpush.js';
@@ -23,7 +24,7 @@ import { requireAuth, requireAdmin, safeEqual } from './middleware/auth.js';
 import logger from './logger/index.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
-import { globalLimiter, uploadLimiter } from './middleware/rateLimiter.js';
+import { globalLimiter, uploadLimiter, archiveLimiter } from './middleware/rateLimiter.js';
 import { errorHandlerMiddleware, notFoundMiddleware } from './middleware/errorHandler.js';
 import { Server } from 'socket.io';
 import { createHash, timingSafeEqual } from 'crypto';
@@ -280,14 +281,16 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/analytics', analyticsRouter);
 
-  const themesRouter = (await import('./routes/themes.js')).default;
   app.use('/api/themes', themesRouter);
 
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);
   app.use('/api/deliveries', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), deliveriesRouter);
   app.use('/api/editor', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), editorRouter);
   app.use('/api/webpush', webpushRouter);
-  app.use('/api/presigned', presignedRouter);
+  // Rate-limit dédié : /presigned/download + /upload déclenchent des appels
+  // R2 (checkExists/presign) — on borne pour éviter l'énumération / l'abus
+  // de facturation.
+  app.use('/api/presigned', archiveLimiter, presignedRouter);
 
   app.use(notFoundMiddleware);
   if (enableMonitoring) {

@@ -8,6 +8,19 @@
  */
 
 const jobs = new Map(); // jobId -> { percent, status, url, listeners:Set<res>, timeout, stall, doneAt }
+// Tombstones : IDs de jobs déjà terminés puis purgés. Empêche qu'un callback
+// worker rejoué (réseau lent, retry) tardif ressuscite un job fantôme
+// (nouveau pending + re-émission d'un 2e 'done'/'error'). Borné en taille.
+const finishedIds = new Set();
+const MAX_TOMBSTONES = 2000;
+function tombstone(jobId) {
+  finishedIds.add(jobId);
+  if (finishedIds.size > MAX_TOMBSTONES) {
+    // purge la plus ancienne moitié (Set conserve l'ordre d'insertion).
+    const it = finishedIds.values();
+    for (let i = 0; i < MAX_TOMBSTONES / 2; i++) finishedIds.delete(it.next().value);
+  }
+}
 
 const JOB_TTL_MS = 30 * 60 * 1000; // 30 min : durée max absolue d'un job actif
 // Watchdog anti-blocage : si aucune progression n'arrive pendant ce délai
@@ -48,6 +61,9 @@ function isFinished(status) {
 
 export function setProgress(jobId, percent, status = 'processing') {
   if (!jobId) return;
+  // Job déjà terminé puis purgé : on ignore tout callback tardif/rejoué pour
+  // éviter de ressusciter un job fantôme.
+  if (finishedIds.has(jobId)) return;
   const job = ensure(jobId);
   // Ne pas régresser un job déjà terminé (ex: setProgress tardif).
   if (isFinished(job.status)) return;
@@ -65,6 +81,7 @@ export function setProgress(jobId, percent, status = 'processing') {
 
 export function finishJob(jobId, status = 'done', url = null) {
   if (!jobId) return;
+  if (finishedIds.has(jobId)) return; // déjà terminé + purgé : ignore.
   const job = ensure(jobId);
   if (isFinished(job.status)) return; // déjà terminé, ne pas réémettre
   if (job.timeout) clearTimeout(job.timeout);
@@ -83,8 +100,8 @@ export function finishJob(jobId, status = 'done', url = null) {
   }
   job.listeners.clear();
   // Conserve l'état terminé un moment (récupérable via /result ou reconnexion
-  // SSE), puis purge.
-  job.timeout = setTimeout(() => jobs.delete(jobId), FINISHED_RETENTION_MS);
+  // SSE), puis purge + pose un tombstone pour bloquer les callbacks rejoués.
+  job.timeout = setTimeout(() => { jobs.delete(jobId); tombstone(jobId); }, FINISHED_RETENTION_MS);
 }
 
 /** État courant d'un job pour le fallback polling. null si inconnu/purgé. */

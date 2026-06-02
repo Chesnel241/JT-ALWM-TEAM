@@ -74,18 +74,31 @@ router.get('/upload', async (req, res) => {
   }
 });
 
-// GET /api/presigned/download?filename=...&countryId=...
+// GET /api/presigned/download?filename=...
+// SÉCURITÉ : on ne fait JAMAIS confiance au countryId fourni par le client
+// pour décider de la protection. L'autorité est la métadonnée stockée du
+// fichier (getFileMetadata). Sinon un fichier protégé "mj" demandé avec
+// ?countryId=ci passerait la vérif (IDOR).
 router.get('/download', async (req, res) => {
   try {
-    const { filename, countryId } = req.query;
-    if (!filename) return res.status(400).json({ error: 'filename is required' });
+    const { filename } = req.query;
+    if (!filename || typeof filename !== 'string') {
+      return res.status(400).json({ error: 'filename is required' });
+    }
+    // Validation stricte du nom : pas de séparateur de chemin / .. / contrôle
+    // → empêche de cibler une clé R2 arbitraire hors préfixe uploads/.
+    if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
+      return res.status(400).json({ error: 'filename invalide' });
+    }
 
-    // Verify admin password if country is 'mj' (Mot du JT)
-    if (countryId === 'mj') {
+    // Protection "Mot du JT" : déterminée par la métadonnée RÉELLE du fichier.
+    const { getFileMetadata } = await import('../data/store.js');
+    const meta = getFileMetadata(filename);
+    if (meta && meta.countryId === 'mj') {
       const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
-      let providedToken = req.header('x-admin-password');
       if (ADMIN_PASSWORD) {
         const { safeEqual } = await import('../middleware/auth.js');
+        const providedToken = req.header('x-admin-password');
         if (!providedToken || !safeEqual(providedToken.trim(), ADMIN_PASSWORD)) {
           return res.status(403).json({ error: 'Mot de passe administrateur requis pour ce téléchargement' });
         }
@@ -98,13 +111,12 @@ router.get('/download', async (req, res) => {
     if (HAS_R2) {
       const exists = await checkR2Exists(r2Key);
       if (exists) {
-        // Return R2 presigned URL directly (valid for 1 hour)
         const url = await getR2PresignedUrl(r2Key, 3600);
         return res.json({ url });
       }
     }
 
-    // Fallback to local download with temporary token
+    // Fallback local avec token temporaire signé.
     const { generateDownloadToken } = await import('../lib/downloadTokens.js');
     const dlToken = generateDownloadToken(filename);
     const localUrl = `/uploads/${encodeURIComponent(filename)}?dl_token=${encodeURIComponent(dlToken)}`;
