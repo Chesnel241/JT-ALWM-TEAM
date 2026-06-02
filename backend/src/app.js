@@ -218,13 +218,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
 
   app.use('/uploads', express.static(dir, { 
     maxAge: '1y', 
-    immutable: true,
-    setHeaders: (res, path, stat) => {
-      res.set('Access-Control-Allow-Origin', '*');
-      res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
-      res.set('Access-Control-Expose-Headers', 'Content-Range, Content-Length');
-    }
+    immutable: true
   }));
 
   app.get('/', (req, res) => res.status(200).send('ALWM Backend API is running.'));

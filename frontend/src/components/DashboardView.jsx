@@ -244,7 +244,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setGeneratedVideoUrl(null);
     try {
       const saved = localStorage.getItem(timelineKey(selectedWeek));
-      setTimelineClips(saved ? JSON.parse(saved) : []);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const mapped = parsed.map(clip => {
+          const isExternal = clip.filename?.startsWith('http') || clip.filename?.startsWith('blob:');
+          const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
+          const url = isExternal ? clip.filename : `${API_BASE}/uploads/${clip.filename || clip.name}?cors=2${authQuery}`;
+          return { ...clip, url };
+        });
+        setTimelineClips(mapped);
+      } else {
+        setTimelineClips([]);
+      }
     } catch { setTimelineClips([]); }
     try {
       const savedOverlays = localStorage.getItem(`jt-timeline-overlays-${selectedWeek}`);
@@ -1205,7 +1216,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
                           }
                           const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
-                          const newClip = { ...trimmedClip, instanceId: trimmedClip.instanceId || generateId() };
+                          const isExternal = trimmedClip.filename?.startsWith('http') || trimmedClip.filename?.startsWith('blob:');
+                          const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
+                          const url = isExternal ? trimmedClip.filename : `${API_BASE}/uploads/${trimmedClip.filename || trimmedClip.name}?cors=2${authQuery}`;
+                          const newClip = { ...trimmedClip, url, instanceId: trimmedClip.instanceId || generateId() };
                           return [...prev, newClip];
                         });
                         addToast('Clip ajouté à la timeline', 'success', 2000);
