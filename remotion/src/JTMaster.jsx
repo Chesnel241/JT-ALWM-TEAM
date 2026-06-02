@@ -13,7 +13,10 @@ import { Stage } from './Stage.jsx';
 
 loadFonts();
 
-const secToFrames = (s, fps) => Math.max(1, Math.round((s || 0) * fps));
+const secToFrames = (s, fps) => {
+  const n = Number(s);
+  return Math.max(1, Math.round((isNaN(n) ? 0 : n) * fps));
+};
 
 // Mappe notre type de transition (xfade) → presentation Remotion.
 function presentation(type) {

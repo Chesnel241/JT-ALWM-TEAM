@@ -42,9 +42,9 @@ export function LiveBadge({ live }) {
   const frame = useCurrentFrame();
   if (!live || !live.enabled) return null;
   const pulse = interpolate(Math.sin(frame / 6), [-1, 1], [0.5, 1]);
-  const scale = (live.scale ?? 100) / 100;
-  const px = live.posX || 0;
-  const py = live.posY || 0;
+  const scale = isNaN(Number(live.scale)) ? 1 : Number(live.scale) / 100;
+  const px = isNaN(Number(live.posX)) ? 0 : Number(live.posX);
+  const py = isNaN(Number(live.posY)) ? 0 : Number(live.posY);
   return (
     <div style={{ position: 'absolute', right: 30, top: 24, background: COL.red, color: COL.white, fontWeight: 800, fontSize: 32, padding: '6px 18px', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter, sans-serif', opacity: pulse, transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'top right' }}>
       <span style={{ width: 14, height: 14, background: COL.white, borderRadius: '50%' }} />
@@ -66,8 +66,10 @@ export function Logo({ logo, logoPosition, tickerOn, logoPosX = 0, logoPosY = 0,
   if (!logo) return null;
   const pos = { ...(LOGO_POS[logoPosition] || LOGO_POS.br) };
   if (tickerOn && (logoPosition === 'bl' || logoPosition === 'br' || !logoPosition)) pos.bottom = 120;
-  const scale = logoScale / 100;
-  return <Img src={staticFile('habillage-logo.png')} style={{ position: 'absolute', height: 130, opacity: 0.9, ...pos, transform: `translate(${logoPosX}px, ${logoPosY}px) scale(${scale})`, transformOrigin: 'center center' }} />;
+  const scale = isNaN(Number(logoScale)) ? 1 : Number(logoScale) / 100;
+  const px = isNaN(Number(logoPosX)) ? 0 : Number(logoPosX);
+  const py = isNaN(Number(logoPosY)) ? 0 : Number(logoPosY);
+  return <Img src={staticFile('habillage-logo.png')} style={{ position: 'absolute', height: 130, opacity: 0.9, ...pos, transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'center center' }} />;
 }
 
 // Sous-titres : style position/taille/police, affichés selon le timing courant.
