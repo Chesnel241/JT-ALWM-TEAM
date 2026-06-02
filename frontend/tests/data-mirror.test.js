@@ -16,13 +16,13 @@ import {
 describe('OVERLAY_TEMPLATES (front)', () => {
   const ids = OVERLAY_TEMPLATES.map((t) => t.id);
 
-  it('expose les 14 modèles brand ALWM', () => {
+  it('expose les modèles core + pack Envato', () => {
     [
-      'titre_reportage', 'nom_interview', 'signature_reportage',
-      'grand_titre', 'rappel_titres',
-      'a_suivre', 'tout_de_suite',
-      'publicite', 'compte_a_rebours', 'la_speciale', 'fin_merci',
-      'bandeau_infos', 'flash_info', 'alerte_info',
+      'intro_jt', 'titre_reportage', 'transition_reportage',
+      'nom_interview', 'rappel_titres', 'fin_merci',
+      'flash_info', 'breaking_news',
+      'envato_presenter', 'envato_news', 'envato_big_title',
+      'envato_ticker', 'envato_split_screen',
     ].forEach((id) => expect(ids).toContain(id));
   });
 
