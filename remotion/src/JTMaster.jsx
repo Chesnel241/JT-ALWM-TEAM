@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, Series, OffthreadVideo, Audio, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Series, OffthreadVideo, Video, Audio, Sequence, useCurrentFrame, useVideoConfig, getRemotionEnvironment } from 'remotion';
 import { TransitionSeries, linearTiming } from '@remotion/transitions';
 import { fade } from '@remotion/transitions/fade';
 import { slide } from '@remotion/transitions/slide';
@@ -69,16 +69,32 @@ export function GlobalTimelineOverlays({ timelineOverlays }) {
 function ClipVideo({ clip }) {
   const { fps } = useVideoConfig();
   const hasExtraAudio = false; // l'audio du clip reste actif ; mix musique/voix par-dessus
+  // Composant vidéo selon l'environnement :
+  // - rendu worker (renderMedia) → OffthreadVideo : fetch/seek hors-thread,
+  //   bien moins de RAM/CPU, pas de frames noires/désync.
+  // - aperçu navigateur (@remotion/player) → Video : OffthreadVideo n'a pas
+  //   de serveur d'extraction de frames côté client et rend un écran noir.
+  //   crossOrigin requis pour que le <video> charge l'URL same-origin/CORS.
+  const isRendering = getRemotionEnvironment().isRendering;
+  const videoStyle = { width: '100%', height: '100%', objectFit: 'contain' };
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
-      {/* OffthreadVideo : Remotion gère le fetch/seek hors-thread → bien
-          moins de RAM/CPU et pas de frames noires/désync au rendu worker. */}
-      <OffthreadVideo
-        src={clip.url}
-        startFrom={secToFrames(clip.inPoint || 0, fps)}
-        muted={hasExtraAudio}
-        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-      />
+      {isRendering ? (
+        <OffthreadVideo
+          src={clip.url}
+          startFrom={secToFrames(clip.inPoint || 0, fps)}
+          muted={hasExtraAudio}
+          style={videoStyle}
+        />
+      ) : (
+        <Video
+          src={clip.url}
+          startFrom={secToFrames(clip.inPoint || 0, fps)}
+          muted={hasExtraAudio}
+          style={videoStyle}
+          crossOrigin="anonymous"
+        />
+      )}
       <ClipLayer clip={clip} />
     </AbsoluteFill>
   );
