@@ -658,7 +658,7 @@ export default function Timeline({ clips, setClips, timelineOverlays = [], setTi
                         pxPerSec={pxPerSec}
                         onRemove={removeClip}
                         onTrim={onTrimClip}
-                        onOverlay={onOverlayClip}
+                        onOverlay={() => onOverlayClip?.({ isTimelineOverlays: true, overlays: timelineOverlays })}
                         onKenBurns={cycleKenBurns}
                         onSubtitle={onSubtitleClip}
                         onOverlaysChange={updateClipOverlays}
@@ -691,7 +691,7 @@ export default function Timeline({ clips, setClips, timelineOverlays = [], setTi
                       clipDur={total || 1}
                       overlays={timelineOverlays}
                       onChange={(next) => setTimelineOverlays?.(next)}
-                      onOpen={() => onGlobalLayer?.()}
+                      onOpen={() => onOverlayClip?.({ isTimelineOverlays: true, overlays: timelineOverlays })}
                     />
                   ))}
                 </div>

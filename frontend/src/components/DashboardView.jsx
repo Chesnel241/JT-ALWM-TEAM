@@ -551,42 +551,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       return Math.max(0.3, (full || 5) - (clip.inPoint || 0));
     }));
 
-    let sequenceStartSec = 0;
-    let targetClipIndex = -1;
-    let targetLocalSec = 0;
-
-    for (let i = 0; i < timelineClips.length; i++) {
-      const clip = timelineClips[i];
-      const durSec = durations[i];
-      const overlapSec = (i < timelineClips.length - 1 && clip.transition) ? (clip.transition.duration || 0.5) : 0;
-      
-      const nextSequenceStartSec = sequenceStartSec + durSec - overlapSec;
-      
-      if (currentGlobalSec >= sequenceStartSec && currentGlobalSec < sequenceStartSec + durSec) {
-        targetClipIndex = i;
-        targetLocalSec = currentGlobalSec - sequenceStartSec;
-        break;
-      }
-      sequenceStartSec = nextSequenceStartSec;
-    }
-
-    if (targetClipIndex === -1) {
-      addToast('Aucune vidéo trouvée à cette position pour couper le texte.', 'error');
-      return;
-    }
-
-    const clip = timelineClips[targetClipIndex];
-    if (!clip.overlays || clip.overlays.length === 0) {
-      addToast('Aucun texte à couper sur ce clip.', 'error');
-      return;
-    }
-
-    const durSec = durations[targetClipIndex];
-    
-    const overlayIndex = clip.overlays.findIndex(o => {
+    const overlayIndex = timelineOverlays.findIndex(o => {
       const start = o.startTime || 0;
-      const oDur = o.duration ?? (durSec - start);
-      return targetLocalSec >= start && targetLocalSec < start + oDur;
+      const oDur = o.duration ?? 99999;
+      return currentGlobalSec >= start && currentGlobalSec < start + oDur;
     });
 
     if (overlayIndex === -1) {
@@ -594,26 +562,27 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       return;
     }
 
-    const o = clip.overlays[overlayIndex];
+    const o = timelineOverlays[overlayIndex];
     const start = o.startTime || 0;
-    const oDur = o.duration ?? (durSec - start);
+    const oDur = o.duration ?? 99999;
     
-    if (targetLocalSec - start < 0.1 || (start + oDur) - targetLocalSec < 0.1) {
+    if (currentGlobalSec - start < 0.1 || (oDur !== 99999 && (start + oDur) - currentGlobalSec < 0.1)) {
       addToast('Impossible de couper si près du bord.', 'error');
       return;
     }
 
-    const o1 = { ...o, duration: targetLocalSec - start };
-    const o2 = { ...o, startTime: targetLocalSec, duration: oDur - (targetLocalSec - start), id: Math.random().toString(36).slice(2) };
+    const o1 = { ...o, duration: currentGlobalSec - start };
+    const o2 = { 
+      ...o, 
+      startTime: currentGlobalSec, 
+      duration: oDur === 99999 ? null : oDur - (currentGlobalSec - start), 
+      id: Math.random().toString(36).slice(2) 
+    };
 
-    const newOverlays = [...clip.overlays];
+    const newOverlays = [...timelineOverlays];
     newOverlays.splice(overlayIndex, 1, o1, o2);
 
-    setTimelineClips(prev => {
-      const next = [...prev];
-      next[targetClipIndex] = { ...clip, overlays: newOverlays };
-      return next;
-    });
+    setTimelineOverlays(newOverlays);
 
     addToast('Texte coupé en deux !', 'success');
   };
