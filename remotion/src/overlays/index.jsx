@@ -123,9 +123,12 @@ function AccentSlash({ height = 60, color = ELEC, marginLeft = 8, slant = SLANT 
 // Position wrapper 1920x1080. Applies drag delta + slider offset.
 function Box({ overlay, style, children }) {
   const { dx, dy } = shift(overlay);
-  const posX = overlay.posX || 0;
-  const posY = overlay.posY || 0;
-  const scale = (overlay.scale ?? 100) / 100;
+  const rawX = Number(overlay.posX);
+  const rawY = Number(overlay.posY);
+  const rawS = Number(overlay.scale);
+  const posX = isNaN(rawX) ? 0 : rawX;
+  const posY = isNaN(rawY) ? 0 : rawY;
+  const scale = (isNaN(rawS) ? 100 : rawS) / 100;
   
   const customTransform = `translate(${px(dx + posX)}, ${px(dy + posY)}) scale(${scale})`;
   
