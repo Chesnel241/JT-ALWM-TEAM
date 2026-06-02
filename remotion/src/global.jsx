@@ -21,8 +21,8 @@ export function Ticker({ ticker }) {
   const py = ticker.posY || 0;
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, background: COL.ticker, display: 'flex', alignItems: 'center', overflow: 'hidden', transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'bottom left', borderTop: `2px solid ${COL.light}33` }}>
-      <span style={{ height: '100%', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-        <Img src={staticFile('habillage-logo.png')} style={{ height: '100%', objectFit: 'contain' }} />
+      <span style={{ width: 160, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Img src={staticFile('habillage-logo.png')} style={{ height: '350%', objectFit: 'contain' }} />
       </span>
       {ticker.categorie && (
         <span style={{ background: COL.white, color: COL.blue, fontWeight: 700, height: '100%', display: 'flex', alignItems: 'center', padding: '0 18px', flexShrink: 0, fontFamily: ff(null, "'Montserrat Bold', sans-serif"), fontSize: 26, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{ticker.categorie}</span>
