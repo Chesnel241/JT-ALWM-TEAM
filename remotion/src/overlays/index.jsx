@@ -892,15 +892,15 @@ function FinMerci({ overlay, durationInFrames }) {
         <div style={{
           opacity: textOp,
           fontSize: `${fs * 56}px`, fontFamily: fontM, fontWeight: 500,
-          color: COL.white, letterSpacing: '0.02em',
+          color: C.colorTextMain || COL.white, letterSpacing: '0.02em',
           textShadow: '0 10px 24px rgba(0,0,0,0.5)',
         }}>
-          {f.texte || 'Merci de votre fidélité'}
+          {f.titre || f.texte || 'Merci de votre fidélité'}
         </div>
-        <div style={{ width: 2, height: 90, background: 'rgba(74,163,255,0.5)', opacity: logoOp }} />
+        <div style={{ width: 2, height: 90, background: C.colorAccent || 'rgba(74,163,255,0.5)', opacity: logoOp }} />
         <div style={{ opacity: logoOp, transform: `scale(${logoScale})`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <Img src={staticFile('images/alwm-logo.png')} style={{ width: 320, objectFit: 'contain', filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.6))' }} />
-          <div style={{ fontFamily: fontM, fontWeight: 500, fontSize: `${fs * 22}px`, color: COL.light, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+          <div style={{ fontFamily: fontM, fontWeight: 500, fontSize: `${fs * 22}px`, color: C.colorTextAccent || COL.light, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
             {f.sous_titre || "L'ACTUALITÉ EN CONTINU"}
           </div>
         </div>
