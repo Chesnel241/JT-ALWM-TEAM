@@ -135,17 +135,20 @@ function GrandTitre({ overlay, durationInFrames }) {
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1, perspective: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        background: C.bg(COL.navy),
+        background: `radial-gradient(ellipse at center, ${COL.blue} 0%, ${C.bg(COL.navy)} 100%)`,
         transform: `scale(${bgScale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
         transformStyle: 'preserve-3d',
         overflow: 'hidden',
         zIndex: 1
       }}>
-         {/* Light sweep */}
+         {/* Globe filaire animé (identité ALWM TV) */}
+         <WorldMap rotateSpeed={0.18} opacity={0.4} color={COL.light} glow={COL.blue} />
+         {/* Light sweep par-dessus */}
          <div style={{
            position: 'absolute', top: 0, bottom: 0, width: '40%',
-           background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent)',
-           transform: `translateX(${lightPos}%) skewX(-20deg)`
+           background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent)',
+           transform: `translateX(${lightPos}%) skewX(-20deg)`,
+           zIndex: 2,
          }} />
       </div>
 
@@ -297,33 +300,54 @@ function RappelTitres({ overlay, durationInFrames }) {
   const outOpacity = interpolate(outFrame, [0, 20], [1, 0]);
 
   return (
-    <Box overlay={overlay} style={{ left: 150, top: 250, opacity: isOut ? outOpacity : 1 }}>
-      {titres.map((titre, i) => {
-        const delay = Math.round(fps * 0.2) * i;
-        const itemFrame = Math.max(0, frame - delay);
-        const slideIn = spring({ frame: itemFrame, fps, config: { damping: 14 } });
-        const x = interpolate(slideIn, [0, 1], [-150, 0]);
-        const opacity = interpolate(slideIn, [0, 1], [0, 1]);
-        
-        return (
-          <div key={i} style={{
-            transform: `translateX(${x}px)`,
-            opacity,
-            background: C.bg('rgba(0, 14, 51, 0.9)'),
-            color: C.text(COL.white),
-            padding: '24px 40px',
-            fontSize: 44,
-            fontFamily: 'Inter',
-            fontWeight: 800,
-            borderLeft: `10px solid ${C.accent(COL.gold)}`,
-            marginBottom: 24,
-            boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
-            maxWidth: 1200
-          }}>
-            {titre}
-          </div>
-        );
-      })}
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1 }}>
+      {/* Fond brand ALWM : dégradé marine + globe filaire en transparence */}
+      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${C.bg(COL.navy)} 0%, ${COL.blue} 100%)`, zIndex: 0 }} />
+      <WorldMap rotateSpeed={0.12} opacity={0.35} color={COL.light} glow={COL.blue} />
+      {/* Liste des titres */}
+      <div style={{ position: 'absolute', left: 150, top: 250, zIndex: 2 }}>
+        {titres.map((titre, i) => {
+          const delay = Math.round(fps * 0.2) * i;
+          const itemFrame = Math.max(0, frame - delay);
+          const slideIn = spring({ frame: itemFrame, fps, config: { damping: 14 } });
+          const x = interpolate(slideIn, [0, 1], [-150, 0]);
+          const opacity = interpolate(slideIn, [0, 1], [0, 1]);
+          const numStr = String(i + 1).padStart(2, '0');
+
+          return (
+            <div key={i} style={{
+              transform: `translateX(${x}px)`,
+              opacity,
+              display: 'flex',
+              alignItems: 'stretch',
+              background: 'rgba(255,255,255,0.97)',
+              color: C.text(COL.navy),
+              fontSize: 44,
+              fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
+              fontWeight: 700,
+              marginBottom: 24,
+              boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
+              maxWidth: 1280,
+              overflow: 'hidden',
+              borderRadius: 4,
+            }}>
+              {/* Pastille numérotée bleu électrique (charte) */}
+              <div style={{
+                background: C.accent(COL.blue),
+                color: COL.white,
+                padding: '16px 22px',
+                fontFamily: ff(overlay.font, "'Montserrat Bold', sans-serif"),
+                fontWeight: 700,
+                fontSize: 44,
+                letterSpacing: '0.05em',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                minWidth: 100,
+              }}>{numStr}</div>
+              <div style={{ padding: '20px 32px', display: 'flex', alignItems: 'center' }}>{titre}</div>
+            </div>
+          );
+        })}
+      </div>
     </Box>
   );
 }
