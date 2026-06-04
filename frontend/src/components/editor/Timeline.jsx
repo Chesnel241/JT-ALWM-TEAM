@@ -111,13 +111,16 @@ function TransitionPicker({ value, onChange }) {
   const active = value && value !== 'none';
   return (
     <div className="flex flex-col items-center gap-1 shrink-0" title="Transition vers le clip suivant">
-      <ChevronRight size={16} className={active ? 'text-[var(--accent)]' : 'text-[color:var(--muted)]'} />
+      <ChevronRight size={18} className={active ? 'text-[var(--accent)]' : 'text-[color:var(--muted)]'} aria-hidden="true" />
+      <label className="sr-only" htmlFor={`transition-${value || 'none'}`}>Transition vers le clip suivant</label>
       <select
+        id={`transition-${value || 'none'}`}
         value={value || 'none'}
         onChange={(e) => onChange(e.target.value)}
-        className={`text-[10px] rounded-md border px-1 py-1 bg-[var(--paper)] focus:outline-none ${
-          active ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--border)] text-[color:var(--muted)]'
+        className={`text-xs font-medium rounded-md border px-2 py-1.5 bg-[var(--paper)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] transition-colors ${
+          active ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--border)] text-[color:var(--ink)]'
         }`}
+        aria-label="Choisir la transition vers le clip suivant"
       >
         {TRANSITIONS.map((t) => (
           <option key={t.id} value={t.id}>{t.label}</option>
@@ -196,19 +199,39 @@ function OverlayBlock({ overlay, index, clipDur, overlays, onChange, onOpen }) {
   return (
     <div
       onPointerDown={startDrag('move')}
-      className="absolute top-1 bottom-1 bg-[var(--accent)]/85 hover:bg-[var(--accent)] border border-[var(--accent)]/60 rounded-sm cursor-grab active:cursor-grabbing transition-colors shadow-sm flex items-center group/ov"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
+      className="absolute top-1 bottom-1 bg-[var(--accent)]/90 hover:bg-[var(--accent)] border border-[var(--accent)] rounded-md cursor-grab active:cursor-grabbing transition-colors shadow-sm flex items-center group/ov focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1"
       style={{ left: `${left}%`, width: `${width}%`, touchAction: 'none' }}
-      title={`${label} — glisser pour déplacer, poignées pour rogner`}
+      title={`${label} — glisser pour déplacer, poignées pour rogner, Entrée pour éditer`}
+      aria-label={`Overlay ${label}, début ${startTime.toFixed(1)}s, durée ${dur.toFixed(1)}s`}
     >
       {/* poignée gauche (trim début) */}
-      <div onPointerDown={startDrag('left')} className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/30 hover:bg-white/70 rounded-l-sm" style={{ touchAction: 'none' }} />
-      <div className="text-[9px] text-white truncate px-2 font-medium w-full pointer-events-none">{label}</div>
+      <div onPointerDown={startDrag('left')} aria-label="Rogner le début de l'overlay" role="separator" className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/50 hover:bg-white/90 rounded-l-md" style={{ touchAction: 'none' }} />
+      <div className="text-[11px] text-white truncate px-2.5 font-semibold w-full pointer-events-none">{label}</div>
       {/* poignée droite (trim durée) */}
-      <div onPointerDown={startDrag('right')} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-white/30 hover:bg-white/70 rounded-r-sm" style={{ touchAction: 'none' }} />
-      {/* actions au survol : dupliquer / supprimer */}
-      <div className="absolute -top-3 right-0 hidden group-hover/ov:flex gap-0.5 z-10">
-        <button onPointerDown={(e) => e.stopPropagation()} onClick={duplicate} title="Dupliquer" className="w-4 h-4 flex items-center justify-center rounded bg-[var(--paper)] border border-[var(--border)] text-[8px] text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white">⧉</button>
-        <button onPointerDown={(e) => e.stopPropagation()} onClick={remove} title="Supprimer" className="w-4 h-4 flex items-center justify-center rounded bg-[var(--paper)] border border-[var(--border)] text-[8px] text-[color:var(--signal)] hover:bg-[var(--signal)] hover:text-white">✕</button>
+      <div onPointerDown={startDrag('right')} aria-label="Rogner la fin de l'overlay" role="separator" className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/50 hover:bg-white/90 rounded-r-md" style={{ touchAction: 'none' }} />
+      {/* actions toujours visibles si la largeur le permet, sinon au survol */}
+      <div className="absolute -top-3.5 right-0 flex gap-0.5 z-10 opacity-0 group-hover/ov:opacity-100 focus-within:opacity-100 transition-opacity">
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={duplicate}
+          title="Dupliquer cet overlay"
+          aria-label="Dupliquer cet overlay"
+          className="w-6 h-6 flex items-center justify-center rounded-md bg-[var(--paper)] border border-[var(--border)] text-xs text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] shadow-sm"
+        >
+          ⧉
+        </button>
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={remove}
+          title="Supprimer cet overlay"
+          aria-label="Supprimer cet overlay"
+          className="w-6 h-6 flex items-center justify-center rounded-md bg-[var(--paper)] border border-[var(--border)] text-xs text-[color:var(--signal)] hover:bg-[var(--signal)] hover:text-white hover:border-[var(--signal)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)] shadow-sm"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );
@@ -315,8 +338,8 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
       className={`group relative flex flex-col overflow-visible shrink-0 transition-shadow`}
     >
       {/* Label du clip (nom + durée) - Détaché au dessus */}
-      <div className="text-[10px] text-[color:var(--muted)] font-medium mb-1 truncate px-1 pointer-events-none select-none">
-        {clip.name} <span className="opacity-70">({fmtTime(dur)})</span>
+      <div className="text-xs text-[color:var(--ink)] font-semibold mb-1.5 truncate px-1 pointer-events-none select-none">
+        {clip.name} <span className="font-mono tabular-nums text-[color:var(--muted)] ml-1">({fmtTime(dur)})</span>
       </div>
 
       <div className={`relative flex flex-col justify-center h-16 bg-[var(--paper)] border ${
@@ -344,80 +367,88 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
           aria-label={`Réordonner le clip ${clip.name}`}
         />
 
-        {/* Poignée trim gauche */}
+        {/* Poignée trim gauche — visible en permanence (opacité douce), pleine au survol/focus */}
         {onClipResize && (
           <div
             onPointerDown={startEdgeDrag('left')}
             role="separator"
+            tabIndex={0}
             aria-label="Rogner début du clip"
             title="Glisser pour rogner le début"
-            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-[var(--accent)]/20 hover:bg-[var(--accent)]/90 z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute left-0 top-0 bottom-0 w-3.5 cursor-ew-resize bg-[var(--accent)]/40 hover:bg-[var(--accent)] focus:bg-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] z-30 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity"
             style={{ touchAction: 'none' }}
           >
-            <div className="w-1 h-4 bg-white/80 rounded-full pointer-events-none" />
+            <div className="w-1 h-5 bg-white rounded-full pointer-events-none" />
           </div>
         )}
-        
+
         {/* Poignée trim droite */}
         {onClipResize && (
           <div
             onPointerDown={startEdgeDrag('right')}
             role="separator"
+            tabIndex={0}
             aria-label="Rogner fin du clip"
             title="Glisser pour rogner la fin"
-            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-[var(--accent)]/20 hover:bg-[var(--accent)]/90 z-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute right-0 top-0 bottom-0 w-3.5 cursor-ew-resize bg-[var(--accent)]/40 hover:bg-[var(--accent)] focus:bg-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] z-30 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity"
             style={{ touchAction: 'none' }}
           >
-            <div className="w-1 h-4 bg-white/80 rounded-full pointer-events-none" />
+            <div className="w-1 h-5 bg-white rounded-full pointer-events-none" />
           </div>
         )}
       </div>
 
-      {/* Floating Toolbar (apparaît au hover ou si actif) */}
-      <div 
-        className={`absolute top-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[var(--paper)] p-1 rounded-xl border border-[var(--border)] shadow-lg z-50 transition-all duration-200 ${
-          isHovered || isActive ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-2 invisible pointer-events-none'
+      {/* Toolbar du clip — toujours visible (pas seulement au survol) pour
+          accessibilité clavier + tablette. Élévation accrue si survolé/actif. */}
+      <div
+        role="toolbar"
+        aria-label={`Actions pour le clip ${clip.name}`}
+        className={`mt-2 flex items-center justify-center gap-0.5 bg-[var(--paper)] p-1 rounded-xl border shadow-sm transition-shadow ${
+          isHovered || isActive ? 'border-[var(--accent)]/60 shadow-md' : 'border-[var(--border)]'
         }`}
       >
         <button
           onClick={(e) => { e.stopPropagation(); onTrim(clip); }}
-          aria-label="Modifier le trim"
-          className="p-1.5 text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-lg transition-colors"
+          aria-label="Modifier le rognage du clip"
+          className="min-w-[36px] min-h-[36px] p-2 text-[color:var(--ink)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-lg transition-colors"
           title="Modifier le Trim"
         >
-          <Pencil size={14} />
+          <Pencil size={16} aria-hidden="true" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onOverlay(clip); }}
-          aria-label="Animations & habillage"
-          className={`p-1.5 rounded-lg transition-colors ${(clip.overlays?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
+          aria-label={`Animations et habillage ${(clip.overlays?.length ?? 0) > 0 ? `(${clip.overlays.length} actif${clip.overlays.length > 1 ? 's' : ''})` : ''}`}
+          aria-pressed={(clip.overlays?.length ?? 0) > 0}
+          className={`min-w-[36px] min-h-[36px] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${(clip.overlays?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/15' : 'text-[color:var(--ink)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
           title="Animations & Habillage"
         >
-          <Layers size={14} />
+          <Layers size={16} aria-hidden="true" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onKenBurns(clip.instanceId || clip.id); }}
-          aria-label={`Zoom lent Ken Burns`}
-          className={`p-1.5 rounded-lg transition-colors ${clip.kenBurns?.mode ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
+          aria-label={`Zoom lent Ken Burns ${clip.kenBurns?.mode ? `actif (${clip.kenBurns.mode})` : 'inactif'}`}
+          aria-pressed={!!clip.kenBurns?.mode}
+          className={`min-w-[36px] min-h-[36px] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${clip.kenBurns?.mode ? 'text-[var(--accent)] bg-[var(--accent)]/15' : 'text-[color:var(--ink)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
           title="Zoom lent (Ken Burns)"
         >
-          <ZoomIn size={14} />
+          <ZoomIn size={16} aria-hidden="true" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onSubtitle(clip); }}
-          aria-label={`Sous-titres auto`}
-          className={`p-1.5 rounded-lg transition-colors ${(clip.subtitles?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[color:var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
+          aria-label={`Sous-titres ${(clip.subtitles?.length ?? 0) > 0 ? `(${clip.subtitles.length} actif${clip.subtitles.length > 1 ? 's' : ''})` : 'auto'}`}
+          aria-pressed={(clip.subtitles?.length ?? 0) > 0}
+          className={`min-w-[36px] min-h-[36px] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${(clip.subtitles?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/15' : 'text-[color:var(--ink)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
           title="Sous-titres auto"
         >
-          <Captions size={14} />
+          <Captions size={16} aria-hidden="true" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onRemove(clip.instanceId || clip.id); }}
-          aria-label="Retirer de la timeline"
-          className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
+          aria-label={`Retirer le clip ${clip.name} de la timeline`}
+          className="min-w-[36px] min-h-[36px] p-2 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)] rounded-lg transition-colors"
           title="Retirer de la Timeline"
         >
-          <Trash2 size={14} />
+          <Trash2 size={16} aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -541,32 +572,36 @@ export default function Timeline({ clips, setClips, timelineOverlays = [], setTi
             </span>
           )}
         </h3>
-        <div className="flex items-center gap-3" role="toolbar" aria-label="Actions de montage">
+        <div className="flex items-center gap-2 flex-wrap" role="toolbar" aria-label="Actions de montage">
           {onPreview && clips.length > 0 && (
             <button
               onClick={onPreview}
-              className="text-sm px-3 py-2 rounded-lg border border-[var(--border)] text-[color:var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors flex items-center gap-2"
+              className="text-sm font-medium px-3 py-2 min-h-[40px] rounded-lg border border-[var(--border)] text-[color:var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] transition-colors flex items-center gap-2"
               title="Aperçu temps réel avant l'assemblage"
+              aria-label="Afficher l'aperçu temps réel"
             >
-              <Eye size={16} /> Aperçu
+              <Eye size={16} aria-hidden="true" /> Aperçu
             </button>
           )}
           {onSplitText && clips.length > 0 && (
             <button
               onClick={onSplitText}
-              className="text-sm px-3 py-2 rounded-lg border border-[var(--border)] text-[color:var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors flex items-center gap-2"
+              className="text-sm font-medium px-3 py-2 min-h-[40px] rounded-lg border border-[var(--border)] text-[color:var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] transition-colors flex items-center gap-2"
               title="Couper le texte actif au niveau du curseur"
+              aria-label="Couper le texte actif au curseur"
             >
-              <Scissors size={16} /> Couper Texte
+              <Scissors size={16} aria-hidden="true" /> Couper Texte
             </button>
           )}
           {onGlobalLayer && (
             <button
               onClick={onGlobalLayer}
-              className={`text-sm px-3 py-2 rounded-lg transition-colors flex items-center gap-2 border ${brandingActive ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border)] text-[color:var(--muted)] hover:text-[var(--accent)]'}`}
+              aria-pressed={!!brandingActive}
+              className={`text-sm font-medium px-3 py-2 min-h-[40px] rounded-lg transition-colors flex items-center gap-2 border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${brandingActive ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border)] text-[color:var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)]'}`}
               title="Habillage JT (ticker, LIVE, logo)"
+              aria-label={`Habillage JT ${brandingActive ? 'actif' : 'inactif'}`}
             >
-              <Newspaper size={16} /> Habillage JT
+              <Newspaper size={16} aria-hidden="true" /> Habillage JT
             </button>
           )}
           {clips.length > 0 && (
@@ -576,24 +611,27 @@ export default function Timeline({ clips, setClips, timelineOverlays = [], setTi
                   setClips([]);
                 }
               }}
-              className="text-sm text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+              className="text-sm font-medium text-[color:var(--ink)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 px-3 py-2 min-h-[40px] rounded-lg border border-[var(--border)] hover:border-[var(--signal)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)] transition-colors flex items-center gap-2"
+              aria-label="Vider entièrement la timeline"
             >
-              <Trash2 size={16} /> Vider la timeline
+              <Trash2 size={16} aria-hidden="true" /> Vider
             </button>
           )}
           <button
             onClick={onGenerate}
             disabled={clips.length === 0 || isGenerating}
-            className="btn btn-primary py-2 px-4 text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-primary py-2 px-4 min-h-[40px] text-sm font-semibold flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label={isGenerating ? 'Assemblage du Master en cours' : 'Générer le Master final'}
+            aria-busy={isGenerating}
           >
             {isGenerating ? (
               <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
                 Assemblage en cours...
               </span>
             ) : (
               <>
-                <Video size={16} /> Générer la vidéo
+                <Video size={16} aria-hidden="true" /> Générer le Master
               </>
             )}
           </button>
@@ -602,19 +640,25 @@ export default function Timeline({ clips, setClips, timelineOverlays = [], setTi
 
       {/* Slider de zoom horizontal (px par seconde). Persistant localStorage. */}
       {clips.length > 0 && (
-        <div className="flex items-center gap-2 text-xs text-[color:var(--muted)] -mb-2">
-          <span>Zoom</span>
+        <div className="flex items-center gap-3 text-xs text-[color:var(--ink)] font-medium -mb-1">
+          <label htmlFor="timeline-zoom" className="flex items-center gap-1.5 cursor-pointer">
+            <ZoomIn size={14} aria-hidden="true" /> Zoom
+          </label>
           <input
+            id="timeline-zoom"
             type="range"
             min="20"
             max="160"
             step="10"
             value={pxPerSec}
             onChange={(e) => setPxPerSec(Number(e.target.value))}
-            className="w-32 accent-[var(--accent)]"
+            className="w-40 accent-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded"
             aria-label={`Zoom horizontal de la timeline, ${pxPerSec} pixels par seconde`}
+            aria-valuemin={20}
+            aria-valuemax={160}
+            aria-valuenow={pxPerSec}
           />
-          <span className="tabular-nums">{pxPerSec} px/s</span>
+          <span className="tabular-nums font-mono text-[color:var(--muted)]">{pxPerSec} px/s</span>
         </div>
       )}
 
@@ -678,12 +722,14 @@ export default function Timeline({ clips, setClips, timelineOverlays = [], setTi
                 </div>
 
                 {/* Piste globale pour les overlays (titres, habillages, etc.) */}
-                <div 
-                  data-text-track 
-                  className="global-text-track relative mt-4 h-10 bg-[var(--paper-2)]/50 rounded-lg border border-[var(--border)] flex items-center group"
+                <div
+                  data-text-track
+                  role="region"
+                  aria-label="Piste des overlays texte"
+                  className="global-text-track relative mt-6 h-12 bg-[var(--paper-2)] rounded-lg border border-[var(--border)] flex items-center group"
                   style={{ width: `${total * pxPerSec}px` }}
                 >
-                  <div className="absolute inset-0 flex items-center px-3 text-[10px] text-[color:var(--muted)] uppercase font-bold tracking-wider pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 flex items-center px-3 text-xs text-[color:var(--ink)] uppercase font-bold tracking-wider pointer-events-none bg-gradient-to-r from-[var(--paper-2)] via-[var(--paper-2)] to-transparent z-0 rounded-l-lg">
                     Piste Texte
                   </div>
                   {timelineOverlays.map((o, i) => (
