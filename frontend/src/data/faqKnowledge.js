@@ -34,8 +34,12 @@ const faqKnowledge = {
       answer: "Pour voir ou télécharger le JT finalisé, rendez-vous dans l'onglet **'JT Prêt'** en haut de la page. Les monteurs y déposent la version finale qui est accessible à tous."
     },
     {
-      keywords: ['script', 'texte', 'voix off', 'notes', 'écrire'],
+      keywords: ['script', 'texte', 'notes', 'écrire'],
       answer: "Dans votre Espace Reportages, vous avez un champ texte 'Saisir un script rapidement'. Vous pouvez y coller directement votre texte de voix off ou vos notes pour le monteur, puis cliquer sur 'Ajouter le script'."
+    },
+    {
+      keywords: ['studio', 'voix off', 'enregistrer', 'enregistrement', 'micro', 'microphone', 'parler', 'studio voix'],
+      answer: "L'onglet **Studio Voix Off** vous permet d'enregistrer votre voix off directement dans le navigateur :\n1. Choisissez la semaine puis votre pays.\n2. Renseignez le titre du reportage (obligatoire).\n3. Préparez votre texte dans la zone de script si besoin.\n4. Cliquez sur le micro pour démarrer l'enregistrement — un visualiseur affiche votre voix en direct.\n5. Réécoutez, puis envoyez : une compression de studio professionnelle est appliquée automatiquement avant l'envoi aux monteurs."
     },
     {
       keywords: ['supprimer', 'effacer', 'erreur', 'trompé', 'mauvais fichier'],
@@ -84,8 +88,12 @@ const faqKnowledge = {
       answer: "To view or download the final newscast, go to the **'Final Cut'** tab at the top of the page. The editors upload the final version there, accessible to everyone."
     },
     {
-      keywords: ['script', 'text', 'voice over', 'notes', 'write'],
+      keywords: ['script', 'text', 'notes', 'write'],
       answer: "In your Reports Space, there is a 'Quick script entry' text box. You can paste your voice-over text or notes for the editor directly there, then click 'Add script'."
+    },
+    {
+      keywords: ['studio', 'voice over', 'voiceover', 'record', 'recording', 'mic', 'microphone', 'speak', 'voice studio'],
+      answer: "The **Voice-Over Studio** tab lets you record your voice-over right in the browser:\n1. Pick the week, then your country.\n2. Enter the report title (required).\n3. Prepare your text in the script area if needed.\n4. Click the mic to start recording — a live visualizer shows your voice.\n5. Play it back, then send: professional studio compression is applied automatically before delivery to the editors."
     },
     {
       keywords: ['delete', 'erase', 'error', 'mistake', 'wrong file'],
