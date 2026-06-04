@@ -222,14 +222,27 @@ export function buildRemotionPayload(clips, opts) {
   }
   for (const g of opts.globalOverlays || []) {
     if (g.templateId === 'ticker') {
+      // Propage posX/posY/scale + colors → le ticker doit être déplaçable
+      // et recolorable comme tout overlay.
       branding.ticker = {
         enabled: true,
         categorie: g.fields?.categorie || '',
         texte: g.fields?.texte || '',
         speed: Number(g.fields?.speed) || 3,
+        posX: g.posX,
+        posY: g.posY,
+        scale: g.scale,
+        colors: g.colors,
       };
     } else if (g.templateId === 'live_badge') {
-      branding.live = { enabled: true, label: g.fields?.label || 'LIVE' };
+      branding.live = {
+        enabled: true,
+        label: g.fields?.label || 'LIVE',
+        posX: g.posX,
+        posY: g.posY,
+        scale: g.scale,
+        colors: g.colors,
+      };
     }
   }
   

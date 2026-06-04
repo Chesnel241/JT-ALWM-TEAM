@@ -98,8 +98,16 @@ router.post(
     body('clips.*.overlays.*.colors.text').optional().matches(/^#[0-9a-fA-F]{6}$/),
     body('clips.*.overlays.*.colors.bg').optional().matches(/^#[0-9a-fA-F]{6}$/),
     body('clips.*.overlays.*.colors.accent').optional().matches(/^#[0-9a-fA-F]{6}$/),
-    body('clips.*.overlays.*.position.x').optional().isFloat({ min: 0, max: 1920 }),
-    body('clips.*.overlays.*.position.y').optional().isFloat({ min: 0, max: 1080 }),
+    body('clips.*.overlays.*.position.x').optional().isFloat({ min: -1920, max: 3840 }),
+    body('clips.*.overlays.*.position.y').optional().isFloat({ min: -1080, max: 2160 }),
+    // Champs posX/posY/scale/animationLoop/animationOut envoyés par l'UI
+    // (sliders/drag). Sans règle, isFloat sur d'autres clés ne strippe pas
+    // mais une valeur aberrante (NaN, string) corromprait le rendu. Bornes
+    // larges pour autoriser le drag hors-cadre et le zoom.
+    body('clips.*.overlays.*.posX').optional().isFloat({ min: -1920, max: 1920 }),
+    body('clips.*.overlays.*.posY').optional().isFloat({ min: -1080, max: 1080 }),
+    body('clips.*.overlays.*.animationLoop').optional().isString().isLength({ max: 40 }),
+    body('clips.*.overlays.*.animationOut').optional().isString().isLength({ max: 40 }),
     body('clips.*.subtitles').optional().isArray(),
     body('clips.*.subtitles.*.text').optional().isString().isLength({ max: 300 }),
     body('clips.*.subtitles.*.start').optional().isFloat({ min: 0 }),
@@ -144,6 +152,22 @@ router.post(
     body('globalOverlays.*.font').optional().isString().isLength({ max: 40 }),
     body('globalOverlays.*.fontSize').optional().isFloat({ min: 10, max: 500 }),
     body('globalOverlays.*.lineHeight').optional().isFloat({ min: 10, max: 500 }),
+    // Personnalisation overlays globaux (idem clip.overlays) — sans ça les
+    // sliders posX/posY/scale et les color-pickers seraient ignorés sur
+    // les overlays globaux (ticker, live_badge, overlays timeline globale).
+    body('globalOverlays.*.scale').optional().isFloat({ min: 10, max: 500 }),
+    body('globalOverlays.*.posX').optional().isFloat({ min: -1920, max: 1920 }),
+    body('globalOverlays.*.posY').optional().isFloat({ min: -1080, max: 1080 }),
+    body('globalOverlays.*.startTime').optional().isFloat({ min: 0, max: 36000 }),
+    body('globalOverlays.*.duration').optional().isFloat({ min: 0.1, max: 36000 }),
+    body('globalOverlays.*.animation').optional().isIn(TEXT_ANIMATIONS_IDS),
+    body('globalOverlays.*.animationLoop').optional().isString().isLength({ max: 40 }),
+    body('globalOverlays.*.animationOut').optional().isString().isLength({ max: 40 }),
+    body('globalOverlays.*.colors.text').optional().matches(/^#[0-9a-fA-F]{6}$/),
+    body('globalOverlays.*.colors.bg').optional().matches(/^#[0-9a-fA-F]{6}$/),
+    body('globalOverlays.*.colors.accent').optional().matches(/^#[0-9a-fA-F]{6}$/),
+    body('globalOverlays.*.outline').optional().isFloat({ min: 0, max: 6 }),
+    body('globalOverlays.*.glow').optional().isFloat({ min: 0, max: 10 }),
     body('music.filename').optional().isString().notEmpty(),
     body('music.volume').optional().isFloat({ min: 0, max: 1 }),
     body('voiceover.filename').optional().isString().notEmpty(),
