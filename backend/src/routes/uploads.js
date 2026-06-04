@@ -569,6 +569,14 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
   if (!isValidWeek(weekId)) {
     return next(createErrors.notFound('Week'));
   }
+  // Chutier `mj` (Mot du JT) réservé à l'équipe montage : admin requis,
+  // même via la route voix-off (sinon n'importe quel pays peut polluer).
+  if (countryId === 'mj') {
+    const provided = req.header('x-admin-password') || req.query.adminPassword;
+    if (!ADMIN_PASSWORD || !safeEqual(provided, ADMIN_PASSWORD)) {
+      return next(createErrors.forbidden('Accès admin requis pour la rubrique Mot du JT.'));
+    }
+  }
 
   // Allow custom countries too
   const customCountries = getCustomCountries();
@@ -610,13 +618,13 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     const audioFilename = `${uuidv4()}-${safeTitle}-Voix.mp3`;
     const scriptFilename = `${uuidv4()}-${safeTitle}-Script.txt`;
     
-    finalAudioPath = path.join(uploadsDir, weekId, countryId, audioFilename);
-    scriptPath = path.join(uploadsDir, weekId, countryId, scriptFilename);
+    // Flat layout = même chemin que les autres uploads → getFileMetadata
+    // matche par basename, safeFilename (editorService) n'explose pas sur '/'.
+    finalAudioPath = path.join(uploadsDir, audioFilename);
+    scriptPath = path.join(uploadsDir, scriptFilename);
 
-    // Ensure directory exists
-    const dir = path.join(uploadsDir, weekId, countryId);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    if (!existsSync(uploadsDir)) {
+      mkdirSync(uploadsDir, { recursive: true });
     }
 
     // Process audio via FFmpeg
@@ -637,7 +645,7 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     const audioFileMeta = {
       id: uuidv4(),
       name: `${reportageTitle} - Voix (Studio).mp3`,
-      filename: `${weekId}/${countryId}/${audioFilename}`,
+      filename: audioFilename,
       size: `${(statSync(finalAudioPath).size / (1024 * 1024)).toFixed(2)} MB`,
       type: 'audio',
       uploadedAt: new Date().toISOString(),
@@ -652,7 +660,7 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
       scriptFileMeta = {
         id: uuidv4(),
         name: `${reportageTitle} - Script.txt`,
-        filename: `${weekId}/${countryId}/${scriptFilename}`,
+        filename: scriptFilename,
         size: `${statSync(scriptPath).size} octets`,
         type: 'script',
         uploadedAt: new Date().toISOString(),

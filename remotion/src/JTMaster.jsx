@@ -160,19 +160,13 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
           logoPosition={branding.logoPosition} 
           logoPosX={branding.logoPosX} 
           logoPosY={branding.logoPosY} 
-          logoScale={branding.logoScale} 
-          tickerOn={tickerOn} 
+          logoScale={branding.logoScale}
+          tickerOn={tickerOn}
         />
-        {(branding.overlays || []).map((o, i) => {
-          const fps = FPS;
-          const start = Math.max(0, secToFrames(o.startTime || 0, fps));
-          const dur = o.duration != null ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
-          return (
-            <Sequence key={`g-ov-${i}`} from={start} durationInFrames={dur}>
-              <Overlay overlay={o} fps={fps} durationInFrames={dur} clipDurationSec={Number.MAX_VALUE} />
-            </Sequence>
-          );
-        })}
+        {/* Les overlays globaux texte sont rendus via <GlobalTimelineOverlays>
+            au-dessus. branding.overlays serait toujours vide post-fix
+            buildRemotionPayload — on évite la passe duplicate qui doublait
+            l'habillage si jamais un consommateur peuplait les deux. */}
       </Stage>
 
       {/* Mix audio (en plus de l'audio des clips) */}
