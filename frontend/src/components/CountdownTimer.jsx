@@ -95,7 +95,11 @@ export default function CountdownTimer({ week }) {
             <h2 className="text-xl font-bold text-[color:var(--ink)] mb-2">
               {t.countdown.normalTitle}
             </h2>
-            <p className="text-[color:var(--muted)]" dangerouslySetInnerHTML={{ __html: t.countdown.normalDesc }} />
+            <p className="text-[color:var(--muted)]">
+              {t.countdown.normalDesc.before}
+              <strong className="text-[color:var(--ink)]">{t.countdown.normalDesc.bold}</strong>
+              {t.countdown.normalDesc.after}
+            </p>
           </>
         )}
       </div>
