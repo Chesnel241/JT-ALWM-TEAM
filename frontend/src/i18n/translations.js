@@ -163,7 +163,11 @@ export const translations = {
       lateTitle: 'VOUS êtes en retard, le JT est finalisé',
       lateDesc: 'La date limite d\'envoi pour cette semaine (Dimanche 17h30) est dépassée. Vos envois seront tout de même traités si nécessaire.',
       normalTitle: 'Délai de soumission',
-      normalDesc: 'Le JT doit être finalisé avant <strong className="text-[color:var(--ink)]">Dimanche 17h30</strong>. Le compteur ci-contre vous indique le temps restant pour uploader vos sujets sereinement.',
+      normalDesc: {
+        before: 'Le JT doit être finalisé avant ',
+        bold: 'Dimanche 17h30',
+        after: '. Le compteur ci-contre vous indique le temps restant pour uploader vos sujets sereinement.',
+      },
     },
     login: {
       instruction: 'Veuillez entrer le mot de passe global pour accéder à la plateforme.',
@@ -415,7 +419,11 @@ export const translations = {
       lateTitle: 'YOU are late, the broadcast is finalized',
       lateDesc: 'The submission deadline for this week (Sunday 5:30 PM) has passed. Your uploads will still be processed if necessary.',
       normalTitle: 'Submission Deadline',
-      normalDesc: 'The broadcast must be finalized before <strong className="text-[color:var(--ink)]">Sunday 17:30</strong>. The timer shows the remaining time to comfortably upload your files.',
+      normalDesc: {
+        before: 'The broadcast must be finalized before ',
+        bold: 'Sunday 17:30',
+        after: '. The timer shows the remaining time to comfortably upload your files.',
+      },
     },
     login: {
       instruction: 'Please enter the global password to access the platform.',
