@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import logger from '../logger/index.js';
 import { generateAssFile } from '../data/overlayTemplates.js';
 import { setProgress } from './editorProgress.js';
+import { uploadsDir } from '../lib/paths.js';
 
 let isRendering = false;
 
@@ -188,7 +189,7 @@ function safeFilename(filename) {
  */
 async function resolveClipPath(filename, workDir) {
   const base = safeFilename(filename);
-  const local = path.join(uploadsDir, base);
+  const local = path.join(uploadsDir(), base);
   if (!fs.existsSync(local)) {
     throw new Error(`Le fichier "${base}" n'existe pas sur le serveur.`);
   }
@@ -376,7 +377,7 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
 
 
     // Mode local (dev) : déplace le rendu dans uploadsDir/exports.
-    const exportsDir = path.join(uploadsDir, 'exports');
+    const exportsDir = path.join(uploadsDir(), 'exports');
     fs.mkdirSync(exportsDir, { recursive: true });
     fs.copyFileSync(finalPath, path.join(exportsDir, outputFilename));
     return { url: `/uploads/exports/${outputFilename}` };
