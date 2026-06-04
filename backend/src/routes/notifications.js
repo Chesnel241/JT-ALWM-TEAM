@@ -7,7 +7,14 @@ const isValidCountry = (countryId) => COUNTRIES.some((c) => c.id === countryId);
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { sanitizeParams } from '../middleware/sanitizer.js';
 import { globalLimiter } from '../middleware/rateLimiter.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { audit } from '../logger/audit.js';
+
+// Masque un numéro pour audit/affichage : +33•••••42.
+function maskPhone(p) {
+  if (typeof p !== 'string' || p.length < 4) return '••••';
+  return `${p.slice(0, 3)}•••••${p.slice(-2)}`;
+}
 
 const router = Router();
 
@@ -39,8 +46,10 @@ router.post('/:weekId/:countryId/subscribe', globalLimiter, asyncHandler(async (
   res.status(201).json({ success: true, phone: cleanPhone });
 }));
 
-// GET /api/notifications/:weekId
-router.get('/:weekId', globalLimiter, asyncHandler(async (req, res, next) => {
+// GET /api/notifications/:weekId — protégé admin + numéros MASQUÉS.
+// Avant : tout user connecté pouvait lister les téléphones de tous les
+// pays (PII leak). Désormais : admin uniquement + +33•••••42.
+router.get('/:weekId', requireAdmin, globalLimiter, asyncHandler(async (req, res, next) => {
   const { weekId } = req.params;
 
   if (!isValidWeek(weekId)) {
@@ -48,7 +57,16 @@ router.get('/:weekId', globalLimiter, asyncHandler(async (req, res, next) => {
   }
 
   const subscriptions = getSubscriptions(weekId);
-  res.status(200).json(subscriptions);
+  // getSubscriptions peut renvoyer un tableau d'objets {countryId, phone}
+  // ou un objet groupé. On masque tout `phone` rencontré.
+  const masked = Array.isArray(subscriptions)
+    ? subscriptions.map((s) => (s && typeof s === 'object' ? { ...s, phone: maskPhone(s.phone) } : s))
+    : (subscriptions && typeof subscriptions === 'object'
+      ? Object.fromEntries(Object.entries(subscriptions).map(([k, v]) => [
+        k, Array.isArray(v) ? v.map(maskPhone) : v,
+      ]))
+      : subscriptions);
+  res.status(200).json(masked);
 }));
 
 export default router;

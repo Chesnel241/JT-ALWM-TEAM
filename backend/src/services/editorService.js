@@ -249,8 +249,11 @@ export function buildRemotionPayload(clips, opts) {
   const apiUrl = publicApiUrl();
   // URL de lecture des médias TOUJOURS routée via le backend
   // (`${PUBLIC_API_URL}/uploads/<f>`) : le backend sert le fichier depuis le
-  // volume local. Le worker accède directement au backend via l'API,
-  const resolve = (f) => (f ? `${apiUrl}/uploads/${f}` : undefined);
+  // volume local. Le worker accède directement au backend via l'API.
+  // encodeURIComponent : un `?` ou `#` dans le filename casserait l'URL en
+  // injectant query/fragment, et Caddy/Express rejetteraient ou serviraient
+  // un autre fichier. Empêche aussi le path traversal `..%2F`.
+  const resolve = (f) => (f ? `${apiUrl}/uploads/${encodeURIComponent(f)}` : undefined);
 
   const timelineOverlays = (opts.globalOverlays || []).filter(g => g.templateId !== 'ticker' && g.templateId !== 'live_badge');
 
@@ -277,6 +280,9 @@ export function buildRemotionPayload(clips, opts) {
       subtitleStyle: c.subtitleStyle,
     })),
     branding,
+    // Canal unique pour les overlays globaux : JTMaster les rend via
+    // <GlobalTimelineOverlays>. La passe `branding.overlays` (legacy)
+    // resterait vide ; aucun double-rendu.
     timelineOverlays,
     music: opts.music ? { ...opts.music, url: resolve(opts.music.filename) } : undefined,
     voiceover: opts.voiceover ? { ...opts.voiceover, url: resolve(opts.voiceover.filename) } : undefined,

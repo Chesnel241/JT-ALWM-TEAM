@@ -175,9 +175,21 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     }
   });
 
-  app.use('/uploads', express.static(dir, { 
-    maxAge: '1y', 
-    immutable: true
+  // Servi en static. nosniff + attachment force pour les types non-média :
+  // un upload .txt/.docx/.zip pourrait sinon être chargé inline et son
+  // contenu sniffé en HTML/SVG → stored XSS. On garde inline pour audio/
+  // vidéo/image (lecture du master + chutiers).
+  const INLINE_EXT = /\.(mp4|mov|webm|mkv|mp3|wav|m4a|ogg|jpg|jpeg|png|webp|gif|bmp|heic|svg)$/i;
+  app.use('/uploads', express.static(dir, {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, p) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      if (!INLINE_EXT.test(p)) {
+        // Force le téléchargement plutôt que l'affichage inline.
+        res.setHeader('Content-Disposition', 'attachment');
+      }
+    },
   }));
 
   app.get('/', (req, res) => res.status(200).send('ALWM Backend API is running.'));
