@@ -53,8 +53,15 @@ const STEP_MAX_MS = Number(process.env.EDITOR_STEP_MAX_MS) || 12 * 60 * 1000;
 const IO_TIMEOUT_MS = Number(process.env.EDITOR_IO_TIMEOUT_MS) || 5 * 60 * 1000;
 
 // Résolution/preset de sortie, surchargeables sans redéploiement de code.
-const OUT_W = Number(process.env.EDITOR_WIDTH) || 1280;
-const OUT_H = Number(process.env.EDITOR_HEIGHT) || 720;
+// Force les dimensions paires (yuv420p chroma 4:2:0 refuse les dimensions
+// impaires — typo env → encode KO sans ce garde-fou).
+const evenDim = (v, fallback) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 16) return fallback;
+  return Math.floor(n / 2) * 2;
+};
+const OUT_W = evenDim(process.env.EDITOR_WIDTH, 1280);
+const OUT_H = evenDim(process.env.EDITOR_HEIGHT, 720);
 const OUT_FPS = Number(process.env.EDITOR_FPS) || 30;
 const PRESET = process.env.EDITOR_PRESET || 'veryfast';
 const THREADS = Number(process.env.EDITOR_THREADS) || 1; // 1 = RAM mini (512 Mo)
@@ -345,18 +352,19 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
   }
   isRendering = true;
 
-  // Support legacy API: array of strings → objects.
-  const normalizedClips = clips.map((c) =>
-    typeof c === 'string' ? { filename: c } : c
-  );
-
-  // Répertoire de travail temporaire (toujours disque local — ffmpeg
-  // ne lit pas le réseau).
-  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-editor-'));
-  const outputFilename = `export_${uuidv4()}.mp4`;
-  const outputPath = path.join(workDir, outputFilename);
-
+  let workDir;
+  let outputFilename;
+  let outputPath;
   try {
+    // Support legacy API: array of strings → objets. Setup synchrone protégé
+    // par try/finally pour ne pas leaker isRendering=true si mkdtempSync jette.
+    const normalizedClips = clips.map((c) =>
+      typeof c === 'string' ? { filename: c } : c
+    );
+
+    workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-editor-'));
+    outputFilename = `export_${uuidv4()}.mp4`;
+    outputPath = path.join(workDir, outputFilename);
     // Phase 1 (0→20%) : téléchargement/résolution des clips.
     const localPaths = [];
     for (let i = 0; i < normalizedClips.length; i++) {
@@ -376,14 +384,34 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
     setProgress(jobId, 90, 'uploading');
 
 
+    // Validation avant publication : ffmpeg peut sortir exit 0 sur un fichier
+    // vide (filtre cassé, audio désaligné silencieux). Sans ce garde-fou, le
+    // frontend afficherait un bouton « Télécharger » pointant sur un MP4 de 0 o.
+    if (!finalPath || !fs.existsSync(finalPath)) {
+      throw new Error('Le rendu ffmpeg a échoué : fichier de sortie introuvable.');
+    }
+    const finalStat = fs.statSync(finalPath);
+    if (finalStat.size < 1024) {
+      throw new Error(`Le rendu ffmpeg a produit un fichier invalide (${finalStat.size} octets).`);
+    }
+
     // Mode local (dev) : déplace le rendu dans uploadsDir/exports.
     const exportsDir = path.join(uploadsDir(), 'exports');
     fs.mkdirSync(exportsDir, { recursive: true });
-    fs.copyFileSync(finalPath, path.join(exportsDir, outputFilename));
+    const exportPath = path.join(exportsDir, outputFilename);
+    fs.copyFileSync(finalPath, exportPath);
+    // Double-check côté destination : si la copie a foiré silencieusement
+    // (disque plein, ENOSPC swallowed), refuse de mentir au frontend.
+    const exportStat = fs.statSync(exportPath);
+    if (exportStat.size !== finalStat.size) {
+      throw new Error('Copie du master incomplète (taille destination ≠ source).');
+    }
     return { url: `/uploads/exports/${outputFilename}` };
   } finally {
     isRendering = false;
-    try { fs.rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    if (workDir) {
+      try { fs.rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    }
   }
 }
 

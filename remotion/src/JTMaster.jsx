@@ -15,7 +15,8 @@ loadFonts();
 
 const secToFrames = (s, fps) => {
   const n = Number(s);
-  return Math.max(1, Math.round((isNaN(n) ? 0 : n) * fps));
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return Math.max(1, Math.round(n * fps));
 };
 
 // Mappe notre type de transition (xfade) → presentation Remotion.
@@ -186,7 +187,7 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
         />
       )}
       {voiceover && voiceover.filename && voiceover.url && (
-        <Sequence from={secToFrames(voiceover.startTime || 0, fps)}>
+        <Sequence from={secToFrames(Number.isFinite(Number(voiceover.startTime)) ? Math.max(0, Number(voiceover.startTime)) : 0, fps)}>
           <Audio src={voiceover.url} volume={voiceover.volume != null ? (isNaN(Number(voiceover.volume)) ? 1 : Number(voiceover.volume)) : 1} crossOrigin="anonymous" />
         </Sequence>
       )}
