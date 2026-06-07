@@ -299,32 +299,36 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         const isDragActive = dragActive[reportageName];
 
         return (
-          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="mb-4 sm:mb-6 bg-[var(--paper)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm transition-all duration-300">
-            {/* Accordion Header */}
-            <button
-              onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
-              className="w-full p-4 sm:p-6 flex items-center justify-between bg-[var(--paper)] hover:bg-[var(--paper-2)] transition-colors text-left"
+          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="mb-4 sm:mb-6 md:mb-12 bg-[var(--paper)] md:bg-black/5 md:dark:bg-white/5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] md:p-8 overflow-hidden md:overflow-visible shadow-sm md:shadow-none transition-all duration-300">
+            {/* Accordion Header (Mobile) / Normal Header (Desktop) */}
+            <div
+              onClick={() => {
+                if (window.innerWidth < 768) {
+                  setExpandedSection(expandedSection === section.id ? null : section.id);
+                }
+              }}
+              className="w-full p-4 sm:p-6 md:p-0 flex items-center justify-between transition-colors text-left cursor-pointer md:cursor-default"
             >
-              <div className="flex items-center gap-3">
-                <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm">{section.badge}</span>
-                <h2 className="text-lg sm:text-xl font-bold text-[color:var(--ink)]">{reportageName}</h2>
+              <div className="flex items-center gap-2 md:gap-3 md:mb-6">
+                <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm md:shadow-none">{section.badge}</span>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[color:var(--ink)]">{reportageName}</h2>
               </div>
               <div className="flex items-center gap-4">
                 {repUploads.length > 0 && (
-                  <span className="text-xs sm:text-sm font-medium text-[color:var(--muted)] bg-[var(--paper-2)] border border-[var(--border)] px-3 py-1 rounded-full hidden sm:inline-block">
+                  <span className="text-xs sm:text-sm font-medium text-[color:var(--muted)] bg-[var(--paper-2)] border border-[var(--border)] px-3 py-1 rounded-full hidden sm:inline-block md:hidden">
                     {repUploads.length} {repUploads.length > 1 ? 'fichiers' : 'fichier'}
                   </span>
                 )}
-                <div className={`p-1 rounded-full transition-transform duration-300 ${expandedSection === section.id ? 'bg-[var(--accent)] text-white rotate-180' : 'bg-black/5 dark:bg-white/5 text-[color:var(--ink)]'}`}>
+                <div className={`p-1 rounded-full transition-transform duration-300 md:hidden ${expandedSection === section.id ? 'bg-[var(--accent)] text-white rotate-180' : 'bg-black/5 dark:bg-white/5 text-[color:var(--ink)]'}`}>
                   <ChevronDown size={20} />
                 </div>
               </div>
-            </button>
+            </div>
             
-            {/* Accordion Content */}
+            {/* Content Container (Collapsible on Mobile, Always Open on Desktop) */}
             <div 
-              className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8 transition-all duration-500 ease-in-out ${
-                expandedSection === section.id ? 'grid-rows-[1fr] opacity-100 p-4 sm:p-6 md:p-8 border-t border-[var(--border)] bg-black/5 dark:bg-white/5' : 'grid-rows-[0fr] opacity-0 p-0 m-0 overflow-hidden'
+              className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8 transition-all duration-500 ease-in-out md:!grid-rows-[1fr] md:!opacity-100 md:!p-0 md:!border-t-0 md:!bg-transparent md:!mt-0 md:!overflow-visible ${
+                expandedSection === section.id ? 'grid-rows-[1fr] opacity-100 p-4 sm:p-6 border-t border-[var(--border)] bg-black/5 dark:bg-white/5' : 'grid-rows-[0fr] opacity-0 p-0 m-0 overflow-hidden'
               }`}
             >
               <div className="space-y-4 sm:space-y-6 overflow-hidden">

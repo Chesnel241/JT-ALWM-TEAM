@@ -265,39 +265,80 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
         </div>
       </div>
 
-      {!selectedCountry ? (
-        <div className="mb-8">
-          <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-6">1. Sélectionnez le pays pour la voix off</h3>
-          <div id="tour-voixoff-country" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {selectableCountries.map(c => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedCountry(c)}
-                className="flex flex-col items-center justify-center p-6 bg-[var(--paper)] rounded-[2rem] border border-[var(--border)] shadow-sm hover:shadow-md hover:-translate-y-1 hover:border-[color:var(--accent)] transition-all group"
-              >
-                <CountryAvatar country={c} className="w-16 h-16 mb-4 group-hover:scale-110 transition-transform shadow-sm" />
-                <span className="font-bold text-[color:var(--ink)] text-center text-sm sm:text-base">{c.name}</span>
-              </button>
-            ))}
+      {/* ======================= */}
+      {/* 1. SÉLECTION DU PAYS */}
+      {/* ======================= */}
+
+      {/* MOBILE: Grid si aucun pays n'est sélectionné */}
+      <div className={`md:hidden ${selectedCountry ? 'hidden' : 'block mb-8'}`}>
+        <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-6">1. Sélectionnez le pays</h3>
+        <div id="tour-voixoff-country" className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {selectableCountries.map(c => (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCountry(c)}
+              className="flex flex-col items-center justify-center p-6 bg-[var(--paper)] rounded-[2rem] border border-[var(--border)] shadow-sm hover:shadow-md hover:-translate-y-1 hover:border-[color:var(--accent)] transition-all group"
+            >
+              <CountryAvatar country={c} className="w-16 h-16 mb-4 group-hover:scale-110 transition-transform shadow-sm" />
+              <span className="font-bold text-[color:var(--ink)] text-center text-sm sm:text-base">{c.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* DESKTOP: Barre horizontale de pays (toujours visible sur Desktop) */}
+      <div className="hidden md:block mb-8">
+        <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3">1. Sélectionnez le pays</h3>
+        <div className="flex overflow-x-auto pb-4 gap-3 snap-x">
+          {selectableCountries.map(c => (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCountry(c)}
+              className={`snap-start shrink-0 flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${
+                selectedCountry?.id === c.id 
+                  ? 'border-[color:var(--accent)] bg-[var(--accent)]/10 text-[color:var(--accent-deep)] ring-2 ring-[color:var(--accent)]/30' 
+                  : 'border-[var(--border)] bg-[var(--paper)] text-[color:var(--ink)] hover:border-[color:var(--accent)]'
+              }`}
+            >
+              <CountryAvatar country={c} className="w-6 h-6" />
+              <span className="font-semibold whitespace-nowrap">{c.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ======================= */}
+      {/* 2. MAIN CONTAINER */}
+      {/* ======================= */}
+
+      {/* Sur Mobile: Ce container n'apparait que si selectedCountry est défini. Sur Desktop, toujours visible */}
+      <div className={`${!selectedCountry ? 'hidden md:block' : 'block'} animate-in fade-in zoom-in-95 duration-300 md:animate-none md:zoom-in-100`}>
+        
+        {/* MOBILE ONLY: Header de retour en arrière */}
+        <div className="md:hidden flex flex-wrap items-center justify-between gap-4 mb-6">
+          <button 
+            onClick={() => setSelectedCountry(null)}
+            className="btn btn-ghost border border-[var(--border)] py-2 flex items-center gap-2 active:scale-[0.98]"
+          >
+            ⬅ Changer de pays
+          </button>
+          <div className="flex items-center gap-3 bg-[var(--paper)] px-4 py-2 rounded-full border border-[var(--border)] shadow-sm">
+            <CountryAvatar country={selectedCountry} className="w-6 h-6" />
+            <span className="font-bold text-[color:var(--ink)]">{selectedCountry.name}</span>
           </div>
         </div>
-      ) : (
-        <div className="animate-in fade-in zoom-in-95 duration-300">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <button 
-              onClick={() => setSelectedCountry(null)}
-              className="btn btn-ghost border border-[var(--border)] py-2 flex items-center gap-2 active:scale-[0.98]"
-            >
-              ⬅ Changer de pays
-            </button>
-            <div className="flex items-center gap-3 bg-[var(--paper)] px-4 py-2 rounded-full border border-[var(--border)] shadow-sm">
-              <CountryAvatar country={selectedCountry} className="w-6 h-6" />
-              <span className="font-bold text-[color:var(--ink)]">{selectedCountry.name}</span>
-            </div>
-          </div>
 
-          {/* Form & Studio Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
+        {/* Form & Studio Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
+          
+          {/* DESKTOP ONLY: Overlay de blur si pas de pays sélectionné */}
+          {!selectedCountry && (
+            <div className="hidden md:flex absolute inset-0 z-10 bg-[var(--app-bg)]/60 backdrop-blur-sm items-center justify-center rounded-3xl">
+              <p className="text-lg font-medium text-[color:var(--ink)] bg-[var(--paper)] px-6 py-3 rounded-full shadow-lg border border-[var(--border)]">
+                Veuillez sélectionner un pays pour activer le studio
+              </p>
+            </div>
+          )}
 
 
           
@@ -410,10 +451,9 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
               )}
             </div>
 
-          </div>
         </div>
-        </div>
-      )}
+      </div>
+    </div>
     </div>
   );
 }
