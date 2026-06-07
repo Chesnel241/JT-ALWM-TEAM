@@ -126,22 +126,29 @@ app.post('/render', async (req, res) => {
       inputProps,
       chromiumOptions: sharedChromiumOptions,
     });
-    await Promise.race([
-      renderMedia({
-        composition,
-        serveUrl: SERVE_URL,
-        codec: 'h264',
-        outputLocation: outPath,
-        inputProps,
-        concurrency: 1,
-        chromiumOptions: sharedChromiumOptions,
-        onProgress: ({ progress }) => postProgress(returnTo, jobId, progress * 100),
-      }),
-      new Promise((_, reject) => setTimeout(
-        () => reject(new Error(`Rendu interrompu : délai dépassé (${Math.round(RENDER_TIMEOUT_MS / 60000)} min)`)),
-        RENDER_TIMEOUT_MS,
-      )),
-    ]);
+    let lastProgressTime = 0;
+    let lastProgressPercent = -1;
+
+    await renderMedia({
+      composition,
+      serveUrl: SERVE_URL,
+      codec: 'h264',
+      pixelFormat: 'yuv420p',
+      outputLocation: outPath,
+      inputProps,
+      concurrency: 1,
+      chromiumOptions: sharedChromiumOptions,
+      timeoutInMilliseconds: RENDER_TIMEOUT_MS,
+      onProgress: ({ progress }) => {
+        const now = Date.now();
+        const pct = Math.round(progress * 100);
+        if (pct !== lastProgressPercent && now - lastProgressTime > 500) {
+          lastProgressTime = now;
+          lastProgressPercent = pct;
+          postProgress(returnTo, jobId, progress * 100);
+        }
+      },
+    });
 
     let url = `file://${outPath}`;
     if (HAS_R2) {

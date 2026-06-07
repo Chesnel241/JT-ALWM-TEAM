@@ -5,7 +5,7 @@
 
 import { openSync, readSync, closeSync } from 'fs';
 
-const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm'];
+const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm', '.ogg', '.aac'];
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10); // 200MB par défaut
 const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f/\\]/;
 
@@ -70,6 +70,13 @@ const MAGIC_SIGNATURES = {
   ],
   '.webm': [
     { offset: 0, bytes: [0x1a, 0x45, 0xdf, 0xa3] }, // Matroska / WebM
+  ],
+  '.ogg': [
+    { offset: 0, bytes: [0x4f, 0x67, 0x67, 0x53] }, // OggS
+  ],
+  '.aac': [
+    { offset: 0, bytes: [0xff, 0xf1] }, // ADTS
+    { offset: 0, bytes: [0xff, 0xf9] },
   ],
 };
 
@@ -167,7 +174,7 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE, allowImages = fals
   // Vérifier le MIME type (validation basique)
   const allowedMimes = [
     'video/mp4', 'video/quicktime', 'video/webm',
-    'audio/mpeg', 'audio/wav', 'audio/webm',
+    'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/aac',
     'text/plain',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/zip', 'application/x-zip-compressed'

@@ -19,7 +19,7 @@ export const uploadsDir = resolveUploadsDir();
 export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10);            // 200 MB
 export const DELIVERY_MAX_FILE_SIZE = parseInt(process.env.DELIVERY_MAX_FILE_SIZE || 419430400, 10); // 400 MB
 
-export const ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm']);
+export const ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm', '.ogg', '.aac']);
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -36,7 +36,9 @@ function buildUploader(maxSize) {
     fileFilter: (_req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase();
       if (!ALLOWED_EXTENSIONS.has(ext)) {
-        return cb(new Error('Type de fichier non autorisé'));
+        const err = new Error('Type de fichier non autorisé');
+        err.code = 'INVALID_FILE_TYPE';
+        return cb(err);
       }
       return cb(null, true);
     },

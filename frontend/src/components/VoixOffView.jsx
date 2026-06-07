@@ -36,6 +36,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
   
   // Recording states
   const [isRecording, setIsRecording] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -114,6 +115,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
   };
 
   const startRecording = async () => {
+    if (isStarting || isRecording) return;
     if (!selectedCountry) {
       return addToast('Veuillez sélectionner un pays d\'abord.', 'error');
     }
@@ -121,6 +123,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
       return addToast('Le titre du reportage est obligatoire.', 'error');
     }
     
+    setIsStarting(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -169,6 +172,8 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
     } catch (err) {
       console.error('Audio capture error:', err);
       addToast('Impossible d\'accéder au microphone. Vérifiez vos permissions.', 'error');
+    } finally {
+      setIsStarting(false);
     }
   };
 
@@ -437,9 +442,10 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
                   {!isRecording ? (
                     <button
                       onClick={startRecording}
-                      className="bg-red-600 hover:bg-red-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+                      disabled={isStarting}
+                      className="bg-red-600 hover:bg-red-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(220,38,38,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                     >
-                      <Mic size={20} /> Commencer l'enregistrement
+                      <Mic size={20} /> {isStarting ? 'Démarrage...' : 'Commencer l\'enregistrement'}
                     </button>
                   ) : (
                     <button

@@ -123,14 +123,14 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
       <div ref={dialogRef} className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
           <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
-            {file.type === 'video' || !!file.name.match(/\.(mp4|mov|avi|mkv)$/i) ? (
+            {file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i) ? (
               <Video className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
-            ) : file.type === 'audio' || !!file.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i) ? (
+            ) : file?.type === 'audio' || !!file?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i) ? (
               <Mic className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
             ) : (
               <FileText className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
             )}
-            <span className="truncate max-w-[250px] sm:max-w-md">{file.name}</span>
+            <span className="truncate max-w-[250px] sm:max-w-md">{file?.name}</span>
           </h3>
           <button 
             onClick={onClose}
@@ -142,9 +142,9 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
         </div>
         <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative flex flex-col items-center justify-center">
           {(() => {
-            const isVideo = file.type === 'video' || !!file.name.match(/\.(mp4|mov|avi|mkv)$/i);
-            const isAudio = file.type === 'audio' || !!file.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
-            const url = `${API_BASE}/uploads/${file.filename}`;
+            const isVideo = file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i);
+            const isAudio = file?.type === 'audio' || !!file?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
+            const url = `${API_BASE}/uploads/${file?.filename}`;
             
             if (isVideo) {
               return <video src={url} controls autoPlay className="max-w-full max-h-[60vh] rounded shadow-lg" playsInline />;
@@ -376,6 +376,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const token = localStorage.getItem('app-password') || '';
     let settled = false;
 
+    // Nettoyage immédiat avant de créer de nouveaux timers
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (safetyRef.current) { clearTimeout(safetyRef.current); safetyRef.current = null; }
+    if (sseRef.current) { try { sseRef.current.close(); } catch { /* ignore */ } sseRef.current = null; }
+
     const stop = () => {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       if (safetyRef.current) { clearTimeout(safetyRef.current); safetyRef.current = null; }
@@ -496,10 +501,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // Durée de chaque segment (sec) : trim si défini, sinon metadata de la
     // vidéo. Nécessaire au moteur Remotion (durationInFrames).
     const probeDur = (url) => new Promise((resolve) => {
+      let settled = false;
       const v = document.createElement('video');
+      const timeout = setTimeout(() => {
+        if (!settled) { settled = true; resolve(0); }
+      }, 5000);
+      
       v.preload = 'metadata';
-      v.onloadedmetadata = () => resolve(v.duration || 0);
-      v.onerror = () => resolve(0);
+      v.onloadedmetadata = () => {
+        if (!settled) { settled = true; clearTimeout(timeout); resolve(v.duration || 0); }
+      };
+      v.onerror = () => {
+        if (!settled) { settled = true; clearTimeout(timeout); resolve(0); }
+      };
       v.src = url;
     });
     const durations = await Promise.all(timelineClips.map(async (clip) => {
@@ -558,10 +572,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const currentGlobalSec = frame / 30; // FPS = 30
     
     const probeDur = (url) => new Promise((resolve) => {
+      let settled = false;
       const v = document.createElement('video');
+      const timeout = setTimeout(() => {
+        if (!settled) { settled = true; resolve(0); }
+      }, 5000);
+      
       v.preload = 'metadata';
-      v.onloadedmetadata = () => resolve(v.duration || 0);
-      v.onerror = () => resolve(0);
+      v.onloadedmetadata = () => {
+        if (!settled) { settled = true; clearTimeout(timeout); resolve(v.duration || 0); }
+      };
+      v.onerror = () => {
+        if (!settled) { settled = true; clearTimeout(timeout); resolve(0); }
+      };
       v.src = url;
     });
 
@@ -900,8 +923,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   );
 
   const renderFileCard = (file) => {
-    const isVideo = file.type === 'video' || !!file.name.match(/\.(mp4|mov|avi|mkv)$/i);
-    const isAudio = file.type === 'audio' || !!file.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
+    const isVideo = file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i);
+    const isAudio = file?.type === 'audio' || !!file?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
     
     return (
       <div key={file.id} className="group flex flex-col gap-2 shrink-0 w-64 md:w-auto snap-start relative">
@@ -1546,8 +1569,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     );
                   }
 
-                  const videoFiles = allFiles.filter(f => f.type === 'video' || !!f.name.match(/\.(mp4|mov|avi|mkv)$/i));
-                  const audioFiles = allFiles.filter(f => f.type === 'audio' || !!f.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i));
+                  const videoFiles = allFiles.filter(f => f?.type === 'video' || !!f?.name?.match(/\.(mp4|mov|avi|mkv)$/i));
+                  const audioFiles = allFiles.filter(f => f?.type === 'audio' || !!f?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i));
                   const scriptFiles = allFiles.filter(f => !videoFiles.includes(f) && !audioFiles.includes(f));
 
                   return (
@@ -1784,8 +1807,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         isOpen={!!actionSheetFile}
         onClose={() => setActionSheetFile(null)}
         file={actionSheetFile}
-        isAudio={actionSheetFile?.type === 'audio' || !!actionSheetFile?.name.match(/\.(mp3|wav|m4a|webm|ogg)$/i)}
-        isVideo={actionSheetFile?.type === 'video' || !!actionSheetFile?.name.match(/\.(mp4|mov|avi|mkv)$/i)}
+        isAudio={actionSheetFile?.type === 'audio' || !!actionSheetFile?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i)}
+        isVideo={actionSheetFile?.type === 'video' || !!actionSheetFile?.name?.match(/\.(mp4|mov|avi|mkv)$/i)}
         onApprove={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'approved')}
         onReject={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'rejected')}
         onDownload={() => openDownloadDialog(actionSheetFile)}

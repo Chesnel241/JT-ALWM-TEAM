@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, Series, OffthreadVideo, Video, Audio, Sequence, useCurrentFrame, useVideoConfig, getRemotionEnvironment } from 'remotion';
+import { AbsoluteFill, Series, OffthreadVideo, Video, Audio, Sequence, useCurrentFrame, useVideoConfig, getRemotionEnvironment, Img, interpolate } from 'remotion';
 import { TransitionSeries, linearTiming } from '@remotion/transitions';
 import { fade } from '@remotion/transitions/fade';
 import { slide } from '@remotion/transitions/slide';
@@ -45,6 +45,15 @@ function ClipLayer({ clip }) {
   return (
     <AbsoluteFill>
       <Subtitles subtitles={clip.subtitles} style={clip.subtitleStyle} clipTimeSec={(clip.inPoint || 0) + frame / fps} />
+      {clip.overlays && clip.overlays.map((o, i) => {
+        const start = Math.max(0, secToFrames(o.startTime || 0, fps));
+        const dur = o.duration ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
+        return (
+          <Sequence key={o.id || `cl-o-${i}`} from={start} durationInFrames={dur} layout="none">
+            <Overlay overlay={o} durationInFrames={dur} fps={fps} />
+          </Sequence>
+        );
+      })}
     </AbsoluteFill>
   );
 }
@@ -70,17 +79,62 @@ export function GlobalTimelineOverlays({ timelineOverlays }) {
   );
 }
 
+export function ImageOverlays({ imageOverlays }) {
+  const { fps } = useVideoConfig();
+  if (!imageOverlays || imageOverlays.length === 0) return null;
+  const OVERLAY_POS = {
+    tl: { left: '34px', top: '34px' },
+    tr: { right: '34px', top: '34px' },
+    bl: { left: '34px', bottom: '34px' },
+    br: { right: '34px', bottom: '104px' },
+    center: { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' },
+  };
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none' }}>
+      <Stage>
+        {imageOverlays.map((o, i) => {
+          const start = Math.max(0, secToFrames(o.startTime || 0, fps));
+          const dur = o.duration ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
+          const scale = Math.min(1, Math.max(0.05, Number(o.scale) || 0.25));
+          const posStyle = (o.position && typeof o.position === 'object')
+            ? { left: `${Math.round(Number(o.position.x) || 0)}px`, top: `${Math.round(Number(o.position.y) || 0)}px` }
+            : (OVERLAY_POS[o.position] || OVERLAY_POS.tr);
+            
+          const style = {
+            position: 'absolute',
+            width: `${Math.round(scale * 100)}%`,
+            objectFit: 'contain',
+            opacity: o.opacity != null ? Math.min(1, Math.max(0, Number(o.opacity))) : 1,
+            pointerEvents: 'auto',
+            ...posStyle
+          };
+          return (
+            <Sequence key={o.id || `img-o-${i}`} from={start} durationInFrames={dur} layout="none">
+              <Img src={o.url} style={style} crossOrigin="anonymous" />
+            </Sequence>
+          );
+        })}
+      </Stage>
+    </AbsoluteFill>
+  );
+}
+
 function ClipVideo({ clip }) {
   const { fps } = useVideoConfig();
-  const hasExtraAudio = false; // l'audio du clip reste actif ; mix musique/voix par-dessus
-  // Composant vidéo selon l'environnement :
-  // - rendu worker (renderMedia) → OffthreadVideo : fetch/seek hors-thread,
-  //   bien moins de RAM/CPU, pas de frames noires/désync.
-  // - aperçu navigateur (@remotion/player) → Video : OffthreadVideo n'a pas
-  //   de serveur d'extraction de frames côté client et rend un écran noir.
-  //   crossOrigin requis pour que le <video> charge l'URL same-origin/CORS.
+  const frame = useCurrentFrame();
+  const hasExtraAudio = false; 
   const isRendering = getRemotionEnvironment().isRendering;
-  const videoStyle = { width: '100%', height: '100%', objectFit: 'contain' };
+  const isImage = clip.url && /\.(jpe?g|png|webp|gif|bmp)$/i.test(clip.url);
+  
+  const kbScale = interpolate(
+    frame,
+    [0, Math.max(1, secToFrames(clip.durationSec, fps))],
+    clip.kenBurns?.mode === 'in' ? [1, 1.15] : clip.kenBurns?.mode === 'out' ? [1.15, 1] : [1, 1],
+    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+
+  const videoStyle = { width: '100%', height: '100%', objectFit: 'contain', transform: `scale(${kbScale})` };
   
   if (!clip.url) {
     return (
@@ -92,7 +146,9 @@ function ClipVideo({ clip }) {
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
-      {isRendering ? (
+      {isImage ? (
+        <Img src={clip.url} style={videoStyle} crossOrigin="anonymous" />
+      ) : isRendering ? (
         <OffthreadVideo
           src={clip.url}
           startFrom={secToFrames(clip.inPoint || 0, fps)}
@@ -113,7 +169,7 @@ function ClipVideo({ clip }) {
   );
 }
 
-export function JTMaster({ clips = [], branding = {}, music, voiceover, timelineOverlays = [] }) {
+export function JTMaster({ clips = [], branding = {}, music, voiceover, timelineOverlays = [], imageOverlays = [] }) {
   const fps = FPS;
   const list = clips.length ? clips : [{ url: '', durationSec: 1, overlays: [] }];
   const tickerOn = !!(branding.ticker && branding.ticker.enabled);
@@ -142,6 +198,7 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
       </TransitionSeries>
 
       <GlobalTimelineOverlays timelineOverlays={timelineOverlays} />
+      <ImageOverlays imageOverlays={imageOverlays} />
 
       {/* Atmosphère cinéma (sous l'habillage, au-dessus des clips). */}
       {branding.atmosphere && (

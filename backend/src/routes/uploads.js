@@ -611,6 +611,13 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
 
   try {
     rawAudioPath = req.file.path;
+    
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    const validation = validateMagicNumber(rawAudioPath, ext);
+    if (!validation.valid) {
+      throw new Error(`Fichier invalide : ${validation.error}`);
+    }
+
     const uploadStartTime = Date.now();
     
     // Generate paths for processed files
@@ -699,6 +706,11 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     if (scriptPath && existsSync(scriptPath)) {
       unlinkSync(scriptPath);
     }
+    
+    if (error.message && error.message.includes('Output file does not contain any stream')) {
+      return next(createErrors.badRequest('Le fichier audio est silencieux, corrompu ou illisible.'));
+    }
+    
     return next(createErrors.internalError('Erreur lors du traitement de la voix: ' + error.message));
   }
 }));

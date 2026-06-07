@@ -41,6 +41,7 @@ export function processVoiceover(inputPath, outputPath) {
       .audioFilters(filterChain)
       .outputOptions('-b:a', '192k') // High quality MP3 bitrate
       .toFormat('mp3')
+      .timeout(300)
       .on('start', (commandLine) => {
         console.log('[AudioProcessor] Spawned Ffmpeg with command: ' + commandLine);
       })
