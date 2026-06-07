@@ -315,18 +315,20 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
       <div className={`${!selectedCountry ? 'hidden md:block' : 'block'} animate-in fade-in zoom-in-95 duration-300 md:animate-none md:zoom-in-100`}>
         
         {/* MOBILE ONLY: Header de retour en arrière */}
-        <div className="md:hidden flex flex-wrap items-center justify-between gap-4 mb-6">
-          <button 
-            onClick={() => setSelectedCountry(null)}
-            className="btn btn-ghost border border-[var(--border)] py-2 flex items-center gap-2 active:scale-[0.98]"
-          >
-            ⬅ Changer de pays
-          </button>
-          <div className="flex items-center gap-3 bg-[var(--paper)] px-4 py-2 rounded-full border border-[var(--border)] shadow-sm">
-            <CountryAvatar country={selectedCountry} className="w-6 h-6" />
-            <span className="font-bold text-[color:var(--ink)]">{selectedCountry.name}</span>
+        {selectedCountry && (
+          <div className="md:hidden flex flex-wrap items-center justify-between gap-4 mb-6">
+            <button 
+              onClick={() => setSelectedCountry(null)}
+              className="btn btn-ghost border border-[var(--border)] py-2 flex items-center gap-2 active:scale-[0.98]"
+            >
+              ⬅ Changer de pays
+            </button>
+            <div className="flex items-center gap-3 bg-[var(--paper)] px-4 py-2 rounded-full border border-[var(--border)] shadow-sm">
+              <CountryAvatar country={selectedCountry} className="w-6 h-6" />
+              <span className="font-bold text-[color:var(--ink)]">{selectedCountry.name}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Form & Studio Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
