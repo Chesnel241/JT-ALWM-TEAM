@@ -8,6 +8,7 @@ import AIAssistant from './components/AIAssistant.jsx';
 import { I18nProvider, useI18n } from './i18n/I18nContext.jsx';
 import { api } from './api/index.js';
 import SkeletonCard from './components/SkeletonCard.jsx';
+import { useVersionCheck } from './hooks/useVersionCheck.js';
 
 const HomeView = lazy(() => import('./components/HomeView.jsx'));
 const UploaderView = lazy(() => import('./components/UploaderView.jsx'));
@@ -26,6 +27,7 @@ function LoadingFallback() {
 }
 
 function AppShell() {
+  useVersionCheck(); // Hook silencieux qui forcera le reload si nouvelle version
   const { t } = useI18n();
   const [currentView, setCurrentView] = useState('home');
   const [selectedCountry, setSelectedCountry] = useState(null);
@@ -123,7 +125,7 @@ function AppShell() {
   }
 
   return (
-    <div className="app-shell flex flex-col">
+    <div className="app-shell flex flex-col pb-[72px] sm:pb-0">
       <Nav currentView={currentView} setCurrentView={setCurrentView} newUploadsCount={newUploadsCount} />
 
       <main className="flex-1 pb-12">

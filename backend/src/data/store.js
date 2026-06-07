@@ -60,6 +60,46 @@ export async function initDb() {
     logger.error('Failed to parse local DB', { error: err.message });
     db = JSON.parse(JSON.stringify(seed));
   }
+
+  // Run data migrations
+  if (Array.isArray(db._countries)) {
+    let migrated = false;
+    db._countries.forEach(c => {
+      // Nettoyage au cas où c'est un nombre ou un string
+      if (String(c.code).trim() === '254') {
+        c.code = 'KE';
+        migrated = true;
+      }
+      if (String(c.id).trim() === '254') {
+        c.id = 'ke';
+        migrated = true;
+      }
+      if (String(c.name).trim() === '254') {
+        c.name = 'Kenya';
+        migrated = true;
+      }
+    });
+
+    if (migrated) {
+      // Migrer aussi les données d'uploads associées à l'ID 254
+      for (const weekId of Object.keys(db)) {
+        if (META_KEYS && META_KEYS.has(weekId)) continue;
+        if (db[weekId] && db[weekId]['254']) {
+          db[weekId]['ke'] = db[weekId]['254'];
+          delete db[weekId]['254'];
+        }
+        if (db[weekId] && Array.isArray(db[weekId]._subscriptions)) {
+          db[weekId]._subscriptions.forEach(sub => {
+            if (String(sub.countryId).trim() === '254') {
+              sub.countryId = 'ke';
+            }
+          });
+        }
+      }
+      logger.info('Migrated country 254 to KE/Kenya');
+      persistDb();
+    }
+  }
 }
 
 // Écriture atomique : tmp file + rename. Évite la corruption du JSON

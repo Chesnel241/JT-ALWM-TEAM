@@ -14,7 +14,7 @@ export default function CountryAvatar({ country, className = "w-10 h-10" }) {
     'CM': 'cm', 'SN': 'sn', 'CI': 'ci', 'CD': 'cd', 'RDC': 'cd',
     'CG': 'cg', 'CB': 'cg', 'DAGAN': 'cg', 'MA': 'ma', 'TG': 'tg',
     'BJ': 'bj', 'BF': 'bf', 'GB': 'ga', 'GA': 'ga', 'UG': 'ug',
-    'TD': 'td', 'GH': 'gh', 'DP': 'un'
+    'TD': 'td', 'GH': 'gh', 'DP': 'un', 'KE': 'ke', 'KY': 'ke', '254': 'ke'
   };
   
   const isoCode = (country.code && codeToIso[country.code.toUpperCase()]) 

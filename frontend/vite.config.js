@@ -2,9 +2,32 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
+import fs from 'fs';
+
+// Plugin personnalisé pour forcer la mise à jour des clients
+const GenerateVersionJson = () => {
+  return {
+    name: 'generate-version-json',
+    buildStart() {
+      const versionInfo = {
+        version: Date.now().toString(),
+        timestamp: new Date().toISOString()
+      };
+      const publicDir = path.resolve(__dirname, 'public');
+      if (!fs.existsSync(publicDir)) {
+        fs.mkdirSync(publicDir, { recursive: true });
+      }
+      fs.writeFileSync(
+        path.join(publicDir, 'version.json'),
+        JSON.stringify(versionInfo, null, 2)
+      );
+    }
+  };
+};
 
 export default defineConfig({
   plugins: [
+    GenerateVersionJson(),
     react(),
     VitePWA({
       strategies: 'injectManifest',

@@ -10,17 +10,10 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourHome.welcome,
       placement: 'center',
       disableBeacon: true,
-      disableBeacon: true,
     },
     {
-      target: '#tour-country-list',
-      content: t.aiAssistant.tourHome.countryList,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-add-country',
-      content: t.aiAssistant.tourHome.addCountry,
+      target: '#tour-nav-dashboard',
+      content: t.aiAssistant.tourHome.navDashboard || "L'onglet 'Tableau de bord' vous permet d'avoir une vue globale de l'activité.",
       placement: 'auto',
       disableBeacon: true,
     },
@@ -35,6 +28,24 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourHome.navDelivery,
       placement: 'auto',
       disableBeacon: true,
+    },
+    {
+      target: '#tour-nav-voixoff',
+      content: t.aiAssistant.tourHome.navVoixOff || "L'onglet 'Voix-Off' sert à gérer l'enregistrement des voix.",
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-country-list',
+      content: t.aiAssistant.tourHome.countryList,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-add-country',
+      content: t.aiAssistant.tourHome.addCountry,
+      placement: 'auto',
+      disableBeacon: true,
     }
   ],
   uploader: [
@@ -42,7 +53,6 @@ export const getTourSteps = (t) => ({
       target: 'body',
       content: t.aiAssistant.tourUploader.welcome,
       placement: 'center',
-      disableBeacon: true,
       disableBeacon: true,
     },
     {
@@ -82,7 +92,6 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourDashboard.welcome,
       placement: 'center',
       disableBeacon: true,
-      disableBeacon: true,
     },
     {
       target: '#tour-dashboard-header',
@@ -102,7 +111,6 @@ export const getTourSteps = (t) => ({
       target: 'body',
       content: t.aiAssistant.tourDelivery.welcome,
       placement: 'center',
-      disableBeacon: true,
       disableBeacon: true,
     },
     {
@@ -136,7 +144,6 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourVoixOff.welcome,
       placement: 'center',
       disableBeacon: true,
-      disableBeacon: true,
     },
     {
       target: '#tour-voixoff-country',
@@ -148,6 +155,14 @@ export const getTourSteps = (t) => ({
       target: '#tour-voixoff-studio',
       content: t.aiAssistant.tourVoixOff.studio,
       placement: 'auto',
+      disableBeacon: true,
+    }
+  ],
+  editor: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourEditor?.welcome || "Bienvenue dans l'éditeur vidéo ! Ici vous pouvez ajuster et créer vos contenus.",
+      placement: 'center',
       disableBeacon: true,
     }
   ]
