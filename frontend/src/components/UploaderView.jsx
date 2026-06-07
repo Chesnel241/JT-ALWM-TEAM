@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   UploadCloud, Folder, FileText, Video,
-  CheckCircle, Clock, ChevronRight, Trash2, AlertCircle,
+  CheckCircle, Clock, ChevronRight, ChevronDown, Trash2, AlertCircle,
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -32,6 +32,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingUploads, setIsLoadingUploads] = useState(true);
   const [submittingScripts, setSubmittingScripts] = useState({});
+  const [expandedSection, setExpandedSection] = useState(null);
 
   // Notifications
   const [phoneModalOpen, setPhoneModalOpen] = useState(false);
@@ -298,14 +299,35 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         const isDragActive = dragActive[reportageName];
 
         return (
-          <div key={section.id} className="mb-8 sm:mb-12 bg-black/5 dark:bg-white/5 p-4 sm:p-6 md:p-8 rounded-[2rem] border border-[var(--border)]">
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-[color:var(--ink)] flex items-center gap-2">
-              <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">{section.badge}</span>
-              {reportageName}
-            </h2>
+          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="mb-4 sm:mb-6 bg-[var(--paper)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm transition-all duration-300">
+            {/* Accordion Header */}
+            <button
+              onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
+              className="w-full p-4 sm:p-6 flex items-center justify-between bg-[var(--paper)] hover:bg-[var(--paper-2)] transition-colors text-left"
+            >
+              <div className="flex items-center gap-3">
+                <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm">{section.badge}</span>
+                <h2 className="text-lg sm:text-xl font-bold text-[color:var(--ink)]">{reportageName}</h2>
+              </div>
+              <div className="flex items-center gap-4">
+                {repUploads.length > 0 && (
+                  <span className="text-xs sm:text-sm font-medium text-[color:var(--muted)] bg-[var(--paper-2)] border border-[var(--border)] px-3 py-1 rounded-full hidden sm:inline-block">
+                    {repUploads.length} {repUploads.length > 1 ? 'fichiers' : 'fichier'}
+                  </span>
+                )}
+                <div className={`p-1 rounded-full transition-transform duration-300 ${expandedSection === section.id ? 'bg-[var(--accent)] text-white rotate-180' : 'bg-black/5 dark:bg-white/5 text-[color:var(--ink)]'}`}>
+                  <ChevronDown size={20} />
+                </div>
+              </div>
+            </button>
             
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8">
-              <div className="space-y-4 sm:space-y-6">
+            {/* Accordion Content */}
+            <div 
+              className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8 transition-all duration-500 ease-in-out ${
+                expandedSection === section.id ? 'grid-rows-[1fr] opacity-100 p-4 sm:p-6 md:p-8 border-t border-[var(--border)] bg-black/5 dark:bg-white/5' : 'grid-rows-[0fr] opacity-0 p-0 m-0 overflow-hidden'
+              }`}
+            >
+              <div className="space-y-4 sm:space-y-6 overflow-hidden">
                 <div
                   id={i === 0 ? 'tour-dropzone' : undefined}
                   className={`relative border-2 border-dashed rounded-[1.5rem] p-6 sm:p-10 text-center transition-all ${

@@ -74,20 +74,8 @@ export const getTourSteps = (t) => ({
       disableBeacon: true,
     },
     {
-      target: '#tour-dropzone',
-      content: t.aiAssistant.tourUploader.dropzone,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-script-box',
-      content: t.aiAssistant.tourUploader.scriptBox,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-upload-list',
-      content: t.aiAssistant.tourUploader.uploadList,
+      target: '#tour-uploader-accordion',
+      content: t.aiAssistant.tourUploader.accordion || "Pour plus de clarté, tout est rangé dans ces menus déroulants. Cliquez sur un thème (ex: Reportage 1) pour l'ouvrir et déposer vos fichiers et scripts !",
       placement: 'auto',
       disableBeacon: true,
     }
