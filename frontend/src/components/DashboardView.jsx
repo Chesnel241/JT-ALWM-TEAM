@@ -34,10 +34,13 @@ const DEFAULT_BRANDING = {
   imageOverlays: [],
 };
 
-function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword }) {
+function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, onContentChange }) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
     const url = `${API_BASE}/uploads/${file.filename}?proxy=true`;
@@ -61,17 +64,78 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword })
       });
   }, [file, selectedBin, adminPassword]);
 
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const isMj = selectedBin === 'mj';
+      // Maintient l'extension .txt
+      const newFile = new File([content], file.name || file.filename, { type: 'text/plain' });
+      await api.uploadFile(selectedWeek, selectedBin, newFile, { 
+        adminPassword,
+        reportage: isMj ? 'Détails' : (selectedBin === 'tj' ? 'Titres' : '')
+      });
+      addToast('Script sauvegardé avec succès', 'success');
+      setIsEditing(false);
+      if (onContentChange) onContentChange();
+    } catch (err) {
+      console.error(err);
+      addToast('Erreur lors de la sauvegarde du script', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center items-center h-full text-[color:var(--muted)]">Chargement du texte...</div>;
   if (error) return <div className="text-[var(--signal)] font-medium text-center mt-10 flex flex-col items-center gap-2"><AlertCircle /> {error}</div>;
 
   return (
-    <pre className="whitespace-pre-wrap font-sans text-[color:var(--ink)] text-base leading-relaxed max-w-none">
-      {content}
-    </pre>
+    <div className="w-full h-full flex flex-col">
+      {isEditing ? (
+        <>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="w-full flex-1 min-h-[300px] p-4 bg-[var(--paper-2)] border border-[var(--border)] rounded text-[color:var(--ink)] font-sans text-base leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          />
+          <div className="flex justify-end gap-3 mt-4">
+            <button 
+              onClick={() => setIsEditing(false)} 
+              className="px-4 py-2 rounded-lg font-medium text-sm border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--paper-2)] transition-colors disabled:opacity-50"
+              disabled={isSaving}
+            >
+              Annuler
+            </button>
+            <button 
+              onClick={handleSave} 
+              className="px-4 py-2 rounded-lg font-medium text-sm bg-[var(--accent)] text-[var(--paper)] hover:bg-[var(--accent-deep)] transition-colors shadow-sm disabled:opacity-50"
+              disabled={isSaving}
+            >
+              {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {adminPassword && (
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-deep)] flex items-center gap-1 transition-colors"
+              >
+                <FileText size={16} /> Éditer le texte
+              </button>
+            </div>
+          )}
+          <pre className="whitespace-pre-wrap font-sans text-[color:var(--ink)] text-base leading-relaxed max-w-none p-4 bg-[var(--paper-2)] border border-[var(--border)] rounded flex-1 overflow-y-auto min-h-[300px]">
+            {content}
+          </pre>
+        </>
+      )}
+    </div>
   );
 }
 
-function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword }) {
+function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword, onContentChange }) {
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -151,7 +215,7 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
             } else if (isAudio) {
               return <audio src={url} controls autoPlay className="w-full mt-4" />;
             } else {
-              return <ScriptViewerContent file={file} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={adminPassword} />;
+              return <ScriptViewerContent file={file} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={adminPassword} onContentChange={onContentChange} />;
             }
           })()}
         </div>
@@ -1812,6 +1876,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedWeek={selectedWeek}
         selectedBin={selectedBin}
         adminPassword={authenticatedAdminPassword}
+        onContentChange={() => api.getDashboard(selectedWeek).then(setDashboard).catch(console.error)}
       />
 
       {selectedBin && (
