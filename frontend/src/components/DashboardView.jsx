@@ -163,6 +163,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const { t, lang } = useI18n();
   const { addToast } = useToast();
   const [dashboard, setDashboard] = useState({});
+  const [manualBins, setManualBins] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [viewingScript, setViewingScript] = useState(null);
@@ -876,10 +877,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   }, [dashboard]);
 
   const countriesWithUploads = useMemo(() => {
-    return Object.keys(dashboard).filter(
+    const uploaded = Object.keys(dashboard).filter(
       (id) => dashboard[id]?.length > 0 || id === 'tj'
     );
-  }, [dashboard]);
+    return Array.from(new Set([...uploaded, ...manualBins]));
+  }, [dashboard, manualBins]);
 
   const [selectedBin, setSelectedBin] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -1159,6 +1161,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 })}
               </div>
             )}
+            
+            <div className="mt-4 px-2">
+              <select 
+                className="w-full text-xs p-2 bg-[var(--paper)] border border-[var(--border)] rounded mb-2 text-[color:var(--ink)] cursor-pointer"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setManualBins(prev => Array.from(new Set([...prev, e.target.value])));
+                    setSelectedBin(e.target.value);
+                    e.target.value = '';
+                  }
+                }}
+                defaultValue=""
+              >
+                <option value="" disabled>+ Ajouter un pays sans upload</option>
+                {countries.filter(c => !countriesWithUploads.includes(c.id) && c.id !== '_subscriptions').map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </aside>
         )}
