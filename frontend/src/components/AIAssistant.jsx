@@ -53,15 +53,32 @@ export default function AIAssistant({ currentPage }) {
     }
   }, [messages]);
 
+  const prevPage = useRef(currentPage);
+
   useEffect(() => {
-    if (currentPage === 'uploader' && localStorage.getItem('pendingContinuousTour') === 'true') {
-      localStorage.removeItem('pendingContinuousTour');
-      setTimeout(() => {
-        startTour();
-      }, 500);
+    if (currentPage !== prevPage.current) {
+      const isPending = localStorage.getItem('pendingContinuousTour') === 'true';
+      
+      if (runTour || isPending) {
+        localStorage.removeItem('pendingContinuousTour');
+        setRunTour(false);
+        
+        setTimeout(() => {
+          const pageSteps = allTourSteps[currentPage] || [];
+          const visible = pageSteps.filter(
+            (s) => s.target === 'body' || document.querySelector(s.target)
+          );
+          if (visible.length > 0) {
+            setSteps(visible);
+            setIsChatOpen(false);
+            setStepIndex(0);
+            setRunTour(true);
+          }
+        }, 600);
+      }
+      prevPage.current = currentPage;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
+  }, [currentPage, runTour, allTourSteps]);
 
   const handleJoyrideCallback = (data) => {
     const { status } = data;
