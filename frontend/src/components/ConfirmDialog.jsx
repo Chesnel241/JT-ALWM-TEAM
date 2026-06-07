@@ -45,11 +45,16 @@ export default function ConfirmDialog({
 
     document.addEventListener('keydown', handleKeyDown);
     
-    // Focus the first button on open
+    // Focus input if present, otherwise first button
     if (dialogRef.current) {
-      const focusableElements = dialogRef.current.querySelectorAll('button');
-      if (focusableElements.length > 0) {
-        focusableElements[0].focus();
+      const input = dialogRef.current.querySelector('input, textarea');
+      if (input) {
+        input.focus();
+      } else {
+        const focusableElements = dialogRef.current.querySelectorAll('button');
+        if (focusableElements.length > 0) {
+          focusableElements[0].focus();
+        }
       }
     }
 
@@ -98,9 +103,9 @@ export default function ConfirmDialog({
           {title}
         </h2>
 
-        <p id="dialog-description" className="text-[color:var(--muted)] text-sm mb-6">
+        <div id="dialog-description" className="text-[color:var(--muted)] text-sm mb-6">
           {message}
-        </p>
+        </div>
 
         <div className="flex gap-3 justify-end">
           <button
