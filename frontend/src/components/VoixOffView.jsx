@@ -412,6 +412,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
 
           </div>
         </div>
+        </div>
       )}
     </div>
   );
