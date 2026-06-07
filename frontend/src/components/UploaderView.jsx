@@ -299,7 +299,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         const isDragActive = dragActive[reportageName];
 
         return (
-          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="mb-4 sm:mb-6 md:mb-12 bg-[var(--paper)] md:bg-black/5 md:dark:bg-white/5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] md:p-8 overflow-hidden md:overflow-visible shadow-sm md:shadow-none transition-all duration-300">
+          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="mb-3 sm:mb-4 md:mb-12 bg-[var(--paper)] md:bg-black/5 md:dark:bg-white/5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] md:p-8 overflow-hidden md:overflow-visible shadow-sm md:shadow-none transition-all duration-300">
             {/* Accordion Header (Mobile) / Normal Header (Desktop) */}
             <div
               onClick={() => {
@@ -326,12 +326,18 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             </div>
             
             {/* Content Container (Collapsible on Mobile, Always Open on Desktop) */}
-            <div 
-              className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8 transition-all duration-500 ease-in-out md:!grid-rows-[1fr] md:!opacity-100 md:!p-0 md:!border-t-0 md:!bg-transparent md:!mt-0 md:!overflow-visible ${
-                expandedSection === section.id ? 'grid-rows-[1fr] opacity-100 p-4 sm:p-6 border-t border-[var(--border)] bg-black/5 dark:bg-white/5' : 'grid-rows-[0fr] opacity-0 p-0 m-0 overflow-hidden'
+            <div
+              className={`grid transition-all duration-500 ease-in-out md:!grid-rows-[1fr] md:!opacity-100 md:!overflow-visible ${
+                expandedSection === section.id ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 overflow-hidden'
               }`}
             >
-              <div className="space-y-4 sm:space-y-6 overflow-hidden">
+              <div className="min-h-0 overflow-hidden">
+                <div 
+                  className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-8 md:!p-0 md:!border-t-0 md:!bg-transparent md:!mt-0 md:!overflow-visible ${
+                    expandedSection === section.id ? 'p-4 sm:p-6 border-t border-[var(--border)] bg-black/5 dark:bg-white/5' : 'p-0 m-0'
+                  }`}
+                >
+                  <div className="space-y-4 sm:space-y-6">
                 <div
                   id={i === 0 ? 'tour-dropzone' : undefined}
                   className={`relative border-2 border-dashed rounded-[1.5rem] p-6 sm:p-10 text-center transition-all ${
@@ -527,6 +533,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   </ul>
                 )}
               </div>
+            </div>
             </div>
           </div>
         );
