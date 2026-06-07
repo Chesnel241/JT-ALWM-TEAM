@@ -535,6 +535,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               </div>
             </div>
             </div>
+            </div>
           </div>
         );
       })}
