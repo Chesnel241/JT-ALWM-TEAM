@@ -46,6 +46,12 @@ export const getTourSteps = (t) => ({
       content: t.aiAssistant.tourHome.addCountry,
       placement: 'auto',
       disableBeacon: true,
+    },
+    {
+      target: 'body',
+      content: t.aiAssistant.tourHome.continueToUploader,
+      placement: 'center',
+      disableBeacon: true,
     }
   ],
   uploader: [

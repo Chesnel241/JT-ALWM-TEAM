@@ -218,7 +218,8 @@ export const translations = {
         countryList: "C'est ici que vous devez sélectionner votre pays pour accéder à votre Espace Reportages.",
         addCountry: "Si votre pays n'est pas dans la liste, vous pouvez l'ajouter facilement avec ce bouton.",
         navEditing: "L'équipe de montage utilise cet onglet pour récupérer vos rushs et scripts. Vous n'avez normalement pas besoin d'y aller.",
-        navDelivery: "C'est ici que vous pourrez voir et télécharger le JT une fois qu'il sera monté et prêt !"
+        navDelivery: "C'est ici que vous pourrez voir et télécharger le JT une fois qu'il sera monté et prêt !",
+        continueToUploader: "Maintenant, cliquez sur votre pays (ou ajoutez-en un) pour entrer dans l'Espace Reportages. Je vous y retrouverai pour continuer la visite !"
       },
       tourUploader: {
         welcome: "Vous êtes dans votre Espace Reportages. C'est ici que vous envoyez vos fichiers à l'équipe de montage.",
@@ -475,7 +476,8 @@ export const translations = {
         countryList: "This is where you must select your country to access your Reports Space.",
         addCountry: "If your country is not in the list, you can easily add it with this button.",
         navEditing: "The editing team uses this tab to retrieve your rushes and scripts. You usually don't need to go there.",
-        navDelivery: "This is where you can see and download the newscast once it's edited and ready!"
+        navDelivery: "This is where you can see and download the newscast once it's edited and ready!",
+        continueToUploader: "Now, click on your country (or add one) to enter the Reports Space. I'll meet you there to continue the tour!"
       },
       tourUploader: {
         welcome: "You are in your Reports Space. This is where you send your files to the editing team.",

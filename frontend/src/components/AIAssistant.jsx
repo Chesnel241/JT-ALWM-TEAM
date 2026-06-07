@@ -53,6 +53,16 @@ export default function AIAssistant({ currentPage }) {
     }
   }, [messages]);
 
+  useEffect(() => {
+    if (currentPage === 'uploader' && localStorage.getItem('pendingContinuousTour') === 'true') {
+      localStorage.removeItem('pendingContinuousTour');
+      setTimeout(() => {
+        startTour();
+      }, 500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
+
   const handleJoyrideCallback = (data) => {
     const { status } = data;
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
@@ -61,6 +71,10 @@ export default function AIAssistant({ currentPage }) {
     if (finishedStatuses.includes(status)) {
       setRunTour(false);
       setStepIndex(0);
+
+      if (status === STATUS.FINISHED && currentPage === 'home') {
+        localStorage.setItem('pendingContinuousTour', 'true');
+      }
     }
   };
 
