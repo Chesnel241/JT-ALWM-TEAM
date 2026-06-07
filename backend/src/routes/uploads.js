@@ -227,7 +227,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
       }
 
     const reportageName = req.query.reportage || '';
-    const allowImages = reportageName === 'Séminaires de la semaine';
+    const allowImages = reportageName === 'Séminaires de la semaine' || reportageName === 'Annonces';
 
     // Valider le fichier avec fileValidator (extension + MIME + nom)
     let validation = validateFile(file, { allowImages });
