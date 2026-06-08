@@ -104,8 +104,8 @@ export const api = {
       body: JSON.stringify({ phone }),
     }),
 
-  getSubscriptions: (weekId) =>
-    request(`/notifications/${weekId}`),
+  getSubscriptions: (weekId, adminPassword) =>
+    request(`/notifications/${weekId}`, { adminPassword }),
 
   uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, adminPassword } = {}) => {
     if (typeof onPhase === 'function') onPhase('processing');

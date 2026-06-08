@@ -11,6 +11,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   isLoading = false,
+  extraActions = null,
 }) {
   const dialogRef = useRef(null);
 
@@ -107,7 +108,8 @@ export default function ConfirmDialog({
           {message}
         </div>
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex gap-3 justify-end flex-wrap">
+          {extraActions}
           <button
             onClick={onCancel}
             disabled={isLoading}

@@ -11,6 +11,8 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 const FILE_ICONS = {
   video: { Icon: Video, color: 'text-blue-500', bg: 'bg-blue-100' },
@@ -35,10 +37,19 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [expandedSection, setExpandedSection] = useState(null);
 
   // Notifications
-  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [hasPhoneNumber, setHasPhoneNumber] = useState(true); // default true before check
   const [phone, setPhone] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
-  const hasSubscribedSession = useRef(false);
+
+  useEffect(() => {
+    const savedPhone = localStorage.getItem('uploader_phone');
+    if (savedPhone) {
+      setHasPhoneNumber(true);
+      setPhone(savedPhone);
+    } else {
+      setHasPhoneNumber(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!selectedWeek) return;
@@ -99,10 +110,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           );
           setUploads((prev) => [...prev, result]);
           addToast(t.uploader.uploadSuccess(result.name), 'success', 3000);
-          
-          if (!hasSubscribedSession.current) {
-            setPhoneModalOpen(true);
-          }
         })
         .catch((err) => {
           setUploading((prev) =>
@@ -172,8 +179,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     setIsSubscribing(true);
     try {
       await api.subscribeToNotifications(selectedWeek, country.id, phone);
-      hasSubscribedSession.current = true;
-      setPhoneModalOpen(false);
+      localStorage.setItem('uploader_phone', phone);
+      setHasPhoneNumber(true);
       addToast(t.uploader.notifySuccess, 'success', 3000);
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
@@ -227,7 +234,46 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </div>
       )}
 
-      {country.id === 'tj' || country.id === 'mj' ? (
+      {!hasPhoneNumber ? (
+        <div className="panel p-6 sm:p-8 mb-8 border-2 border-[color:var(--accent)] bg-[color:var(--accent)]/5">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="bg-[color:var(--accent)] text-white p-3 rounded-full flex-shrink-0">
+              <AlertCircle size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-[color:var(--ink)] mb-2">
+                {t.uploader.mandatoryPhoneTitle || 'Un contact WhatsApp est obligatoire'}
+              </h2>
+              <p className="text-[color:var(--muted)]">
+                {t.uploader.mandatoryPhoneDesc || 'Afin de vous avertir rapidement en cas de problème (vidéo refusée, son inaudible, etc.) ou vous prévenir de la disponibilité du JT, veuillez renseigner le numéro WhatsApp de votre pays.'}
+              </p>
+            </div>
+          </div>
+          
+          <div className="max-w-md mx-auto bg-[var(--paper)] p-5 rounded-2xl border border-[var(--border)] shadow-sm">
+            <label className="block text-sm font-medium text-[color:var(--ink)] mb-3">
+              Numéro de téléphone avec indicatif
+            </label>
+            <PhoneInput
+              international
+              defaultCountry="FR"
+              value={phone}
+              onChange={setPhone}
+              className="w-full mb-4 uploader-phone-input"
+            />
+            <button
+              onClick={handleSubscribe}
+              disabled={isSubscribing || !phone || phone.length < 5}
+              className="btn btn-primary w-full flex justify-center items-center gap-2"
+            >
+              {isSubscribing ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : null}
+              {t.uploader.mandatoryPhoneSubmit || 'Valider et débloquer l\'upload'}
+            </button>
+          </div>
+        </div>
+      ) : country.id === 'tj' || country.id === 'mj' ? (
         <>
           <TjUploader 
             selectedWeek={selectedWeek} 

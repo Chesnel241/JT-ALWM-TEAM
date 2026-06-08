@@ -73,6 +73,15 @@ export default function Tutorial5W1H() {
               </button>
             </div>
 
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex gap-3 items-start">
+              <Info className="text-amber-500 shrink-0 mt-0.5" size={20} />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Important :</strong> Vous devrez désormais fournir un numéro WhatsApp de contact 
+                avant de pouvoir téléverser vos fichiers. Cela nous permet de vous avertir très rapidement 
+                en cas de problème technique (son, image) ou pour vous notifier de la disponibilité du JT.
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {items.map(({ id, color, bg, border }) => {
                 const Icon = icons[id];

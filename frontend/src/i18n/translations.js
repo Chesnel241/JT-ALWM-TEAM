@@ -79,6 +79,9 @@ export const translations = {
       notifyNo: 'Non merci',
       phonePlaceholder: 'Ex: +33600000000',
       notifySuccess: 'Vous serez notifié !',
+      mandatoryPhoneTitle: 'Un contact WhatsApp est obligatoire',
+      mandatoryPhoneDesc: 'Afin de vous avertir rapidement en cas de problème (vidéo refusée, son inaudible, etc.) ou vous prévenir de la disponibilité du JT, veuillez renseigner le numéro WhatsApp de votre pays.',
+      mandatoryPhoneSubmit: 'Valider et débloquer l\'upload',
     },
     dashboard: {
       title: 'Tableau de bord',
@@ -336,6 +339,9 @@ export const translations = {
       notifyNo: 'No thanks',
       phonePlaceholder: 'e.g. +33600000000',
       notifySuccess: 'You will be notified!',
+      mandatoryPhoneTitle: 'A WhatsApp contact is mandatory',
+      mandatoryPhoneDesc: 'To quickly notify you in case of a problem (rejected video, inaudible sound, etc.) or let you know when the newscast is ready, please provide your country\'s WhatsApp number.',
+      mandatoryPhoneSubmit: 'Validate and unlock upload',
     },
     dashboard: {
       title: 'Dashboard',

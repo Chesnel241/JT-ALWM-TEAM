@@ -255,6 +255,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   // Feedback State
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackPhone, setFeedbackPhone] = useState(null);
   const [fileToFeedback, setFileToFeedback] = useState(null);
   const [feedbackStatus, setFeedbackStatus] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
@@ -843,6 +844,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       setFeedbackStatus(status);
       setFeedbackText(file.feedback || '');
       setFeedbackDialogOpen(true);
+      
+      if (authenticatedAdminPassword) {
+        api.getSubscriptions(selectedWeek, authenticatedAdminPassword)
+          .then(subs => {
+            const sub = subs.find(s => s.countryId === countryId);
+            setFeedbackPhone(sub ? sub.phone : null);
+          })
+          .catch(() => setFeedbackPhone(null));
+      } else {
+        setFeedbackPhone(null);
+      }
     }
   };
 
@@ -1874,6 +1886,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         cancelText="Annuler"
         variant={feedbackStatus === 'approved' ? 'primary' : 'danger'}
         isLoading={isSubmittingFeedback}
+        extraActions={
+          feedbackStatus === 'rejected' && feedbackPhone && (
+            <a
+              href={`https://wa.me/${feedbackPhone.replace(/\+/g, '')}?text=${encodeURIComponent(`⚠️ Problème avec votre fichier "${fileToFeedback?.fileName}".\nMotif : ${feedbackText || 'Veuillez vérifier votre fichier et le renvoyer.'}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#128C7E] text-white transition-colors font-medium text-sm flex items-center gap-2 mr-auto"
+              title="Notifier sur WhatsApp"
+            >
+              WhatsApp
+            </a>
+          )
+        }
         onConfirm={handleConfirmFeedback}
         onCancel={() => {
           setFeedbackDialogOpen(false);

@@ -193,8 +193,15 @@ body {
 	.custom-audio::-webkit-media-controls-panel {
 		background-color: #1f2937;
 	}
-	.custom-audio::-webkit-media-controls-current-time-display,
 	.custom-audio::-webkit-media-controls-time-remaining-display {
 		color: #fff;
+	}
+
+	.uploader-phone-input .PhoneInputInput {
+		@apply w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all ml-3;
+	}
+
+	.uploader-phone-input .PhoneInputCountry {
+		@apply border border-[var(--border)] rounded-xl px-2 bg-[var(--paper-2)];
 	}
 }

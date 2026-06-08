@@ -57,16 +57,9 @@ router.get('/:weekId', requireAdmin, globalLimiter, asyncHandler(async (req, res
   }
 
   const subscriptions = getSubscriptions(weekId);
-  // getSubscriptions peut renvoyer un tableau d'objets {countryId, phone}
-  // ou un objet groupé. On masque tout `phone` rencontré.
-  const masked = Array.isArray(subscriptions)
-    ? subscriptions.map((s) => (s && typeof s === 'object' ? { ...s, phone: maskPhone(s.phone) } : s))
-    : (subscriptions && typeof subscriptions === 'object'
-      ? Object.fromEntries(Object.entries(subscriptions).map(([k, v]) => [
-        k, Array.isArray(v) ? v.map(maskPhone) : v,
-      ]))
-      : subscriptions);
-  res.status(200).json(masked);
+  // Les numéros ne sont plus masqués puisque cette route est protégée
+  // par `requireAdmin`. L'admin a besoin des vrais numéros pour WhatsApp.
+  res.status(200).json(subscriptions);
 }));
 
 export default router;
