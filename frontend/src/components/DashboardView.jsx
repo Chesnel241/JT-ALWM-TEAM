@@ -780,23 +780,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     try {
       if (isArchive) {
         // Pour les archives, on utilise l'API standard avec le jeton X-Admin-Password si mj
-        const headers = {};
-        if (selectedBin === 'mj' && authenticatedAdminPassword) headers['X-Admin-Password'] = authenticatedAdminPassword;
-        
-        const res = await fetch(`${API_BASE}/api/uploads/${fileToDownload.filename}`, { headers });
-        if (!res.ok) throw new Error('Accès refusé');
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Archive_${selectedBin || 'export'}.zip`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        // Pour les fichiers uniques, on utilise l'URL locale directement
-        let url = `${API_BASE}/uploads/${fileToDownload.filename}`;
+        let url = `${API_BASE}/api/uploads/${fileToDownload.filename}`;
         if (selectedBin === 'mj' && authenticatedAdminPassword) {
           url += `?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}`;
+        }
+        window.location.assign(url);
+      } else {
+        // Pour les fichiers uniques, on force le téléchargement
+        let url = `${API_BASE}/uploads/${fileToDownload.filename}?dl=1`;
+        if (selectedBin === 'mj' && authenticatedAdminPassword) {
+          url += `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}`;
         }
         window.location.assign(url);
       }
@@ -1619,7 +1612,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           </div>
                           <div className="flex items-center gap-2">
                             <a
-                              href={`${API_BASE}/api/deliveries/${file.filename}`}
+                              href={`${API_BASE}/uploads/${file.filename}?dl=1`}
                               download={file.name}
                               className="p-1.5 md:p-2 rounded-lg text-gray-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
                               title={t.delivery.download}

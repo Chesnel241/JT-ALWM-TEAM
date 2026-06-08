@@ -128,7 +128,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <a
-                        href={`${API_BASE}/uploads/${file.filename}`}
+                        href={`${API_BASE}/uploads/${file.filename}?dl=1`}
                         download={file.name}
                         className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1.5 rounded-lg"
                         title={t.delivery.downloadFile}

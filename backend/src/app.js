@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { mkdirSync } from 'fs';
-import { join } from 'path';
+import { join, resolve, normalize, basename } from 'path';
 import { initSentry, getSentryErrorHandler } from './monitoring/sentry.js';
 import { initMetrics } from './monitoring/metrics.js';
 import cookieParser from 'cookie-parser';
@@ -169,6 +169,15 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
           return res.status(403).send('Accès protégé : authentification requise pour cette rubrique.');
         }
       }
+
+      if (req.query.dl === '1') {
+        const safePath = normalize(filename).replace(/^(\.\.(\/|\\|$))+/, '');
+        const fullPath = join(dir, safePath);
+        if (fullPath.startsWith(resolve(dir))) {
+          return res.download(fullPath, metadata?.name || basename(safePath));
+        }
+      }
+
       next();
     } catch (err) {
       next(err);
