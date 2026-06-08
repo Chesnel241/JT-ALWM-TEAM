@@ -1833,6 +1833,26 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       />
 
       <ConfirmDialog
+        isOpen={downloadDialogOpen}
+        title="Télécharger le fichier"
+        message={
+          <div className="mt-2 text-left">
+            <p className="text-[color:var(--muted)] mb-4">
+              Êtes-vous sûr de vouloir télécharger <strong>{fileToDownload?.name || 'ce fichier'}</strong> ?
+            </p>
+          </div>
+        }
+        confirmText="Télécharger"
+        cancelText={t.uploader.cancel}
+        variant="primary"
+        onConfirm={handleConfirmDownload}
+        onCancel={() => {
+          setDownloadDialogOpen(false);
+          setFileToDownload(null);
+        }}
+      />
+
+      <ConfirmDialog
         isOpen={feedbackDialogOpen}
         title={feedbackStatus === 'approved' ? 'Approuver le reportage' : 'Rejeter le reportage'}
         message={
