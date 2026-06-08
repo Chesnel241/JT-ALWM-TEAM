@@ -108,31 +108,55 @@ export const api = {
     request(`/notifications/${weekId}`, { adminPassword }),
 
   uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, adminPassword } = {}) => {
-    if (typeof onPhase === 'function') onPhase('processing');
-    const formData = new FormData();
-    formData.append('file', file);
-    if (reportage) formData.append('reportage', reportage);
-
-    const headers = {};
+    const { Upload } = await import('tus-js-client');
     const token = localStorage.getItem('app-password');
-    if (token) headers['X-App-Password'] = token;
-    if (adminPassword) headers['X-Admin-Password'] = adminPassword;
-
-    try {
-      const res = await axios.post(`${API_BASE}/api/uploads/${weekId}/${countryId}`, formData, {
-        headers,
-        onUploadProgress: (e) => {
-          if (e.lengthComputable && typeof onProgress === 'function') {
-            onProgress((e.loaded / e.total) * 100);
+    
+    return new Promise((resolve, reject) => {
+      const upload = new Upload(file, {
+        endpoint: `${API_BASE}/api/tus/`,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        metadata: {
+          filename: file.name,
+          name: file.name,
+          filetype: file.type,
+          weekId,
+          countryId,
+          reportage: reportage || '',
+          adminPassword: adminPassword || token || ''
+        },
+        onError: function (error) {
+          if (upload._aborted) {
+            reject(new Error(tStatic().errors.uploadCancelled || 'Upload annulé'));
+          } else {
+            reject(new Error(error.message || tStatic().errors.networkError));
           }
         },
-        signal,
+        onProgress: function (bytesUploaded, bytesTotal) {
+          const percentage = (bytesUploaded / bytesTotal) * 100;
+          if (typeof onProgress === 'function') {
+            onProgress(percentage);
+          }
+        },
+        onSuccess: function () {
+          resolve({ success: true, message: 'Upload terminé avec succès via TUS' });
+        }
       });
-      return res.data;
-    } catch (err) {
-      if (axios.isCancel(err)) throw new Error(tStatic().errors.uploadCancelled);
-      throw new Error(err.response?.data?.message || tStatic().errors.networkError);
-    }
+
+      // Find previous uploads
+      upload.findPreviousUploads().then(function (previousUploads) {
+        if (previousUploads.length) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
+        upload.start();
+      });
+
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          upload._aborted = true;
+          upload.abort();
+        });
+      }
+    });
   },
 
   submitScript: (weekId, countryId, content, reportage) =>

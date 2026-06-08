@@ -10,6 +10,8 @@
   "dependencies": {
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "@sentry/node": "^10.53.1",
+    "@tus/file-store": "^2.1.0",
+    "@tus/server": "^2.4.1",
     "@upstash/redis": "^1.38.0",
     "archiver": "7.0.1",
     "compression": "^1.8.1",

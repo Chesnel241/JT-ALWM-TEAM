@@ -135,9 +135,22 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     next();
   });
 
-  app.use(cors({ origin: corsOrigins, credentials: true }));
+  app.use(cors({ 
+    origin: corsOrigins, 
+    credentials: true,
+    exposedHeaders: ['Tus-Resumable', 'Upload-Length', 'Upload-Metadata', 'Location', 'Upload-Offset', 'Upload-Concat', 'Content-Type', 'Upload-Defer-Length'],
+    allowedHeaders: ['Tus-Resumable', 'Upload-Length', 'Upload-Metadata', 'Location', 'Upload-Offset', 'Content-Type', 'Upload-Concat', 'Authorization', 'x-admin-password', 'x-worker-key']
+  }));
   app.use(globalLimiter);
   app.use(timeoutMiddleware(REQUEST_TIMEOUT_MS));
+
+  // Mount TUS server before body parsers
+  app.all('/api/tus/*', (req, res, next) => {
+    import('./routes/tus.js').then(({ tusServer }) => {
+      tusServer.handle(req, res);
+    }).catch(next);
+  });
+
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
   app.use(sanitizerMiddleware);

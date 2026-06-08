@@ -72,17 +72,50 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     return new Date() > cutoff;
   })();
 
-  const handleFiles = (filesList, reportageName) => {
-    Array.from(filesList).forEach((file) => {
+  const handleFiles = async (filesList, reportageName) => {
+    // Process files sequentially to avoid freezing the browser or OOM during FFmpeg compression
+    for (const file of Array.from(filesList)) {
       const tempId = Math.random().toString(36).slice(2);
-      const isVideo = /\.(mp4|mov|webm)$/i.test(file.name);
+      const isVideo = /\.(mp4|mov|webm)$/i.test(file.name) || file.type.startsWith('video/');
+      
       setUploading((prev) => [
         ...prev,
         { id: tempId, name: file.name, progress: 0, status: 'uploading', phase: 'uploading', isVideo, reportage: reportageName },
       ]);
 
+      let uploadFile = file;
+
+      // Compress video if it's > 50MB
+      if (isVideo && file.size > 50 * 1024 * 1024) {
+        setUploading((prev) =>
+          prev.map((f) =>
+            f.id === tempId ? { ...f, phase: 'compressing', progress: 0 } : f
+          )
+        );
+
+        try {
+          const { compressVideo } = await import('../api/ffmpeg.js');
+          uploadFile = await compressVideo(file, (pct) => {
+            setUploading((prev) =>
+              prev.map((f) =>
+                f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f
+              )
+            );
+          });
+        } catch (err) {
+          console.error("Compression failed, falling back to original file", err);
+          addToast("Échec de la compression, envoi du fichier original...", 'warning', 3000);
+        }
+      }
+
+      setUploading((prev) =>
+        prev.map((f) =>
+          f.id === tempId ? { ...f, phase: 'uploading', progress: 0, name: uploadFile.name } : f
+        )
+      );
+
       api
-        .uploadFile(selectedWeek, country.id, file, {
+        .uploadFile(selectedWeek, country.id, uploadFile, {
           reportage: reportageName,
           onProgress: (pct) => {
             setUploading((prev) =>
@@ -91,7 +124,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               )
             );
           },
-          // Octets envoyés → serveur compresse/traite. Message clair.
           onPhase: (phase) => {
             setUploading((prev) =>
               prev.map((f) =>
@@ -108,8 +140,11 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               f.id === tempId ? { ...f, progress: 100, status: 'completed', phase: 'done' } : f
             )
           );
-          setUploads((prev) => [...prev, result]);
-          addToast(t.uploader.uploadSuccess(result.name), 'success', 3000);
+          // In case the API returns the result (our TUS wrapper returns {success, message})
+          // we fetch the updated files via the effect or manual fetch if needed.
+          // Since the server sends socket events, the list should refresh.
+          if (result.name) setUploads((prev) => [...prev, result]);
+          addToast(t.uploader.uploadSuccess(result.name || uploadFile.name), 'success', 3000);
         })
         .catch((err) => {
           setUploading((prev) =>
@@ -121,7 +156,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           );
           addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
         });
-    });
+    }
   };
 
   const handleDrag = (e, reportageName) => {
