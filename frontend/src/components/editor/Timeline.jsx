@@ -331,11 +331,12 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
     <div
       ref={setNodeRef}
       style={style}
-      role="listitem"
+      role="button"
+      tabIndex={0}
       onPointerEnter={() => setIsHovered(true)}
       onPointerLeave={() => setIsHovered(false)}
       aria-label={`Clip ${index != null ? index + 1 : ''} : ${clip.name}, durée ${fmtTime(dur)}${isActive ? ', en lecture' : ''}`}
-      className={`group relative flex flex-col overflow-visible shrink-0 transition-shadow`}
+      className={`group relative flex flex-col overflow-visible shrink-0 transition-shadow focus:outline-none`}
     >
       {/* Label du clip (nom + durée) - Détaché au dessus */}
       <div className="text-xs text-[color:var(--ink)] font-semibold mb-1.5 truncate px-1 pointer-events-none select-none">
@@ -398,58 +399,60 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
         )}
       </div>
 
-      {/* Toolbar du clip — toujours visible (pas seulement au survol) pour
-          accessibilité clavier + tablette. Élévation accrue si survolé/actif. */}
+      {/* Toolbar du clip — Flottante, large et centrée au survol/focus */}
       <div
         role="toolbar"
         aria-label={`Actions pour le clip ${clip.name}`}
-        className={`mt-2 flex items-center justify-center gap-0.5 bg-[var(--paper)] p-1 rounded-xl border shadow-sm transition-shadow ${
-          isHovered || isActive ? 'border-[var(--accent)]/60 shadow-md' : 'border-[var(--border)]'
+        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] transition-all duration-200 origin-center ${
+          isHovered ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:pointer-events-auto'
         }`}
       >
-        <button
-          onClick={(e) => { e.stopPropagation(); onTrim(clip); }}
-          aria-label="Modifier le rognage du clip"
-          className="min-w-[36px] min-h-[36px] p-2 text-[color:var(--ink)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-lg transition-colors"
-          title="Modifier le Trim"
-        >
-          <Pencil size={16} aria-hidden="true" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onOverlay(clip); }}
-          aria-label={`Animations et habillage ${(clip.overlays?.length ?? 0) > 0 ? `(${clip.overlays.length} actif${clip.overlays.length > 1 ? 's' : ''})` : ''}`}
-          aria-pressed={(clip.overlays?.length ?? 0) > 0}
-          className={`min-w-[36px] min-h-[36px] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${(clip.overlays?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/15' : 'text-[color:var(--ink)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
-          title="Animations & Habillage"
-        >
-          <Layers size={16} aria-hidden="true" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onKenBurns(clip.instanceId || clip.id); }}
-          aria-label={`Zoom lent Ken Burns ${clip.kenBurns?.mode ? `actif (${clip.kenBurns.mode})` : 'inactif'}`}
-          aria-pressed={!!clip.kenBurns?.mode}
-          className={`min-w-[36px] min-h-[36px] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${clip.kenBurns?.mode ? 'text-[var(--accent)] bg-[var(--accent)]/15' : 'text-[color:var(--ink)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
-          title="Zoom lent (Ken Burns)"
-        >
-          <ZoomIn size={16} aria-hidden="true" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onSubtitle(clip); }}
-          aria-label={`Sous-titres ${(clip.subtitles?.length ?? 0) > 0 ? `(${clip.subtitles.length} actif${clip.subtitles.length > 1 ? 's' : ''})` : 'auto'}`}
-          aria-pressed={(clip.subtitles?.length ?? 0) > 0}
-          className={`min-w-[36px] min-h-[36px] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${(clip.subtitles?.length ?? 0) > 0 ? 'text-[var(--accent)] bg-[var(--accent)]/15' : 'text-[color:var(--ink)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10'}`}
-          title="Sous-titres auto"
-        >
-          <Captions size={16} aria-hidden="true" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onRemove(clip.instanceId || clip.id); }}
-          aria-label={`Retirer le clip ${clip.name} de la timeline`}
-          className="min-w-[36px] min-h-[36px] p-2 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)] rounded-lg transition-colors"
-          title="Retirer de la Timeline"
-        >
-          <Trash2 size={16} aria-hidden="true" />
-        </button>
+        <div className="flex items-center gap-2 bg-[var(--paper)]/95 backdrop-blur-md p-2 rounded-2xl border border-[var(--accent)]/50 shadow-2xl">
+          <button
+            onClick={(e) => { e.stopPropagation(); onTrim(clip); }}
+            aria-label="Modifier le rognage du clip"
+            className="flex items-center justify-center w-12 h-12 text-[color:var(--ink)] hover:text-white hover:bg-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-xl transition-all shadow-sm"
+            title="Modifier le Trim"
+          >
+            <Pencil size={22} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onOverlay(clip); }}
+            aria-label={`Animations et habillage ${(clip.overlays?.length ?? 0) > 0 ? `(${clip.overlays.length} actif${clip.overlays.length > 1 ? 's' : ''})` : ''}`}
+            aria-pressed={(clip.overlays?.length ?? 0) > 0}
+            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${(clip.overlays?.length ?? 0) > 0 ? 'text-white bg-[var(--accent)] ring-2 ring-[var(--accent)]/30' : 'text-[color:var(--ink)] hover:text-white hover:bg-[var(--accent)]'}`}
+            title="Animations & Habillage"
+          >
+            <Layers size={22} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onKenBurns(clip.instanceId || clip.id); }}
+            aria-label={`Zoom lent Ken Burns ${clip.kenBurns?.mode ? `actif (${clip.kenBurns.mode})` : 'inactif'}`}
+            aria-pressed={!!clip.kenBurns?.mode}
+            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${clip.kenBurns?.mode ? 'text-white bg-[var(--accent)] ring-2 ring-[var(--accent)]/30' : 'text-[color:var(--ink)] hover:text-white hover:bg-[var(--accent)]'}`}
+            title="Zoom lent (Ken Burns)"
+          >
+            <ZoomIn size={22} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onSubtitle(clip); }}
+            aria-label={`Sous-titres ${(clip.subtitles?.length ?? 0) > 0 ? `(${clip.subtitles.length} actif${clip.subtitles.length > 1 ? 's' : ''})` : 'auto'}`}
+            aria-pressed={(clip.subtitles?.length ?? 0) > 0}
+            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${(clip.subtitles?.length ?? 0) > 0 ? 'text-white bg-[var(--accent)] ring-2 ring-[var(--accent)]/30' : 'text-[color:var(--ink)] hover:text-white hover:bg-[var(--accent)]'}`}
+            title="Sous-titres auto"
+          >
+            <Captions size={22} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+          <div className="w-px h-8 bg-[var(--border)] mx-1" aria-hidden="true" />
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(clip.instanceId || clip.id); }}
+            aria-label={`Retirer le clip ${clip.name} de la timeline`}
+            className="flex items-center justify-center w-12 h-12 text-[color:var(--signal)] hover:text-white hover:bg-[var(--signal)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)] rounded-xl transition-all shadow-sm"
+            title="Retirer de la Timeline"
+          >
+            <Trash2 size={22} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   );
