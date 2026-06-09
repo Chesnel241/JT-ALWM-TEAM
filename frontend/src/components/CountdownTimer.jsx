@@ -37,7 +37,7 @@ export default function CountdownTimer({ week }) {
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div id="tour-countdown" className={`panel p-6 sm:p-8 mb-8 flex flex-col md:flex-row items-center gap-6 sm:gap-10 transition-all ${isLate ? '!border-2 !border-red-500/50 !bg-red-50 dark:!bg-red-950/20' : 'bg-gradient-to-br from-[var(--paper)] to-[var(--paper-2)]'}`}>
+    <div id="tour-countdown" className={`panel p-6 sm:p-8 mb-8 flex flex-col md:flex-row items-center gap-6 sm:gap-10 transition-all ${isLate ? '!border-2 !border-[var(--signal)]/50 !bg-[var(--signal)]/10' : 'bg-gradient-to-br from-[var(--paper)] to-[var(--paper-2)]'}`}>
       <div className="relative flex items-center justify-center flex-shrink-0">
         <svg className="transform -rotate-90 w-36 h-36">
           <circle
@@ -47,7 +47,7 @@ export default function CountdownTimer({ week }) {
             stroke="currentColor"
             strokeWidth="6"
             fill="transparent"
-            className={isLate ? 'text-red-200 dark:text-red-900/50' : 'text-[var(--border)]'}
+            className={isLate ? 'text-[var(--signal)] opacity-20' : 'text-[var(--border)]'}
           />
           <circle
             cx="72"
@@ -58,12 +58,12 @@ export default function CountdownTimer({ week }) {
             fill="transparent"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className={`transition-all duration-1000 ease-[var(--ease-out)] ${isLate ? 'text-red-500' : 'text-[color:var(--accent)]'}`}
+            className={`transition-all duration-1000 ease-[var(--ease-out)] ${isLate ? 'text-[var(--signal)]' : 'text-[color:var(--accent)]'}`}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {isLate ? (
-            <span className="text-xl font-black text-red-600 tracking-wider">
+            <span className="text-xl font-black text-[var(--signal)] tracking-wider">
               {t.countdown.finished}
             </span>
           ) : (
@@ -82,11 +82,11 @@ export default function CountdownTimer({ week }) {
       <div className="flex-1 text-center md:text-left">
         {isLate ? (
           <>
-            <h2 className="text-2xl font-black text-red-700 dark:text-red-400 flex items-center justify-center md:justify-start gap-2 mb-2">
-              <AlertCircle size={28} className="animate-pulse text-red-600" />
+            <h2 className="text-2xl font-black text-[var(--signal)] flex items-center justify-center md:justify-start gap-2 mb-2">
+              <AlertCircle size={28} className="animate-pulse text-[var(--signal)]" />
               {t.countdown.lateTitle}
             </h2>
-            <p className="text-red-600/90 dark:text-red-300/80 font-medium">
+            <p className="text-[var(--ink)] font-medium">
               {t.countdown.lateDesc}
             </p>
           </>
