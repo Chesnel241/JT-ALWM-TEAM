@@ -68,12 +68,21 @@ export function useVersionCheck() {
     }
   };
 
-  // Si on veut forcer directement sans demander à l'utilisateur :
-  // Décommentez ceci pour recharger automatiquement dès la détection
+  // Auto-update SANS casser le travail en cours : on ne recharge que quand
+  // l'onglet est caché (l'utilisateur n'est pas en train d'uploader/monter).
+  // Un reload immédiat détruisait les uploads TUS et la timeline non
+  // sauvegardée à chaque déploiement.
   useEffect(() => {
-    if (hasNewVersion) {
+    if (!hasNewVersion) return undefined;
+    if (document.hidden) {
       reloadApp();
+      return undefined;
     }
+    const onHide = () => {
+      if (document.hidden) reloadApp();
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
   }, [hasNewVersion]);
 
   return { hasNewVersion, reloadApp };

@@ -142,19 +142,21 @@ export const api = {
         }
       });
 
-      // Find previous uploads
+      // Find previous uploads. Le .catch est vital : si findPreviousUploads
+      // rejette (localStorage corrompu, fingerprint KO), l'upload ne démarre
+      // jamais et la promesse pend pour toujours → on démarre sans reprise.
       upload.findPreviousUploads().then(function (previousUploads) {
         if (previousUploads.length) {
           upload.resumeFromPreviousUpload(previousUploads[0]);
         }
         upload.start();
-      });
+      }).catch(() => upload.start());
 
       if (signal) {
         signal.addEventListener('abort', () => {
           upload._aborted = true;
           upload.abort();
-        });
+        }, { once: true });
       }
     });
   },

@@ -4,15 +4,13 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { existsSync, unlinkSync } from 'fs';
 import logger from '../logger/index.js';
-import { uploadsDir } from '../lib/upload.js';
+import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS } from '../lib/upload.js';
 import { addUpload, getCustomCountries } from '../data/store.js';
 import { COUNTRIES, buildWeeks, weekUploadCutoff } from '../data/constants.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { broadcastNotification } from './webpush.js';
 import { io } from '../app.js';
-import { safeEqual } from '../middleware/auth.js';
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+import { safeEqual, normalizeToken } from '../middleware/auth.js';
 
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 const isValidCountry = (countryId) =>
@@ -31,9 +29,35 @@ function checkUploadCutoff(weekId) {
   return null;
 }
 
+/**
+ * Authentifie une création d'upload TUS. La route /api/tus est montée AVANT
+ * le middleware requireAuth (les body-parsers casseraient le protocole TUS),
+ * donc l'auth DOIT se faire ici. Le client envoie son token de session dans
+ * metadata.adminPassword (admin OU mot de passe global — voir api/index.js).
+ * Fail-closed : si GLOBAL_PASSWORD est configuré, aucun token valide = 401.
+ */
+export function authorizeTusUpload(meta = {}) {
+  const GLOBAL = process.env.GLOBAL_PASSWORD;
+  const ADMIN = process.env.ADMIN_PASSWORD;
+  const token = normalizeToken(String(meta.adminPassword || meta.appPassword || ''));
+  const isAdmin = !!(ADMIN && token && safeEqual(token, normalizeToken(String(ADMIN))));
+  if (!GLOBAL) return { ok: true, isAdmin }; // dev local sans mot de passe
+  const isUser = !!(token && safeEqual(token, normalizeToken(String(GLOBAL))));
+  return { ok: isAdmin || isUser, isAdmin };
+}
+
+/** Allowlist d'extensions — même règle que le chemin multer (lib/upload.js). */
+export function validateTusExtension(name) {
+  const ext = path.extname(String(name || '')).toLowerCase();
+  return ALLOWED_EXTENSIONS.has(ext);
+}
+
 export const tusServer = new Server({
   path: '/api/tus',
   datastore: new FileStore({ directory: uploadsDir }),
+  // Même plafond que le chemin multer des rushes (200 Mo par défaut,
+  // surchargeable MAX_FILE_SIZE). Sans lui : remplissage disque illimité.
+  maxSize: MAX_FILE_SIZE,
   namingFunction: (req) => {
     // Generate UUID with timestamp to guarantee uniqueness and trace uploads
     return `${Date.now()}-${uuidv4()}`;
@@ -43,13 +67,20 @@ export const tusServer = new Server({
     const meta = upload.metadata || {};
     const weekId = meta.weekId;
     const countryId = meta.countryId;
-    const adminToken = meta.adminPassword;
+
+    const { ok, isAdmin } = authorizeTusUpload(meta);
+    if (!ok) {
+      throw { status_code: 401, body: 'Session requise : mot de passe invalide ou manquant.' };
+    }
 
     if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
       throw { status_code: 404, body: 'Week ou Country invalide' };
     }
 
-    const isAdmin = safeEqual(adminToken, ADMIN_PASSWORD);
+    if (!validateTusExtension(meta.name || meta.filename)) {
+      throw { status_code: 415, body: 'Type de fichier non autorisé.' };
+    }
+
     if (!isAdmin) {
       const cutoffErr = checkUploadCutoff(weekId);
       if (cutoffErr) throw cutoffErr;
