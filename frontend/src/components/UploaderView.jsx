@@ -637,34 +637,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           setFileToDelete(null);
         }}
       />
-
-      <ConfirmDialog
-        isOpen={phoneModalOpen}
-        title="WhatsApp"
-        message={
-          <div className="mt-2 text-left">
-            <p className="text-[color:var(--muted)] mb-4">
-              {t.uploader.notifyPrompt}
-            </p>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder={t.uploader.phonePlaceholder}
-              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
-            />
-          </div>
-        }
-        confirmText={t.uploader.notifyYes}
-        cancelText={t.uploader.notifyNo}
-        variant="primary"
-        isLoading={isSubscribing}
-        onConfirm={handleSubscribe}
-        onCancel={() => {
-          hasSubscribedSession.current = true; // Don't ask again this session
-          setPhoneModalOpen(false);
-        }}
-      />
     </div>
   );
 }
