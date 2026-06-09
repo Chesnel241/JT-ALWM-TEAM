@@ -64,6 +64,23 @@ describe('authorizeTusUpload — auth TUS fail-closed', () => {
   });
 });
 
+describe('namingFunction — préservation extension (détection de type aval)', () => {
+  it("préserve l'extension allowlistée en lowercase", async () => {
+    const { tusServer } = await import('../src/routes/tus.js');
+    const name = tusServer.options.namingFunction(null, { filename: 'reportage.MP4' });
+    expect(name).toMatch(/\.mp4$/);
+    expect(name).toMatch(/^\d+-[0-9a-f-]{36}\.mp4$/);
+  });
+
+  it("refuse les extensions hors allowlist (pas d'injection possible)", async () => {
+    const { tusServer } = await import('../src/routes/tus.js');
+    for (const fname of ['evil.html', 'x.svg', '../../etc/passwd', 'noext']) {
+      const name = tusServer.options.namingFunction(null, { filename: fname });
+      expect(name).toMatch(/^\d+-[0-9a-f-]{36}$/);
+    }
+  });
+});
+
 describe('validateTusExtension — allowlist alignée sur multer', () => {
   it('accepte les extensions média et documents autorisés', () => {
     for (const name of ['clip.mp4', 'rush.MOV', 'voix.mp3', 'script.docx', 'photo.jpg', 'audio.aac']) {
