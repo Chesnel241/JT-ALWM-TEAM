@@ -10,7 +10,8 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 // (NBSP, ZW*, BOM) + trim + lowercase (décision : login insensible à la
 // casse pour les pays qui tapent en majuscules sur mobile). Aligne le
 // comparateur sur le format normalisé que le frontend envoie après login.
-function normalizeToken(s) {
+// Exportée pour les vérifications hors middleware (TUS notamment).
+export function normalizeToken(s) {
   if (typeof s !== 'string') return '';
   return s
     .normalize('NFC')

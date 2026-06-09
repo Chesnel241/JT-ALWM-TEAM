@@ -17,39 +17,48 @@ export const loadFFmpeg = async () => {
 
 export const compressVideo = async (file, onProgress) => {
   const ffmpeg = await loadFFmpeg();
-  
-  ffmpeg.on('progress', ({ progress }) => {
+
+  // Listener nommé + off() en finally : ffmpeg est un singleton, sans
+  // retrait les callbacks de progress des uploads précédents s'accumulent
+  // et continuent de tirer sur des barres de progression mortes.
+  const handleProgress = ({ progress }) => {
     if (onProgress) {
       onProgress(progress * 100);
     }
-  });
+  };
+  ffmpeg.on('progress', handleProgress);
 
   const inputName = `input-${Date.now()}.${file.name.split('.').pop() || 'mp4'}`;
   const outputName = `output-${Date.now()}.mp4`;
 
-  await ffmpeg.writeFile(inputName, await fetchFile(file));
+  try {
+    await ffmpeg.writeFile(inputName, await fetchFile(file));
 
-  // faststart enables immediate streaming (like HLS)
-  // -crf 28 is a good compression ratio for 720p web delivery
-  await ffmpeg.exec([
-    '-i', inputName,
-    '-vcodec', 'libx264',
-    '-crf', '28',
-    '-preset', 'ultrafast',
-    '-s', '1280x720',
-    '-acodec', 'aac',
-    '-movflags', '+faststart',
-    outputName
-  ]);
+    // faststart enables immediate streaming (like HLS)
+    // -crf 28 is a good compression ratio for 720p web delivery
+    // scale préserve le ratio (les vidéos verticales smartphone ne sont
+    // plus écrasées en 16:9) et garde des dimensions paires pour yuv420p.
+    await ffmpeg.exec([
+      '-i', inputName,
+      '-vcodec', 'libx264',
+      '-crf', '28',
+      '-preset', 'ultrafast',
+      '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2',
+      '-acodec', 'aac',
+      '-movflags', '+faststart',
+      outputName
+    ]);
 
-  const data = await ffmpeg.readFile(outputName);
-  
-  // Cleanup to free memory
-  await ffmpeg.deleteFile(inputName);
-  await ffmpeg.deleteFile(outputName);
+    const data = await ffmpeg.readFile(outputName);
 
-  return new File([data.buffer], `compressed_${file.name}`, {
-    type: 'video/mp4',
-    lastModified: Date.now(),
-  });
+    return new File([data.buffer], `compressed_${file.name}`, {
+      type: 'video/mp4',
+      lastModified: Date.now(),
+    });
+  } finally {
+    ffmpeg.off('progress', handleProgress);
+    // Cleanup to free wasm memory, même si exec a échoué.
+    try { await ffmpeg.deleteFile(inputName); } catch { /* absent */ }
+    try { await ffmpeg.deleteFile(outputName); } catch { /* absent */ }
+  }
 };
