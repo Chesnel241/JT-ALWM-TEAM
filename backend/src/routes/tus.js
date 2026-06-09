@@ -58,9 +58,16 @@ export const tusServer = new Server({
   // Même plafond que le chemin multer des rushes (200 Mo par défaut,
   // surchargeable MAX_FILE_SIZE). Sans lui : remplissage disque illimité.
   maxSize: MAX_FILE_SIZE,
-  namingFunction: (req) => {
-    // Generate UUID with timestamp to guarantee uniqueness and trace uploads
-    return `${Date.now()}-${uuidv4()}`;
+  namingFunction: (req, metadata) => {
+    // UUID + timestamp pour l'unicité, MAIS on préserve l'extension
+    // d'origine (allowlist uniquement — pas d'injection possible) : toute
+    // la chaîne aval détecte le type par extension (INLINE_EXT du static,
+    // IMAGE_EXT de ffmpeg, isImage de Remotion, mime du player). Un fichier
+    // sans extension est traité comme vidéo → écran noir si c'était une
+    // image, téléchargement forcé au lieu de lecture inline, etc.
+    const ext = path.extname(String(metadata?.filename || metadata?.name || '')).toLowerCase();
+    const safeExt = ALLOWED_EXTENSIONS.has(ext) ? ext : '';
+    return `${Date.now()}-${uuidv4()}${safeExt}`;
   },
   onUploadCreate: async (req, res, upload) => {
     // Authentification & Validation
