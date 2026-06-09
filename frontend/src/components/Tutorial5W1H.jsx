@@ -73,8 +73,8 @@ export default function Tutorial5W1H() {
               </button>
             </div>
 
-            <div className="mb-6 p-4 bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-xl flex gap-3 items-start">
-              <Info className="text-[var(--accent)] shrink-0 mt-0.5" size={20} />
+            <div className="mb-6 p-4 bg-[var(--accent)]/10 border-2 border-[var(--accent)] rounded-xl flex gap-3 items-start animate-pulse-border">
+              <Info className="text-[var(--accent)] shrink-0 mt-0.5 animate-bounce" size={20} />
               <p className="text-sm text-[var(--ink)]">
                 <strong className="text-[var(--accent)]">Important :</strong> Vous devrez désormais fournir un numéro WhatsApp de contact 
                 avant de pouvoir téléverser vos fichiers. Cela nous permet de vous avertir très rapidement 

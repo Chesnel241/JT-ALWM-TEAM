@@ -175,6 +175,21 @@ body {
 		animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 	}
 
+	@keyframes pulse-border {
+		0%, 100% {
+			box-shadow: 0 0 0 0 oklch(0.62 0.14 175 / 0.4);
+			border-color: var(--accent);
+		}
+		50% {
+			box-shadow: 0 0 0 6px oklch(0.62 0.14 175 / 0);
+			border-color: oklch(0.62 0.14 175 / 0.5);
+		}
+	}
+
+	.animate-pulse-border {
+		animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+	}
+
 	.custom-scrollbar::-webkit-scrollbar {
 		width: 8px;
 	}
