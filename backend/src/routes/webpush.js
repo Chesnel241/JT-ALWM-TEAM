@@ -6,23 +6,32 @@ import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-// Allow fallback for local testing, but these should be overriden by .env
-const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || 'BDfun-W1NI1jLKY7gwtXtmqwLl7fs1jwlIUjdO8o50vl6k2VbzZppfW4Dc-TxNR1v8sJMfAtUe3k2irQU7y2O7A';
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || 'jV-16uuCRd90Fe6hgwHsMdl7d6btbkSOI97a4RmvBXM';
+// Clés VAPID exclusivement depuis l'environnement. AUCUN fallback en dur :
+// une clé privée committée dans le code est compromise (lisible dans
+// l'historique git) et permettrait à quiconque de forger des push vers les
+// abonnés. Si les clés manquent, le push est simplement désactivé (feature
+// non critique) — on ne crashe pas le serveur.
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || '';
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || '';
+const pushEnabled = !!(vapidPublicKey && vapidPrivateKey);
 
-webpush.setVapidDetails(
-  'mailto:contact@lwm-team.com',
-  vapidPublicKey,
-  vapidPrivateKey
-);
+if (pushEnabled) {
+  webpush.setVapidDetails('mailto:contact@lwm-team.com', vapidPublicKey, vapidPrivateKey);
+} else {
+  logger.warn('Web Push désactivé : VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY non configurées.');
+}
 
 router.get('/vapidPublicKey', (req, res) => {
+  if (!pushEnabled) return res.status(503).json({ error: 'Push non configuré' });
   res.json({ publicKey: vapidPublicKey });
 });
 
 router.post('/subscribe', asyncHandler(async (req, res, next) => {
+  if (!pushEnabled) return res.status(503).json({ error: 'Push non configuré' });
   const subscription = req.body;
-  if (!subscription || !subscription.endpoint) {
+  if (!subscription || !subscription.endpoint || typeof subscription.endpoint !== 'string'
+      || !subscription.keys || typeof subscription.keys !== 'object'
+      || typeof subscription.keys.auth !== 'string' || typeof subscription.keys.p256dh !== 'string') {
     return next(createErrors.badRequest('Invalid subscription object'));
   }
   
@@ -45,6 +54,7 @@ router.post('/unsubscribe', asyncHandler(async (req, res, next) => {
 }));
 
 export const broadcastNotification = async (payload) => {
+  if (!pushEnabled) return; // push désactivé faute de clés VAPID
   const subscriptions = getSubscriptions();
   if (subscriptions.length === 0) return;
   

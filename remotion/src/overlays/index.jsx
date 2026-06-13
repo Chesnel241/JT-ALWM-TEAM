@@ -967,9 +967,16 @@ function IntroJT({ overlay, durationInFrames }) {
         <AbsoluteFill style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <div style={{ position: 'relative', width: 1200, height: 120 }}>
             {words.map((w, i) => {
-              const step = (s3 - s2) / words.length;
+              const step = Math.max(1, (s3 - s2) / Math.max(1, words.length));
               const wf = frame - (s2 + i * step);
-              const op = interpolate(wf, [0, 6, step - 4, step], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+              // Fenêtre de fondu (in 0→6, plateau, out sur step). Si `step`
+              // est court (< 12 : intro brève ou beaucoup de mots-clés),
+              // `step - 4` passerait sous 6 → inputRange non monotone →
+              // crash renderMedia ("inputRange must be monotonically
+              // increasing"). On bascule alors sur un fondu triangulaire.
+              const op = step >= 12
+                ? interpolate(wf, [0, 6, step - 4, step], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+                : interpolate(wf, [0, step / 2, step], [0, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
               if (op <= 0) return null;
               const y = eo(wf, [0, 8], [40, 0]);
               return <div key={i} style={{ position: 'absolute', inset: 0, textAlign: 'center', opacity: op, transform: `translateY(${y}px)`, fontFamily: fontXB, fontWeight: 800, fontSize: 88, color: C.text(COL.white), letterSpacing: '0.04em', lineHeight: '120px', textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>{w}</div>;
@@ -1008,8 +1015,9 @@ function TransitionReportage({ overlay, durationInFrames }) {
   const titleScale = eo(frame, [0, fps], [0.9, 1]);
   const titleOpacity = eo(frame, [0, fps], [0, 1]);
   
-  // Globe Zoom lent (scale from 1 to 1.1)
-  const globeZoom = interpolate(frame, [0, durationInFrames], [1, 1.1]);
+  // Globe Zoom lent (scale from 1 to 1.1). Garde-fou inputRange : si le
+  // parent envoyait durationInFrames <= 0, [0, 0] crasherait renderMedia.
+  const globeZoom = interpolate(frame, [0, Math.max(1, durationInFrames)], [1, 1.1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: isOut ? outOpacity : 1 }}>

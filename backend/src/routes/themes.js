@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getThemes, saveTheme, deleteTheme } from '../data/store.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -34,7 +35,11 @@ router.get('/', (req, res) => {
   res.json(getThemes());
 });
 
-router.post('/', (req, res) => {
+// Écriture/suppression réservées admin : les thèmes sont une charte
+// globale partagée (habillage du JT). Sans ce garde, tout compte
+// authentifié (mot de passe global = tous les journalistes) pouvait
+// écraser ou supprimer les thèmes des autres.
+router.post('/', requireAdmin, (req, res) => {
   const theme = sanitizeTheme(req.body);
   if (!theme) {
     return res.status(400).json({ error: 'Thème invalide (nom requis, couleurs hex uniquement)' });
@@ -48,7 +53,7 @@ router.post('/', (req, res) => {
   res.json(saved);
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireAdmin, (req, res) => {
   const { id } = req.params;
   const deleted = deleteTheme(id);
   if (deleted) {

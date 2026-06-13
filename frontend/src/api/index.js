@@ -219,12 +219,13 @@ export const api = {
 
   getAnalytics: () => request('/analytics'),
 
-  // === Themes ===
+  // === Themes (écriture/suppression réservées admin) ===
   getThemes: () => request('/themes', { method: 'GET' }),
-  saveTheme: (theme) => request('/themes', {
+  saveTheme: (theme, adminPassword) => request('/themes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    adminPassword,
     body: JSON.stringify(theme)
   }),
-  deleteTheme: (id) => request(`/themes/${id}`, { method: 'DELETE' }),
+  deleteTheme: (id, adminPassword) => request(`/themes/${id}`, { method: 'DELETE', adminPassword }),
 };
