@@ -53,7 +53,11 @@ export function errorHandlerMiddleware(err, req, res, next) {
     statusCode = 500;
   }
 
-  // Logger l'erreur
+  // Logger l'erreur. On NE LOG PAS req.originalUrl tel quel : la query
+  // string peut contenir des secrets (dl_token, anciens adminPassword
+  // legacy, etc.). Une 5xx pendant un téléchargement écrivait sinon le
+  // token en clair dans les logs Render/Sentry.
+  const safeUrl = `${req.path}${req.url && req.url.includes('?') ? '?[redacted]' : ''}`;
   if (statusCode >= 500) {
     logger.error(`Server error: ${err.message}`, {
       error: err.message,
@@ -61,7 +65,7 @@ export function errorHandlerMiddleware(err, req, res, next) {
       context: {
         method: req.method,
         path: req.path,
-        url: req.originalUrl,
+        url: safeUrl,
         statusCode,
         ip: req.ip,
       },

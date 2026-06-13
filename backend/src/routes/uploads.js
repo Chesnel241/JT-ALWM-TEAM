@@ -16,6 +16,8 @@ import { requireAdmin, safeEqual } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
+import { generateDownloadToken } from '../lib/downloadTokens.js';
+import { getFileMetadata } from '../data/store.js';
 
 import { Readable } from 'stream';
 import { processVoiceover } from '../services/audioProcessor.js';
@@ -48,6 +50,24 @@ function checkUploadCutoff(weekId) {
   }
   return null;
 }
+
+// POST /api/uploads/download-token — émet un token signé (HMAC, 1 h, lié à
+// un filename) permettant un download direct via /uploads/<file>?dl_token=…
+// L'admin n'a ainsi PLUS besoin de passer son mot de passe en query string
+// (qui se retrouverait loggé en clair). Auth via X-Admin-Password (requireAdmin).
+router.post('/download-token', requireAdmin, asyncHandler(async (req, res, next) => {
+  const filename = String(req.body?.filename || '').trim();
+  if (!filename || !/^[\w\-.]+$/.test(filename)) {
+    return next(createErrors.badRequest('Filename requis (caractères autorisés : alphanumériques, _ - .).'));
+  }
+  // Vérifie que le fichier est bien suivi côté store (évite d'émettre un
+  // token signé pour un nom de fichier arbitraire qu'un attaquant pourrait
+  // injecter dans une autre route).
+  const metadata = getFileMetadata(filename);
+  if (!metadata) return next(createErrors.notFound('Fichier'));
+  const token = generateDownloadToken(filename);
+  return res.json({ token, expiresInSeconds: 3600 });
+}));
 
 // GET /api/uploads/:weekId — tous les pays d'une semaine
 router.get('/:weekId', (req, res) => {
