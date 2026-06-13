@@ -1338,6 +1338,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       audioFiles={weekAudioFiles}
                       imageFiles={weekImageFiles}
                       uploadAsset={uploadAsset}
+                      adminPassword={authenticatedAdminPassword}
                     />
                   ) : subtitleTarget ? (
                     <SubtitlePanel

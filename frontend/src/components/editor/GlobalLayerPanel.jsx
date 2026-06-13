@@ -39,7 +39,7 @@ const POSITIONS = [
  * incrustations images. Les fichiers audio/image proviennent des uploads de la
  * semaine (props audioFiles / imageFiles : [{filename, name}]).
  */
-export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [], uploadAsset, inline = false }) {
+export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [], uploadAsset, inline = false, adminPassword }) {
   const v = value;
   const setTicker = (p) => onChange({ ...v, ticker: { ...v.ticker, ...p } });
   const setLive = (p) => onChange({ ...v, live: { ...v.live, ...p } });
@@ -94,7 +94,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
         name: themeName,
         branding: v,
       };
-      await api.saveTheme(payload);
+      await api.saveTheme(payload, adminPassword);
       setThemeName('');
       loadThemes();
       alert('Thème sauvegardé avec succès !');
@@ -106,7 +106,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
   const handleDeleteTheme = async (id) => {
     if (!confirm('Supprimer ce thème ?')) return;
     try {
-      await api.deleteTheme(id);
+      await api.deleteTheme(id, adminPassword);
       loadThemes();
     } catch (err) {
       alert('Erreur lors de la suppression');
