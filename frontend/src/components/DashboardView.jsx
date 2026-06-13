@@ -281,6 +281,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const pollRef = useRef(null);
   const safetyRef = useRef(null);
   const playerRef = useRef(null);
+  // Verrou synchrone anti double-clic sur Générer le Master. setState
+  // (setIsGeneratingVideo) est asynchrone : un 2e clic dans le même tick
+  // React lance un 2e job avant que le 1er ait mis à jour l'état.
+  const generateLockRef = useRef(false);
 
   // Chrono d'assemblage : temps écoulé depuis le lancement du rendu.
   useEffect(() => {
@@ -531,7 +535,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   const handleGenerateVideo = async () => {
     if (timelineClips.length === 0) return;
-    if (isGeneratingVideo) return;
+    if (isGeneratingVideo || generateLockRef.current) return;
+    generateLockRef.current = true;
 
     const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const token = localStorage.getItem('app-password') || '';
@@ -627,6 +632,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     } catch (err) {
       console.error(err);
       tracker.fail(err.message);
+    } finally {
+      // Libère le verrou — l'UI est désormais gérée par isGeneratingVideo
+      // (set true dans trackJob). Si un autre clic tombait pile pendant
+      // la requête, isGeneratingVideo couvrait déjà la suite.
+      generateLockRef.current = false;
     }
   };
 
@@ -777,22 +787,33 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const handleConfirmDownload = async () => {
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
-    
+
     try {
+      // Pour la rubrique mj on n'expose PLUS le mot de passe admin en query
+      // string (logs proxy/Render/Sentry, historique navigateur). On
+      // demande un dl_token signé (HMAC, 1 h, lié au filename).
+      const needsToken = selectedBin === 'mj' && authenticatedAdminPassword && !isArchive;
+      let dlTokenQuery = '';
+      if (needsToken) {
+        const tokRes = await fetch(`${API_BASE}/api/uploads/download-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-App-Password': localStorage.getItem('app-password') || '',
+            'X-Admin-Password': authenticatedAdminPassword,
+          },
+          body: JSON.stringify({ filename: fileToDownload.filename }),
+        });
+        if (!tokRes.ok) throw new Error('Téléchargement refusé : authentification expirée.');
+        const { token } = await tokRes.json();
+        dlTokenQuery = `&dl_token=${encodeURIComponent(token)}`;
+      }
+
       if (isArchive) {
-        // Pour les archives, on utilise l'API standard avec le jeton X-Admin-Password si mj
-        let url = `${API_BASE}/api/uploads/${fileToDownload.filename}`;
-        if (selectedBin === 'mj' && authenticatedAdminPassword) {
-          url += `?adminPassword=${encodeURIComponent(authenticatedAdminPassword)}`;
-        }
-        window.location.assign(url);
+        // Les archives ne sont pas dans la rubrique `mj` — DL public direct.
+        window.location.assign(`${API_BASE}/api/uploads/${fileToDownload.filename}`);
       } else {
-        // Pour les fichiers uniques, on force le téléchargement
-        let url = `${API_BASE}/uploads/${fileToDownload.filename}?dl=1`;
-        if (selectedBin === 'mj' && authenticatedAdminPassword) {
-          url += `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}`;
-        }
-        window.location.assign(url);
+        window.location.assign(`${API_BASE}/uploads/${fileToDownload.filename}?dl=1${dlTokenQuery}`);
       }
     } catch (err) {
       console.error('Erreur de téléchargement', err);

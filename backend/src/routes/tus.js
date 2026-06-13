@@ -146,10 +146,17 @@ export const tusServer = new Server({
 
     } catch (storeErr) {
       logger.uploadFailed(weekId, countryId, originalName, storeErr);
-      // Clean up file if DB fails
-      const filePath = path.join(uploadsDir, filename);
-      if (existsSync(filePath)) {
-        unlinkSync(filePath);
+      // Cleanup complet : on doit virer le binaire ET le .json metadata
+      // que FileStore conserve à côté (sinon le dossier d'upload se
+      // remplit d'orphelins à chaque échec d'addUpload).
+      try {
+        await tusServer.datastore.remove(filename);
+      } catch {
+        // datastore.remove échoue si déjà parti : fallback unlink direct.
+        try {
+          const filePath = path.join(uploadsDir, filename);
+          if (existsSync(filePath)) unlinkSync(filePath);
+        } catch { /* ignore */ }
       }
     }
     return res;

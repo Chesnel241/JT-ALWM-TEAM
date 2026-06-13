@@ -116,7 +116,15 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     initMetrics(app);
   }
 
-  app.use(compression());
+  // Compression : exclure /uploads (les vidéos sont déjà compressées, gzip
+  // ajoute uniquement de la latence et brûle du CPU sur des MP4/MP3 de
+  // plusieurs Mo). On garde compression pour les réponses JSON.
+  app.use(compression({
+    filter: (req, res) => {
+      if (req.path.startsWith('/uploads')) return false;
+      return compression.filter(req, res);
+    },
+  }));
 
   app.use(helmet({
     contentSecurityPolicy: false,
@@ -144,8 +152,10 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use(globalLimiter);
   app.use(timeoutMiddleware(REQUEST_TIMEOUT_MS));
 
-  // Mount TUS server before body parsers
-  app.all('/api/tus/*', (req, res, next) => {
+  // Mount TUS server before body parsers. uploadLimiter appliqué AVANT le
+  // handler TUS pour fermer le bypass : sans ça, /api/uploads était limité à
+  // 10/h mais /api/tus acceptait des uploads illimités.
+  app.all('/api/tus/*', uploadLimiter, (req, res, next) => {
     import('./routes/tus.js').then(({ tusServer }) => {
       tusServer.handle(req, res);
     }).catch(next);
@@ -161,9 +171,15 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
       const metadata = (await import('./data/store.js')).getFileMetadata(filename);
       if (metadata && metadata.countryId === 'mj') {
         const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
-        let providedToken = req.header('x-admin-password') || req.query.adminPassword;
+        // Accepte uniquement l'en-tête X-Admin-Password OU un dl_token signé.
+        // Avant : le mot de passe admin pouvait être passé en ?adminPassword=...
+        // et se retrouvait loggé en clair (errorHandler logge req.originalUrl,
+        // historique navigateur, proxy intermédiaires). Le frontend doit
+        // désormais demander un dl_token via POST /api/uploads/download-token
+        // (HMAC, 1 h, lié au filename).
+        let providedToken = req.header('x-admin-password');
         let dlToken = req.query.dl_token;
-        
+
         let isValidToken = false;
         if (ADMIN_PASSWORD) {
           if (typeof providedToken === 'string' && safeEqual(providedToken.trim(), ADMIN_PASSWORD)) {
