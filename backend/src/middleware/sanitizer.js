@@ -85,14 +85,27 @@ export function sanitizeParams(params) {
       continue;
     }
 
+    // Champs sensibles (mot de passe, token) : on NE strip PAS les `<>` et on
+    // NE trim PAS. Sinon un mot de passe contenant '<' ou '>' était mutilé ici
+    // (ex: "Alwm<Jt>2026" → "AlwmJt2026") alors que GLOBAL_PASSWORD/ADMIN_PASSWORD
+    // (lus depuis l'env, non sanitizés) gardent ces caractères → comparaison
+    // toujours fausse → "Mot de passe incorrect" malgré le bon mot de passe.
+    // La normalisation côté auth (NFC + trim + invisibles) s'en charge.
+    const isSecret = /pass|pwd|token|secret/i.test(key);
+
     if (Array.isArray(value)) {
       sanitized[key] = value.map(item => sanitizeParams(item));
     } else if (value !== null && typeof value === 'object') {
       sanitized[key] = sanitizeParams(value);
     } else if (typeof value === 'string') {
-      // Trim, strip HTML, et limiter la longueur (50k)
-      let cleanString = value.replace(/[<>]/g, '');
-      sanitized[key] = cleanString.trim().substring(0, 50000);
+      if (isSecret) {
+        // Conserve la valeur brute (cap de longueur uniquement, anti-DoS).
+        sanitized[key] = value.substring(0, 50000);
+      } else {
+        // Trim, strip HTML, et limiter la longueur (50k)
+        let cleanString = value.replace(/[<>]/g, '');
+        sanitized[key] = cleanString.trim().substring(0, 50000);
+      }
     } else if (typeof value === 'number' || typeof value === 'boolean') {
       sanitized[key] = value;
     }
