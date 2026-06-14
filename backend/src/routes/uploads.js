@@ -470,7 +470,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
 }));
 
 // DELETE /api/uploads/:weekId/:countryId/:fileId
-router.delete('/:weekId/:countryId/:fileId', requireAdmin, asyncHandler(async (req, res, next) => {
+router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next) => {
   const { weekId, countryId, fileId } = req.params;
   
   // Valider les paramètres
@@ -486,6 +486,17 @@ router.delete('/:weekId/:countryId/:fileId', requireAdmin, asyncHandler(async (r
       context: { weekId, countryId, fileId, ip: req.ip },
     });
     return next(createErrors.badRequest('fileId doit être un UUID valide'));
+  }
+
+  const providedToken = req.query.adminPassword || req.header('x-admin-password');
+  const isAdmin = safeEqual(providedToken, process.env.ADMIN_PASSWORD);
+
+  if (!isAdmin) {
+    const cutoffErr = checkUploadCutoff(weekId);
+    if (cutoffErr) {
+      audit('upload.delete_blocked_after_deadline', req, { weekId, countryId, fileId });
+      return next(cutoffErr);
+    }
   }
 
   try {
