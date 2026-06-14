@@ -55,6 +55,8 @@ export function validateTusExtension(name) {
 export const tusServer = new Server({
   path: '/api/tus',
   datastore: new FileStore({ directory: uploadsDir }),
+  respectForwardedHeaders: true,
+  relativeLocation: true,
   // Même plafond que le chemin multer des rushes (200 Mo par défaut,
   // surchargeable MAX_FILE_SIZE). Sans lui : remplissage disque illimité.
   maxSize: MAX_FILE_SIZE,
