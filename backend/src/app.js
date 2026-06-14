@@ -98,10 +98,13 @@ function timeoutMiddleware(ms) {
   };
 }
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
-});
+// NB: le handler `unhandledRejection` vit dans src/index.js (point d'entrée
+// serveur) et se contente de LOGGER. On n'enregistre PLUS ici un second
+// handler qui appelait process.exit(1) : Node exécute TOUS les handlers
+// d'un même event, donc ce process.exit(1) tuait le serveur (et tous les
+// uploads/rendus/SSE en cours) à la moindre promesse non gérée, écrasant le
+// comportement gracieux voulu côté index.js. Les routes sont déjà protégées
+// individuellement (asyncHandler + errorHandlerMiddleware).
 
 export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } = {}) {
   const dir = uploadsDir || join(process.cwd(), 'uploads');
