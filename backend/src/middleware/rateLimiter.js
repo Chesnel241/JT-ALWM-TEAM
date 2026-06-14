@@ -11,7 +11,7 @@ import rateLimit from 'express-rate-limit';
  */
 export const uploadLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || 3600000), // 1 heure
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || 10), // 10 requêtes par IP
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || 200), // 200 requêtes par IP (pour permettre l'upload de multiples clips)
   message: 'Trop d\'uploads depuis cette IP. Veuillez réessayer plus tard.',
   standardHeaders: true,
   legacyHeaders: false, validate: { xForwardedForHeader: false, default: false },
