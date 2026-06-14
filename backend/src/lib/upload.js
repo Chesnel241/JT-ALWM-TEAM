@@ -13,11 +13,10 @@ import { uploadsDir as resolveUploadsDir } from './paths.js';
 
 export const uploadsDir = resolveUploadsDir();
 
-// Limites séparées : les rushes restent à 200 Mo (volume × pays × jours),
-// les deliveries (montage final) peuvent monter à 400 Mo car c'est un
-// fichier unique par semaine et la qualité finale pèse plus lourd.
-export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10);            // 200 MB
-export const DELIVERY_MAX_FILE_SIZE = parseInt(process.env.DELIVERY_MAX_FILE_SIZE || 419430400, 10); // 400 MB
+// Limites séparées : les rushes peuvent monter à 2 Go (TUS gère très bien),
+// les deliveries (montage final) peuvent monter à 3 Go.
+export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 2147483648, 10);            // 2 GB
+export const DELIVERY_MAX_FILE_SIZE = parseInt(process.env.DELIVERY_MAX_FILE_SIZE || 3221225472, 10); // 3 GB
 
 export const ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm', '.ogg', '.aac']);
 
