@@ -69,7 +69,7 @@ export const tusServer = new Server({
     const safeExt = ALLOWED_EXTENSIONS.has(ext) ? ext : '';
     return `${Date.now()}-${uuidv4()}${safeExt}`;
   },
-  onUploadCreate: async (req, res, upload) => {
+  onUploadCreate: async (req, upload) => {
     // Authentification & Validation
     const meta = upload.metadata || {};
     const weekId = meta.weekId;
@@ -93,9 +93,9 @@ export const tusServer = new Server({
       if (cutoffErr) throw cutoffErr;
     }
 
-    return res;
+    return { metadata: upload.metadata };
   },
-  onUploadFinish: async (req, res, upload) => {
+  onUploadFinish: async (req, upload) => {
     const meta = upload.metadata || {};
     const weekId = meta.weekId;
     const countryId = meta.countryId;
@@ -159,6 +159,5 @@ export const tusServer = new Server({
         } catch { /* ignore */ }
       }
     }
-    return res;
   }
 });
