@@ -26,7 +26,7 @@ router.get('/:weekId', (req, res, next) => {
   return res.json(getDelivery(weekId));
 });
 
-router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
+router.post('/:weekId', asyncHandler(async (req, res, next) => {
   const startTime = Date.now();
   const { weekId } = req.params;
 

@@ -714,7 +714,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         { id: tempId, name: file.name, progress: 0, status: 'uploading', phase: 'uploading' },
       ]);
 
-      api.uploadDelivery(selectedWeek, file, {
+      api.uploadDelivery(selectedWeek, file, authenticatedAdminPassword, {
         onProgress: (pct) =>
           setDeliveryUploading((prev) =>
             prev.map((f) => (f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f))

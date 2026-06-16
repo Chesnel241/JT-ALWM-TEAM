@@ -177,7 +177,7 @@ export const api = {
   // === JT Prêt (deliveries) ===
   getDeliveries: (weekId) => request(`/deliveries/${weekId}`),
 
-  uploadDelivery: async (weekId, file, { onProgress, onPhase, signal } = {}) => {
+  uploadDelivery: async (weekId, file, adminPassword, { onProgress, onPhase, signal } = {}) => {
     if (typeof onPhase === 'function') onPhase('processing');
     const formData = new FormData();
     formData.append('file', file);
@@ -185,6 +185,7 @@ export const api = {
     const headers = {};
     const token = localStorage.getItem('app-password');
     if (token) headers['X-App-Password'] = token;
+    if (adminPassword) headers['X-Admin-Password'] = adminPassword;
 
     try {
       // Local direct upload for delivery via /api/deliveries/:weekId
