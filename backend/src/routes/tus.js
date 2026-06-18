@@ -95,7 +95,13 @@ export const tusServer = new Server({
       if (cutoffErr) throw cutoffErr;
     }
 
-    return { metadata: upload.metadata };
+    // On NE persiste PAS le mot de passe dans le .json sidecar du FileStore.
+    // upload.metadata est sérialisé sur disque par @tus/file-store ; si on
+    // y laisse adminPassword/appPassword, le secret reste lisible à toute
+    // personne ayant accès au volume d'uploads. On le filtre ici avant
+    // retour (l'auth a déjà été vérifiée juste au-dessus).
+    const { adminPassword: _ap, appPassword: _gp, ...safeMeta } = upload.metadata || {};
+    return { metadata: safeMeta };
   },
   onUploadFinish: async (req, upload) => {
     const meta = upload.metadata || {};

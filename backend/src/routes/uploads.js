@@ -12,7 +12,7 @@ import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
-import { requireAdmin, safeEqual } from '../middleware/auth.js';
+import { requireAdmin, safeEqual, normalizeToken } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
@@ -488,8 +488,15 @@ router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next)
     return next(createErrors.badRequest('fileId doit être un UUID valide'));
   }
 
-  const providedToken = req.query.adminPassword || req.header('x-admin-password');
-  const isAdmin = safeEqual(providedToken, process.env.ADMIN_PASSWORD);
+  // Auth admin : header uniquement (pas de query, sinon le secret se
+  // retrouverait loggé en clair par errorHandlerMiddleware / proxy /
+  // historique navigateur — cf. d7ae411 sur /uploads/*).
+  // Normalisation identique au comparateur de référence (auth.js:83) :
+  // sinon un NBSP/BOM en bord de ADMIN_PASSWORD bloquerait l'admin.
+  const adminEnv = process.env.ADMIN_PASSWORD;
+  const providedToken = req.header('x-admin-password');
+  const isAdmin = !!(adminEnv && providedToken
+    && safeEqual(normalizeToken(providedToken), normalizeToken(adminEnv)));
 
   if (!isAdmin) {
     const cutoffErr = checkUploadCutoff(weekId);

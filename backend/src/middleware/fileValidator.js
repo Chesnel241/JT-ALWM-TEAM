@@ -4,9 +4,14 @@
  */
 
 import { openSync, readSync, closeSync } from 'fs';
+import { MAX_FILE_SIZE as UPLOAD_MAX_FILE_SIZE } from '../lib/upload.js';
 
 const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm', '.ogg', '.aac'];
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 209715200, 10); // 200MB par défaut
+// Source de vérité unique : on prend MAX_FILE_SIZE depuis lib/upload.js
+// (qui lit l'env). Avant : valeur hardcodée 200 Mo divergente — multer
+// acceptait jusqu'à 2 Go puis le validateur rejetait avec un message
+// trompeur, et on avait déjà écrit le fichier sur disque.
+const MAX_FILE_SIZE = UPLOAD_MAX_FILE_SIZE;
 const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f/\\]/;
 
 // Signatures (magic numbers) des formats acceptés. `.txt` et `.docx` ne

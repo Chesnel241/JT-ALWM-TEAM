@@ -319,8 +319,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         if (Array.isArray(parsed)) {
           const mapped = parsed.map(clip => {
             const isExternal = clip.filename?.startsWith('http') || clip.filename?.startsWith('blob:');
-            const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
-            const url = isExternal ? clip.filename : `${API_BASE}/uploads/${clip.filename || clip.name}?cors=2${authQuery}`;
+            // Le mot de passe admin N'est PLUS passé en query string (fuite en
+            // clair dans logs proxy/Sentry/historique). Le backend valide via
+            // X-Admin-Password header ou dl_token signé. Pour la timeline
+            // restaurée on charge simplement l'URL publique : les bins
+            // protégés (mj) demanderont un dl_token au moment du DL.
+            const url = isExternal ? clip.filename : `${API_BASE}/uploads/${encodeURIComponent(clip.filename || clip.name)}?cors=2`;
             return { ...clip, url };
           });
           setTimelineClips(mapped);
