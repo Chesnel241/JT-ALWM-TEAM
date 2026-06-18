@@ -642,9 +642,15 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
   }
 
   // 3) Logo + incrustations images (overlay, opacité + timing).
+  // IMPORTANT : pour chaque image statique (logo + imageOverlays), on doit
+  // ajouter `-loop 1 -t <dur>` AVANT le cmd.input(...). Sinon ffmpeg lit
+  // l'image en 1 frame et l'overlay ne dure qu'1/OUT_FPS seconde, peu
+  // importe le `enable='between(t,start,end)'` du filtergraph. Pattern
+  // identique à runFfmpeg ligne 446 pour les clips images.
   const imgs = [];
   if (useLogo) {
     cmd.input(LOGO_PATH);
+    cmd.inputOptions(['-loop 1', `-t ${masterDur}`]);
     // Position du logo réglable ; si ticker actif et position basse → surélevé.
     const tickerOn = globalOverlays.some((o) => o.templateId === 'ticker');
     const bottomY = tickerOn ? 'H-h-104' : 'H-h-34';
@@ -667,7 +673,9 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
     imgs.push({ idx: nextInput++, scaleH, pos: logoPos, start: 0, dur: masterDur, opacity: 1 });
   }
   for (const ov of imageOverlays) {
+    const _imgDur = ov.duration != null ? Number(ov.duration) : masterDur;
     cmd.input(await resolveClipPath(ov.filename, workDir));
+    cmd.inputOptions(['-loop 1', `-t ${Math.max(0.1, Number(_imgDur) || masterDur)}`]);
     const scale = Math.min(1, Math.max(0.05, Number(ov.scale) || 0.25));
     const pos = (ov.position && typeof ov.position === 'object')
       ? `${Math.round(Number(ov.position.x) || 0)}:${Math.round(Number(ov.position.y) || 0)}`

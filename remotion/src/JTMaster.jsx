@@ -154,6 +154,7 @@ function ClipVideo({ clip }) {
           startFrom={secToFrames(clip.inPoint || 0, fps)}
           muted={hasExtraAudio}
           style={videoStyle}
+          crossOrigin="anonymous"
         />
       ) : (
         <Video
@@ -184,15 +185,24 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
               <ClipVideo clip={clip} />
             </TransitionSeries.Sequence>
           );
-          const tr = clip.transition && i < list.length - 1
-            ? (
+          // Une transition Remotion exige une durée < moitié de chaque
+          // sequence adjacente (sinon TransitionSeries throw "transition
+          // duration ≥ sequence duration" → master crash). On cappe.
+          let tr = null;
+          if (clip.transition && i < list.length - 1) {
+            const next = list[i + 1];
+            const nextDur = secToFrames(next.durationSec, fps);
+            const requested = secToFrames(clip.transition.duration || 0.5, fps);
+            const maxTr = Math.max(1, Math.min(Math.floor(dur / 2), Math.floor(nextDur / 2)) - 1);
+            const trFrames = Math.min(requested, maxTr);
+            tr = (
               <TransitionSeries.Transition
                 key={`t${i}`}
                 presentation={presentation(clip.transition.type)}
-                timing={linearTiming({ durationInFrames: secToFrames(clip.transition.duration || 0.5, fps) })}
+                timing={linearTiming({ durationInFrames: trFrames })}
               />
-            )
-            : null;
+            );
+          }
           return tr ? [seq, tr] : [seq];
         })}
       </TransitionSeries>

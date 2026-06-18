@@ -939,9 +939,14 @@ function IntroJT({ overlay, durationInFrames }) {
   // Logo + LE JOURNAL : séq.4.
   const logoOp = eo(frame, [s3, s3 + fps * 0.5], [0, 1]);
   const logoScale = eo(frame, [s3, s3 + fps * 0.8], [0.92, 1]);
-  const jtOp = eo(frame, [s3 + fps * 0.6, D - fps * 0.3], [0, 1]);
-  const jtScale = eo(frame, [s3 + fps * 0.6, D], [0.95, 1]);
-  const fadeOut = eo(frame, [D - fps * 0.4, D], [1, 0]);
+  // Garde-fous monotonie : si D est court (overlay user posé sur < 3 s),
+  // s3 + fps*0.6 dépasserait D - fps*0.3 → inputRange non monotone →
+  // crash renderMedia. On force chaque borne droite à être > gauche.
+  const jtOpStart = s3 + fps * 0.6;
+  const jtOp = eo(frame, [jtOpStart, Math.max(jtOpStart + 1, D - fps * 0.3)], [0, 1]);
+  const jtScale = eo(frame, [jtOpStart, Math.max(jtOpStart + 1, D)], [0.95, 1]);
+  const fadeOutStart = Math.max(0, D - fps * 0.4);
+  const fadeOut = eo(frame, [fadeOutStart, Math.max(fadeOutStart + 1, D)], [1, 0]);
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: fadeOut }}>

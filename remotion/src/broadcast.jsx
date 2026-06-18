@@ -84,7 +84,13 @@ export function DoveFlyThrough({ fromF, toF, y = 38, size = 220 }) {
   if (frame < fromF || frame > toF + 20) return null;
   const x = eo(frame, [fromF, toF], [-size, width + size]);
   const drift = Math.sin((frame - fromF) * 0.08) * 14; // léger vol ondulant
-  const op = interpolate(frame, [fromF, fromF + 8, toF - 8, toF], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  // Garde-fou monotonie : si toF - fromF < 16, [fromF+8, toF-8] s'inverserait
+  // et interpolate throw → crash renderMedia. Sur fenêtre courte on retombe
+  // sur un fade triangulaire.
+  const span = Math.max(0, toF - fromF);
+  const op = span >= 16
+    ? interpolate(frame, [fromF, fromF + 8, toF - 8, toF], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+    : interpolate(frame, [fromF, fromF + span / 2, toF], [0, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
     <div style={{
       position: 'absolute', left: 0, top: `${y}%`,
