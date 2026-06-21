@@ -1,9 +1,17 @@
 import { Router } from 'express';
-import { addSubscription, getSubscriptions } from '../data/store.js';
+import { addSubscription, getSubscriptions, getCustomCountries } from '../data/store.js';
 import { buildWeeks, COUNTRIES } from '../data/constants.js';
 
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
-const isValidCountry = (countryId) => COUNTRIES.some((c) => c.id === countryId);
+// Doit accepter à la fois la liste hardcodée COUNTRIES ET les pays ajoutés
+// dynamiquement via le bouton "Ajouter un pays" (getCustomCountries).
+// Sans ça, tout pays custom (ex: Burkina Faso `bf`) valide pour l'upload
+// (uploads.js + tus.js incluent customCountries) mais échouait sur
+// l'inscription WhatsApp → "Semaine ou pays invalide" alors que la modale
+// est bloquante pour débloquer l'upload.
+const isValidCountry = (countryId) =>
+  COUNTRIES.some((c) => c.id === countryId) ||
+  getCustomCountries().some((c) => c.id === countryId);
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { sanitizeParams } from '../middleware/sanitizer.js';
 import { globalLimiter } from '../middleware/rateLimiter.js';
