@@ -6,16 +6,17 @@ import { existsSync, unlinkSync } from 'fs';
 import logger from '../logger/index.js';
 import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS } from '../lib/upload.js';
 import { addUpload, getCustomCountries } from '../data/store.js';
-import { COUNTRIES, buildWeeks, weekUploadCutoff } from '../data/constants.js';
+import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { broadcastNotification } from './webpush.js';
 import { io } from '../app.js';
 import { safeEqual, normalizeToken } from '../middleware/auth.js';
 
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
-const isValidCountry = (countryId) =>
-  COUNTRIES.some((c) => c.id === countryId) ||
-  getCustomCountries().some((c) => c.id === countryId);
+// Délègue à la source de vérité partagée (inclut COUNTRIES + custom +
+// buckets spéciaux comme `mj`). Avant : TUS rejetait `mj` → écran d'erreur
+// 404 "Week ou Country invalide" sur les uploads admin (Mot du JT, etc.).
+const isValidCountry = (countryId) => isCountryAccepted(countryId, getCustomCountries());
 
 function checkUploadCutoff(weekId) {
   const cutoff = weekUploadCutoff(weekId);

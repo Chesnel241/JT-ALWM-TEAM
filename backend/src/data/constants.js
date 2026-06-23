@@ -49,6 +49,35 @@ function loadCountries() {
 
 export const COUNTRIES = loadCountries();
 
+/**
+ * "Buckets" non géographiques utilisés par l'espace montage pour stocker
+ * des fichiers hors du chutier d'un pays donné :
+ *   - `mj` : Mot du JT / reportage assemblé (admin uniquement)
+ * Les autres bins du frontend (`tj` → déjà dans COUNTRIES via loadCountries,
+ * `delivery` → route /api/deliveries séparée, `studio` → vue read-only) ne
+ * sont jamais envoyés comme countryId au backend.
+ */
+export const SPECIAL_BUCKETS = new Set(['mj']);
+
+/**
+ * Source de vérité unique pour la validation d'un countryId reçu sur les
+ * routes d'upload, TUS, notifications, delete, archive, etc. Avant ce
+ * helper, chaque route avait sa propre version divergente : la plus
+ * permissive acceptait `mj`, la plus stricte le rejetait → la rubrique
+ * Mot du JT ne s'uploadait pas via TUS (404 "Week ou Country invalide").
+ *
+ * @param {string} countryId
+ * @param {Array<{id:string}>} [customCountries=[]] — pays ajoutés dynamiquement
+ *   via "Ajouter un pays" (lus à chaque appel, pas mis en cache).
+ */
+export function isCountryAccepted(countryId, customCountries = []) {
+  if (!countryId || typeof countryId !== 'string') return false;
+  if (SPECIAL_BUCKETS.has(countryId)) return true;
+  if (COUNTRIES.some((c) => c.id === countryId)) return true;
+  if (Array.isArray(customCountries) && customCountries.some((c) => c.id === countryId)) return true;
+  return false;
+}
+
 // Décale `date` au lundi de sa semaine ISO (ramener au début de la
 // semaine, lundi 00:00 dans le fuseau local du serveur).
 function startOfIsoWeek(date) {

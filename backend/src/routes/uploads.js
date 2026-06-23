@@ -5,7 +5,7 @@ import path from 'path';
 import { createReadStream, existsSync, unlinkSync, writeFileSync } from 'fs';
 import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
-import { COUNTRIES, buildWeeks, weekUploadCutoff } from '../data/constants.js';
+import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { getCustomCountries } from '../data/store.js';
 import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus } from '../data/store.js';
 import { body, validationResult } from 'express-validator';
@@ -32,9 +32,11 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 // La validation se fait contre la liste recalculée à chaque appel —
 // indispensable car la fenêtre visible glisse chaque jour à minuit.
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
-const isValidCountry = (countryId) =>
-  COUNTRIES.some((c) => c.id === countryId) ||
-  getCustomCountries().some((c) => c.id === countryId);
+// Source de vérité unique (constants.js) : COUNTRIES + custom + buckets
+// spéciaux (`mj` pour la rubrique Mot du JT). Avant : 4 versions
+// divergentes selon les routes → certains buckets (mj) marchaient via
+// la voiceover route mais étaient rejetés par TUS et le DELETE.
+const isValidCountry = (countryId) => isCountryAccepted(countryId, getCustomCountries());
 
 // Renvoie une erreur 423 (Locked) si la date limite d'envoi (dimanche
 // 17h30) est dépassée pour cette semaine.
@@ -616,10 +618,9 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     }
   }
 
-  // Allow custom countries too
-  const customCountries = getCustomCountries();
-  const isValidCountry = COUNTRIES.some(c => c.id === countryId) || customCountries.some(c => c.id === countryId) || countryId === 'mj' || countryId === '_subscriptions';
-  if (!isValidCountry) {
+  // Source de vérité unique (constants.js). `_subscriptions` reste accepté
+  // ici pour rétrocompat de la voiceover (rubrique meta interne).
+  if (!isCountryAccepted(countryId, getCustomCountries()) && countryId !== '_subscriptions') {
     return next(createErrors.badRequest('ID de pays/chutier invalide.'));
   }
 
