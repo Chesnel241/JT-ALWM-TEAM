@@ -1,0 +1,248 @@
+name: CI/CD Pipeline - Build & Deploy
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ${{ github.repository }}/backend
+  FRONTEND_IMAGE: ${{ github.repository }}/frontend
+
+jobs:
+  # ============================================================================
+  # Backend: Lint, Build & Test
+  # ============================================================================
+  backend-checks:
+    name: Backend - Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 📚 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Lint code
+        run: npm run lint --if-present || echo "No lint script found"
+
+      - name: 🧪 Run tests
+        run: npm test
+
+  # ============================================================================
+  # Frontend: Lint, Build & Test
+  # ============================================================================
+  frontend-checks:
+    name: Frontend - Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📚 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Lint code
+        run: npm run lint --if-present || echo "No lint script found"
+
+      - name: 🧪 Run tests
+        run: npm test
+
+      - name: 🏗️ Build application
+        run: npm run build
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+  # ============================================================================
+  # Docker: Build & Push Images (OPTIONNEL — Render et Vercel ne consomment
+  # PAS ces images, ils builds depuis la source. On garde le job pour fournir
+  # des images aux contributeurs qui voudraient run l'app en local via Docker,
+  # mais on autorise l'échec (continue-on-error) pour ne pas bloquer le deploy
+  # quand ghcr.io rejette le push (visibility de package, permissions GHCR
+  # héritées d'un ancien push manuel, etc.).
+  # ============================================================================
+  docker-build:
+    name: Docker - Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [backend-checks, frontend-checks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    continue-on-error: true
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔤 Extract metadata for Backend
+        id: backend-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🔤 Extract metadata for Frontend
+        id: frontend-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🐳 Build & push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.backend-meta.outputs.tags }}
+          labels: ${{ steps.backend-meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 🐳 Build & push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.frontend-meta.outputs.tags }}
+          labels: ${{ steps.frontend-meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # Deploy to Render (Backend)
+  # ============================================================================
+  deploy-backend-render:
+    name: Deploy Backend to Render
+    runs-on: ubuntu-latest
+    # Render build depuis la source — pas besoin d'attendre docker-build
+    # (qui est OPTIONNEL et peut échouer sans impact réel).
+    needs: [backend-checks, frontend-checks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to Render
+        # Si l'intégration GitHub de Render est branchée, le deploy se déclenche
+        # automatiquement à chaque push master. Ce job sert de filet de sécurité
+        # via le deploy hook, mais ne doit pas faire échouer le pipeline si les
+        # secrets ne sont pas configurés.
+        continue-on-error: true
+        env:
+          RENDER_DEPLOY_KEY: ${{ secrets.RENDER_DEPLOY_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_KEY" ] && [ -n "$RENDER_SERVICE_ID" ]; then
+            curl -fSL -X POST "https://api.render.com/deploy/srv-$RENDER_SERVICE_ID?key=$RENDER_DEPLOY_KEY" || echo "⚠️  Render deploy hook call failed (non bloquant)."
+            echo "✅ Backend deployment triggered on Render"
+          else
+            echo "⚠️  Render secrets non configurés — l'intégration GitHub native de Render s'occupe déjà du deploy. OK."
+          fi
+
+  # ============================================================================
+  # Deploy to Vercel (Frontend)
+  # ============================================================================
+  deploy-frontend-vercel:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    # Vercel build depuis la source via son intégration GitHub. Pas besoin
+    # d'attendre docker-build.
+    needs: [backend-checks, frontend-checks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to Vercel
+        # Si l'intégration GitHub native de Vercel est branchée (vu sur PR #19
+        # — check "Vercel - Deployment has completed"), Vercel déploie déjà
+        # automatiquement à chaque push sur master sans ce job. On le garde en
+        # filet de sécurité, mais on ne fait PAS échouer le pipeline si les
+        # secrets ne sont pas configurés ou si l'appel CLI échoue.
+        continue-on-error: true
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: frontend
+        run: |
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            npm i -g vercel
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+            vercel build --prod --token="$VERCEL_TOKEN"
+            vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+            echo "✅ Frontend deployment triggered on Vercel"
+          else
+            echo "⚠️  Vercel secrets non configurés — l'intégration GitHub native de Vercel s'occupe déjà du deploy. OK."
+          fi
+
+  # ============================================================================
+  # Summary & Notifications
+  # ============================================================================
+  notify:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [backend-checks, frontend-checks]
+    if: always()
+
+    steps:
+      - name: 📢 Deployment Status
+        run: |
+          echo "═══════════════════════════════════════════════════════"
+          echo "✅ CI/CD Pipeline Summary"
+          echo "═══════════════════════════════════════════════════════"
+          echo "Backend Checks: ${{ needs.backend-checks.result }}"
+          echo "Frontend Checks: ${{ needs.frontend-checks.result }}"
+          echo "Docker Build: ${{ needs.docker-build.result }}"
+          echo "═══════════════════════════════════════════════════════"

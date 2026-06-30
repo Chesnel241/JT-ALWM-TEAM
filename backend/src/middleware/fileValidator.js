@@ -1,0 +1,238 @@
+/**
+ * File Validator Middleware
+ * Validation stricte des fichiers uploadés.
+ */
+
+import { openSync, readSync, closeSync } from 'fs';
+import { MAX_FILE_SIZE as UPLOAD_MAX_FILE_SIZE } from '../lib/upload.js';
+
+const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm', '.ogg', '.aac'];
+// Source de vérité unique : on prend MAX_FILE_SIZE depuis lib/upload.js
+// (qui lit l'env). Avant : valeur hardcodée 200 Mo divergente — multer
+// acceptait jusqu'à 2 Go puis le validateur rejetait avec un message
+// trompeur, et on avait déjà écrit le fichier sur disque.
+const MAX_FILE_SIZE = UPLOAD_MAX_FILE_SIZE;
+const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f/\\]/;
+
+// Signatures (magic numbers) des formats acceptés. `.txt` et `.docx` ne
+// sont pas vérifiés ici : le txt n'a pas de signature, le docx est un
+// ZIP générique (signature PK) déjà couverte par les autres outils.
+const MAGIC_SIGNATURES = {
+  '.mp4': [
+    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // 'ftyp' à l'offset 4
+  ],
+  '.mov': [
+    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // mov = QuickTime, même boîte ftyp
+    { offset: 4, bytes: [0x6d, 0x6f, 0x6f, 0x76] }, // 'moov'
+  ],
+  '.mp3': [
+    { offset: 0, bytes: [0x49, 0x44, 0x33] },       // 'ID3'
+    { offset: 0, bytes: [0xff, 0xfb] },             // frame MPEG
+    { offset: 0, bytes: [0xff, 0xf3] },
+    { offset: 0, bytes: [0xff, 0xf2] },
+  ],
+  '.wav': [
+    // RIFF à 0 ET WAVE à 8 (les deux requis, cf. `all`) : le fourCC évite
+    // qu'un RIFF/WEBP polyglot passe pour du wav.
+    { all: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // 'RIFF'
+      { offset: 8, bytes: [0x57, 0x41, 0x56, 0x45] }, // 'WAVE'
+    ] },
+  ],
+  '.docx': [
+    { offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }, // ZIP local header
+    { offset: 0, bytes: [0x50, 0x4b, 0x05, 0x06] }, // empty archive
+  ],
+  '.zip': [
+    { offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }, // ZIP local header
+    { offset: 0, bytes: [0x50, 0x4b, 0x05, 0x06] }, // empty archive
+  ],
+  '.jpg': [
+    { offset: 0, bytes: [0xff, 0xd8, 0xff] }, // JPEG image
+  ],
+  '.jpeg': [
+    { offset: 0, bytes: [0xff, 0xd8, 0xff] }, // JPEG image
+  ],
+  '.png': [
+    { offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }, // PNG image
+  ],
+  '.gif': [
+    { offset: 0, bytes: [0x47, 0x49, 0x46, 0x38] }, // GIF8
+  ],
+  '.webp': [
+    // RIFF à 0 ET WEBP à 8 (les deux requis) : sans le fourCC, un wav
+    // (RIFF/WAVE) ou tout conteneur RIFF passerait pour du webp.
+    { all: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
+      { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }, // 'WEBP'
+    ] },
+  ],
+  '.bmp': [
+    { offset: 0, bytes: [0x42, 0x4d] }, // BM
+  ],
+  '.heic': [
+    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // ftyp
+  ],
+  '.webm': [
+    { offset: 0, bytes: [0x1a, 0x45, 0xdf, 0xa3] }, // Matroska / WebM
+  ],
+  '.ogg': [
+    { offset: 0, bytes: [0x4f, 0x67, 0x67, 0x53] }, // OggS
+  ],
+  '.aac': [
+    { offset: 0, bytes: [0xff, 0xf1] }, // ADTS
+    { offset: 0, bytes: [0xff, 0xf9] },
+  ],
+};
+
+function matchesSignature(buf, signature) {
+  // Signature composée : tous les fragments {offset,bytes} doivent matcher (AND).
+  if (signature.all) {
+    return signature.all.every((s) => matchesSignature(buf, s));
+  }
+  return signature.bytes.every((b, i) => buf[signature.offset + i] === b);
+}
+
+export function validateMagicNumber(filePath, ext) {
+  if (ext.toLowerCase() === '.txt') {
+    let fd;
+    try {
+      fd = openSync(filePath, 'r');
+      const buf = Buffer.alloc(1024);
+      const bytesRead = readSync(fd, buf, 0, 1024, 0);
+      const content = buf.toString('utf8', 0, bytesRead);
+      if (/<script/i.test(content) || /<html/i.test(content)) {
+        return { valid: false, error: 'Fichier texte contient des balises non autorisées' };
+      }
+      return { valid: true };
+    } catch (err) {
+      return { valid: false, error: `Lecture du fichier texte échouée: ${err.message}` };
+    } finally {
+      if (fd !== undefined) {
+        try { closeSync(fd); } catch { /* ignore */ }
+      }
+    }
+  }
+
+  const signatures = MAGIC_SIGNATURES[ext.toLowerCase()];
+  if (!signatures) return { valid: true }; // ex: .docx — pas de check pour l'instant
+  let fd;
+  try {
+    fd = openSync(filePath, 'r');
+    const buf = Buffer.alloc(16);
+    readSync(fd, buf, 0, 16, 0);
+    const ok = signatures.some((sig) => matchesSignature(buf, sig));
+    if (!ok) {
+      return {
+        valid: false,
+        error: `Contenu du fichier ne correspond pas à l'extension ${ext}`,
+      };
+    }
+    return { valid: true };
+  } catch (err) {
+    return { valid: false, error: `Lecture du fichier échouée: ${err.message}` };
+  } finally {
+    if (fd !== undefined) {
+      try { closeSync(fd); } catch { /* ignore */ }
+    }
+  }
+}
+
+/**
+ * Valide un fichier uploadé.
+ * @param {Object} file - Objet fichier de multer
+ * @param {Object} [opts]
+ * @param {number} [opts.maxSize] - Taille max en octets (défaut MAX_FILE_SIZE).
+ *   Permet aux routes de spécifier une limite contextuelle (rushes 200 Mo,
+ *   delivery 400 Mo, etc.). multer applique déjà sa propre limite avant
+ *   d'arriver ici, ce check sert de défense en profondeur.
+ * @returns {Object} - {valid: boolean, error?: string}
+ */
+export function validateFile(file, { maxSize = MAX_FILE_SIZE, allowImages = false } = {}) {
+  if (!file) {
+    return { valid: false, error: 'Aucun fichier fourni' };
+  }
+
+  if (!file.originalname || !file.size || !file.mimetype) {
+    return { valid: false, error: 'Fichier invalide ou corrompu' };
+  }
+
+  if (file.size > maxSize) {
+    return {
+      valid: false,
+      error: `Fichier trop volumineux. Maximum: ${Math.round(maxSize / (1024 * 1024))}MB`,
+    };
+  }
+
+  // Vérifier l'extension
+  const ext = getFileExtension(file.originalname);
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic'];
+  const allowedExts = allowImages ? ALLOWED_EXTENSIONS : ALLOWED_EXTENSIONS.filter(e => !imageExtensions.includes(e));
+  
+  if (!allowedExts.includes(ext.toLowerCase())) {
+    return { 
+      valid: false, 
+      error: `Extension non autorisée: ${ext}. Autorisées: ${allowedExts.join(', ')}`
+    };
+  }
+
+  // Vérifier le MIME type (validation basique)
+  const allowedMimes = [
+    'video/mp4', 'video/quicktime', 'video/webm',
+    'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/aac',
+    'text/plain',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/zip', 'application/x-zip-compressed'
+  ];
+  if (allowImages) {
+    allowedMimes.push('image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/heic');
+  }
+  
+  if (!allowedMimes.includes(file.mimetype)) {
+    return { 
+      valid: false, 
+      error: `Type MIME non autorisé: ${file.mimetype}`
+    };
+  }
+
+  // Vérifier que le nom de fichier ne contient pas de caractères suspects
+  if (SUSPICIOUS_PATTERNS.test(file.originalname)) {
+    return { 
+      valid: false, 
+      error: 'Nom de fichier contient des caractères non autorisés'
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Extrait l'extension d'un nom de fichier
+ */
+function getFileExtension(filename) {
+  const dot = filename.lastIndexOf('.');
+  return dot > 0 ? filename.substring(dot) : '';
+}
+
+/**
+ * Middleware Express pour validation de fichiers
+ */
+export function fileValidatorMiddleware(req, res, next) {
+  if (!req.file) {
+    return next(); // Pas de fichier, laisser passer
+  }
+
+  const validation = validateFile(req.file);
+  
+  if (!validation.valid) {
+    return res.status(400).json({
+      code: 'INVALID_FILE',
+      message: validation.error,
+      details: { file: req.file.originalname }
+    });
+  }
+
+  next();
+}
+
+export default fileValidatorMiddleware;

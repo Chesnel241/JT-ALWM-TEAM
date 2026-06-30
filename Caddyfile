@@ -1,0 +1,57 @@
+# ============================================================================
+# Caddy — reverse proxy ALWM TV. TLS auto (Let's Encrypt), HTTP/2 + HTTP/3.
+# HTTP/3 (QUIC) réduit les handshakes sur réseaux à forte latence/perte
+# (4G Afrique/Asie) → gain perçu le plus rapide pour les pays distants.
+# ============================================================================
+{
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+jt-alwm-team.duckdns.org {
+	# Compression : zstd (moderne) puis gzip (fallback) sur les réponses texte.
+	encode zstd gzip
+
+	# En-têtes de sécurité (durcissement TLS + anti-clickjacking + anti-sniff).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Le SW + l'app appellent l'API same-origin ; les médias viennent de
+		# same-origin. Pas d'inline script (Vite hash les bundles).
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'"
+		# Ne pas divulguer le serveur.
+		-Server
+	}
+
+	# API → Backend Node.js
+	handle /api/* {
+		reverse_proxy backend:3010
+	}
+
+	# Fichiers (Range requests vidéo) → Backend Node.js
+	handle /uploads/* {
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Allow-Methods "GET, OPTIONS, HEAD"
+		reverse_proxy backend:3010
+	}
+
+	# WebSockets Socket.io → Backend Node.js
+	handle /socket.io/* {
+		reverse_proxy backend:3010
+	}
+
+	# Tout le reste → Frontend (Nginx/React)
+	handle {
+		# Assets hashés immuables : cache navigateur 1 an.
+		@assets path *.js *.css *.woff2 *.woff *.ttf *.png *.jpg *.svg *.ico
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		# index.html jamais mis en cache (SPA → toujours la dernière version
+		# après un nouveau build).
+		@html path / /index.html
+		header @html Cache-Control "no-cache, must-revalidate"
+		reverse_proxy frontend:80
+	}
+}

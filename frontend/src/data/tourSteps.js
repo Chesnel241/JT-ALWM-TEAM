@@ -1,0 +1,163 @@
+/**
+ * Étapes de la visite guidée (Product Tour) pour react-joyride.
+ * Divisé par "pages" (home, uploader, etc.)
+ */
+
+export const getTourSteps = (t) => ({
+  home: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourHome.welcome,
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-nav-dashboard',
+      content: t.aiAssistant.tourHome.navDashboard || "L'onglet 'Tableau de bord' vous permet d'avoir une vue globale de l'activité.",
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-nav-editing',
+      content: t.aiAssistant.tourHome.navEditing,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-nav-delivery',
+      content: t.aiAssistant.tourHome.navDelivery,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-nav-voixoff',
+      content: t.aiAssistant.tourHome.navVoixOff || "L'onglet 'Voix-Off' sert à gérer l'enregistrement des voix.",
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-country-list',
+      content: t.aiAssistant.tourHome.countryList,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-add-country',
+      content: t.aiAssistant.tourHome.addCountry,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: 'body',
+      content: t.aiAssistant.tourHome.continueToUploader,
+      placement: 'center',
+      disableBeacon: true,
+    }
+  ],
+  uploader: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourUploader.welcome,
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-countdown',
+      content: t.aiAssistant.tourUploader.countdown,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-week-selector',
+      content: t.aiAssistant.tourUploader.weekSelector,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-uploader-accordion',
+      content: t.aiAssistant.tourUploader.accordion || "Pour plus de clarté, tout est rangé dans ces menus déroulants. Cliquez sur un thème (ex: Reportage 1) pour l'ouvrir et déposer vos fichiers et scripts !",
+      placement: 'auto',
+      disableBeacon: true,
+    }
+  ],
+  dashboard: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourDashboard.welcome,
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-dashboard-header',
+      content: t.aiAssistant.tourDashboard.header,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-editing-grid',
+      content: t.aiAssistant.tourDashboard.grid,
+      placement: 'auto',
+      disableBeacon: true,
+    }
+  ],
+  delivery: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourDelivery.welcome,
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#delivery-week',
+      content: t.aiAssistant.tourDelivery.weekSelector,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-delivery-dropzone',
+      content: t.aiAssistant.tourDelivery.dropzone,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-delivery-list',
+      content: t.aiAssistant.tourDelivery.list,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-delivery-whatsapp',
+      content: t.aiAssistant.tourDelivery.whatsapp,
+      placement: 'auto',
+      disableBeacon: true,
+    }
+  ],
+  voixoff: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourVoixOff.welcome,
+      placement: 'center',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-voixoff-country',
+      content: t.aiAssistant.tourVoixOff.country,
+      placement: 'auto',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-voixoff-studio',
+      content: t.aiAssistant.tourVoixOff.studio,
+      placement: 'auto',
+      disableBeacon: true,
+    }
+  ],
+  editor: [
+    {
+      target: 'body',
+      content: t.aiAssistant.tourEditor?.welcome || "Bienvenue dans l'éditeur vidéo ! Ici vous pouvez ajuster et créer vos contenus.",
+      placement: 'center',
+      disableBeacon: true,
+    }
+  ]
+});
