@@ -190,6 +190,7 @@ function AppShell() {
             <div className={currentView === 'editor' ? 'block' : 'hidden'}>
               <EditorView
                 isActive={currentView === 'editor'}
+                setCurrentView={setCurrentView}
               />
             </div>
           </Suspense>

@@ -277,6 +277,15 @@ export const api = {
 
   getAnalytics: () => request('/analytics'),
 
+  // === Editor / Studio de Montage ===
+  editorConcat: (payload) => request('/editor/concat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }),
+  editorProgress: (jobId) => request(`/editor/progress/${jobId}`),
+  editorResult: (jobId) => request(`/editor/result/${jobId}`),
+
   // === Themes (écriture/suppression réservées admin) ===
   getThemes: () => request('/themes', { method: 'GET' }),
   saveTheme: (theme, adminPassword) => request('/themes', {
