@@ -1,9 +1,9 @@
 /**
- * Détection automatique du disque persistant Render.
+ * Détection automatique du disque persistant (Docker volume / VPS).
  *
- * Render monte le disque à `/app/uploads` (cf. render.yaml). Si ce
- * dossier existe, on l'utilise pour tout ce qui doit survivre aux
- * redéploiements : store JSON, fichiers uploadés, logs.
+ * En production, un volume monté à `/app/uploads` (cf. docker-compose.yml)
+ * est utilisé pour tout ce qui doit survivre aux redémarrages : store JSON,
+ * fichiers uploadés, logs.
  *
  * Les variables d'environnement restent prioritaires pour les
  * environnements custom (CI, dev local avec docker compose, etc.).
@@ -20,7 +20,7 @@ const HAS_RENDER_DISK = existsSync(RENDER_DISK);
 
 export function storePath() {
   if (!HAS_RENDER_DISK && process.env.NODE_ENV === 'production' && !process.env.UPSTASH_REDIS_REST_URL) {
-    console.warn('⚠️ WARNING: No persistent Render disk detected and no Upstash Redis configured. Data will be lost on restart.');
+    console.warn('⚠️ WARNING: No persistent disk detected and no Upstash Redis configured. Data will be lost on restart.');
   }
   if (process.env.JT_STORE_PATH) return process.env.JT_STORE_PATH;
   if (HAS_RENDER_DISK) return path.join(RENDER_DISK, 'store.json');
@@ -41,7 +41,7 @@ export function logsDir() {
 
 /**
  * Diagnostic — utilisé au démarrage pour tracer les chemins
- * effectivement résolus dans les logs Render.
+ * effectivement résolus dans les logs.
  */
 export function pathsDiagnostic() {
   return {

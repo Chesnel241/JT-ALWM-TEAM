@@ -63,37 +63,44 @@ cd frontend && npm test    # vitest + RTL (8 tests)
 
 ### Backend
 - `PORT` (3010)
-- `CORS_ORIGIN` — séparé par virgules. Ex: `https://jt-alwm.vercel.app,https://staging.example.com`
-- `MAX_FILE_SIZE` — bytes. Défaut **200 MB** (compatible plan Render Starter)
+- `CORS_ORIGIN` — séparé par virgules. Ex: `https://jt-alwm-team.duckdns.org,https://staging.example.com`
+- `MAX_FILE_SIZE` — bytes. Défaut **200 MB**
 - `JT_STORE_PATH` — chemin du store JSON (overridable, utile en tests)
 - `LOG_DIR` — dossier des logs Winston.
 - `SENTRY_DSN` — error tracking (no-op si absent)
-- `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` — requis sur plan Free pour persister les métadonnées.
+- `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` — persistance Redis optionnelle (métadonnées).
 
 ### Frontend
-- `VITE_API_URL` — URL absolue du backend en prod (ex: `https://jt-alwm-backend.onrender.com`). Vide en dev (proxy Vite).
+- `VITE_API_URL` — URL absolue du backend en prod. Laisser vide en VPS (Caddy gère le proxy /api → backend).
 - `VITE_SENTRY_DSN` — error tracking côté navigateur
 
-## Production
+## Production (VPS)
 
-- **Backend** : Render.com (Frankfurt, plan Free + Upstash Redis)
-- **Frontend** : Vercel (région `fra1`)
-- **Branche déployée** : `master`
-- **CI/CD** : GitHub Actions (`.github/workflows/deploy.yml`)
+### Déploiement avec Docker Compose
+
+```bash
+# Sur le VPS
+git clone <repo>
+cd JT-ALWM-TEAM-master
+cp .env.example .env
+# Éditer .env avec les valeurs de production
+docker compose up --build -d
+```
+
+Le frontend est servi par Caddy (HTTPS via Let's Encrypt) avec proxy
+vers le backend sur le port 3010.
 
 ### ⚠️ Avertissements
 
 - **Aucune authentification.** Toutes les routes API sont publiques.
-  Choix produit assumé pour un hub interne, mais ne diffuser l'URL
-  qu'aux personnes concernées et envisager un mot de passe partagé
-  côté Vercel (Vercel Password Protection) si l'URL devient connue.
-- **Aucune persistance des fichiers locaux sur le plan Free.** Render supprime les fichiers du disque à chaque mise en veille. Cependant, les métadonnées sont stockées sur **Upstash Redis**.
+  Choix produit assumé pour un hub interne ; ne diffuser l'URL
+  qu'aux personnes concernées.
 
 ### Smoke tests post-déploiement
 
-1. `curl https://<render>/health` → 200
-2. `curl https://<render>/api/weeks` → JSON semaines
-3. Ouvrir Vercel, naviguer Home → Uploader → Dashboard
+1. `curl https://<domaine-vps>/health` → 200
+2. `curl https://<domaine-vps>/api/weeks` → JSON semaines
+3. Naviguer Home → Uploader → Dashboard
 4. Upload d'un fichier 50 MB, vérifier liste + download ZIP + suppression
-5. Vérifier que Sentry reçoit un event de test
-6. Redéployer Render, vérifier que les fichiers + JSON sont toujours là
+5. Vérifier que Sentry reçoit un event de test (si configuré)
+6. Redémarrer les conteneurs, vérifier que les données persistent

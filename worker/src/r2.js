@@ -1,3 +1,8 @@
+/*
+ * OPTIONAL: Cloudflare R2 / S3 integration. This module is not used in the
+ * VPS deployment. The worker falls back to local file storage.
+ */
+
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Upload } from '@aws-sdk/lib-storage';
