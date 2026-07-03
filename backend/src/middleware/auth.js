@@ -55,7 +55,7 @@ export function requireAuth(req, res, next) {
   // Si aucun mot de passe n'est configuré (ex: dev local), on laisse passer
   if (!GLOBAL_PASSWORD) return next();
 
-  const raw = req.header('x-app-password');
+  const raw = req.header('x-app-password') || req.query?.pwd;
   const token = normalizeToken(raw);
 
   if (token && safeEqual(token, normalizeToken(GLOBAL_PASSWORD))) {

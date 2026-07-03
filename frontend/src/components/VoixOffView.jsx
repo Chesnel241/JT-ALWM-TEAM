@@ -209,8 +209,8 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
     formData.append('script', script);
 
     try {
-      // Use raw fetch with credentials to pass the httpOnly session cookie
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3010'}/api/uploads/voiceover/${selectedWeek}/${selectedCountry.id}`, {
+      // Use relative URL — Caddy reverse-proxies /api to backend
+      const res = await fetch(`/api/uploads/voiceover/${selectedWeek}/${selectedCountry.id}`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
