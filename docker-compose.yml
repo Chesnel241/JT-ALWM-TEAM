@@ -71,11 +71,13 @@ services:
       - jt-alwm-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      # FIX: utilise 127.0.0.1 au lieu de localhost pour forcer IPv4
+      # (Alpine wget résout localhost en IPv6 ::1, nginx écoute sur 0.0.0.0)
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 40s
 
   # =========================================================================
   # Worker Service - Moteur de rendu Remotion/Puppeteer
