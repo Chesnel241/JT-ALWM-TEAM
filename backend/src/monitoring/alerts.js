@@ -10,7 +10,13 @@ const ALERT_CONFIG = {
   ERROR_RATE_WINDOW: 5 * 60 * 1000, // 5 minutes
   DISK_USAGE_THRESHOLD: 0.8, // 80%
   MEMORY_USAGE_THRESHOLD: 0.9, // 90%
-  MAX_DISK_CAPACITY_MB: 500, // Maximum allowed disk usage in MB
+  // Capacité disque de référence pour l'alerte HIGH_DISK_USAGE. Ancienne
+  // valeur 500 Mo = héritage Render (petit disque). Sur VPS le volume est
+  // bien plus grand → défaut 10 Go, surchargeable via DISK_CAPACITY_MB
+  // (ex: DISK_CAPACITY_MB=40960 pour 40 Go). Ce n'est PAS une limite
+  // d'upload (celle-ci est MAX_FILE_SIZE dans lib/upload.js) : juste le
+  // seuil au-delà duquel on log une alerte de saturation.
+  MAX_DISK_CAPACITY_MB: parseInt(process.env.DISK_CAPACITY_MB || '10240', 10), // 10 Go par défaut
 };
 
 let alertState = {
