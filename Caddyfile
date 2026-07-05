@@ -21,7 +21,9 @@ jt-alwm-team.duckdns.org {
 		Referrer-Policy "strict-origin-when-cross-origin"
 		# Le SW + l'app appellent l'API same-origin ; les médias viennent de
 		# same-origin. Pas d'inline script (Vite hash les bundles).
-		Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'"
+		# Google Fonts autorisé : la feuille de style Sora vient de
+		# fonts.googleapis.com et les fichiers de police de fonts.gstatic.com.
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self' https: wss:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'"
 		# Ne pas divulguer le serveur.
 		-Server
 	}

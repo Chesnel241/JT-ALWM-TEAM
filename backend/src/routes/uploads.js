@@ -669,11 +669,16 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
 
   try {
     rawAudioPath = req.file.path;
-    
+
     const ext = path.extname(req.file.originalname).toLowerCase();
     const validation = validateMagicNumber(rawAudioPath, ext);
     if (!validation.valid) {
-      throw new Error(`Fichier invalide : ${validation.error}`);
+      // Un fichier au format inattendu = erreur CLIENT (400), pas 500 :
+      // avant, ça remontait en "Erreur serveur interne" masquée et
+      // indébuggable. On nettoie le brut et on renvoie un message clair.
+      logger.warn('Voiceover magic-check refusé', { ext, error: validation.error, ip: req.ip });
+      if (existsSync(rawAudioPath)) unlinkSync(rawAudioPath);
+      return next(createErrors.badRequest(`Format audio non reconnu (${ext}). ${validation.error}`));
     }
 
     const uploadStartTime = Date.now();
