@@ -187,7 +187,19 @@ router.post(
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        // Log explicite du/des champ(s) rejeté(s) : sans ça un 400
+        // "Invalid value" côté client est indébuggable (on ne sait pas
+        // QUEL champ du payload est en cause).
+        const arr = errors.array();
+        logger.warn('Validation /concat échouée', {
+          fields: arr.map((e) => ({ path: e.path, value: e.value, msg: e.msg })),
+        });
+        // On renvoie aussi le path au client pour un message actionnable.
+        const first = arr[0];
+        return res.status(400).json({
+          errors: arr,
+          message: first ? `Champ invalide : ${first.path} (${first.msg})` : 'Payload invalide.',
+        });
       }
 
       const { clips, jobId, globalOverlays, logo, logoPosition, music, voiceover, imageOverlays, atmosphere } = req.body;

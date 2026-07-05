@@ -630,7 +630,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data.errors?.[0]?.msg || data.message || 'Erreur lors du montage vidéo');
+        // Affiche le champ précis quand le backend renvoie une erreur de
+        // validation (sinon "Invalid value" seul est inexploitable).
+        const first = data.errors?.[0];
+        const detail = first ? `${first.path} : ${first.msg}` : null;
+        throw new Error(data.message || detail || 'Erreur lors du montage vidéo');
       }
       // Succès : le suivi (SSE + polling) met à jour l'UI jusqu'au résultat.
     } catch (err) {
