@@ -31,7 +31,11 @@ export function processVoiceover(inputPath, outputPath) {
       "loudnorm=I=-14:TP=-1.5:LRA=11"
     ].join(',');
 
-    ffmpeg(inputPath)
+    // timeout (secondes) passé au CONSTRUCTEUR : fluent-ffmpeg 2.x n'a PAS
+    // de méthode `.timeout()` — l'appeler jetait `TypeError: .timeout is not
+    // a function` → 500 sur TOUTE voix off. L'option constructeur tue le
+    // process ffmpeg au-delà du délai (comportement voulu).
+    ffmpeg(inputPath, { timeout: 300 })
       .inputOptions([
         '-fflags +genpts', // Generate missing PTS timestamps for WebM streams
         '-analyzeduration 100M', // Probe deeper to find stream info
@@ -41,7 +45,6 @@ export function processVoiceover(inputPath, outputPath) {
       .audioFilters(filterChain)
       .outputOptions('-b:a', '192k') // High quality MP3 bitrate
       .toFormat('mp3')
-      .timeout(300)
       .on('start', (commandLine) => {
         console.log('[AudioProcessor] Spawned Ffmpeg with command: ' + commandLine);
       })

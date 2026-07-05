@@ -45,11 +45,11 @@ router.post(
       .notEmpty()
       .withMessage('Chaque clip doit avoir un filename valide.'),
     body('clips.*.inPoint')
-      .optional()
+      .optional({ values: 'null' })
       .isFloat({ min: 0 })
       .withMessage('inPoint doit être un nombre positif (en secondes).'),
     body('clips.*.outPoint')
-      .optional()
+      .optional({ values: 'null' })
       .isFloat({ min: 0 })
       .withMessage('outPoint doit être un nombre positif (en secondes).')
       .custom((value, { req, path }) => {
@@ -64,124 +64,124 @@ router.post(
         return true;
       }),
     body('clips.*.overlays')
-      .optional()
+      .optional({ values: 'null' })
       .isArray()
       .withMessage('overlays doit être un tableau.'),
     body('clips.*.overlays.*.startTime')
-      .optional()
+      .optional({ values: 'null' })
       .isFloat({ min: 0 })
       .withMessage('startTime doit être positif.'),
     body('clips.*.overlays.*.duration')
-      .optional()
+      .optional({ values: 'null' })
       .isFloat({ min: 0.1 })
       .withMessage('duration doit être supérieur à 0.'),
     body('clips.*.overlays.*.templateId')
-      .optional()
+      .optional({ values: 'null' })
       .isIn(TEMPLATE_IDS)
       .withMessage('templateId invalide.'),
     // Champs d'un overlay (texte libre gravé via safe(), ou valeurs num.
     // comme ticker.speed). Si chaîne : bornée à 600 (défense en profondeur ;
     // safe() reste le vrai garde-fou anti-injection). Nombres/booléens OK.
     body('clips.*.overlays.*.fields.*')
-      .optional()
+      .optional({ values: 'null' })
       .custom((v) => typeof v !== 'string' || v.length <= 600)
       .withMessage('Champ texte overlay trop long (max 600).'),
     body('clips.*.overlays.*.animation')
-      .optional()
+      .optional({ values: 'null' })
       .isIn(TEXT_ANIMATIONS_IDS)
       .withMessage('animation invalide.'),
-    body('clips.*.overlays.*.outline').optional().isFloat({ min: 0, max: 6 }),
-    body('clips.*.overlays.*.glow').optional().isFloat({ min: 0, max: 10 }),
-    body('clips.*.overlays.*.scale').optional().isFloat({ min: 10, max: 300 }),
-    body('clips.*.overlays.*.fontSize').optional().isFloat({ min: 10, max: 500 }),
-    body('clips.*.overlays.*.lineHeight').optional().isFloat({ min: 10, max: 500 }),
-    body('clips.*.overlays.*.colors.text').optional().matches(/^#[0-9a-fA-F]{6}$/),
-    body('clips.*.overlays.*.colors.bg').optional().matches(/^#[0-9a-fA-F]{6}$/),
-    body('clips.*.overlays.*.colors.accent').optional().matches(/^#[0-9a-fA-F]{6}$/),
-    body('clips.*.overlays.*.position.x').optional().isFloat({ min: -1920, max: 3840 }),
-    body('clips.*.overlays.*.position.y').optional().isFloat({ min: -1080, max: 2160 }),
+    body('clips.*.overlays.*.outline').optional({ values: 'null' }).isFloat({ min: 0, max: 6 }),
+    body('clips.*.overlays.*.glow').optional({ values: 'null' }).isFloat({ min: 0, max: 10 }),
+    body('clips.*.overlays.*.scale').optional({ values: 'null' }).isFloat({ min: 10, max: 300 }),
+    body('clips.*.overlays.*.fontSize').optional({ values: 'null' }).isFloat({ min: 10, max: 500 }),
+    body('clips.*.overlays.*.lineHeight').optional({ values: 'null' }).isFloat({ min: 10, max: 500 }),
+    body('clips.*.overlays.*.colors.text').optional({ values: 'null' }).matches(/^#[0-9a-fA-F]{6}$/),
+    body('clips.*.overlays.*.colors.bg').optional({ values: 'null' }).matches(/^#[0-9a-fA-F]{6}$/),
+    body('clips.*.overlays.*.colors.accent').optional({ values: 'null' }).matches(/^#[0-9a-fA-F]{6}$/),
+    body('clips.*.overlays.*.position.x').optional({ values: 'null' }).isFloat({ min: -1920, max: 3840 }),
+    body('clips.*.overlays.*.position.y').optional({ values: 'null' }).isFloat({ min: -1080, max: 2160 }),
     // Champs posX/posY/scale/animationLoop/animationOut envoyés par l'UI
     // (sliders/drag). Sans règle, isFloat sur d'autres clés ne strippe pas
     // mais une valeur aberrante (NaN, string) corromprait le rendu. Bornes
     // larges pour autoriser le drag hors-cadre et le zoom.
-    body('clips.*.overlays.*.posX').optional().isFloat({ min: -1920, max: 1920 }),
-    body('clips.*.overlays.*.posY').optional().isFloat({ min: -1080, max: 1080 }),
-    body('clips.*.overlays.*.animationLoop').optional().isString().isLength({ max: 40 }),
-    body('clips.*.overlays.*.animationOut').optional().isString().isLength({ max: 40 }),
-    body('clips.*.subtitles').optional().isArray(),
-    body('clips.*.subtitles.*.text').optional().isString().isLength({ max: 300 }),
-    body('clips.*.subtitles.*.start').optional().isFloat({ min: 0 }),
-    body('clips.*.subtitles.*.end').optional().isFloat({ min: 0 }),
-    body('clips.*.subtitleStyle.position').optional().isIn(['bottom', 'top']),
-    body('clips.*.subtitleStyle.size').optional().isIn(['S', 'M', 'L']),
-    body('clips.*.subtitleStyle.font').optional().isString().isLength({ max: 40 }),
+    body('clips.*.overlays.*.posX').optional({ values: 'null' }).isFloat({ min: -1920, max: 1920 }),
+    body('clips.*.overlays.*.posY').optional({ values: 'null' }).isFloat({ min: -1080, max: 1080 }),
+    body('clips.*.overlays.*.animationLoop').optional({ values: 'null' }).isString().isLength({ max: 40 }),
+    body('clips.*.overlays.*.animationOut').optional({ values: 'null' }).isString().isLength({ max: 40 }),
+    body('clips.*.subtitles').optional({ values: 'null' }).isArray(),
+    body('clips.*.subtitles.*.text').optional({ values: 'null' }).isString().isLength({ max: 300 }),
+    body('clips.*.subtitles.*.start').optional({ values: 'null' }).isFloat({ min: 0 }),
+    body('clips.*.subtitles.*.end').optional({ values: 'null' }).isFloat({ min: 0 }),
+    body('clips.*.subtitleStyle.position').optional({ values: 'null' }).isIn(['bottom', 'top']),
+    body('clips.*.subtitleStyle.size').optional({ values: 'null' }).isIn(['S', 'M', 'L']),
+    body('clips.*.subtitleStyle.font').optional({ values: 'null' }).isString().isLength({ max: 40 }),
     body('clips.*.overlays.*.font')
-      .optional()
+      .optional({ values: 'null' })
       .isString().isLength({ max: 40 })
       .withMessage('font invalide.'),
     body('clips.*.transition.type')
-      .optional()
+      .optional({ values: 'null' })
       .isIn([...XFADE_TRANSITIONS])
       .withMessage('Type de transition invalide.'),
     body('clips.*.transition.duration')
-      .optional()
+      .optional({ values: 'null' })
       .isFloat({ min: 0.2, max: 2 })
       .withMessage('Durée de transition entre 0.2 et 2 s.'),
     body('clips.*.kenBurns.mode')
-      .optional()
+      .optional({ values: 'null' })
       .isIn(['in', 'out'])
       .withMessage('Mode Ken Burns invalide.'),
-    body('clips.*.durationSec').optional().isFloat({ min: 0.1, max: 36000 }),
+    body('clips.*.durationSec').optional({ values: 'null' }).isFloat({ min: 0.1, max: 36000 }),
     body('globalOverlays')
-      .optional()
+      .optional({ values: 'null' })
       .isArray()
       .withMessage('globalOverlays doit être un tableau.'),
     body('globalOverlays.*.templateId')
-      .optional()
+      .optional({ values: 'null' })
       .isIn([...TEMPLATE_IDS, 'ticker', 'live_badge'])
       .withMessage('templateId global invalide.'),
     body('globalOverlays.*.fields.*')
-      .optional()
+      .optional({ values: 'null' })
       .custom((v) => typeof v !== 'string' || v.length <= 600)
       .withMessage('Champ texte global trop long (max 600).'),
     body('logo')
-      .optional()
+      .optional({ values: 'null' })
       .isBoolean()
       .withMessage('logo doit être un booléen.'),
-    body('logoPosition').optional().isIn(['tl', 'tr', 'bl', 'br', 'center']),
-    body('globalOverlays.*.font').optional().isString().isLength({ max: 40 }),
-    body('globalOverlays.*.fontSize').optional().isFloat({ min: 10, max: 500 }),
-    body('globalOverlays.*.lineHeight').optional().isFloat({ min: 10, max: 500 }),
+    body('logoPosition').optional({ values: 'null' }).isIn(['tl', 'tr', 'bl', 'br', 'center']),
+    body('globalOverlays.*.font').optional({ values: 'null' }).isString().isLength({ max: 40 }),
+    body('globalOverlays.*.fontSize').optional({ values: 'null' }).isFloat({ min: 10, max: 500 }),
+    body('globalOverlays.*.lineHeight').optional({ values: 'null' }).isFloat({ min: 10, max: 500 }),
     // Personnalisation overlays globaux (idem clip.overlays) — sans ça les
     // sliders posX/posY/scale et les color-pickers seraient ignorés sur
     // les overlays globaux (ticker, live_badge, overlays timeline globale).
-    body('globalOverlays.*.scale').optional().isFloat({ min: 10, max: 500 }),
-    body('globalOverlays.*.posX').optional().isFloat({ min: -1920, max: 1920 }),
-    body('globalOverlays.*.posY').optional().isFloat({ min: -1080, max: 1080 }),
-    body('globalOverlays.*.startTime').optional().isFloat({ min: 0, max: 36000 }),
-    body('globalOverlays.*.duration').optional().isFloat({ min: 0.1, max: 36000 }),
-    body('globalOverlays.*.animation').optional().isIn(TEXT_ANIMATIONS_IDS),
-    body('globalOverlays.*.animationLoop').optional().isString().isLength({ max: 40 }),
-    body('globalOverlays.*.animationOut').optional().isString().isLength({ max: 40 }),
-    body('globalOverlays.*.colors.text').optional().matches(/^#[0-9a-fA-F]{6}$/),
-    body('globalOverlays.*.colors.bg').optional().matches(/^#[0-9a-fA-F]{6}$/),
-    body('globalOverlays.*.colors.accent').optional().matches(/^#[0-9a-fA-F]{6}$/),
-    body('globalOverlays.*.outline').optional().isFloat({ min: 0, max: 6 }),
-    body('globalOverlays.*.glow').optional().isFloat({ min: 0, max: 10 }),
-    body('music.filename').optional().isString().notEmpty(),
-    body('music.volume').optional().isFloat({ min: 0, max: 1 }),
-    body('voiceover.filename').optional().isString().notEmpty(),
-    body('voiceover.volume').optional().isFloat({ min: 0, max: 2 }),
-    body('voiceover.startTime').optional().isFloat({ min: 0 }),
-    body('imageOverlays').optional().isArray(),
-    body('imageOverlays.*.filename').optional().isString().notEmpty(),
-    body('imageOverlays.*.scale').optional().isFloat({ min: 0.05, max: 1 }),
-    body('imageOverlays.*.opacity').optional().isFloat({ min: 0, max: 1 }),
-    body('imageOverlays.*.startTime').optional().isFloat({ min: 0 }),
-    body('imageOverlays.*.duration').optional().isFloat({ min: 0.1 }),
-    body('atmosphere.vignette').optional().isFloat({ min: 0, max: 1 }),
-    body('atmosphere.grain').optional().isFloat({ min: 0, max: 1 }),
-    body('atmosphere.sweep').optional().isFloat({ min: 0, max: 1 }),
+    body('globalOverlays.*.scale').optional({ values: 'null' }).isFloat({ min: 10, max: 500 }),
+    body('globalOverlays.*.posX').optional({ values: 'null' }).isFloat({ min: -1920, max: 1920 }),
+    body('globalOverlays.*.posY').optional({ values: 'null' }).isFloat({ min: -1080, max: 1080 }),
+    body('globalOverlays.*.startTime').optional({ values: 'null' }).isFloat({ min: 0, max: 36000 }),
+    body('globalOverlays.*.duration').optional({ values: 'null' }).isFloat({ min: 0.1, max: 36000 }),
+    body('globalOverlays.*.animation').optional({ values: 'null' }).isIn(TEXT_ANIMATIONS_IDS),
+    body('globalOverlays.*.animationLoop').optional({ values: 'null' }).isString().isLength({ max: 40 }),
+    body('globalOverlays.*.animationOut').optional({ values: 'null' }).isString().isLength({ max: 40 }),
+    body('globalOverlays.*.colors.text').optional({ values: 'null' }).matches(/^#[0-9a-fA-F]{6}$/),
+    body('globalOverlays.*.colors.bg').optional({ values: 'null' }).matches(/^#[0-9a-fA-F]{6}$/),
+    body('globalOverlays.*.colors.accent').optional({ values: 'null' }).matches(/^#[0-9a-fA-F]{6}$/),
+    body('globalOverlays.*.outline').optional({ values: 'null' }).isFloat({ min: 0, max: 6 }),
+    body('globalOverlays.*.glow').optional({ values: 'null' }).isFloat({ min: 0, max: 10 }),
+    body('music.filename').optional({ values: 'null' }).isString().notEmpty(),
+    body('music.volume').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
+    body('voiceover.filename').optional({ values: 'null' }).isString().notEmpty(),
+    body('voiceover.volume').optional({ values: 'null' }).isFloat({ min: 0, max: 2 }),
+    body('voiceover.startTime').optional({ values: 'null' }).isFloat({ min: 0 }),
+    body('imageOverlays').optional({ values: 'null' }).isArray(),
+    body('imageOverlays.*.filename').optional({ values: 'null' }).isString().notEmpty(),
+    body('imageOverlays.*.scale').optional({ values: 'null' }).isFloat({ min: 0.05, max: 1 }),
+    body('imageOverlays.*.opacity').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
+    body('imageOverlays.*.startTime').optional({ values: 'null' }).isFloat({ min: 0 }),
+    body('imageOverlays.*.duration').optional({ values: 'null' }).isFloat({ min: 0.1 }),
+    body('atmosphere.vignette').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
+    body('atmosphere.grain').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
+    body('atmosphere.sweep').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
   ],
   async (req, res, next) => {
     try {
