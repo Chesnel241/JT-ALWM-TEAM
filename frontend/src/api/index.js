@@ -55,6 +55,7 @@ const delaysApi = {
   async requestDelay(weekId, countryId) {
     return request('/delays/request', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ weekId, countryId })
     });
   },
@@ -62,6 +63,7 @@ const delaysApi = {
   async approveDelay(weekId, countryId, minutes, adminPassword) {
     return request('/delays/approve', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       adminPassword,
       body: JSON.stringify({ weekId, countryId, minutes })
     });
@@ -70,6 +72,7 @@ const delaysApi = {
   async setGlobalDelay(weekId, minutes, adminPassword) {
     return request('/delays/global', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       adminPassword,
       body: JSON.stringify({ weekId, minutes })
     });

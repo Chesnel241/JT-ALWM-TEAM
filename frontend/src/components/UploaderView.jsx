@@ -52,6 +52,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   }, []);
 
   const [delaysData, setDelaysData] = useState(null);
+  const [isRequestingDelay, setIsRequestingDelay] = useState(false);
 
   useEffect(() => {
     if (!selectedWeek) return;
@@ -206,6 +207,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   };
 
   const handleRequestDelay = async () => {
+    if (isRequestingDelay) return;
+    setIsRequestingDelay(true);
     try {
       await api.requestDelay(selectedWeek, country.id);
       addToast(t.uploader?.delayRequested || 'Demande de délai envoyée', 'success');
@@ -214,7 +217,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       setDelaysData(dls);
     } catch (err) {
       console.error(err);
-      addToast('Erreur lors de la demande de délai', 'error');
+      addToast(err.message || 'Erreur lors de la demande de délai', 'error');
+    } finally {
+      setIsRequestingDelay(false);
     }
   };
 
@@ -306,12 +311,35 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
       {currentWeek && <CountdownTimer week={currentWeek} />}
       {isLocked && (
-        <div role="alert" className="panel p-5 mb-8 border-2 !border-[var(--signal)]/50 !bg-[var(--signal)]/10 flex items-start gap-3">
-          <AlertCircle className="text-[var(--signal)] flex-shrink-0 mt-0.5" size={22} />
-          <div>
-            <p className="font-bold text-[var(--signal)]">{t.uploader.lockedTitle}</p>
-            <p className="text-sm text-[var(--signal)]/90 mt-1">{t.uploader.lockedDesc}</p>
+        <div role="alert" className="panel p-5 mb-8 border-2 !border-[var(--signal)]/50 !bg-[var(--signal)]/10 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-start gap-3 flex-1">
+            <AlertCircle className="text-[var(--signal)] flex-shrink-0 mt-0.5" size={22} />
+            <div>
+              <p className="font-bold text-[var(--signal)]">{t.uploader.lockedTitle}</p>
+              <p className="text-sm text-[var(--signal)]/90 mt-1">{t.uploader.lockedDesc}</p>
+            </div>
           </div>
+          {/* Action délai directement dans la zone du timer verrouillé —
+              visible sans avoir à ouvrir un reportage. */}
+          {extensionStatus === 'pending' ? (
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-medium text-sm shrink-0 sm:max-w-[240px]">
+              <Clock size={18} className="shrink-0" />
+              <span>Demande de délai envoyée — en attente de validation.</span>
+            </div>
+          ) : extensionStatus === 'approved' ? (
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium text-sm shrink-0">
+              <Clock size={18} className="shrink-0" />
+              <span>Délai supplémentaire accordé.</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleRequestDelay}
+              disabled={isRequestingDelay}
+              className="btn btn-primary bg-[var(--signal)] border-transparent text-white shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+            >
+              {isRequestingDelay ? 'Envoi…' : 'Demander un délai'}
+            </button>
+          )}
         </div>
       )}
 
@@ -466,29 +494,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 >
                   <div className="space-y-4 sm:space-y-6">
                 
-                {isLocked && extensionStatus !== 'pending' && extensionStatus !== 'approved' && (
-                  <div className="bg-[var(--signal)]/10 border border-[var(--signal)]/20 rounded-2xl p-6 text-center">
-                    <Clock size={32} className="text-[var(--signal)] mx-auto mb-3" />
-                    <h3 className="font-semibold text-[color:var(--ink)] mb-2">Délai dépassé</h3>
-                    <p className="text-sm text-[color:var(--muted)] mb-4">
-                      Les envois pour cette semaine sont clôturés. Vous pouvez demander un délai supplémentaire exceptionnel.
-                    </p>
-                    <button onClick={handleRequestDelay} className="btn btn-primary bg-[var(--signal)] border-transparent text-white">
-                      Demander un délai
-                    </button>
-                  </div>
-                )}
-                
-                {isLocked && extensionStatus === 'pending' && (
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 text-center">
-                    <Clock size={32} className="text-amber-500 mx-auto mb-3" />
-                    <h3 className="font-semibold text-[color:var(--ink)] mb-2">Demande en attente</h3>
-                    <p className="text-sm text-[color:var(--muted)]">
-                      Votre demande de délai supplémentaire a été envoyée et est en attente de validation par l'équipe de montage.
-                    </p>
-                  </div>
-                )}
-                
+                {/* Le bloc "Demander un délai" a été déplacé en haut, dans la
+                    bannière du timer verrouillé (directement visible sans
+                    ouvrir le reportage). */}
                 <div
                   id={i === 0 ? 'tour-dropzone' : undefined}
                   className={`relative border-2 border-dashed rounded-[1.5rem] p-6 sm:p-10 text-center transition-all ${
