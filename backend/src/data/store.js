@@ -613,34 +613,51 @@ export function setGlobalExtension(weekId, minutes) {
   return db._extensions[weekId].global;
 }
 
+/**
+ * Statistiques + demandes de délai, dans la forme EXACTE attendue par
+ * StatsView (front) :
+ *   {
+ *     delaysByWeek:        { [weekId]: { global, requests } },  // par semaine
+ *     lateUploadsByCountry:{ [countryId]: number },
+ *     extensionsByCountry: { [countryId]: number },
+ *     totalByCountry:      { [countryId]: number },
+ *   }
+ * Bug historique : cette fonction renvoyait un objet plat
+ * `{ [countryId]: {...} }` → l'admin (Stats & Délais) lisait
+ * `data.delaysByWeek[week]` qui n'existait pas → "Aucune demande de délai"
+ * même quand un pays avait bien demandé un délai. Les monteurs ne
+ * recevaient donc jamais les demandes à valider.
+ */
 export function getStats() {
-  const stats = {}; // { 'cf': { lateCount: 12, totalCount: 20, extensionRequests: 5 } }
-  
-  Object.keys(db).forEach(weekId => {
-    if (weekId.startsWith('20')) { // looks like a weekId
+  const lateUploadsByCountry = {};
+  const totalByCountry = {};
+
+  Object.keys(db).forEach((weekId) => {
+    if (weekId.startsWith('20')) { // ressemble à un weekId (YYYY-wWW)
       const week = db[weekId];
       for (const [countryId, files] of Object.entries(week)) {
         if (countryId && typeof countryId === 'string' && !countryId.startsWith('_') && Array.isArray(files)) {
-          if (!stats[countryId]) stats[countryId] = { lateCount: 0, totalCount: 0, extensionRequests: 0 };
-          stats[countryId].totalCount += files.length;
-          stats[countryId].lateCount += files.filter(f => f.isLate).length;
+          totalByCountry[countryId] = (totalByCountry[countryId] || 0) + files.length;
+          lateUploadsByCountry[countryId] = (lateUploadsByCountry[countryId] || 0) + files.filter((f) => f.isLate).length;
         }
       }
     }
   });
 
-  // Compter le nombre d'extensions demandées
+  const extensionsByCountry = {};
   if (db._extensions) {
-    Object.keys(db._extensions).forEach(weekId => {
-      const requests = db._extensions[weekId].requests;
+    Object.keys(db._extensions).forEach((weekId) => {
+      const requests = db._extensions[weekId]?.requests;
       if (requests) {
-        Object.keys(requests).forEach(countryId => {
-          if (!stats[countryId]) stats[countryId] = { lateCount: 0, totalCount: 0, extensionRequests: 0 };
-          stats[countryId].extensionRequests += 1;
+        Object.keys(requests).forEach((countryId) => {
+          extensionsByCountry[countryId] = (extensionsByCountry[countryId] || 0) + 1;
         });
       }
     });
   }
-  
-  return stats;
+
+  // Copie profonde pour ne jamais exposer une référence mutable du store.
+  const delaysByWeek = db._extensions ? JSON.parse(JSON.stringify(db._extensions)) : {};
+
+  return { delaysByWeek, lateUploadsByCountry, extensionsByCountry, totalByCountry };
 }
