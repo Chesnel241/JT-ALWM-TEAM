@@ -79,7 +79,9 @@ let rendering = false;
 
 // Timeout dur du rendu : si renderMedia se bloque (clip illisible, Chromium
 // figé), on rejette pour toujours déclencher un callback 'error'.
-const RENDER_TIMEOUT_MS = Number(process.env.RENDER_TIMEOUT_MS) || 12 * 60 * 1000;
+// 90 min : un master de 30 min (54 000 frames) prend largement plus de
+// 12 min à rendre — l'ancien défaut tuait les rendus longs légitimes.
+const RENDER_TIMEOUT_MS = Number(process.env.RENDER_TIMEOUT_MS) || 90 * 60 * 1000;
 
 app.post('/render', async (req, res) => {
   if (WORKER_KEY && req.header('x-worker-key') !== WORKER_KEY) {

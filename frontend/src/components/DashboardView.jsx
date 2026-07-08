@@ -528,10 +528,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       } catch { /* réseau instable, on réessaiera */ }
     }, 4000);
 
-    // Filet de sécurité absolu : abandon de l'UI après 20 min.
+    // Filet de sécurité absolu : abandon de l'UI après 2 h (aligné sur le
+    // JOB_TTL_MS backend de 3 h). Un master de 30 min peut légitimement
+    // encoder > 1 h sur VPS — l'ancien filet de 20 min faisait afficher
+    // "trop long" en plein rendu sain. Le vrai détecteur d'échec reste le
+    // watchdog backend (status 'error' → fail immédiat via SSE/polling).
     safetyRef.current = setTimeout(
       () => fail('Le montage prend trop de temps. Réessayez ou vérifiez la connexion.'),
-      20 * 60 * 1000
+      2 * 60 * 60 * 1000
     );
 
     return { fail };

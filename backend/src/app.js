@@ -68,7 +68,9 @@ export function initSocket(server) {
   });
 }
 
-const UPLOAD_TIMEOUT_MS = parseInt(process.env.UPLOAD_TIMEOUT_MS || 600000, 10);
+// 2 h : un upload delivery de 20 Go en connexion moyenne (50 Mbps) prend
+// ~55 min — l'ancien défaut de 10 min coupait la requête en plein transfert.
+const UPLOAD_TIMEOUT_MS = parseInt(process.env.UPLOAD_TIMEOUT_MS || 2 * 60 * 60 * 1000, 10);
 const REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || 30000, 10);
 
 const RESULT_URL_HOSTS = (process.env.RESULT_URL_HOSTS || '')
@@ -171,7 +173,11 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     }).catch(next);
   });
 
-  app.use(express.json({ limit: '100kb' }));
+  // 2 Mo : le payload /concat d'un montage de 30 min (30+ clips, sous-titres
+  // auto par clip, overlays) dépasse facilement 100 ko — l'ancienne limite
+  // faisait un 413 silencieux sur les gros montages. 2 Mo reste une borne
+  // saine contre les abus (les fichiers passent par multer/TUS, pas ici).
+  app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '2mb' }));
   app.use(cookieParser());
   app.use(sanitizerMiddleware);
 
@@ -288,7 +294,14 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/themes', themesRouter);
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);
   app.use('/api/deliveries', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), deliveriesRouter);
-  app.use('/api/editor', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), editorRouter);
+  // Le flux SSE de progression (/api/editor/progress/:jobId) reste ouvert
+  // toute la durée d'un rendu (jusqu'à 1 h+) : on NE lui applique PAS le
+  // timeout requête, sinon req.destroy() coupe le flux en plein encodage
+  // (EventSource reconnecte, mais ça spamme et perd des events).
+  app.use('/api/editor', uploadLimiter, (req, res, next) => {
+    if (req.path.startsWith('/progress/')) return next();
+    return timeoutMiddleware(UPLOAD_TIMEOUT_MS)(req, res, next);
+  }, editorRouter);
   app.use('/api/delays', globalLimiter, timeoutMiddleware(REQUEST_TIMEOUT_MS), delaysRouter);
   app.use('/api/webpush', webpushRouter);
   
