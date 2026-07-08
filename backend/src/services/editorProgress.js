@@ -22,12 +22,17 @@ function tombstone(jobId) {
   }
 }
 
-const JOB_TTL_MS = 30 * 60 * 1000; // 30 min : durée max absolue d'un job actif
+// 3 h : durée max absolue d'un job actif (surchargeable JOB_TTL_MS). Les
+// masters de prod font jusqu'à 30 min de JT → l'encodage seul peut dépasser
+// 1 h sur VPS ; l'ancien TTL de 30 min tuait le job en plein rendu légitime.
+const JOB_TTL_MS = Number(process.env.JOB_TTL_MS) || 3 * 60 * 60 * 1000;
 // Watchdog anti-blocage : si aucune progression n'arrive pendant ce délai
 // (worker OOM-killed, Chromium crash, callback réseau coupé…), on finalise
 // le job en 'error' pour que l'utilisateur ne reste pas bloqué sur le
-// spinner jusqu'au TTL de 30 min. Réinitialisé à chaque setProgress.
-const STALL_MS = Number(process.env.RENDER_STALL_MS) || 3 * 60 * 1000; // 3 min
+// spinner jusqu'au TTL. Réinitialisé à chaque setProgress. 10 min : un
+// master long a des phases légitimes sans event (probe de gros fichiers,
+// copie du master) — ffmpeg émet sinon un progress ~1/s.
+const STALL_MS = Number(process.env.RENDER_STALL_MS) || 10 * 60 * 1000;
 // Un job terminé est conservé un moment pour que le frontend puisse
 // récupérer le résultat même si le SSE a été coupé pendant le rendu.
 const FINISHED_RETENTION_MS = 15 * 60 * 1000;

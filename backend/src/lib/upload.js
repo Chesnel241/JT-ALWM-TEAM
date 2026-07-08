@@ -13,10 +13,11 @@ import { uploadsDir as resolveUploadsDir } from './paths.js';
 
 export const uploadsDir = resolveUploadsDir();
 
-// Limites séparées : les rushes peuvent monter à 2 Go (TUS gère très bien),
-// les deliveries (montage final) peuvent monter à 3 Go.
-export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 2147483648, 10);            // 2 GB
-export const DELIVERY_MAX_FILE_SIZE = parseInt(process.env.DELIVERY_MAX_FILE_SIZE || 3221225472, 10); // 3 GB
+// Limites dimensionnées pour la prod VPS : les masters/rushes réels pèsent
+// jusqu'à 20 Go (montages de 30 min). TUS (chunks 5 Mo + reprise) tient cette
+// taille ; la saturation disque est surveillée par l'alerte DISK_CAPACITY_MB.
+export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 21474836480, 10);            // 20 GB
+export const DELIVERY_MAX_FILE_SIZE = parseInt(process.env.DELIVERY_MAX_FILE_SIZE || 21474836480, 10); // 20 GB
 
 export const ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm', '.ogg', '.aac']);
 

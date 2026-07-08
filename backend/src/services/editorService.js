@@ -48,8 +48,14 @@ if (HAS_FONTS) {
 // limite absolue, on tue le process : sinon la promesse ne se résout jamais,
 // le bloc finally ne s'exécute pas et le verrou isRendering reste bloqué à
 // true jusqu'au redémarrage de Render (éditeur HS pour tout le monde).
-const STEP_STALL_MS = Number(process.env.EDITOR_STALL_MS) || 4 * 60 * 1000;
-const STEP_MAX_MS = Number(process.env.EDITOR_STEP_MAX_MS) || 12 * 60 * 1000;
+// Dimensionné pour les masters de production : jusqu'à 30 min de JT et des
+// clips sources de plusieurs Go. Le stall (aucun event `progress` ffmpeg)
+// reste le vrai détecteur de blocage — ffmpeg émet un progress ~1/s pendant
+// l'encodage, donc 10 min sans rien = vraiment mort. Le hard-cap n'est qu'un
+// ultime filet : 90 min par passe (l'assemblage d'un master 30 min en
+// veryfast sur VPS peut légitimement dépasser 30-45 min).
+const STEP_STALL_MS = Number(process.env.EDITOR_STALL_MS) || 10 * 60 * 1000;
+const STEP_MAX_MS = Number(process.env.EDITOR_STEP_MAX_MS) || 90 * 60 * 1000;
 const IO_TIMEOUT_MS = Number(process.env.EDITOR_IO_TIMEOUT_MS) || 5 * 60 * 1000;
 
 // Résolution/preset de sortie, surchargeables sans redéploiement de code.
@@ -395,11 +401,20 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
       throw new Error(`Le rendu ffmpeg a produit un fichier invalide (${finalStat.size} octets).`);
     }
 
-    // Mode local (dev) : déplace le rendu dans uploadsDir/exports.
+    // Publication dans uploadsDir/exports. Copie ASYNCHRONE : copyFileSync
+    // sur un master de plusieurs Go gelait TOUT le process Node (SSE,
+    // uploads, heartbeats) pendant des minutes. On envoie aussi un tick de
+    // progression périodique pendant la copie pour que le watchdog STALL du
+    // job ne conclue pas à un blocage (copie 20 Go sur HDD > 3 min).
     const exportsDir = path.join(uploadsDir(), 'exports');
     fs.mkdirSync(exportsDir, { recursive: true });
     const exportPath = path.join(exportsDir, outputFilename);
-    fs.copyFileSync(finalPath, exportPath);
+    const copyHeartbeat = setInterval(() => setProgress(jobId, 92, 'uploading'), 30 * 1000);
+    try {
+      await fs.promises.copyFile(finalPath, exportPath);
+    } finally {
+      clearInterval(copyHeartbeat);
+    }
     // Double-check côté destination : si la copie a foiré silencieusement
     // (disque plein, ENOSPC swallowed), refuse de mentir au frontend.
     const exportStat = fs.statSync(exportPath);

@@ -32,13 +32,27 @@ describe('Security headers (Helmet)', () => {
 });
 
 describe('JSON body limit', () => {
-  it('rejects bodies larger than 100kb', async () => {
-    const huge = 'x'.repeat(200 * 1024); // 200kb
+  // Limite relevée de 100 ko à 2 Mo : le payload /concat d'un montage de
+  // 30 min (clips + sous-titres auto + overlays) dépasse largement 100 ko.
+  // On vérifie que la borne anti-abus existe toujours au-delà de 2 Mo.
+  it('rejects bodies larger than the configured limit (2mb)', async () => {
+    const huge = 'x'.repeat(3 * 1024 * 1024); // 3 Mo
     const res = await request(app)
       .post('/api/countries')
       .set('Content-Type', 'application/json')
       .send(`{"name":"${huge}"}`);
     expect(res.status).toBe(413);
+  });
+
+  it('accepts a large-but-legit body (500kb, gros montage)', async () => {
+    const big = 'x'.repeat(500 * 1024);
+    const res = await request(app)
+      .post('/api/countries')
+      .set('Content-Type', 'application/json')
+      .send(`{"name":"${big}"}`);
+    // Pas 413 : la route peut rejeter pour d'autres raisons (validation),
+    // mais le body doit passer le parseur.
+    expect(res.status).not.toBe(413);
   });
 });
 
