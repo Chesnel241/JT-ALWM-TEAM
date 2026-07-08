@@ -368,7 +368,27 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
       typeof c === 'string' ? { filename: c } : c
     );
 
-    workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-editor-'));
+    // workDir SUR le volume data (uploadsDir), PAS os.tmpdir() : les fichiers
+    // intermédiaires (norm_*.mp4 + master) d'un JT de 30 min pèsent plusieurs
+    // Go. Si /tmp est un tmpfs (fréquent en conteneur/systemd), ces Go partent
+    // en RAM → OOM-kill du backend en plein rendu. uploadsDir est un vrai
+    // volume disque dimensionné.
+    const tmpBase = path.join(uploadsDir(), '.render-tmp');
+    fs.mkdirSync(tmpBase, { recursive: true });
+    // Purge best-effort des dossiers de rendu orphelins (backend OOM-killed ou
+    // redémarré en plein montage → le finally n'a pas nettoyé). Sans ça, les Go
+    // de norm_*.mp4 s'accumulent à chaque crash sur gros master.
+    try {
+      const STALE_MS = 6 * 60 * 60 * 1000;
+      for (const d of fs.readdirSync(tmpBase)) {
+        if (!d.startsWith('jt-editor-')) continue;
+        const p = path.join(tmpBase, d);
+        try {
+          if (Date.now() - fs.statSync(p).mtimeMs > STALE_MS) fs.rmSync(p, { recursive: true, force: true });
+        } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
+    workDir = fs.mkdtempSync(path.join(tmpBase, 'jt-editor-'));
     outputFilename = `export_${uuidv4()}.mp4`;
     outputPath = path.join(workDir, outputFilename);
     // Phase 1 (0→20%) : téléchargement/résolution des clips.
@@ -770,9 +790,26 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
     '-c:a', 'aac', '-b:a', '128k', '-ar', '48000',
     '-movflags', '+faststart', '-threads', String(THREADS), '-max_muxing_queue_size', '1024',
   ]);
+  // fluent-ffmpeg ne calcule PAS p.percent sur un complexFilter multi-inputs
+  // (pas de durée de sortie fiable) → la barre restait figée à 70% pendant
+  // 10-30 min d'assemblage. On estime la progression via le timemark ffmpeg
+  // (position de sortie) rapporté à masterDur, déjà connu.
+  const tmToSec = (tm) => {
+    if (typeof tm !== 'string') return NaN;
+    const m = tm.match(/(\d+):(\d+):(\d+(?:\.\d+)?)/);
+    return m ? (+m[1]) * 3600 + (+m[2]) * 60 + parseFloat(m[3]) : NaN;
+  };
   const pr = runFfmpegStep(cmd, 'Assemblage master', {
     onStart: (c) => logger.info('Démarrage assemblage master', { command: c }),
-    onProgress: (p) => { if (typeof onProgress === 'function') onProgress(Math.max(0, Math.min(100, p.percent || 0))); },
+    onProgress: (p) => {
+      if (typeof onProgress !== 'function') return;
+      let pct = Number(p.percent);
+      if (!Number.isFinite(pct) || pct <= 0) {
+        const sec = tmToSec(p.timemark);
+        if (Number.isFinite(sec) && masterDur > 0) pct = (sec / masterDur) * 100;
+      }
+      onProgress(Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 0)));
+    },
   });
   cmd.save(outputPath);
   await pr;

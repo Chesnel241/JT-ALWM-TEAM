@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import { existsSync, rmSync, writeFileSync, readFileSync, mkdirSync } from 'fs';
+import { existsSync, rmSync, writeFileSync, readFileSync, mkdirSync, utimesSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -80,11 +80,24 @@ describe('cleanupExpiredUploads — purge mercredi 00:00', () => {
     expect(getCustomCountries()).toHaveLength(1);
   });
 
-  it('purge les fichiers orphelins (sur disque mais pas en DB)', async () => {
+  it('purge les fichiers orphelins ANCIENS (sur disque mais pas en DB)', async () => {
     const { cleanupExpiredUploads } = await freshStore();
     const orphan = join(CLEANUP_TMP, 'orphan.mp4');
     writeFileSync(orphan, 'unknown');
+    // Vieillit le fichier au-delà du garde-fou d'âge (24 h) : sinon il est
+    // considéré comme un upload potentiellement en cours et préservé.
+    const old = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    utimesSync(orphan, old, old);
     await cleanupExpiredUploads(null, CLEANUP_TMP);
     expect(existsSync(orphan)).toBe(false);
+  });
+
+  it('PRÉSERVE un orphelin récent (upload TUS 20 Go en cours)', async () => {
+    const { cleanupExpiredUploads } = await freshStore();
+    const inflight = join(CLEANUP_TMP, `${Date.now()}-inflight.mp4`);
+    writeFileSync(inflight, 'partial 20GB upload');
+    // mtime = maintenant → doit être épargné par le sweep orphelins.
+    await cleanupExpiredUploads(null, CLEANUP_TMP);
+    expect(existsSync(inflight)).toBe(true);
   });
 });
