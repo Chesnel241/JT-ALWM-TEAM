@@ -57,6 +57,17 @@ const server = app.listen(PORT, () => {
   console.log(`💊 Health: http://localhost:${PORT}/health`);
 });
 
+// Node >= 18 impose server.requestTimeout = 5 min (délai MAX pour recevoir la
+// requête COMPLÈTE, corps inclus). Un master JT Prêt part en UN seul POST
+// multipart (deliveries) : 20 Go à 50 Mbps ≈ 55 min → coupé à 5 min. Le
+// timeoutMiddleware applicatif (2 h) est INOPÉRANT contre ce timeout socket
+// de bas niveau. On le désactive (0 = illimité) ; le contrôle de durée réel
+// est fait par timeoutMiddleware par route. headersTimeout/keepAlive ajustés
+// pour rester cohérents sur les longues connexions (uploads + SSE de rendu).
+server.requestTimeout = Number(process.env.SERVER_REQUEST_TIMEOUT_MS) || 0;
+server.headersTimeout = Number(process.env.SERVER_HEADERS_TIMEOUT_MS) || 120000;
+server.keepAliveTimeout = Number(process.env.SERVER_KEEPALIVE_TIMEOUT_MS) || 120000;
+
 initSocket(server);
 
 process.on('unhandledRejection', (reason, promise) => {

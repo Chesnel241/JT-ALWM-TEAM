@@ -1,5 +1,5 @@
 import { existsSync } from 'fs';
-import { readFile, writeFile, unlink, readdir, rename, mkdir } from 'fs/promises';
+import { readFile, writeFile, unlink, readdir, rename, mkdir, stat } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
@@ -462,9 +462,23 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
     try {
       const physicalFiles = await readdir(uploadsDir);
       const entries = await readdir(uploadsDir, { withFileTypes: true });
+      // Un upload TUS de 20 Go n'est inséré dans le store qu'À LA FIN
+      // (onUploadFinish) : pendant le transfert (plusieurs dizaines de
+      // minutes), son binaire est "orphelin" du point de vue du store. Sans
+      // ce garde-fou d'âge, le sweep horaire SUPPRIMAIT le master en plein
+      // téléversement → transfert détruit, non reprenable, à chaque heure.
+      // On ne purge donc jamais un fichier récemment modifié.
+      const ORPHAN_MIN_AGE_MS = Number(process.env.ORPHAN_MIN_AGE_MS) || 24 * 60 * 60 * 1000;
+      const nowMs = Date.now();
       for (const file of physicalFiles) {
         if (entries.find((d) => d.name === file)?.isDirectory()) continue;
         if (file.endsWith('.json') || file.endsWith('.tmp')) continue;
+
+        // Skip les fichiers récents (upload potentiellement en cours).
+        try {
+          const st = await stat(join(uploadsDir, file));
+          if (nowMs - st.mtimeMs < ORPHAN_MIN_AGE_MS) continue;
+        } catch { continue; /* disparu entre-temps */ }
 
         let found = false;
         for (const weekId of Object.keys(db)) {

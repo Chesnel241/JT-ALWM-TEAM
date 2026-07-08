@@ -155,7 +155,16 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     exposedHeaders: ['Tus-Resumable', 'Upload-Length', 'Upload-Metadata', 'Location', 'Upload-Offset', 'Upload-Concat', 'Content-Type', 'Upload-Defer-Length'],
     allowedHeaders: ['Tus-Resumable', 'Upload-Length', 'Upload-Metadata', 'Location', 'Upload-Offset', 'Content-Type', 'Upload-Concat', 'Authorization', 'x-admin-password', 'x-worker-key']
   }));
-  app.use(globalLimiter);
+  // globalLimiter (500 req/min/IP) NE doit PAS compter les PATCH TUS : un
+  // upload de 20 Go en chunks de 5 Mo = ~4096 PATCH ; sur lien rapide ou
+  // plusieurs monteurs derrière un même NAT, on dépasse 500/min → 429 que
+  // tus-js-client ne réessaie pas par défaut → upload avorté. On saute donc
+  // TUS (le rate-limit d'ouverture d'upload reste porté par uploadLimiter
+  // sur le POST initial).
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/tus')) return next();
+    return globalLimiter(req, res, next);
+  });
   app.use((req, res, next) => {
     // Ne pas appliquer le timeout global de 30s aux envois TUS pour les grosses vidéos
     if (req.path.startsWith('/api/tus')) {
