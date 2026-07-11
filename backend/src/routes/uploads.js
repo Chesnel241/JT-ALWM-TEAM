@@ -212,8 +212,11 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
 
 const uploadMiddleware = (req, res, next) => {
   const { weekId, countryId } = req.params;
-  const providedToken = req.query.adminPassword || req.header('x-admin-password');
-  const isAdmin = safeEqual(providedToken, ADMIN_PASSWORD);
+  // Header uniquement (pas de query : le mot de passe admin en query fuit dans
+  // les access logs Caddy + errorHandler req.originalUrl). Normalisation
+  // alignée sur requireAdmin.
+  const providedToken = req.header('x-admin-password');
+  const isAdmin = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
 
   if (!isAdmin) {
     const cutoffErr = checkUploadCutoff(weekId, countryId);
@@ -239,8 +242,9 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
     return next(createErrors.notFound('Week ou Country'));
   }
 
-  const providedToken = req.query.adminPassword || req.header('x-admin-password');
-  const isAdmin = safeEqual(providedToken, ADMIN_PASSWORD);
+  // Header uniquement (pas de query : fuite dans les logs).
+  const providedToken = req.header('x-admin-password');
+  const isAdmin = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
 
   return upload.single('file')(req, res, async (err) => {
     try {
@@ -631,7 +635,7 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
   // Chutier `mj` (Mot du JT) réservé à l'équipe montage : admin requis,
   // même via la route voix-off (sinon n'importe quel pays peut polluer).
   if (countryId === 'mj') {
-    const provided = req.header('x-admin-password') || req.query.adminPassword;
+    const provided = req.header('x-admin-password');
     if (!ADMIN_PASSWORD || !safeEqual(provided, ADMIN_PASSWORD)) {
       return next(createErrors.forbidden('Accès admin requis pour la rubrique Mot du JT.'));
     }
@@ -643,8 +647,8 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     return next(createErrors.badRequest('ID de pays/chutier invalide.'));
   }
 
-  const providedToken = req.body.adminPassword || req.header('x-admin-password');
-  const ignoreCutoff = safeEqual(providedToken, ADMIN_PASSWORD);
+  const providedToken = req.header('x-admin-password');
+  const ignoreCutoff = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
   
   if (!ignoreCutoff) {
     const cutoffErr = checkUploadCutoff(weekId, countryId);

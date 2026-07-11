@@ -68,4 +68,34 @@ describe('POST /api/delays/request — body JSON parsé (Content-Type)', () => {
       .send({ weekId });
     expect(r.status).toBe(400);
   });
+
+  it('rejette 404 un weekId invalide (anti-pollution du store)', async () => {
+    const r = await request(app)
+      .post('/api/delays/request')
+      .set('X-App-Password', 'x')
+      .set('Content-Type', 'application/json')
+      .send({ weekId: '1999-w99', countryId: 'cm' });
+    expect(r.status).toBe(404);
+  });
+
+  it('rejette 404 un countryId inconnu', async () => {
+    const r = await request(app)
+      .post('/api/delays/request')
+      .set('X-App-Password', 'x')
+      .set('Content-Type', 'application/json')
+      .send({ weekId, countryId: 'zz-inconnu' });
+    expect(r.status).toBe(404);
+  });
+
+  it("rejette une durée d'approbation aberrante (négative / énorme)", async () => {
+    for (const minutes of [-5, 0, 999999]) {
+      const r = await request(app)
+        .post('/api/delays/approve')
+        .set('X-App-Password', 'x')
+        .set('X-Admin-Password', 'x')
+        .set('Content-Type', 'application/json')
+        .send({ weekId, countryId: 'cm', minutes });
+      expect(r.status).toBe(400);
+    }
+  });
 });
