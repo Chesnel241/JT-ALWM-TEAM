@@ -4,28 +4,29 @@ services:
   # =========================================================================
   # Caddy Reverse Proxy (Gère les domaines, SSL, et route le trafic)
   # =========================================================================
-  caddy:
-    image: caddy:2-alpine
-    container_name: jt-alwm-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"   # HTTP/3 (QUIC)
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-      - uploads_volume:/app/uploads
-    networks:
-      - jt-alwm-network
-    depends_on:
-      - frontend
-      - backend
-
-  # =========================================================================
-  # Backend Service - Node.js Express API
-  # =========================================================================
+# [edge] service caddy deplace vers /opt/edge :
+#  caddy:
+#    image: caddy:2-alpine
+#    container_name: jt-alwm-caddy
+#    restart: unless-stopped
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#      - "443:443/udp"   # HTTP/3 (QUIC)
+#    volumes:
+#      - ./Caddyfile:/etc/caddy/Caddyfile
+#      - caddy_data:/data
+#      - caddy_config:/config
+#      - uploads_volume:/app/uploads
+#    networks:
+#      - jt-alwm-network
+#    depends_on:
+#      - frontend
+#      - backend
+#
+#  # =========================================================================
+#  # Backend Service - Node.js Express API
+#  # =========================================================================
   backend:
     container_name: jt-alwm-backend
     build:
