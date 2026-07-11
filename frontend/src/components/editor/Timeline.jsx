@@ -267,17 +267,22 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
   const [thumbnails, setThumbnails] = useState([]);
   const [isHovered, setIsHovered] = useState(false);
 
+  // Dépendance sur clip.url UNIQUEMENT (pas `dur`). Pendant un drag de
+  // rognage, `dur` change à chaque pointermove → l'ancienne version relançait
+  // generateThumbnails (donc un <video> du fichier source de plusieurs Go) à
+  // chaque mouvement → tempête de <video>, OOM. Le filmstrip n'a pas besoin
+  // d'être recalculé pendant le resize. AbortController réel au démontage.
+  const clipUrl = clip.url;
+  const clipDurRef = useRef(dur);
+  clipDurRef.current = dur;
   useEffect(() => {
-    let active = true;
-    if (clip.url) {
-      generateThumbnails(clip.url, dur, 10)
-        .then((thumbs) => {
-          if (active) setThumbnails(thumbs);
-        })
-        .catch((err) => console.error('Thumbnails error', err));
-    }
-    return () => { active = false; };
-  }, [clip.url, dur]);
+    if (!clipUrl) return undefined;
+    const ctrl = new AbortController();
+    generateThumbnails(clipUrl, clipDurRef.current, 10, { signal: ctrl.signal })
+      .then((thumbs) => { if (!ctrl.signal.aborted && thumbs.length) setThumbnails(thumbs); })
+      .catch(() => { /* filmstrip best-effort */ });
+    return () => ctrl.abort();
+  }, [clipUrl]);
 
   // Trim au drag sur le bord droit/gauche du clip lui-même. Convertit le
   // delta px en delta secondes via pxPerSec puis met à jour inPoint/outPoint
