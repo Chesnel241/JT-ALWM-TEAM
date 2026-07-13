@@ -44,6 +44,28 @@ function clampTimelineHeight(value, maxHeight) {
   return Math.min(safeMax, Math.max(STUDIO_TIMELINE_MIN_HEIGHT, Math.round(value)));
 }
 
+function probeVideoDuration(url) {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    let settled = false;
+    let timeout;
+    const finish = (duration = 0) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      video.removeAttribute('src');
+      video.load();
+      resolve(Number.isFinite(duration) && duration > 0 ? duration : 0);
+    };
+    timeout = setTimeout(() => finish(), 5000);
+
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => finish(video.duration);
+    video.onerror = () => finish();
+    video.src = url;
+  });
+}
+
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, onContentChange }) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -337,6 +359,57 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setOverlayTarget(null);
     setSubtitleTarget(null);
     setShowGlobalPanel(true);
+  };
+
+  const addRushDirectlyToTimeline = (file, loadedDuration = 0) => {
+    const instanceId = window.crypto?.randomUUID?.()
+      || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const filename = file.filename || file.name || '';
+    const isExternal = filename.startsWith('http') || filename.startsWith('blob:');
+    const url = file.url?.startsWith('http') || file.url?.startsWith('blob:')
+      ? file.url
+      : isExternal
+        ? filename
+        : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`;
+    const knownDuration = Number(loadedDuration) > 0
+      ? Number(loadedDuration)
+      : Number(file.sourceDurationSec) > 0
+        ? Number(file.sourceDurationSec)
+        : 0;
+    const newClip = {
+      ...file,
+      url,
+      instanceId,
+      ...(knownDuration > 0
+        ? { sourceDurationSec: knownDuration, durationSec: knownDuration }
+        : {}),
+    };
+
+    setTimelineClips((previous) => [...previous, newClip]);
+    setTrimTarget(null);
+    setOverlayTarget(null);
+    setSubtitleTarget(null);
+    setShowGlobalPanel(false);
+    setSelectedBin('studio');
+    addToast('Clip ajouté directement à la timeline', 'success', 2000);
+
+    // La carte possède généralement déjà la durée grâce à sa miniature. Si
+    // ce n'est pas le cas, on complète silencieusement le clip dès que les
+    // métadonnées arrivent, sans écraser un trim effectué entre-temps.
+    if (knownDuration <= 0) {
+      probeVideoDuration(url).then((duration) => {
+        if (duration <= 0) return;
+        setTimelineClips((previous) => previous.map((clip) => {
+          if (clip.instanceId !== instanceId) return clip;
+          const hasBeenTrimmed = clip.outPoint != null || Number(clip.durationSec) > 0;
+          return {
+            ...clip,
+            sourceDurationSec: duration,
+            ...(!hasBeenTrimmed ? { durationSec: duration } : {}),
+          };
+        }));
+      });
+    }
   };
 
   useEffect(() => {
@@ -1290,13 +1363,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </div>
           {isVideo && (
             <button
-              onClick={() => {
-                openTrimInspector(file);
-                setSelectedBin('studio');
+              type="button"
+              onClick={(event) => {
+                const cardDuration = event.currentTarget
+                  .closest('.group')
+                  ?.querySelector('video')
+                  ?.duration;
+                addRushDirectlyToTimeline(file, cardDuration);
               }}
-              className="mt-2 w-full text-sm font-bold py-2 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
+              className="mt-2 w-full text-sm font-bold py-2 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-[transform,opacity] duration-150 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 shadow-md flex items-center justify-center gap-2"
             >
-              ✂️ Ajouter à la Timeline
+              <Video size={16} aria-hidden="true" />
+              Ajouter à la timeline
             </button>
           )}
         </div>
