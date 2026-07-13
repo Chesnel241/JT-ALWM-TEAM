@@ -118,7 +118,7 @@ const formatShortTime = (seconds) => {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 };
 
-function ToolButton({ icon, label, active = false, disabled = false, onClick, title, shortcut, danger = false, compact = false }) {
+function ToolButton({ icon, label, active = false, disabled = false, onClick, title, shortcut, danger = false, compact = false, responsiveCompact = false }) {
   const colors = danger
     ? 'border-[var(--editor-danger)]/55 text-[var(--editor-danger)] hover:bg-[var(--editor-danger)]/15'
     : active
@@ -131,10 +131,10 @@ function ToolButton({ icon, label, active = false, disabled = false, onClick, ti
       disabled={disabled}
       aria-pressed={active || undefined}
       title={shortcut ? `${title || label} · ${shortcut}` : (title || label)}
-      className={`h-10 shrink-0 inline-flex items-center justify-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-[transform,background-color,border-color,color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--editor-bg)] disabled:cursor-not-allowed disabled:opacity-35 ${colors}`}
+      className={`h-10 shrink-0 inline-flex items-center justify-center gap-2 rounded-md border px-2 text-xs font-semibold transition-[transform,background-color,border-color,color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--editor-bg)] disabled:cursor-not-allowed disabled:opacity-35 ${colors}`}
     >
       {icon}
-      {!compact && <span className="whitespace-nowrap">{label}</span>}
+      {!compact && <span className={`whitespace-nowrap ${responsiveCompact ? 'hidden min-[1440px]:inline' : ''}`}>{label}</span>}
       {shortcut && !compact && <kbd className="ml-0.5 hidden rounded border border-[var(--editor-border)] px-1 py-0.5 font-mono text-[10px] text-[var(--editor-muted)] min-[1800px]:inline-flex">{shortcut}</kbd>}
     </button>
   );
@@ -563,8 +563,8 @@ export default function Timeline({
   const selectedIndex = selectedClip ? clips.indexOf(selectedClip) : -1;
   const totalPx = Math.max(1, layout.total * pxPerSec);
   const contentWidth = Math.max(viewportWidth, totalPx);
-  const videoTrackHeight = compact ? 64 : 82;
-  const titleTrackHeight = compact ? 0 : 48;
+  const videoTrackHeight = compact ? 64 : 112;
+  const titleTrackHeight = compact ? 0 : 64;
 
   clipsRef.current = clips;
 
@@ -863,7 +863,7 @@ export default function Timeline({
         </div>
       ) : (
         <>
-          <div className="flex min-h-[54px] items-center gap-2 overflow-x-auto border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-2.5 py-1.5" role="toolbar" aria-label="Outils de montage principaux">
+          <div className="flex min-h-[54px] items-center gap-1.5 overflow-x-auto border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-2 py-1.5" role="toolbar" aria-label="Outils de montage principaux">
             <div className="mr-1 flex shrink-0 flex-col px-1.5">
               <span className="font-mono text-sm font-semibold tabular-nums text-[var(--editor-text)]">{formatTimecode(playheadSec)}</span>
               <span className="text-[10px] text-[var(--editor-muted)]">sur {formatTimecode(layout.total)}</span>
@@ -876,8 +876,8 @@ export default function Timeline({
             <ToolButton icon={<Magnet size={16} />} label="Magnétisme" shortcut="M" active={snapping} onClick={() => setSnapping((value) => !value)} />
             <ToolButton icon={<Undo2 size={16} />} label="Annuler" disabled={history.past.length === 0} onClick={undo} compact title="Annuler" />
             <ToolButton icon={<Redo2 size={16} />} label="Rétablir" disabled={history.future.length === 0} onClick={redo} compact title="Rétablir" />
-            {onSplitText && <ToolButton icon={<Type size={16} />} label="Couper le titre" disabled={timelineOverlays.length === 0} onClick={onSplitText} title="Couper le titre actif à la tête de lecture" />}
-            {onGlobalLayer && <ToolButton icon={<Newspaper size={16} />} label="Habillage JT" active={!!brandingActive} onClick={onGlobalLayer} />}
+            {onSplitText && <ToolButton icon={<Type size={16} />} label="Couper le titre" disabled={timelineOverlays.length === 0} onClick={onSplitText} title="Couper le titre actif à la tête de lecture" responsiveCompact />}
+            {onGlobalLayer && <ToolButton icon={<Newspaper size={16} />} label="Habillage JT" active={!!brandingActive} onClick={onGlobalLayer} responsiveCompact />}
             <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
               <ToolButton icon={<Minus size={15} />} label="Dézoomer" compact onClick={() => setPxPerSec((value) => clamp(value - 10, PX_PER_SEC_MIN, PX_PER_SEC_MAX))} title="Dézoomer la timeline" />
               <input
@@ -888,7 +888,7 @@ export default function Timeline({
                 value={pxPerSec}
                 onChange={(event) => setPxPerSec(Number(event.target.value))}
                 aria-label={`Zoom de timeline, ${pxPerSec} pixels par seconde`}
-                className="w-24 accent-[var(--editor-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+                className="w-16 accent-[var(--editor-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)] min-[1440px]:w-24"
               />
               <ToolButton icon={<Plus size={15} />} label="Zoomer" compact onClick={() => setPxPerSec((value) => clamp(value + 10, PX_PER_SEC_MIN, PX_PER_SEC_MAX))} title="Zoomer la timeline" />
               <ToolButton icon={<Maximize2 size={15} />} label="Ajuster" compact onClick={fitToView} title="Ajuster toute la timeline à la largeur" />
@@ -898,7 +898,7 @@ export default function Timeline({
               onClick={onGenerate}
               disabled={clips.length === 0 || isGenerating}
               aria-busy={isGenerating}
-              className="ml-1 h-10 shrink-0 rounded-md border border-[var(--editor-accent)] bg-[var(--editor-accent-strong)] px-4 text-xs font-bold text-[var(--editor-bg)] transition-[transform,background-color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] disabled:cursor-not-allowed disabled:opacity-35"
+              className="ml-1 h-10 shrink-0 rounded-md border border-[var(--editor-accent)] bg-[var(--editor-accent-strong)] px-3 text-xs font-bold text-[var(--editor-bg)] transition-[transform,background-color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] disabled:cursor-not-allowed disabled:opacity-35"
             >
               {isGenerating ? 'Assemblage en cours…' : 'Générer le master'}
             </button>

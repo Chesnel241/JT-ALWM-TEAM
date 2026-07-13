@@ -39,10 +39,27 @@ function AppShell() {
   // null = inconnu (au boot), true = session valide, false = login requis.
   // Source de vérité = le cookie httpOnly côté serveur (api.checkAuth).
   const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [isDesktopEditorAvailable, setIsDesktopEditorAvailable] = useState(() => (
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1180px)').matches : true
+  ));
 
   useEffect(() => {
     api.checkAuth().then(setIsAuthenticated).catch(() => setIsAuthenticated(false));
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1180px)');
+    const update = (event) => setIsDesktopEditorAvailable(event.matches);
+    setIsDesktopEditorAvailable(media.matches);
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopEditorAvailable && currentView === 'dashboard') {
+      setCurrentView('home');
+    }
+  }, [currentView, isDesktopEditorAvailable]);
 
   const { addToast } = useToast();
   const [newUploadsCount, setNewUploadsCount] = useState(0);
@@ -125,11 +142,18 @@ function AppShell() {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
   }
 
-  return (
-    <div className="app-shell flex flex-col pb-[72px] sm:pb-0">
-      <Nav currentView={currentView} setCurrentView={setCurrentView} newUploadsCount={newUploadsCount} />
+  const isEditorWorkspace = currentView === 'dashboard' && isDesktopEditorAvailable;
 
-      <main className="flex-1 pb-12">
+  return (
+    <div className={`app-shell flex flex-col ${isEditorWorkspace ? 'h-dvh overflow-hidden' : 'pb-[72px] sm:pb-0'}`}>
+      <Nav
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        newUploadsCount={newUploadsCount}
+        isDesktopEditorAvailable={isDesktopEditorAvailable}
+      />
+
+      <main className={`flex-1 ${isEditorWorkspace ? 'min-h-0 overflow-hidden pb-0' : 'pb-12'}`}>
         {isLoading ? (
           <LoadingFallback />
         ) : (
@@ -153,15 +177,17 @@ function AppShell() {
                 />
               </div>
             )}
-            <div className={currentView === 'dashboard' ? 'block' : 'hidden'}>
-              <DashboardView
-                weeks={weeks}
-                selectedWeek={selectedWeek}
-                setSelectedWeek={setSelectedWeek}
-                countries={countries}
-                isActive={currentView === 'dashboard'}
-              />
-            </div>
+            {isDesktopEditorAvailable && (
+              <div className={currentView === 'dashboard' ? 'h-full min-h-0' : 'hidden'}>
+                <DashboardView
+                  weeks={weeks}
+                  selectedWeek={selectedWeek}
+                  setSelectedWeek={setSelectedWeek}
+                  countries={countries}
+                  isActive={currentView === 'dashboard'}
+                />
+              </div>
+            )}
             <div className={currentView === 'delivery' ? 'block' : 'hidden'}>
               <DeliveryView
                 weeks={weeks}
@@ -197,16 +223,18 @@ function AppShell() {
         )}
       </main>
 
-      <footer className="bg-[var(--paper-2)] text-[color:var(--muted)] py-6 text-center text-sm border-t border-[var(--border)]">
-        <p>{t.footer.brand}</p>
-        <p className="text-xs mt-2 text-[color:var(--muted)]">
-          {t.footer.retention}
-        </p>
-      </footer>
+      {!isEditorWorkspace && (
+        <footer className="bg-[var(--paper-2)] text-[color:var(--muted)] py-6 text-center text-sm border-t border-[var(--border)]">
+          <p>{t.footer.brand}</p>
+          <p className="text-xs mt-2 text-[color:var(--muted)]">
+            {t.footer.retention}
+          </p>
+        </footer>
+      )}
 
       <ToastContainer />
-      <HelpButton />
-      <AIAssistant currentPage={currentView} />
+      {!isEditorWorkspace && <HelpButton />}
+      {!isEditorWorkspace && <AIAssistant currentPage={currentView} />}
     </div>
   );
 }

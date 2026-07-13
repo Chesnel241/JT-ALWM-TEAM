@@ -18,7 +18,7 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-export default function NotificationToggle() {
+export default function NotificationToggle({ compact = false }) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -93,6 +93,17 @@ export default function NotificationToggle() {
   };
 
   if (!isSupported) {
+    if (compact) {
+      return (
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-xs font-bold text-[color:var(--muted)]"
+          title="Notifications push non supportées sur ce navigateur"
+          aria-label="Notifications push non supportées"
+        >
+          !
+        </div>
+      );
+    }
     return (
       <div className="text-xs text-red-500 opacity-80 px-4 py-2 border border-red-500/20 rounded bg-red-500/10">
         Notifications Push non supportées. (Sur iOS, ajoutez l'app à l'écran d'accueil).
@@ -104,7 +115,9 @@ export default function NotificationToggle() {
     <button
       onClick={isSubscribed ? unsubscribeUser : subscribeUser}
       disabled={loading}
-      className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 ${
+      title={isSubscribed ? 'Notifications activées' : 'Activer les notifications'}
+      aria-label={isSubscribed ? 'Notifications activées' : 'Activer les notifications'}
+      className={`${compact ? 'h-9 w-9 justify-center p-0' : 'px-4 py-2'} text-sm font-semibold rounded-lg transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] flex items-center gap-2 ${
         isSubscribed 
           ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/80' 
           : 'bg-transparent border border-[var(--border)] text-[color:var(--muted)] hover:text-white hover:border-[var(--muted)]'
@@ -117,7 +130,7 @@ export default function NotificationToggle() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isSubscribed ? "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" : "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"} />
         </svg>
       )}
-      {isSubscribed ? 'Notifications Activées' : 'Activer Notifications'}
+      {!compact && (isSubscribed ? 'Notifications Activées' : 'Activer Notifications')}
     </button>
   );
 }
