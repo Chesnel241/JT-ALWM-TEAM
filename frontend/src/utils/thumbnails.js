@@ -28,23 +28,23 @@ function pump() {
  * @param {string} videoUrl
  * @param {number} durationSec
  * @param {number} [thumbnailCount=10]
- * @param {{ signal?: AbortSignal }} [opts]
+ * @param {{ signal?: AbortSignal, startTime?: number }} [opts]
  * @returns {Promise<string[]>}
  */
 export async function generateThumbnails(videoUrl, durationSec, thumbnailCount = 10, opts = {}) {
   if (!durationSec || durationSec <= 0) return [];
-  const { signal } = opts;
+  const { signal, startTime = 0 } = opts;
   if (signal?.aborted) return [];
 
   return new Promise((resolve) => {
     // Mise en file : la vraie génération ne démarre que lorsqu'un slot se
     // libère (évite d'ouvrir tous les <video> d'un coup).
-    queue.push(() => runOne(videoUrl, durationSec, thumbnailCount, signal, resolve));
+    queue.push(() => runOne(videoUrl, durationSec, thumbnailCount, signal, resolve, startTime));
     pump();
   });
 }
 
-function runOne(videoUrl, durationSec, thumbnailCount, signal, resolveOuter) {
+function runOne(videoUrl, durationSec, thumbnailCount, signal, resolveOuter, startTime = 0) {
   return new Promise((done) => {
     if (signal?.aborted) { resolveOuter([]); return done(); }
 
@@ -57,8 +57,9 @@ function runOne(videoUrl, durationSec, thumbnailCount, signal, resolveOuter) {
     document.body.appendChild(video);
 
     const thumbnails = [];
+    const safeStart = Math.max(0, Number(startTime) || 0);
     const interval = durationSec / thumbnailCount;
-    let currentTime = 0.5;
+    let currentTime = safeStart + Math.min(0.5, Math.max(0.05, durationSec / 2));
     let finished = false;
 
     let onAbort;
@@ -93,7 +94,7 @@ function runOne(videoUrl, durationSec, thumbnailCount, signal, resolveOuter) {
 
       for (let i = 0; i < thumbnailCount; i++) {
         if (finished || signal?.aborted) break;
-        video.currentTime = Math.min(currentTime, durationSec - 0.1);
+        video.currentTime = Math.max(safeStart, Math.min(currentTime, safeStart + durationSec - 0.05));
         try {
           await new Promise((res, rej) => {
             const t = setTimeout(() => rej(new Error('Seek timeout')), 3000);

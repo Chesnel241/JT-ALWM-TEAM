@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { X, Scissors, SkipBack, SkipForward, Play, Pause } from 'lucide-react';
 import { API_BASE } from '../../api/index.js';
 
@@ -15,11 +15,33 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
   const progressRef = useRef(null);
 
   const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(() => Number(file?.inPoint) || 0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [inPoint, setInPoint] = useState(0);
-  const [outPoint, setOutPoint] = useState(null); // null = end of video
+  const [inPoint, setInPoint] = useState(() => Math.max(0, Number(file?.inPoint) || 0));
+  const [outPoint, setOutPoint] = useState(() => {
+    const value = Number(file?.outPoint);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }); // null = end of video
   const [dragging, setDragging] = useState(false);
+
+  // L'URL doit rester strictement stable pendant la lecture. L'ancienne
+  // version ajoutait Date.now() dans le render : chaque timeupdate pouvait
+  // donc recharger la vidéo et casser le scrub.
+  const mediaSrc = useMemo(() => {
+    if (!file) return '';
+    if (file.url?.startsWith('http') || file.url?.startsWith('blob:')) return file.url;
+    return `${API_BASE}/uploads/${encodeURIComponent(file.filename || file.name || '')}?cors=2`;
+  }, [file?.url, file?.filename, file?.name]);
+
+  useEffect(() => {
+    const nextIn = Math.max(0, Number(file?.inPoint) || 0);
+    const nextOut = Number(file?.outPoint);
+    setInPoint(nextIn);
+    setOutPoint(Number.isFinite(nextOut) && nextOut > nextIn ? nextOut : null);
+    setCurrentTime(nextIn);
+    setDuration(Number(file?.sourceDurationSec) || 0);
+    setIsPlaying(false);
+  }, [file?.instanceId, file?.id, file?.filename, file?.inPoint, file?.outPoint, file?.sourceDurationSec]);
 
   // Load video metadata
   useEffect(() => {
@@ -32,8 +54,17 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
-      setDuration(videoRef.current.duration);
-      setOutPoint(videoRef.current.duration);
+      const fullDuration = videoRef.current.duration || 0;
+      const restoredIn = Math.min(Math.max(0, Number(file?.inPoint) || 0), Math.max(0, fullDuration - 0.3));
+      const requestedOut = Number(file?.outPoint);
+      const restoredOut = Number.isFinite(requestedOut) && requestedOut > restoredIn
+        ? Math.min(fullDuration, requestedOut)
+        : fullDuration;
+      setDuration(fullDuration);
+      setInPoint(restoredIn);
+      setOutPoint(restoredOut);
+      setCurrentTime(restoredIn);
+      videoRef.current.currentTime = restoredIn;
     }
   };
 
@@ -67,6 +98,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, button')) return;
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
@@ -105,6 +137,54 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
     try { progressRef.current.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   };
 
+  const timeFromClientX = useCallback((clientX) => {
+    if (!progressRef.current || !duration) return 0;
+    const rect = progressRef.current.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return ratio * duration;
+  }, [duration]);
+
+  const updateMarker = useCallback((kind, rawTime) => {
+    if (!duration) return;
+    if (kind === 'in') {
+      const limit = Math.max(0, (outPoint ?? duration) - 0.3);
+      const next = Math.max(0, Math.min(limit, rawTime));
+      setInPoint(next);
+      seekTo(next);
+      return;
+    }
+    const next = Math.min(duration, Math.max(inPoint + 0.3, rawTime));
+    setOutPoint(next);
+    seekTo(next);
+  }, [duration, inPoint, outPoint]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const startMarkerDrag = (kind) => (e) => {
+    if (!duration) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget;
+    try { target.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
+    const move = (event) => updateMarker(kind, timeFromClientX(event.clientX));
+    const finish = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+    move(e);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  };
+
+  const handleMarkerKeyDown = (kind) => (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const direction = e.key === 'ArrowRight' ? 1 : -1;
+    const step = e.shiftKey ? 1 : 1 / 30;
+    const current = kind === 'in' ? inPoint : (outPoint ?? duration);
+    updateMarker(kind, current + direction * step);
+  };
+
   const setIn = () => {
     let t = videoRef.current?.currentTime ?? 0;
     if (outPoint != null && t >= outPoint - 0.5) {
@@ -128,6 +208,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
       inPoint: inPoint > 0 ? inPoint : undefined,
       outPoint: outPoint != null && outPoint < duration ? outPoint : undefined,
       durationSec: finalOut - inPoint,
+      sourceDurationSec: duration,
       trimLabel:
         inPoint > 0 || (outPoint != null && outPoint < duration)
           ? `${formatTime(inPoint)} → ${formatTime(finalOut)}`
@@ -143,7 +224,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
   if (!file) return null;
 
   const content = (
-    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-2xl shadow-2xl border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200'}`}>
+    <div data-trim-editor className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-2xl shadow-2xl border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
@@ -164,7 +245,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
         <div className="bg-black">
           <video
             ref={videoRef}
-            src={`${API_BASE}/uploads/${file.filename}?cors=2&t=${Date.now()}`}
+            src={mediaSrc}
             crossOrigin="anonymous"
             className="w-full max-h-[320px] object-contain"
             onLoadedMetadata={handleLoadedMetadata}
@@ -186,6 +267,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
               onPointerDown={onScrubDown}
               onPointerMove={onScrubMove}
               onPointerUp={onScrubUp}
+              onPointerCancel={onScrubUp}
               className="relative h-8 bg-[var(--paper-2)] rounded-lg cursor-pointer border border-[var(--border)] overflow-hidden select-none touch-none"
             >
               {/* Selected range (IN→OUT) */}
@@ -200,16 +282,36 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
               />
               {/* IN marker */}
               <div
-                className="absolute top-0 bottom-0 w-1 bg-[var(--accent)] cursor-ew-resize"
+                onPointerDown={startMarkerDrag('in')}
+                onKeyDown={handleMarkerKeyDown('in')}
+                role="slider"
+                tabIndex={0}
+                aria-label="Déplacer le point IN"
+                aria-valuemin={0}
+                aria-valuemax={Math.max(0, (outPoint ?? duration) - 0.3)}
+                aria-valuenow={Number(inPoint.toFixed(2))}
+                className="absolute top-0 bottom-0 w-6 -translate-x-1/2 cursor-ew-resize touch-none z-20 flex justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                 style={{ left: `${inPct}%` }}
                 title={`IN: ${formatTime(inPoint)}`}
-              />
+              >
+                <span className="w-1.5 h-full bg-[var(--accent)] rounded-sm shadow-sm pointer-events-none" />
+              </div>
               {/* OUT marker */}
               <div
-                className="absolute top-0 bottom-0 w-1 bg-[var(--signal)] cursor-ew-resize"
-                style={{ left: `${outPct}%`, transform: 'translateX(-100%)' }}
+                onPointerDown={startMarkerDrag('out')}
+                onKeyDown={handleMarkerKeyDown('out')}
+                role="slider"
+                tabIndex={0}
+                aria-label="Déplacer le point OUT"
+                aria-valuemin={Math.min(duration, inPoint + 0.3)}
+                aria-valuemax={duration}
+                aria-valuenow={Number((outPoint ?? duration).toFixed(2))}
+                className="absolute top-0 bottom-0 w-6 -translate-x-1/2 cursor-ew-resize touch-none z-20 flex justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)]"
+                style={{ left: `${outPct}%` }}
                 title={`OUT: ${formatTime(outPoint)}`}
-              />
+              >
+                <span className="w-1.5 h-full bg-[var(--signal)] rounded-sm shadow-sm pointer-events-none" />
+              </div>
             </div>
 
             {/* Time labels */}
@@ -218,6 +320,35 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
               <span className="text-[color:var(--ink)] font-bold">{formatTime(currentTime)}</span>
               <span>OUT: <strong className="text-[var(--signal)]">{formatTime(outPoint)}</strong></span>
             </div>
+          </div>
+
+          {/* Champs précis et toujours visibles pour les utilisateurs qui
+              préfèrent saisir un timecode plutôt que glisser. */}
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-xs font-semibold text-[color:var(--ink)]">
+              Point IN (secondes)
+              <input
+                type="number"
+                min="0"
+                max={Math.max(0, (outPoint ?? duration) - 0.3)}
+                step="0.1"
+                value={Number(inPoint.toFixed(2))}
+                onChange={(e) => updateMarker('in', Number(e.target.value))}
+                className="mt-1 w-full h-10 rounded-lg border border-[var(--border)] bg-[var(--paper-2)] px-3 font-mono tabular-nums text-[color:var(--ink)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+              />
+            </label>
+            <label className="text-xs font-semibold text-[color:var(--ink)]">
+              Point OUT (secondes)
+              <input
+                type="number"
+                min={Math.min(duration, inPoint + 0.3)}
+                max={duration}
+                step="0.1"
+                value={Number((outPoint ?? duration).toFixed(2))}
+                onChange={(e) => updateMarker('out', Number(e.target.value))}
+                className="mt-1 w-full h-10 rounded-lg border border-[var(--border)] bg-[var(--paper-2)] px-3 font-mono tabular-nums text-[color:var(--ink)] focus:border-[var(--signal)] focus:outline-none focus:ring-2 focus:ring-[var(--signal)]/30"
+              />
+            </label>
           </div>
 
           {/* Playback Controls Row */}
@@ -280,7 +411,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
               }`}
             >
               <Scissors size={15} />
-              Ajouter à la Timeline
+              {file.instanceId ? 'Appliquer le trim' : 'Ajouter à la Timeline'}
             </button>
           </div>
         </div>

@@ -1,243 +1,303 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { generateThumbnails } from '../../utils/thumbnails.js';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
-  closestCenter,
   KeyboardSensor,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-
-const FPS = 30;
-// Largeur des clips proportionnelle à leur durée. Zoom utilisateur via
-// le slider PxPerSecSlider — défaut 60 px/sec (lisible jusqu'à ~2 min de
-// timeline sur écran desktop, scrollable au-delà).
-const PX_PER_SEC_DEFAULT = 60;
-const MIN_CLIP_PX = 120; // garde un minimum lisible pour les très courts clips.
-// Durée effective d'un clip (sec) — miroir de getClipDur/buildRemotionPayload.
-const clipDurSec = (c) => c.durationSec || (c.outPoint != null ? Math.max(0.3, c.outPoint - (c.inPoint || 0)) : 10);
-// Format mm:ss pour le timecode.
-const fmtTime = (sec) => {
-  const s = Math.max(0, Math.floor(sec || 0));
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-};
-
-// Règle temporelle (graduations chaque seconde, label tous les 5 s) au-dessus
-// de la timeline. La largeur totale (px) suit la durée du JT à l'échelle.
-function Ruler({ totalSec, pxPerSec }) {
-  if (!totalSec || totalSec <= 0) return null;
-  const totalPx = totalSec * pxPerSec;
-  // Espacement label : on évite de tasser quand pxPerSec est petit.
-  const labelEvery = pxPerSec >= 80 ? 1 : pxPerSec >= 40 ? 2 : 5;
-  const ticks = [];
-  for (let s = 0; s <= Math.ceil(totalSec); s++) {
-    const isLabel = s % labelEvery === 0;
-    ticks.push(
-      <div
-        key={s}
-        className="absolute top-0 bottom-0"
-        style={{ left: `${s * pxPerSec}px`, width: isLabel ? 1 : 1 }}
-      >
-        <div className={`absolute top-0 ${isLabel ? 'h-3' : 'h-1.5'} w-px bg-[var(--border)]`} />
-        {isLabel && (
-          <div className="absolute top-3 text-[9px] tabular-nums text-[color:var(--muted)] -translate-x-1/2 whitespace-nowrap">
-            {fmtTime(s)}
-          </div>
-        )}
-      </div>
-    );
-  }
-  return (
-    <div className="relative h-6 mb-1" style={{ width: `${totalPx}px`, minWidth: '100%' }} aria-hidden="true">
-      {ticks}
-    </div>
-  );
-}
 import {
-  arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
+  arrayMove,
   horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Video, Trash2, Play, GripVertical, Scissors, Pencil, Layers, ChevronRight, ZoomIn, Newspaper, Eye, Captions } from 'lucide-react';
+import {
+  Captions,
+  Copy,
+  GripVertical,
+  Layers,
+  Magnet,
+  Maximize2,
+  Minus,
+  MousePointer2,
+  Newspaper,
+  Pencil,
+  Play,
+  Plus,
+  Redo2,
+  Scissors,
+  Trash2,
+  Type,
+  Undo2,
+  Video,
+  ZoomIn,
+} from 'lucide-react';
+import { generateThumbnails } from '../../utils/thumbnails.js';
+import {
+  FPS,
+  MIN_CLIP_DURATION,
+  computeTimelineLayout,
+  findClipAtTime,
+  getClipRange,
+  roundToFrame,
+  splitClipAtTime,
+} from './timelineModel.js';
 
-const KEN_BURNS_LABEL = { in: 'Zoom avant', out: 'Zoom arrière' };
+const PX_PER_SEC_DEFAULT = 60;
+const PX_PER_SEC_MIN = 18;
+const PX_PER_SEC_MAX = 220;
+const HISTORY_LIMIT = 50;
 
-// Transitions xfade (doit matcher l'allowlist backend).
 const TRANSITIONS = [
-  { id: 'none', label: 'Coupe' },
+  { id: 'none', label: 'Coupe franche' },
   { id: 'fade', label: 'Fondu' },
   { id: 'fadeblack', label: 'Fondu noir' },
   { id: 'fadewhite', label: 'Fondu blanc' },
   { id: 'fadegrays', label: 'Fondu gris' },
   { id: 'dissolve', label: 'Dissoudre' },
   { id: 'pixelize', label: 'Pixels' },
-  { id: 'wipeleft', label: 'Volet ←' },
-  { id: 'wiperight', label: 'Volet →' },
-  { id: 'wipeup', label: 'Volet ↑' },
-  { id: 'wipedown', label: 'Volet ↓' },
-  { id: 'slideleft', label: 'Glisse ←' },
-  { id: 'slideright', label: 'Glisse →' },
-  { id: 'slideup', label: 'Glisse ↑' },
-  { id: 'slidedown', label: 'Glisse ↓' },
-  { id: 'smoothleft', label: 'Doux ←' },
-  { id: 'smoothright', label: 'Doux →' },
+  { id: 'wipeleft', label: 'Volet gauche' },
+  { id: 'wiperight', label: 'Volet droite' },
+  { id: 'wipeup', label: 'Volet haut' },
+  { id: 'wipedown', label: 'Volet bas' },
+  { id: 'slideleft', label: 'Glisse gauche' },
+  { id: 'slideright', label: 'Glisse droite' },
+  { id: 'slideup', label: 'Glisse haut' },
+  { id: 'slidedown', label: 'Glisse bas' },
+  { id: 'smoothleft', label: 'Doux gauche' },
+  { id: 'smoothright', label: 'Doux droite' },
   { id: 'circleopen', label: 'Iris ouvert' },
   { id: 'circleclose', label: 'Iris fermé' },
   { id: 'circlecrop', label: 'Cercle' },
   { id: 'radial', label: 'Radial' },
   { id: 'zoomin', label: 'Zoom' },
   { id: 'squeezev', label: 'Pli vertical' },
-  { id: 'diagtl', label: 'Diagonale ↖' },
-  { id: 'diagbr', label: 'Diagonale ↘' },
-  { id: 'coverleft', label: 'Couvre ←' },
-  { id: 'coverright', label: 'Couvre →' },
-  { id: 'revealleft', label: 'Révèle ←' },
-  { id: 'revealright', label: 'Révèle →' },
-  // Transitions broadcast custom (Remotion master). Le rendu libass
-  // legacy retombe automatiquement sur 'fade'.
-  { id: 'whippan', label: 'Whip pan (flou)' },
+  { id: 'diagtl', label: 'Diagonale haut gauche' },
+  { id: 'diagbr', label: 'Diagonale bas droite' },
+  { id: 'coverleft', label: 'Couvre gauche' },
+  { id: 'coverright', label: 'Couvre droite' },
+  { id: 'revealleft', label: 'Révèle gauche' },
+  { id: 'revealright', label: 'Révèle droite' },
+  { id: 'whippan', label: 'Whip pan' },
   { id: 'glitch', label: 'Glitch cut' },
   { id: 'rgbsplit', label: 'RGB split' },
   { id: 'lightsweep', label: 'Sweep lumineux' },
   { id: 'flashwhite', label: 'Flash blanc' },
 ];
 
-// Sélecteur de transition inséré entre deux clips.
-function TransitionPicker({ value, onChange }) {
-  const active = value && value !== 'none';
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const clipId = (clip, index = 0) => clip?.instanceId || clip?.id || String(index);
+
+const createId = (kind = 'clip') => {
+  if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
+    return `${kind}-${window.crypto.randomUUID()}`;
+  }
+  return `${kind}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const formatTimecode = (seconds, fps = FPS) => {
+  const totalFrames = Math.max(0, Math.round((Number(seconds) || 0) * fps));
+  const frames = totalFrames % fps;
+  const totalSeconds = Math.floor(totalFrames / fps);
+  const secs = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const mins = totalMinutes % 60;
+  const hours = Math.floor(totalMinutes / 60);
+  return [hours, mins, secs, frames].map((part) => String(part).padStart(2, '0')).join(':');
+};
+
+const formatShortTime = (seconds) => {
+  const value = Math.max(0, Number(seconds) || 0);
+  const mins = Math.floor(value / 60);
+  const secs = Math.floor(value % 60);
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+function ToolButton({ icon, label, active = false, disabled = false, onClick, title, shortcut, danger = false, compact = false }) {
+  const colors = danger
+    ? 'border-[var(--editor-danger)]/55 text-[var(--editor-danger)] hover:bg-[var(--editor-danger)]/15'
+    : active
+      ? 'border-[var(--editor-accent)] bg-[var(--editor-accent)]/14 text-[var(--editor-text)]'
+      : 'border-[var(--editor-border)] text-[var(--editor-text)] hover:border-[var(--editor-accent)] hover:bg-[var(--editor-panel-raised)]';
   return (
-    <div className="flex flex-col items-center gap-1 shrink-0" title="Transition vers le clip suivant">
-      <ChevronRight size={18} className={active ? 'text-[var(--accent)]' : 'text-[color:var(--muted)]'} aria-hidden="true" />
-      <label className="sr-only" htmlFor={`transition-${value || 'none'}`}>Transition vers le clip suivant</label>
-      <select
-        id={`transition-${value || 'none'}`}
-        value={value || 'none'}
-        onChange={(e) => onChange(e.target.value)}
-        className={`text-xs font-medium rounded-md border px-2 py-1.5 bg-[var(--paper)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] transition-colors ${
-          active ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--border)] text-[color:var(--ink)]'
-        }`}
-        aria-label="Choisir la transition vers le clip suivant"
-      >
-        {TRANSITIONS.map((t) => (
-          <option key={t.id} value={t.id}>{t.label}</option>
-        ))}
-      </select>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active || undefined}
+      title={shortcut ? `${title || label} · ${shortcut}` : (title || label)}
+      className={`h-10 shrink-0 inline-flex items-center justify-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-[transform,background-color,border-color,color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--editor-bg)] disabled:cursor-not-allowed disabled:opacity-35 ${colors}`}
+    >
+      {icon}
+      {!compact && <span className="whitespace-nowrap">{label}</span>}
+      {shortcut && !compact && <kbd className="ml-0.5 hidden rounded border border-[var(--editor-border)] px-1 py-0.5 font-mono text-[10px] text-[var(--editor-muted)] 2xl:inline-flex">{shortcut}</kbd>}
+    </button>
   );
 }
 
-// Bloc d'overlay interactif sur la piste texte : déplacer (drag corps),
-// rogner (poignées G/D), dupliquer, supprimer — feel NLE pro. Tout en
-// Pointer Events (souris + tactile tablettes pays).
-function OverlayBlock({ overlay, index, clipDur, overlays, onChange, onOpen }) {
-  const o = overlay;
-  const startTime = o.startTime || 0;
-  const dur = o.duration ?? (clipDur - startTime);
-  const left = Math.max(0, Math.min(100, (startTime / clipDur) * 100));
-  const width = Math.max(2, Math.min(100 - left, (dur / clipDur) * 100));
+function Ruler({ totalSec, pxPerSec, playheadSec, onPointerDown, onNudge }) {
+  const majorStep = pxPerSec >= 180 ? 0.5 : pxPerSec >= 90 ? 1 : pxPerSec >= 45 ? 2 : pxPerSec >= 24 ? 5 : 10;
+  const minorStep = majorStep / 5;
+  const labelCount = Math.min(600, Math.ceil(totalSec / majorStep) + 1);
+  const labels = Array.from({ length: labelCount }, (_, index) => index * majorStep);
+  const minorPx = Math.max(3, minorStep * pxPerSec);
 
-  // Drag générique : mode 'move' | 'left' | 'right'. Convertit le delta px
-  // en secondes via la largeur pixel de la piste.
-  const startDrag = (mode) => (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const track = e.currentTarget.closest('[data-text-track]');
-    if (!track) return;
-    const trackW = track.getBoundingClientRect().width;
-    const startX = e.clientX;
-    const orig = { start: startTime, dur };
-    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
-    let moved = false;
-
-    const onMove = (ev) => {
-      const dxSec = ((ev.clientX - startX) / trackW) * clipDur;
-      if (Math.abs(ev.clientX - startX) > 2) moved = true;
-      const next = overlays.map((ov, j) => {
-        if (j !== index) return ov;
-        if (mode === 'move') {
-          const ns = Math.max(0, Math.min(clipDur - 0.3, orig.start + dxSec));
-          return { ...ov, startTime: Math.round(ns * 100) / 100 };
-        }
-        if (mode === 'left') {
-          const ns = Math.max(0, Math.min(orig.start + orig.dur - 0.3, orig.start + dxSec));
-          const nd = orig.start + orig.dur - ns;
-          return { ...ov, startTime: Math.round(ns * 100) / 100, duration: Math.round(nd * 100) / 100 };
-        }
-        // right
-        const nd = Math.max(0.3, Math.min(clipDur - orig.start, orig.dur + dxSec));
-        return { ...ov, duration: Math.round(nd * 100) / 100 };
-      });
-      onChange(next);
-    };
-    const onUp = (ev) => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      // clic net (pas de drag) → ouvre le panneau d'édition.
-      if (!moved && mode === 'move') onOpen();
-      ev.stopPropagation();
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-  };
-
-  const duplicate = (e) => {
-    e.stopPropagation();
-    const copy = { ...o, id: `ov-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, startTime: Math.round(Math.min(clipDur - 0.3, startTime + 0.5) * 100) / 100 };
-    const next = [...overlays]; next.splice(index + 1, 0, copy);
-    onChange(next);
-  };
-  const remove = (e) => {
-    e.stopPropagation();
-    onChange(overlays.filter((_, j) => j !== index));
-  };
-
-  const label = o.fields?.texte || o.fields?.titre || o.fields?.nom || o.type || 'Texte';
   return (
     <div
-      onPointerDown={startDrag('move')}
-      role="button"
+      role="slider"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
-      className="absolute top-1 bottom-1 bg-[var(--accent)]/90 hover:bg-[var(--accent)] border border-[var(--accent)] rounded-md cursor-grab active:cursor-grabbing transition-colors shadow-sm flex items-center group/ov focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1"
-      style={{ left: `${left}%`, width: `${width}%`, touchAction: 'none' }}
-      title={`${label} — glisser pour déplacer, poignées pour rogner, Entrée pour éditer`}
-      aria-label={`Overlay ${label}, début ${startTime.toFixed(1)}s, durée ${dur.toFixed(1)}s`}
+      aria-label="Règle temporelle, cliquer ou glisser pour déplacer la tête de lecture"
+      aria-valuemin={0}
+      aria-valuemax={Number(totalSec.toFixed(3))}
+      aria-valuenow={Number((playheadSec || 0).toFixed(3))}
+      onPointerDown={onPointerDown}
+      onKeyDown={(event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        onNudge(event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
+      }}
+      className="relative h-8 cursor-ew-resize select-none border-b border-[var(--editor-border)] bg-[var(--editor-panel)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--editor-accent)]"
+      style={{
+        touchAction: 'none',
+        backgroundImage: 'repeating-linear-gradient(to right, var(--editor-border) 0 1px, transparent 1px 100%)',
+        backgroundSize: `${minorPx}px 100%`,
+      }}
     >
-      {/* poignée gauche (trim début) */}
-      <div onPointerDown={startDrag('left')} aria-label="Rogner le début de l'overlay" role="separator" className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/50 hover:bg-white/90 rounded-l-md" style={{ touchAction: 'none' }} />
-      <div className="text-[11px] text-white truncate px-2.5 font-semibold w-full pointer-events-none">{label}</div>
-      {/* poignée droite (trim durée) */}
-      <div onPointerDown={startDrag('right')} aria-label="Rogner la fin de l'overlay" role="separator" className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/50 hover:bg-white/90 rounded-r-md" style={{ touchAction: 'none' }} />
-      {/* actions toujours visibles si la largeur le permet, sinon au survol */}
-      <div className="absolute -top-3.5 right-0 flex gap-0.5 z-10 opacity-0 group-hover/ov:opacity-100 focus-within:opacity-100 transition-opacity">
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={duplicate}
-          title="Dupliquer cet overlay"
-          aria-label="Dupliquer cet overlay"
-          className="w-6 h-6 flex items-center justify-center rounded-md bg-[var(--paper)] border border-[var(--border)] text-xs text-[color:var(--ink)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] shadow-sm"
+      {labels.map((second) => (
+        <span
+          key={second}
+          className="absolute top-1.5 -translate-x-1/2 whitespace-nowrap font-mono text-[11px] tabular-nums text-[var(--editor-muted)] pointer-events-none"
+          style={{ left: `${second * pxPerSec}px` }}
         >
-          ⧉
-        </button>
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={remove}
-          title="Supprimer cet overlay"
-          aria-label="Supprimer cet overlay"
-          className="w-6 h-6 flex items-center justify-center rounded-md bg-[var(--paper)] border border-[var(--border)] text-xs text-[color:var(--signal)] hover:bg-[var(--signal)] hover:text-white hover:border-[var(--signal)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)] shadow-sm"
-        >
-          ✕
-        </button>
-      </div>
+          {formatShortTime(second)}
+        </span>
+      ))}
     </div>
   );
 }
 
-function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, onSubtitle, onOverlaysChange, onClipResize, clipStart = 0, playheadSec = null, pxPerSec = PX_PER_SEC_DEFAULT }) {
+function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, onOpen }) {
+  const startTime = Math.max(0, Number(overlay.startTime) || 0);
+  const duration = Math.max(MIN_CLIP_DURATION, Number(overlay.duration) || Math.max(MIN_CLIP_DURATION, totalSec - startTime));
+  const label = overlay.fields?.texte || overlay.fields?.titre || overlay.fields?.nom || overlay.type || 'Titre';
+
+  const beginDrag = (mode) => (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const original = { start: startTime, duration };
+    let moved = false;
+    let nextOverlays = overlays;
+    const move = (pointerEvent) => {
+      const delta = roundToFrame((pointerEvent.clientX - startX) / pxPerSec);
+      if (Math.abs(pointerEvent.clientX - startX) > 2) moved = true;
+      nextOverlays = overlays.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+        if (mode === 'move') {
+          const nextStart = clamp(roundToFrame(original.start + delta), 0, Math.max(0, totalSec - original.duration));
+          return { ...item, startTime: nextStart };
+        }
+        if (mode === 'left') {
+          const nextStart = clamp(roundToFrame(original.start + delta), 0, original.start + original.duration - MIN_CLIP_DURATION);
+          return { ...item, startTime: nextStart, duration: roundToFrame(original.start + original.duration - nextStart) };
+        }
+        return {
+          ...item,
+          duration: clamp(roundToFrame(original.duration + delta), MIN_CLIP_DURATION, Math.max(MIN_CLIP_DURATION, totalSec - original.start)),
+        };
+      });
+      onChange(nextOverlays);
+    };
+    const finish = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      if (!moved && mode === 'move') onOpen();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  };
+
+  const duplicate = (event) => {
+    event.stopPropagation();
+    const copy = {
+      ...overlay,
+      id: createId('overlay'),
+      startTime: clamp(roundToFrame(startTime + 0.5), 0, Math.max(0, totalSec - duration)),
+    };
+    const next = [...overlays];
+    next.splice(index + 1, 0, copy);
+    onChange(next);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onPointerDown={beginDrag('move')}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      aria-label={`Titre ${label}, début ${formatTimecode(startTime)}, durée ${formatTimecode(duration)}`}
+      title="Glisser pour déplacer. Utiliser les poignées pour rogner."
+      className="absolute inset-y-1 rounded border border-[var(--editor-title)] bg-[var(--editor-title)]/75 text-[var(--editor-text)] shadow-sm cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
+      style={{ left: `${startTime * pxPerSec}px`, width: `${Math.max(6, duration * pxPerSec)}px`, touchAction: 'none' }}
+    >
+      <span
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Rogner le début du titre"
+        onPointerDown={beginDrag('left')}
+        className="absolute inset-y-0 -left-2 z-20 w-5 cursor-ew-resize touch-none"
+      >
+        <span className="absolute inset-y-1 left-2 w-1 rounded bg-[var(--editor-text)]/85" />
+      </span>
+      <span className="pointer-events-none block truncate py-2 pl-3 pr-16 text-xs font-semibold">{label}</span>
+      <span className="absolute inset-y-0 right-1 z-30 flex items-center gap-1">
+        <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={duplicate} title="Dupliquer le titre" aria-label="Dupliquer le titre" className="flex h-7 w-7 items-center justify-center rounded bg-[var(--editor-panel)] text-[var(--editor-text)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]">
+          <Copy size={13} />
+        </button>
+        <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onChange(overlays.filter((_, itemIndex) => itemIndex !== index)); }} title="Supprimer le titre" aria-label="Supprimer le titre" className="flex h-7 w-7 items-center justify-center rounded bg-[var(--editor-panel)] text-[var(--editor-danger)] hover:bg-[var(--editor-danger)]/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-danger)]">
+          <Trash2 size={13} />
+        </button>
+      </span>
+      <span
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Rogner la fin du titre"
+        onPointerDown={beginDrag('right')}
+        className="absolute inset-y-0 -right-2 z-20 w-5 cursor-ew-resize touch-none"
+      >
+        <span className="absolute inset-y-1 right-2 w-1 rounded bg-[var(--editor-text)]/85" />
+      </span>
+    </div>
+  );
+}
+
+function SortableClip({
+  clip,
+  item,
+  index,
+  previousTransition,
+  pxPerSec,
+  selected,
+  active,
+  toolMode,
+  snapping,
+  playheadSec,
+  onSelect,
+  onRazorSplit,
+  onCommitRange,
+  onOpenTrim,
+}) {
   const {
     attributes,
     listeners,
@@ -245,518 +305,733 @@ function SortableClip({ clip, index, onRemove, onTrim, onOverlay, onKenBurns, on
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: clip.instanceId || clip.id });
+  } = useSortable({ id: item.id });
+  const [thumbnails, setThumbnails] = useState([]);
+  const [draft, setDraft] = useState(null);
+  const sourceRange = item.range || getClipRange(clip);
+  const displayRange = draft?.range || sourceRange;
+  const leftOffsetSec = draft?.edge === 'left' ? Math.max(0, displayRange.inPoint - sourceRange.inPoint) : 0;
+  const baseMargin = index === 0 ? 0 : -(previousTransition * pxPerSec);
+  const widthPx = Math.max(5, displayRange.durationSec * pxPerSec);
 
-  const getClipDur = clipDurSec;
-  const dur = getClipDur(clip);
-  // Largeur proportionnelle à la durée (échelle pxPerSec). Plancher pour les
-  // clips très courts qui resteraient illisibles.
-  const widthPx = Math.max(MIN_CLIP_PX, Math.round(dur * pxPerSec));
+  useEffect(() => {
+    if (!clip.url) {
+      setThumbnails([]);
+      return undefined;
+    }
+    const controller = new AbortController();
+    const count = clamp(Math.ceil(sourceRange.durationSec / 1.5), 4, 12);
+    generateThumbnails(clip.url, sourceRange.durationSec, count, {
+      signal: controller.signal,
+      startTime: sourceRange.inPoint,
+    })
+      .then((images) => {
+        if (!controller.signal.aborted) setThumbnails(images || []);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [clip.url, sourceRange.inPoint, sourceRange.durationSec]);
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : 1,
-    width: `${widthPx}px`,
+  const computeRange = useCallback((edge, deltaSec) => {
+    const original = sourceRange;
+    // Sans durée source connue, on autorise toujours à raccourcir mais jamais
+    // à inventer des images au-delà de la dernière borne fiable.
+    const sourceLimit = original.sourceDurationSec ?? original.outPoint;
+    const playheadSource = original.inPoint + (playheadSec - item.start);
+    const snapThreshold = 8 / pxPerSec;
+    if (edge === 'left') {
+      let nextIn = clamp(roundToFrame(original.inPoint + deltaSec), 0, original.outPoint - MIN_CLIP_DURATION);
+      if (snapping && playheadSec >= item.start && playheadSec <= item.end && Math.abs(nextIn - playheadSource) <= snapThreshold) {
+        nextIn = clamp(roundToFrame(playheadSource), 0, original.outPoint - MIN_CLIP_DURATION);
+      }
+      return { ...original, inPoint: nextIn, durationSec: roundToFrame(original.outPoint - nextIn) };
+    }
+    let nextOut = clamp(roundToFrame(original.outPoint + deltaSec), original.inPoint + MIN_CLIP_DURATION, sourceLimit);
+    if (snapping && playheadSec >= item.start && playheadSec <= item.end && Math.abs(nextOut - playheadSource) <= snapThreshold) {
+      nextOut = clamp(roundToFrame(playheadSource), original.inPoint + MIN_CLIP_DURATION, sourceLimit);
+    }
+    return { ...original, outPoint: nextOut, durationSec: roundToFrame(nextOut - original.inPoint) };
+  }, [item.end, item.start, playheadSec, pxPerSec, snapping, sourceRange]);
+
+  const beginEdgeDrag = (edge) => (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    let latest = sourceRange;
+    const move = (pointerEvent) => {
+      latest = computeRange(edge, (pointerEvent.clientX - startX) / pxPerSec);
+      setDraft({ edge, range: latest });
+    };
+    const finish = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      setDraft(null);
+      if (latest.inPoint !== sourceRange.inPoint || latest.outPoint !== sourceRange.outPoint) {
+        onCommitRange(clip, latest);
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
   };
 
-  // Le clip est "actif" si le playhead (temps global) tombe dans sa plage.
-  const localSec = playheadSec != null ? playheadSec - clipStart : null;
-  const isActive = localSec != null && localSec >= 0 && localSec <= dur;
+  const nudgeEdge = (edge, direction, large) => {
+    const delta = direction * (large ? 1 : 1 / FPS);
+    const next = computeRange(edge, delta);
+    if (next.inPoint !== sourceRange.inPoint || next.outPoint !== sourceRange.outPoint) onCommitRange(clip, next);
+  };
 
-  const [thumbnails, setThumbnails] = useState([]);
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Dépendance sur clip.url UNIQUEMENT (pas `dur`). Pendant un drag de
-  // rognage, `dur` change à chaque pointermove → l'ancienne version relançait
-  // generateThumbnails (donc un <video> du fichier source de plusieurs Go) à
-  // chaque mouvement → tempête de <video>, OOM. Le filmstrip n'a pas besoin
-  // d'être recalculé pendant le resize. AbortController réel au démontage.
-  const clipUrl = clip.url;
-  const clipDurRef = useRef(dur);
-  clipDurRef.current = dur;
-  useEffect(() => {
-    if (!clipUrl) return undefined;
-    const ctrl = new AbortController();
-    generateThumbnails(clipUrl, clipDurRef.current, 10, { signal: ctrl.signal })
-      .then((thumbs) => { if (!ctrl.signal.aborted && thumbs.length) setThumbnails(thumbs); })
-      .catch(() => { /* filmstrip best-effort */ });
-    return () => ctrl.abort();
-  }, [clipUrl]);
-
-  // Trim au drag sur le bord droit/gauche du clip lui-même. Convertit le
-  // delta px en delta secondes via pxPerSec puis met à jour inPoint/outPoint
-  // ou durationSec (selon ce qui est défini sur le clip). Plancher 0.3 s.
-  const startEdgeDrag = (edge) => (e) => {
-    if (!onClipResize) return;
-    e.stopPropagation();
-    e.preventDefault();
-    const startX = e.clientX;
-    const orig = {
-      inPoint: clip.inPoint || 0,
-      outPoint: clip.outPoint,
-      durationSec: clip.durationSec,
-      dur,
-    };
-    const onMove = (ev) => {
-      const dxSec = (ev.clientX - startX) / pxPerSec;
-      let next;
-      if (edge === 'right') {
-        // Augmente/diminue la fin.
-        if (orig.outPoint != null) {
-          const np = Math.max(orig.inPoint + 0.3, orig.outPoint + dxSec);
-          next = { outPoint: Math.round(np * 100) / 100, durationSec: undefined };
-        } else {
-          const nd = Math.max(0.3, (orig.durationSec || orig.dur) + dxSec);
-          next = { durationSec: Math.round(nd * 100) / 100 };
-        }
-      } else {
-        // edge === 'left' : on déplace inPoint, on garde outPoint (si défini)
-        // ou on raccourcit la durationSec d'autant.
-        if (orig.outPoint != null) {
-          const ni = Math.max(0, Math.min(orig.outPoint - 0.3, orig.inPoint + dxSec));
-          next = { inPoint: Math.round(ni * 100) / 100, durationSec: undefined };
-        } else {
-          const nd = Math.max(0.3, (orig.durationSec || orig.dur) - dxSec);
-          const ni = Math.max(0, orig.inPoint + dxSec);
-          next = { inPoint: Math.round(ni * 100) / 100, durationSec: Math.round(nd * 100) / 100 };
-        }
-      }
-      onClipResize(clip, next);
-    };
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+  const clipStyle = {
+    width: `${widthPx}px`,
+    marginLeft: `${baseMargin + leftOffsetSec * pxPerSec}px`,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : selected ? 20 : 5,
   };
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      role="button"
-      tabIndex={0}
-      onPointerEnter={() => setIsHovered(true)}
-      onPointerLeave={() => setIsHovered(false)}
-      aria-label={`Clip ${index != null ? index + 1 : ''} : ${clip.name}, durée ${fmtTime(dur)}${isActive ? ', en lecture' : ''}`}
-      className={`group relative flex flex-col overflow-visible shrink-0 transition-shadow focus:outline-none`}
+      style={clipStyle}
+      className="relative h-[82px] shrink-0 overflow-visible"
+      data-clip-id={item.id}
     >
-      {/* Label du clip (nom + durée) - Détaché au dessus */}
-      <div className="text-xs text-[color:var(--ink)] font-semibold mb-1.5 truncate px-1 pointer-events-none select-none">
-        {clip.name} <span className="font-mono tabular-nums text-[color:var(--muted)] ml-1">({fmtTime(dur)})</span>
-      </div>
-
-      <div className={`relative flex flex-col justify-center h-16 bg-[var(--paper)] border ${
-        isDragging ? 'border-[var(--accent)] shadow-xl' : isActive ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/40 shadow-md' : 'border-[var(--border)] shadow-sm'
-      } rounded-xl overflow-hidden`}>
-
-        {/* Filmstrip Background */}
+      <div
+        role="option"
+        aria-selected={selected}
+        tabIndex={0}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (toolMode === 'blade') onRazorSplit(item, event);
+          else onSelect(item.id);
+        }}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          onSelect(item.id);
+          onOpenTrim(clip);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onSelect(item.id);
+          }
+        }}
+        aria-label={`Clip ${index + 1}, ${clip.name || clip.filename || 'sans nom'}, durée ${formatTimecode(displayRange.durationSec)}${selected ? ', sélectionné' : ''}`}
+        className={`group absolute inset-0 overflow-hidden rounded-md border bg-[var(--editor-panel)] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] ${
+          selected
+            ? 'border-[var(--editor-accent)] ring-2 ring-[var(--editor-accent)]'
+            : active
+              ? 'border-[var(--editor-playhead)]'
+              : 'border-[var(--editor-border)] hover:border-[var(--editor-muted)]'
+        } ${toolMode === 'blade' ? 'cursor-crosshair' : 'cursor-default'} ${isDragging ? 'opacity-80 shadow-xl' : ''}`}
+      >
         {thumbnails.length > 0 ? (
-          <div className="absolute inset-0 flex opacity-80 pointer-events-none">
-            {thumbnails.map((t, i) => (
-              <img key={i} src={t} alt="" className="h-full object-cover flex-1 min-w-0" />
+          <div className="absolute inset-0 flex pointer-events-none">
+            {thumbnails.map((thumbnail, thumbnailIndex) => (
+              <img key={`${thumbnailIndex}-${thumbnail.slice(-8)}`} src={thumbnail} alt="" className="h-full min-w-0 flex-1 object-cover" draggable="false" />
             ))}
           </div>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center text-[var(--editor-muted)]/40">
             <Video size={24} />
           </div>
         )}
 
-        {/* Zone de Drag centrale pour réordonner (couvre tout sauf les poignées) */}
-        <div 
+        <button
+          type="button"
           {...attributes}
           {...listeners}
-          className="absolute inset-x-2 inset-y-0 cursor-grab active:cursor-grabbing z-10"
-          aria-label={`Réordonner le clip ${clip.name}`}
-        />
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(item.id);
+          }}
+          aria-label={`Déplacer ${clip.name || clip.filename || 'le clip'}`}
+          title="Glisser pour réordonner"
+          className="absolute left-5 top-1.5 z-20 flex h-7 w-7 cursor-grab items-center justify-center rounded bg-[var(--editor-bg)]/90 text-[var(--editor-text)] active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+        >
+          <GripVertical size={15} />
+        </button>
 
-        {/* Poignée trim gauche — visible en permanence (opacité douce), pleine au survol/focus */}
-        {onClipResize && (
-          <div
-            onPointerDown={startEdgeDrag('left')}
-            role="separator"
-            tabIndex={0}
-            aria-label="Rogner début du clip"
-            title="Glisser pour rogner le début"
-            className="absolute left-0 top-0 bottom-0 w-3.5 cursor-ew-resize bg-[var(--accent)]/40 hover:bg-[var(--accent)] focus:bg-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] z-30 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity"
-            style={{ touchAction: 'none' }}
-          >
-            <div className="w-1 h-5 bg-white rounded-full pointer-events-none" />
-          </div>
-        )}
-
-        {/* Poignée trim droite */}
-        {onClipResize && (
-          <div
-            onPointerDown={startEdgeDrag('right')}
-            role="separator"
-            tabIndex={0}
-            aria-label="Rogner fin du clip"
-            title="Glisser pour rogner la fin"
-            className="absolute right-0 top-0 bottom-0 w-3.5 cursor-ew-resize bg-[var(--accent)]/40 hover:bg-[var(--accent)] focus:bg-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] z-30 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity"
-            style={{ touchAction: 'none' }}
-          >
-            <div className="w-1 h-5 bg-white rounded-full pointer-events-none" />
-          </div>
-        )}
-      </div>
-
-      {/* Toolbar du clip — Flottante, large et centrée au survol/focus */}
-      <div
-        role="toolbar"
-        aria-label={`Actions pour le clip ${clip.name}`}
-        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] transition-all duration-200 origin-center ${
-          isHovered ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:pointer-events-auto'
-        }`}
-      >
-        <div className="flex items-center gap-2 bg-[var(--paper)]/95 backdrop-blur-md p-2 rounded-2xl border border-[var(--accent)]/50 shadow-2xl">
-          <button
-            onClick={(e) => { e.stopPropagation(); onTrim(clip); }}
-            aria-label="Modifier le rognage du clip"
-            className="flex items-center justify-center w-12 h-12 text-[color:var(--ink)] hover:text-white hover:bg-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-xl transition-all shadow-sm"
-            title="Modifier le Trim"
-          >
-            <Pencil size={22} strokeWidth={2.5} aria-hidden="true" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onOverlay(clip); }}
-            aria-label={`Animations et habillage ${(clip.overlays?.length ?? 0) > 0 ? `(${clip.overlays.length} actif${clip.overlays.length > 1 ? 's' : ''})` : ''}`}
-            aria-pressed={(clip.overlays?.length ?? 0) > 0}
-            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${(clip.overlays?.length ?? 0) > 0 ? 'text-white bg-[var(--accent)] ring-2 ring-[var(--accent)]/30' : 'text-[color:var(--ink)] hover:text-white hover:bg-[var(--accent)]'}`}
-            title="Animations & Habillage"
-          >
-            <Layers size={22} strokeWidth={2.5} aria-hidden="true" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onKenBurns(clip.instanceId || clip.id); }}
-            aria-label={`Zoom lent Ken Burns ${clip.kenBurns?.mode ? `actif (${clip.kenBurns.mode})` : 'inactif'}`}
-            aria-pressed={!!clip.kenBurns?.mode}
-            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${clip.kenBurns?.mode ? 'text-white bg-[var(--accent)] ring-2 ring-[var(--accent)]/30' : 'text-[color:var(--ink)] hover:text-white hover:bg-[var(--accent)]'}`}
-            title="Zoom lent (Ken Burns)"
-          >
-            <ZoomIn size={22} strokeWidth={2.5} aria-hidden="true" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onSubtitle(clip); }}
-            aria-label={`Sous-titres ${(clip.subtitles?.length ?? 0) > 0 ? `(${clip.subtitles.length} actif${clip.subtitles.length > 1 ? 's' : ''})` : 'auto'}`}
-            aria-pressed={(clip.subtitles?.length ?? 0) > 0}
-            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${(clip.subtitles?.length ?? 0) > 0 ? 'text-white bg-[var(--accent)] ring-2 ring-[var(--accent)]/30' : 'text-[color:var(--ink)] hover:text-white hover:bg-[var(--accent)]'}`}
-            title="Sous-titres auto"
-          >
-            <Captions size={22} strokeWidth={2.5} aria-hidden="true" />
-          </button>
-          <div className="w-px h-8 bg-[var(--border)] mx-1" aria-hidden="true" />
-          <button
-            onClick={(e) => { e.stopPropagation(); onRemove(clip.instanceId || clip.id); }}
-            aria-label={`Retirer le clip ${clip.name} de la timeline`}
-            className="flex items-center justify-center w-12 h-12 text-[color:var(--signal)] hover:text-white hover:bg-[var(--signal)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)] rounded-xl transition-all shadow-sm"
-            title="Retirer de la Timeline"
-          >
-            <Trash2 size={22} strokeWidth={2.5} aria-hidden="true" />
-          </button>
+        <div className="absolute inset-x-0 bottom-0 z-10 flex h-6 items-center justify-between gap-2 bg-[var(--editor-bg)]/90 px-2.5 text-[11px] text-[var(--editor-text)] pointer-events-none">
+          <span className="truncate font-semibold">{clip.name || clip.filename || `Clip ${index + 1}`}</span>
+          {widthPx > 90 && <span className="shrink-0 font-mono tabular-nums text-[var(--editor-muted)]">{formatShortTime(displayRange.durationSec)}</span>}
         </div>
       </div>
+
+      <div
+        role="slider"
+        tabIndex={0}
+        aria-label={`Rogner le début de ${clip.name || 'ce clip'}`}
+        aria-valuemin={0}
+        aria-valuemax={Number((sourceRange.outPoint - MIN_CLIP_DURATION).toFixed(3))}
+        aria-valuenow={Number(displayRange.inPoint.toFixed(3))}
+        onPointerDown={beginEdgeDrag('left')}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          event.preventDefault();
+          nudgeEdge('left', event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
+        }}
+        title={`IN ${formatTimecode(displayRange.inPoint)} · glisser pour rogner`}
+        className="absolute inset-y-0 -left-3 z-30 w-7 cursor-ew-resize touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+      >
+        <span className="absolute inset-y-2 left-3 flex w-2 items-center justify-center rounded-sm bg-[var(--editor-text)] shadow">
+          <span className="h-5 w-0.5 rounded bg-[var(--editor-bg)]" />
+        </span>
+      </div>
+
+      <div
+        role="slider"
+        tabIndex={0}
+        aria-label={`Rogner la fin de ${clip.name || 'ce clip'}`}
+        aria-valuemin={Number((sourceRange.inPoint + MIN_CLIP_DURATION).toFixed(3))}
+        aria-valuemax={Number((sourceRange.sourceDurationSec || sourceRange.outPoint).toFixed(3))}
+        aria-valuenow={Number(displayRange.outPoint.toFixed(3))}
+        onPointerDown={beginEdgeDrag('right')}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          event.preventDefault();
+          nudgeEdge('right', event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
+        }}
+        title={`OUT ${formatTimecode(displayRange.outPoint)} · glisser pour rogner`}
+        className="absolute inset-y-0 -right-3 z-30 w-7 cursor-ew-resize touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+      >
+        <span className="absolute inset-y-2 right-3 flex w-2 items-center justify-center rounded-sm bg-[var(--editor-text)] shadow">
+          <span className="h-5 w-0.5 rounded bg-[var(--editor-bg)]" />
+        </span>
+      </div>
+
+      {clip.transition && (
+        <span
+          className="absolute -right-2 top-1 z-40 flex h-4 w-4 rotate-45 items-center justify-center rounded-sm border border-[var(--editor-text)]/70 bg-[var(--editor-title)]"
+          title={`Transition après ce clip : ${TRANSITIONS.find((option) => option.id === clip.transition.type)?.label || clip.transition.type}`}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }
 
-export default function Timeline({ clips, setClips, timelineOverlays = [], setTimelineOverlays, onGenerate, isGenerating, onTrimClip, onOverlayClip, onGlobalLayer, brandingActive, onPreview, onSubtitleClip, onSplitText, playerRef }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // Décalages temporels cumulés de chaque clip (en sec), en tenant compte du
-  // chevauchement des transitions — miroir de totalDurationInFrames côté
-  // Remotion. Sert à placer le playhead dans le bon clip.
-  const starts = [];
-  let acc = 0;
-  let total = 0;
-  clips.forEach((c, i) => {
-    starts[i] = acc;
-    const d = clipDurSec(c);
-    total += d;
-    const tr = c.transition && i < clips.length - 1 ? (c.transition.duration || 0.5) : 0;
-    acc += d - tr;
-    total -= tr;
-  });
-  total = Math.max(0, total);
-
-  // Playhead synchronisé au lecteur Remotion via requestAnimationFrame.
-  // null = pas de lecteur (mini-timeline) → aucune ligne de playhead.
-  const [playheadSec, setPlayheadSec] = useState(null);
-  useEffect(() => {
-    if (!playerRef?.current) return undefined;
-    let raf;
-    const tick = () => {
-      try {
-        const f = playerRef.current?.getCurrentFrame?.();
-        if (typeof f === 'number') setPlayheadSec(f / FPS);
-      } catch { /* player pas prêt */ }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [playerRef]);
-
-  // Zoom horizontal de la timeline (px/sec). Mémorisé pour la session.
+export default function Timeline({
+  clips,
+  setClips,
+  timelineOverlays = [],
+  setTimelineOverlays,
+  onGenerate,
+  isGenerating,
+  onTrimClip,
+  onOverlayClip,
+  onGlobalLayer,
+  brandingActive,
+  onPreview,
+  onSubtitleClip,
+  onSplitText,
+  playerRef,
+  compact = false,
+}) {
+  const rootRef = useRef(null);
+  const scrollRef = useRef(null);
+  const clipsRef = useRef(clips);
+  const expectedClipsRef = useRef(null);
+  const [toolMode, setToolMode] = useState('select');
+  const [selectedClipId, setSelectedClipId] = useState(null);
+  const [snapping, setSnapping] = useState(true);
+  const [playheadSec, setPlayheadSec] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const [history, setHistory] = useState({ past: [], future: [] });
+  const [statusMessage, setStatusMessage] = useState('Sélectionnez un clip, déplacez la tête de lecture, puis cliquez sur Couper.');
   const [pxPerSec, setPxPerSec] = useState(() => {
     try {
-      const v = Number(localStorage.getItem('jt-timeline-zoom'));
-      return Number.isFinite(v) && v >= 20 && v <= 200 ? v : PX_PER_SEC_DEFAULT;
-    } catch { return PX_PER_SEC_DEFAULT; }
+      const saved = Number(localStorage.getItem('jt-timeline-zoom'));
+      return Number.isFinite(saved) && saved >= PX_PER_SEC_MIN && saved <= PX_PER_SEC_MAX ? saved : PX_PER_SEC_DEFAULT;
+    } catch {
+      return PX_PER_SEC_DEFAULT;
+    }
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const layout = useMemo(() => computeTimelineLayout(clips), [clips]);
+  const selectedClip = useMemo(
+    () => clips.find((clip, index) => String(clipId(clip, index)) === String(selectedClipId)) || null,
+    [clips, selectedClipId],
+  );
+  const selectedIndex = selectedClip ? clips.indexOf(selectedClip) : -1;
+  const totalPx = Math.max(1, layout.total * pxPerSec);
+  const contentWidth = Math.max(viewportWidth, totalPx);
+  const videoTrackHeight = compact ? 64 : 82;
+  const titleTrackHeight = compact ? 0 : 48;
+
+  clipsRef.current = clips;
+
   useEffect(() => {
-    try { localStorage.setItem('jt-timeline-zoom', String(pxPerSec)); } catch { /* ignore */ }
+    if (expectedClipsRef.current === clips) {
+      expectedClipsRef.current = null;
+      return;
+    }
+    // Une modification venue de l'inspecteur ou un changement de semaine
+    // démarre une nouvelle pile d'historique locale.
+    setHistory({ past: [], future: [] });
+  }, [clips]);
+
+  useEffect(() => {
+    if (clips.length === 0) {
+      setSelectedClipId(null);
+      return;
+    }
+    const stillExists = clips.some((clip, index) => String(clipId(clip, index)) === String(selectedClipId));
+    if (!stillExists) setSelectedClipId(clipId(clips[0], 0));
+  }, [clips, selectedClipId]);
+
+  useEffect(() => {
+    try { localStorage.setItem('jt-timeline-zoom', String(pxPerSec)); } catch { /* mode privé */ }
   }, [pxPerSec]);
 
-  // Met à jour les propriétés d'un clip (rogner aux bords). On respecte la
-  // structure existante : inPoint/outPoint si présents, sinon durationSec.
-  const updateClipResize = (clip, patch) => {
-    const cid = clip.instanceId || clip.id;
-    setClips(clips.map((c) => ((c.instanceId || c.id) === cid ? { ...c, ...patch } : c)));
-  };
+  useEffect(() => {
+    if (!scrollRef.current) return undefined;
+    const update = () => setViewportWidth(scrollRef.current?.clientWidth || 0);
+    update();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    observer?.observe(scrollRef.current);
+    window.addEventListener('resize', update);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
 
-  // Position du playhead global sur la timeline (en px depuis le début).
-  const globalPlayheadPx = playheadSec != null ? playheadSec * pxPerSec : null;
+  useEffect(() => {
+    if (!playerRef?.current) return undefined;
+    let animationFrame;
+    let lastUpdate = 0;
+    let lastFrame = -1;
+    const tick = (timestamp) => {
+      if (timestamp - lastUpdate >= 50) {
+        try {
+          const frame = playerRef.current?.getCurrentFrame?.();
+          if (typeof frame === 'number' && frame !== lastFrame) {
+            lastFrame = frame;
+            lastUpdate = timestamp;
+            setPlayheadSec(clamp(frame / FPS, 0, layout.total));
+          }
+        } catch { /* lecteur pas encore prêt */ }
+      }
+      animationFrame = requestAnimationFrame(tick);
+    };
+    animationFrame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [layout.total, playerRef]);
 
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      setClips((items) => {
-        const oldIndex = items.findIndex((i) => (i.instanceId || i.id) === active.id);
-        const newIndex = items.findIndex((i) => (i.instanceId || i.id) === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
-
-  const removeClip = (instanceId) => {
-    setClips(clips.filter((c) => (c.instanceId || c.id) !== instanceId));
-  };
-
-  // Met à jour les overlays d'un clip (drag/trim/duplicate/delete sur la
-  // piste texte). Source de vérité = clip.overlays.
-  const updateClipOverlays = (clip, newOverlays) => {
-    const cid = clip.instanceId || clip.id;
-    setClips(clips.map((c) => ((c.instanceId || c.id) === cid ? { ...c, overlays: newOverlays } : c)));
-  };
-
-  const cycleKenBurns = (instanceId) => {
-    setClips(clips.map((c) => {
-      if ((c.instanceId || c.id) !== instanceId) return c;
-      const cur = c.kenBurns?.mode;
-      const next = cur === 'in' ? 'out' : cur === 'out' ? undefined : 'in';
-      return { ...c, kenBurns: next ? { mode: next } : undefined };
+  const commitClips = useCallback((update) => {
+    const current = clipsRef.current;
+    const next = typeof update === 'function' ? update(current) : update;
+    if (!Array.isArray(next) || next === current) return;
+    setHistory((previous) => ({
+      past: [...previous.past, current].slice(-HISTORY_LIMIT),
+      future: [],
     }));
-  };
+    expectedClipsRef.current = next;
+    clipsRef.current = next;
+    setClips(next);
+  }, [setClips]);
 
-  const setTransition = (idx, type) => {
-    setClips(clips.map((c, i) =>
-      i === idx
-        ? { ...c, transition: type === 'none' ? undefined : { type, duration: c.transition?.duration ?? 0.5 } }
-        : c
-    ));
-  };
+  const undo = useCallback(() => {
+    if (history.past.length === 0) return;
+    const previousClips = history.past[history.past.length - 1];
+    const current = clipsRef.current;
+    setHistory({ past: history.past.slice(0, -1), future: [current, ...history.future].slice(0, HISTORY_LIMIT) });
+    expectedClipsRef.current = previousClips;
+    clipsRef.current = previousClips;
+    setClips(previousClips);
+    setStatusMessage('Dernière modification annulée.');
+  }, [history, setClips]);
+
+  const redo = useCallback(() => {
+    if (history.future.length === 0) return;
+    const nextClips = history.future[0];
+    const current = clipsRef.current;
+    setHistory({ past: [...history.past, current].slice(-HISTORY_LIMIT), future: history.future.slice(1) });
+    expectedClipsRef.current = nextClips;
+    clipsRef.current = nextClips;
+    setClips(nextClips);
+    setStatusMessage('Modification rétablie.');
+  }, [history, setClips]);
+
+  const seekToTime = useCallback((time) => {
+    const next = clamp(roundToFrame(time), 0, layout.total);
+    setPlayheadSec(next);
+    try { playerRef?.current?.seekTo?.(Math.round(next * FPS)); } catch { /* mini timeline */ }
+  }, [layout.total, playerRef]);
+
+  const nudgePlayhead = useCallback((direction, large = false) => {
+    seekToTime(playheadSec + direction * (large ? 1 : 1 / FPS));
+  }, [playheadSec, seekToTime]);
+
+  const beginScrub = useCallback((event) => {
+    if (!scrollRef.current || layout.total <= 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const content = scrollRef.current.querySelector('[data-timeline-content]');
+    if (!content) return;
+    const update = (pointerEvent) => {
+      const rect = content.getBoundingClientRect();
+      seekToTime((pointerEvent.clientX - rect.left) / pxPerSec);
+    };
+    const finish = () => {
+      window.removeEventListener('pointermove', update);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+    update(event);
+    window.addEventListener('pointermove', update);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  }, [layout.total, pxPerSec, seekToTime]);
+
+  const commitRange = useCallback((clip, range) => {
+    const id = clipId(clip);
+    commitClips((current) => current.map((item) => {
+      if (String(clipId(item)) !== String(id)) return item;
+      return {
+        ...item,
+        inPoint: range.inPoint,
+        outPoint: range.outPoint,
+        durationSec: range.durationSec,
+        sourceDurationSec: range.sourceDurationSec ?? item.sourceDurationSec,
+        trimLabel: `${formatTimecode(range.inPoint)} → ${formatTimecode(range.outPoint)}`,
+      };
+    }));
+    setStatusMessage(`Trim appliqué : ${formatTimecode(range.durationSec)}.`);
+  }, [commitClips]);
+
+  const splitAt = useCallback((globalTime, preferredId = selectedClipId) => {
+    const current = clipsRef.current;
+    const currentLayout = computeTimelineLayout(current);
+    const target = findClipAtTime(currentLayout, globalTime, preferredId)
+      || findClipAtTime(currentLayout, globalTime);
+    if (!target) {
+      setStatusMessage('Placez la tête de lecture sur un clip avant de couper.');
+      return;
+    }
+    const result = splitClipAtTime(current, {
+      clipId: target.id,
+      globalTime,
+      layout: currentLayout,
+      createId,
+    });
+    if (result.error === 'edge') {
+      setStatusMessage('La coupe doit laisser au moins 9 images de chaque côté.');
+      return;
+    }
+    if (result.error) {
+      setStatusMessage('Impossible de trouver le clip à couper.');
+      return;
+    }
+    commitClips(result.clips);
+    setSelectedClipId(clipId(result.right));
+    seekToTime(globalTime);
+    setStatusMessage(`Coupe créée à ${formatTimecode(globalTime)}.`);
+  }, [commitClips, seekToTime, selectedClipId]);
+
+  const razorSplit = useCallback((item, event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = clamp((event.clientX - rect.left) / Math.max(1, rect.width), 0, 1);
+    const cutTime = roundToFrame(item.start + ratio * item.duration);
+    seekToTime(cutTime);
+    splitAt(cutTime, item.id);
+  }, [seekToTime, splitAt]);
+
+  const removeSelected = useCallback(() => {
+    if (!selectedClipId) return;
+    const current = clipsRef.current;
+    const index = current.findIndex((clip, clipIndex) => String(clipId(clip, clipIndex)) === String(selectedClipId));
+    if (index < 0) return;
+    const nextSelection = current[index + 1] || current[index - 1] || null;
+    commitClips(current.filter((_, clipIndex) => clipIndex !== index));
+    setSelectedClipId(nextSelection ? clipId(nextSelection) : null);
+    setStatusMessage('Clip retiré. Utilisez Annuler pour le restaurer.');
+  }, [commitClips, selectedClipId]);
+
+  const cycleKenBurns = useCallback(() => {
+    if (!selectedClipId) return;
+    commitClips((current) => current.map((clip, index) => {
+      if (String(clipId(clip, index)) !== String(selectedClipId)) return clip;
+      const currentMode = clip.kenBurns?.mode;
+      const nextMode = currentMode === 'in' ? 'out' : currentMode === 'out' ? null : 'in';
+      return { ...clip, kenBurns: nextMode ? { mode: nextMode } : undefined };
+    }));
+  }, [commitClips, selectedClipId]);
+
+  const setTransition = useCallback((type) => {
+    if (selectedIndex < 0) return;
+    commitClips((current) => current.map((clip, index) => (
+      index === selectedIndex
+        ? { ...clip, transition: type === 'none' ? undefined : { type, duration: clip.transition?.duration || 0.5 } }
+        : clip
+    )));
+  }, [commitClips, selectedIndex]);
+
+  const handleDragEnd = useCallback(({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    commitClips((current) => {
+      const oldIndex = current.findIndex((clip, index) => String(clipId(clip, index)) === String(active.id));
+      const newIndex = current.findIndex((clip, index) => String(clipId(clip, index)) === String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return current;
+      return arrayMove(current, oldIndex, newIndex);
+    });
+    setStatusMessage('Ordre des clips mis à jour.');
+  }, [commitClips]);
+
+  const fitToView = useCallback(() => {
+    if (layout.total <= 0 || viewportWidth <= 0) return;
+    setPxPerSec(clamp(Math.floor((viewportWidth - 12) / layout.total), PX_PER_SEC_MIN, PX_PER_SEC_MAX));
+  }, [layout.total, viewportWidth]);
+
+  const togglePlayback = useCallback(() => {
+    const player = playerRef?.current;
+    if (!player) return;
+    try {
+      if (player.isPlaying?.()) player.pause?.();
+      else player.play?.();
+    } catch { /* lecteur indisponible */ }
+  }, [playerRef]);
+
+  useEffect(() => {
+    if (compact) return undefined;
+    const handleShortcut = (event) => {
+      if (event.defaultPrevented) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest('input, textarea, select, button, [contenteditable="true"]')) return;
+      if (document.querySelector('[data-trim-editor]')) return;
+      const modifier = event.metaKey || event.ctrlKey;
+      if (modifier && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (modifier && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        splitAt(playheadSec);
+        return;
+      }
+      if (event.key.toLowerCase() === 'v') setToolMode('select');
+      else if (event.key.toLowerCase() === 'b') setToolMode('blade');
+      else if (event.key.toLowerCase() === 'm') setSnapping((value) => !value);
+      else if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        removeSelected();
+      } else if (event.code === 'Space') {
+        event.preventDefault();
+        togglePlayback();
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        nudgePlayhead(event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [compact, nudgePlayhead, playheadSec, redo, removeSelected, splitAt, togglePlayback, undo]);
+
+  const playheadX = clamp(playheadSec, 0, layout.total) * pxPerSec;
+  const activeItem = findClipAtTime(layout, playheadSec, selectedClipId) || findClipAtTime(layout, playheadSec);
 
   return (
-    <div className="bg-[var(--paper-2)] border-t border-[var(--border)] p-4 shadow-inner flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-[color:var(--ink)] flex items-center gap-2">
-          <Play size={18} className="text-[var(--accent)]" />
-          Timeline de Montage
-          {clips.length > 0 && (
-            <span className="text-xs font-normal text-[color:var(--muted)] ml-1">({clips.length} clip{clips.length > 1 ? 's' : ''})</span>
-          )}
-          {clips.length > 0 && (
-            <span className="ml-2 text-xs font-mono tabular-nums px-2 py-0.5 rounded bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)]" aria-label={`Position ${fmtTime(playheadSec)} sur ${fmtTime(total)}`}>
-              {fmtTime(playheadSec)} / {fmtTime(total)}
-            </span>
-          )}
-        </h3>
-        <div className="flex items-center gap-2 flex-wrap" role="toolbar" aria-label="Actions de montage">
-          {onPreview && clips.length > 0 && (
-            <button
-              onClick={onPreview}
-              className="text-sm font-medium px-3 py-2 min-h-[40px] rounded-lg border border-[var(--border)] text-[color:var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] transition-colors flex items-center gap-2"
-              title="Aperçu temps réel avant l'assemblage"
-              aria-label="Afficher l'aperçu temps réel"
-            >
-              <Eye size={16} aria-hidden="true" /> Aperçu
+    <section
+      ref={rootRef}
+      data-timeline-root
+      aria-label="Timeline de montage vidéo"
+      className={`flex min-h-0 w-full flex-col overflow-hidden border-t border-[var(--editor-border)] bg-[var(--editor-bg)] text-[var(--editor-text)] ${compact ? '' : 'h-full'}`}
+    >
+      {compact ? (
+        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-3 py-1.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <Play size={16} className="text-[var(--editor-accent)]" />
+            <strong className="truncate text-sm">Timeline</strong>
+            <span className="font-mono text-xs tabular-nums text-[var(--editor-muted)]">{formatTimecode(playheadSec)} / {formatTimecode(layout.total)}</span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {onPreview && <ToolButton icon={<Maximize2 size={15} />} label="Ouvrir le studio" compact onClick={onPreview} />}
+            <button type="button" onClick={onGenerate} disabled={clips.length === 0 || isGenerating} className="h-9 rounded-md bg-[var(--editor-accent-strong)] px-3 text-xs font-bold text-[var(--editor-bg)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-35">
+              {isGenerating ? 'Assemblage…' : 'Générer le master'}
             </button>
-          )}
-          {onSplitText && clips.length > 0 && (
-            <button
-              onClick={onSplitText}
-              className="text-sm font-medium px-3 py-2 min-h-[40px] rounded-lg border border-[var(--border)] text-[color:var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] transition-colors flex items-center gap-2"
-              title="Couper le texte actif au niveau du curseur"
-              aria-label="Couper le texte actif au curseur"
-            >
-              <Scissors size={16} aria-hidden="true" /> Couper Texte
-            </button>
-          )}
-          {onGlobalLayer && (
-            <button
-              onClick={onGlobalLayer}
-              aria-pressed={!!brandingActive}
-              className={`text-sm font-medium px-3 py-2 min-h-[40px] rounded-lg transition-colors flex items-center gap-2 border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${brandingActive ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border)] text-[color:var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)]'}`}
-              title="Habillage JT (ticker, LIVE, logo)"
-              aria-label={`Habillage JT ${brandingActive ? 'actif' : 'inactif'}`}
-            >
-              <Newspaper size={16} aria-hidden="true" /> Habillage JT
-            </button>
-          )}
-          {clips.length > 0 && (
-            <button
-              onClick={() => {
-                if (window.confirm("Voulez-vous vraiment vider la timeline ?")) {
-                  setClips([]);
-                }
-              }}
-              className="text-sm font-medium text-[color:var(--ink)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 px-3 py-2 min-h-[40px] rounded-lg border border-[var(--border)] hover:border-[var(--signal)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal)] transition-colors flex items-center gap-2"
-              aria-label="Vider entièrement la timeline"
-            >
-              <Trash2 size={16} aria-hidden="true" /> Vider
-            </button>
-          )}
-          <button
-            onClick={onGenerate}
-            disabled={clips.length === 0 || isGenerating}
-            className="btn btn-primary py-2 px-4 min-h-[40px] text-sm font-semibold flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label={isGenerating ? 'Assemblage du Master en cours' : 'Générer le Master final'}
-            aria-busy={isGenerating}
-          >
-            {isGenerating ? (
-              <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
-                Assemblage en cours...
-              </span>
-            ) : (
-              <>
-                <Video size={16} aria-hidden="true" /> Générer le Master
-              </>
-            )}
-          </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="flex min-h-[54px] items-center gap-2 overflow-x-auto border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-2.5 py-1.5" role="toolbar" aria-label="Outils de montage principaux">
+            <div className="mr-1 flex shrink-0 flex-col px-1.5">
+              <span className="font-mono text-sm font-semibold tabular-nums text-[var(--editor-text)]">{formatTimecode(playheadSec)}</span>
+              <span className="text-[10px] text-[var(--editor-muted)]">sur {formatTimecode(layout.total)}</span>
+            </div>
+            <ToolButton icon={<MousePointer2 size={16} />} label="Sélection" shortcut="V" active={toolMode === 'select'} onClick={() => setToolMode('select')} />
+            <ToolButton icon={<Scissors size={16} />} label="Lame" shortcut="B" active={toolMode === 'blade'} onClick={() => setToolMode('blade')} />
+            <ToolButton icon={<Scissors size={16} />} label="Couper au curseur" shortcut="⌘K" disabled={clips.length === 0} onClick={() => splitAt(playheadSec)} />
+            <span className="mx-0.5 h-7 w-px shrink-0 bg-[var(--editor-border)]" aria-hidden="true" />
+            <ToolButton icon={<Magnet size={16} />} label="Magnétisme" shortcut="M" active={snapping} onClick={() => setSnapping((value) => !value)} />
+            <ToolButton icon={<Undo2 size={16} />} label="Annuler" disabled={history.past.length === 0} onClick={undo} compact title="Annuler" />
+            <ToolButton icon={<Redo2 size={16} />} label="Rétablir" disabled={history.future.length === 0} onClick={redo} compact title="Rétablir" />
+            {onSplitText && <ToolButton icon={<Type size={16} />} label="Couper le titre" disabled={timelineOverlays.length === 0} onClick={onSplitText} title="Couper le titre actif à la tête de lecture" />}
+            {onGlobalLayer && <ToolButton icon={<Newspaper size={16} />} label="Habillage JT" active={!!brandingActive} onClick={onGlobalLayer} />}
+            <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
+              <ToolButton icon={<Minus size={15} />} label="Dézoomer" compact onClick={() => setPxPerSec((value) => clamp(value - 10, PX_PER_SEC_MIN, PX_PER_SEC_MAX))} title="Dézoomer la timeline" />
+              <input
+                type="range"
+                min={PX_PER_SEC_MIN}
+                max={PX_PER_SEC_MAX}
+                step="2"
+                value={pxPerSec}
+                onChange={(event) => setPxPerSec(Number(event.target.value))}
+                aria-label={`Zoom de timeline, ${pxPerSec} pixels par seconde`}
+                className="w-24 accent-[var(--editor-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+              />
+              <ToolButton icon={<Plus size={15} />} label="Zoomer" compact onClick={() => setPxPerSec((value) => clamp(value + 10, PX_PER_SEC_MIN, PX_PER_SEC_MAX))} title="Zoomer la timeline" />
+              <ToolButton icon={<Maximize2 size={15} />} label="Ajuster" compact onClick={fitToView} title="Ajuster toute la timeline à la largeur" />
+            </div>
+            <button
+              type="button"
+              onClick={onGenerate}
+              disabled={clips.length === 0 || isGenerating}
+              aria-busy={isGenerating}
+              className="ml-1 h-10 shrink-0 rounded-md border border-[var(--editor-accent)] bg-[var(--editor-accent-strong)] px-4 text-xs font-bold text-[var(--editor-bg)] transition-[transform,background-color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              {isGenerating ? 'Assemblage en cours…' : 'Générer le master'}
+            </button>
+          </div>
 
-      {/* Slider de zoom horizontal (px par seconde). Persistant localStorage. */}
-      {clips.length > 0 && (
-        <div className="flex items-center gap-3 text-xs text-[color:var(--ink)] font-medium -mb-1">
-          <label htmlFor="timeline-zoom" className="flex items-center gap-1.5 cursor-pointer">
-            <ZoomIn size={14} aria-hidden="true" /> Zoom
-          </label>
-          <input
-            id="timeline-zoom"
-            type="range"
-            min="20"
-            max="160"
-            step="10"
-            value={pxPerSec}
-            onChange={(e) => setPxPerSec(Number(e.target.value))}
-            className="w-40 accent-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded"
-            aria-label={`Zoom horizontal de la timeline, ${pxPerSec} pixels par seconde`}
-            aria-valuemin={20}
-            aria-valuemax={160}
-            aria-valuenow={pxPerSec}
-          />
-          <span className="tabular-nums font-mono text-[color:var(--muted)]">{pxPerSec} px/s</span>
-        </div>
+          <div className="flex min-h-[46px] items-center gap-2 overflow-x-auto border-b border-[var(--editor-border)] bg-[var(--editor-bg)] px-2.5 py-1" role="toolbar" aria-label="Actions du clip sélectionné">
+            {selectedClip ? (
+              <>
+                <div className="min-w-0 max-w-[240px] shrink px-1.5">
+                  <div className="truncate text-xs font-semibold text-[var(--editor-text)]">{selectedClip.name || selectedClip.filename || 'Clip sélectionné'}</div>
+                  <div className="font-mono text-[10px] tabular-nums text-[var(--editor-muted)]">IN {formatTimecode(getClipRange(selectedClip).inPoint)} · OUT {formatTimecode(getClipRange(selectedClip).outPoint)}</div>
+                </div>
+                <ToolButton icon={<Pencil size={15} />} label="Rognage précis" onClick={() => onTrimClip?.(selectedClip)} />
+                <ToolButton icon={<Layers size={15} />} label="Habillage du clip" active={(selectedClip.overlays?.length || 0) > 0} onClick={() => onOverlayClip?.(selectedClip)} />
+                <ToolButton icon={<ZoomIn size={15} />} label={selectedClip.kenBurns?.mode === 'in' ? 'Zoom avant' : selectedClip.kenBurns?.mode === 'out' ? 'Zoom arrière' : 'Zoom lent'} active={!!selectedClip.kenBurns?.mode} onClick={cycleKenBurns} />
+                <ToolButton icon={<Captions size={15} />} label="Sous-titres" active={(selectedClip.subtitles?.length || 0) > 0} onClick={() => onSubtitleClip?.(selectedClip)} />
+                <label className="flex h-10 shrink-0 items-center gap-2 rounded-md border border-[var(--editor-border)] px-2.5 text-xs font-semibold text-[var(--editor-text)] focus-within:border-[var(--editor-accent)] focus-within:ring-2 focus-within:ring-[var(--editor-accent)]/40">
+                  Transition après
+                  <select
+                    value={selectedClip.transition?.type || 'none'}
+                    onChange={(event) => setTransition(event.target.value)}
+                    disabled={selectedIndex === clips.length - 1}
+                    className="max-w-[150px] bg-[var(--editor-panel)] px-2 py-1 text-xs text-[var(--editor-text)] focus:outline-none disabled:opacity-40"
+                    aria-label="Transition après le clip sélectionné"
+                  >
+                    {TRANSITIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+                <ToolButton icon={<Trash2 size={15} />} label="Supprimer" danger onClick={removeSelected} />
+              </>
+            ) : (
+              <span className="px-1.5 text-xs text-[var(--editor-muted)]">Cliquez sur un clip pour afficher ses outils de rognage, habillage et transition.</span>
+            )}
+          </div>
+        </>
       )}
 
-      <div className="bg-[var(--app-bg)] rounded-xl border border-[var(--border)] p-4 min-h-[100px] overflow-x-auto overflow-y-hidden relative">
-        {clips.length === 0 ? (
-          <p className="text-sm text-[color:var(--muted)] italic text-center w-full py-6">
-            Cliquez sur "Trim & Ajouter" sur les vidéos ci-dessus pour les ajouter ici.
-          </p>
-        ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={clips.map((c) => c.instanceId || c.id)}
-              strategy={horizontalListSortingStrategy}
-            >
-              {/* Règle temporelle */}
-              <Ruler totalSec={total} pxPerSec={pxPerSec} />
-              
-              {/* Conteneur principal pour clips et piste texte avec le playhead global par-dessus */}
-              <div className="relative">
-                {/* Ligne de playhead globale */}
-                {globalPlayheadPx != null && (
-                  <div
-                    className="absolute top-0 bottom-0 w-0.5 bg-[var(--signal)] pointer-events-none z-40"
-                    style={{ left: `${globalPlayheadPx}px` }}
-                    aria-hidden="true"
-                  >
-                    <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 rounded-full bg-[var(--signal)]" />
-                  </div>
-                )}
+      {clips.length === 0 ? (
+        <div className="flex min-h-[120px] flex-1 items-center justify-center px-6 text-center">
+          <div>
+            <Video size={28} className="mx-auto mb-2 text-[var(--editor-muted)]" />
+            <p className="text-sm font-semibold text-[var(--editor-text)]">La timeline est vide</p>
+            <p className="mt-1 text-xs text-[var(--editor-muted)]">Depuis les rushs, choisissez une vidéo puis « Ajouter à la timeline ».</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid min-h-0 flex-1 grid-cols-[104px_minmax(0,1fr)]">
+          <div className="relative z-30 border-r border-[var(--editor-border)] bg-[var(--editor-panel)]">
+            <div className="flex h-8 items-center border-b border-[var(--editor-border)] px-3 font-mono text-[10px] text-[var(--editor-muted)]">{clips.length} CLIP{clips.length > 1 ? 'S' : ''}</div>
+            <div className="flex items-center justify-between border-b border-[var(--editor-border)] px-3" style={{ height: `${videoTrackHeight}px` }}>
+              <div>
+                <strong className="text-sm text-[var(--editor-accent)]">V1</strong>
+                <span className="ml-2 text-xs font-semibold text-[var(--editor-text)]">VIDÉO</span>
+              </div>
+            </div>
+            {!compact && (
+              <div className="flex items-center border-b border-[var(--editor-border)] px-3" style={{ height: `${titleTrackHeight}px` }}>
+                <strong className="text-sm text-[var(--editor-title)]">T1</strong>
+                <span className="ml-2 text-xs font-semibold text-[var(--editor-text)]">TITRES</span>
+              </div>
+            )}
+          </div>
 
-                {/* Piste des clips */}
-                <div className="flex gap-2 items-center min-h-[80px]">
-                  {clips.map((clip, idx) => (
-                    <React.Fragment key={clip.instanceId || clip.id}>
+          <div ref={scrollRef} className="min-w-0 overflow-x-auto overflow-y-hidden bg-[var(--editor-bg)] custom-scrollbar">
+            <div data-timeline-content className="relative" style={{ width: `${contentWidth}px`, minWidth: '100%' }}>
+              <Ruler totalSec={layout.total} pxPerSec={pxPerSec} playheadSec={playheadSec} onPointerDown={beginScrub} onNudge={nudgePlayhead} />
+
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={layout.items.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
+                  <div role="listbox" aria-label="Piste vidéo" className="relative flex border-b border-[var(--editor-border)] bg-[var(--editor-panel-raised)]/35" style={{ height: `${videoTrackHeight}px`, width: `${contentWidth}px` }}>
+                    {layout.items.map((item, index) => (
                       <SortableClip
-                        clip={clip}
-                        index={idx}
-                        clipStart={starts[idx]}
-                        playheadSec={playheadSec}
+                        key={item.id}
+                        clip={item.clip}
+                        item={item}
+                        index={index}
+                        previousTransition={index > 0 ? layout.items[index - 1].transitionDuration : 0}
                         pxPerSec={pxPerSec}
-                        onRemove={removeClip}
-                        onTrim={onTrimClip}
-                        onOverlay={() => onOverlayClip?.({ isTimelineOverlays: true, overlays: timelineOverlays })}
-                        onKenBurns={cycleKenBurns}
-                        onSubtitle={onSubtitleClip}
-                        onOverlaysChange={updateClipOverlays}
-                        onClipResize={updateClipResize}
+                        selected={String(selectedClipId) === String(item.id)}
+                        active={activeItem?.id === item.id}
+                        toolMode={toolMode}
+                        snapping={snapping}
+                        playheadSec={playheadSec}
+                        onSelect={setSelectedClipId}
+                        onRazorSplit={razorSplit}
+                        onCommitRange={commitRange}
+                        onOpenTrim={(target) => onTrimClip?.(target)}
                       />
-                      {idx < clips.length - 1 && (
-                        <TransitionPicker
-                          value={clip.transition?.type}
-                          onChange={(t) => setTransition(idx, t)}
-                        />
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
-
-                {/* Piste globale pour les overlays (titres, habillages, etc.) */}
-                <div
-                  data-text-track
-                  role="region"
-                  aria-label="Piste des overlays texte"
-                  className="global-text-track relative mt-6 h-12 bg-[var(--paper-2)] rounded-lg border border-[var(--border)] flex items-center group"
-                  style={{ width: `${total * pxPerSec}px` }}
-                >
-                  <div className="absolute inset-y-0 left-0 flex items-center px-3 text-xs text-[color:var(--ink)] uppercase font-bold tracking-wider pointer-events-none bg-gradient-to-r from-[var(--paper-2)] via-[var(--paper-2)] to-transparent z-0 rounded-l-lg">
-                    Piste Texte
+                    ))}
                   </div>
-                  {timelineOverlays.map((o, i) => (
+                </SortableContext>
+              </DndContext>
+
+              {!compact && (
+                <div role="region" aria-label="Piste des titres" className="relative border-b border-[var(--editor-border)] bg-[var(--editor-panel)]/75" style={{ height: `${titleTrackHeight}px`, width: `${contentWidth}px` }}>
+                  {timelineOverlays.length === 0 && <span className="absolute inset-0 flex items-center px-3 text-xs text-[var(--editor-muted)]">Ajoutez un titre depuis Habillage JT, puis glissez-le ici.</span>}
+                  {timelineOverlays.map((overlay, index) => (
                     <OverlayBlock
-                      key={o.id || i}
-                      overlay={o}
-                      index={i}
-                      clipDur={total || 1}
+                      key={overlay.id || index}
+                      overlay={overlay}
+                      index={index}
+                      totalSec={layout.total}
+                      pxPerSec={pxPerSec}
                       overlays={timelineOverlays}
                       onChange={(next) => setTimelineOverlays?.(next)}
                       onOpen={() => onOverlayClip?.({ isTimelineOverlays: true, overlays: timelineOverlays })}
                     />
                   ))}
                 </div>
+              )}
+
+              <div
+                className="pointer-events-none absolute top-0 z-[60]"
+                style={{ transform: `translateX(${playheadX}px)`, bottom: 0, width: 1 }}
+                aria-hidden="true"
+              >
+                <div className="absolute inset-y-0 left-0 w-px bg-[var(--editor-playhead)] shadow-[0_0_0_1px_oklch(0.2_0.03_245/0.35)]" />
+                <button
+                  type="button"
+                  onPointerDown={beginScrub}
+                  tabIndex={-1}
+                  className="pointer-events-auto absolute -left-2 top-0 h-5 w-4 cursor-ew-resize touch-none rounded-b-sm bg-[var(--editor-playhead)]"
+                  aria-label="Déplacer la tête de lecture"
+                />
               </div>
-            </SortableContext>
-          </DndContext>
-        )}
-      </div>
-    </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!compact && (
+        <div className="flex min-h-8 items-center justify-between gap-4 border-t border-[var(--editor-border)] bg-[var(--editor-panel)] px-3 text-[11px] text-[var(--editor-muted)]">
+          <span className="truncate" aria-live="polite">{statusMessage}</span>
+          <span className="hidden shrink-0 lg:inline">Bords = rogner · Règle = parcourir · ⌘/Ctrl K = couper · Suppr = retirer</span>
+        </div>
+      )}
+    </section>
   );
 }

@@ -286,6 +286,34 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // React lance un 2e job avant que le 1er ait mis à jour l'état.
   const generateLockRef = useRef(false);
 
+  // Un seul inspecteur doit être visible à la fois. Auparavant quatre états
+  // concurrents pouvaient rester actifs : cliquer sur « Trim » semblait alors
+  // ne rien faire si l'habillage avait une priorité de rendu supérieure.
+  const openTrimInspector = (clip) => {
+    setOverlayTarget(null);
+    setSubtitleTarget(null);
+    setShowGlobalPanel(false);
+    setTrimTarget(clip);
+  };
+  const openOverlayInspector = (clip) => {
+    setTrimTarget(null);
+    setSubtitleTarget(null);
+    setShowGlobalPanel(false);
+    setOverlayTarget(clip);
+  };
+  const openSubtitleInspector = (clip) => {
+    setTrimTarget(null);
+    setOverlayTarget(null);
+    setShowGlobalPanel(false);
+    setSubtitleTarget(clip);
+  };
+  const openGlobalInspector = () => {
+    setTrimTarget(null);
+    setOverlayTarget(null);
+    setSubtitleTarget(null);
+    setShowGlobalPanel(true);
+  };
+
   // Chrono d'assemblage : temps écoulé depuis le lancement du rendu.
   useEffect(() => {
     if (!isGeneratingVideo || !exportStartedAt) { setExportElapsed(0); return undefined; }
@@ -367,7 +395,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   useEffect(() => {
     if (!selectedWeek) return;
     try {
-      if (timelineClips.length) localStorage.setItem(timelineKey(selectedWeek), JSON.stringify(timelineClips));
+      if (timelineClips.length) {
+        // Les URL sont reconstruites à la restauration. Ne jamais persister
+        // une query d'authentification éventuellement présente dans `url`.
+        const safeClips = timelineClips.map(({ url: _url, ...clip }) => clip);
+        localStorage.setItem(timelineKey(selectedWeek), JSON.stringify(safeClips));
+      }
       else localStorage.removeItem(timelineKey(selectedWeek));
     } catch { /* quota / mode privé : on ignore */ }
   }, [timelineClips, selectedWeek]);
@@ -597,7 +630,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     });
     const durations = await Promise.all(timelineClips.map(async (clip) => {
       if (clip.outPoint != null) return Math.max(0.3, clip.outPoint - (clip.inPoint || 0));
-      const full = await probeDur(`${API_BASE}/uploads/${clip.filename}`);
+      const explicitDuration = Number(clip.durationSec);
+      if (Number.isFinite(explicitDuration) && explicitDuration >= 0.3) return explicitDuration;
+      const full = await probeDur(`${API_BASE}/uploads/${encodeURIComponent(clip.filename)}`);
       return Math.max(0.3, (full || 5) - (clip.inPoint || 0));
     }));
 
@@ -1138,7 +1173,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           {isVideo && (
             <button
               onClick={() => {
-                setTrimTarget(file);
+                openTrimInspector(file);
                 setSelectedBin('studio');
               }}
               className="mt-2 w-full text-sm font-bold py-2 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
@@ -1199,7 +1234,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   }
 
   return (
-    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 py-6 md:h-screen min-h-screen flex flex-col">
+    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-5 py-4 md:h-[calc(100dvh-8.5rem)] md:min-h-[640px] min-h-screen flex flex-col">
       <div className="flex flex-col flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
         
         {/* Top Tabs (Tableau de bord) */}
@@ -1300,18 +1335,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                STUDIO DE MONTAGE (NLE Workspace) 
                ========================================= */
             <div className="flex flex-col h-full bg-[var(--paper-2)] w-full overflow-hidden">
-              {/* Header du Studio */}
-              <div className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex justify-between items-center shrink-0">
-                <h2 className="text-xl font-black tracking-tight text-[color:var(--ink)] flex items-center gap-3">
-                  <Video className="text-[var(--accent)]" size={24} /> STUDIO DE MONTAGE
-                </h2>
-              </div>
+              <h2 className="sr-only">Studio de montage</h2>
               
               {/* Zone Supérieure : Player (Centre) + Inspecteur (Droite) */}
-              <div className="flex flex-col xl:flex-row h-auto xl:h-[55vh] xl:min-h-[450px] border-b border-[var(--border)] bg-[var(--paper-2)] shrink-0">
+              <div className="flex flex-col xl:flex-row h-auto xl:h-[clamp(230px,38dvh,420px)] xl:min-h-[230px] border-b border-[var(--border)] bg-[var(--paper-2)] shrink-0">
                 
                 {/* PLAYER CENTER */}
-                <div className="flex-1 bg-black relative flex items-center justify-center p-4 xl:p-8 shadow-[inset_0_0_50px_rgba(0,0,0,0.5)]">
+                <div className="flex-1 bg-[oklch(0.12_0.018_245)] relative flex items-center justify-center p-2 xl:p-4 shadow-[inset_0_0_40px_oklch(0.05_0.02_245/0.7)]">
                   <RemotionLivePreview 
                     playerRef={playerRef} 
                     inline={true} 
@@ -1324,7 +1354,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
 
                 {/* INSPECTOR RIGHT */}
-                <div className="w-full xl:w-[550px] bg-[var(--paper)] border-l-0 xl:border-l border-[var(--border)] overflow-y-auto shrink-0 flex flex-col shadow-[-10px_0_20px_-10px_rgba(0,0,0,0.05)] relative z-10">
+                <div className="w-full xl:w-[400px] bg-[var(--paper)] border-l-0 xl:border-l border-[var(--border)] overflow-y-auto shrink-0 flex flex-col relative z-10">
                   {overlayTarget ? (
                     <OverlayPanel
                       inline={true}
@@ -1404,7 +1434,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </div>
 
               {/* TIMELINE BOTTOM */}
-              <div className="flex-1 overflow-hidden flex flex-col bg-[var(--paper-2)]">
+              <div className="flex-1 min-h-[280px] overflow-hidden flex flex-col bg-[var(--paper-2)]">
                 <Timeline
                   clips={timelineClips}
                   setClips={setTimelineClips}
@@ -1412,12 +1442,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   setTimelineOverlays={setTimelineOverlays}
                   onGenerate={handleGenerateVideo}
                   isGenerating={isGeneratingVideo}
-                  onTrimClip={(file) => setTrimTarget(file)}
-                  onOverlayClip={(clip) => setOverlayTarget(clip)}
-                  onGlobalLayer={() => setShowGlobalPanel(true)}
+                  onTrimClip={openTrimInspector}
+                  onOverlayClip={openOverlayInspector}
+                  onGlobalLayer={openGlobalInspector}
                   brandingActive={branding.ticker.enabled || branding.live.enabled || branding.logo}
-                  onPreview={() => {}} // Disabled as preview is always active
-                  onSubtitleClip={(clip) => setSubtitleTarget(clip)}
+                  onSubtitleClip={openSubtitleInspector}
                   playerRef={playerRef}
                   onSplitText={handleSplitTextAtPlayhead}
                 />
@@ -1845,22 +1874,23 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 isGenerating={isGeneratingVideo}
                 onTrimClip={(file) => {
                   setSelectedBin('studio');
-                  setTrimTarget(file);
+                  openTrimInspector(file);
                 }}
                 onOverlayClip={(clip) => {
                   setSelectedBin('studio');
-                  setOverlayTarget(clip);
+                  openOverlayInspector(clip);
                 }}
                 onGlobalLayer={() => {
                   setSelectedBin('studio');
-                  setShowGlobalPanel(true);
+                  openGlobalInspector();
                 }}
                 brandingActive={branding.ticker.enabled || branding.live.enabled || branding.logo}
                 onPreview={() => setSelectedBin('studio')}
                 onSubtitleClip={(clip) => {
                   setSelectedBin('studio');
-                  setSubtitleTarget(clip);
+                  openSubtitleInspector(clip);
                 }}
+                compact
               />
             </div>
           )}
@@ -1987,4 +2017,3 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     </div>
   );
 }
-
