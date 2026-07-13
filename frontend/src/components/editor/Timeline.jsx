@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   Captions,
   Copy,
+  FolderOpen,
   GripVertical,
   Layers,
   Magnet,
@@ -134,7 +135,7 @@ function ToolButton({ icon, label, active = false, disabled = false, onClick, ti
     >
       {icon}
       {!compact && <span className="whitespace-nowrap">{label}</span>}
-      {shortcut && !compact && <kbd className="ml-0.5 hidden rounded border border-[var(--editor-border)] px-1 py-0.5 font-mono text-[10px] text-[var(--editor-muted)] 2xl:inline-flex">{shortcut}</kbd>}
+      {shortcut && !compact && <kbd className="ml-0.5 hidden rounded border border-[var(--editor-border)] px-1 py-0.5 font-mono text-[10px] text-[var(--editor-muted)] min-[1800px]:inline-flex">{shortcut}</kbd>}
     </button>
   );
 }
@@ -526,6 +527,7 @@ export default function Timeline({
   onPreview,
   onSubtitleClip,
   onSplitText,
+  onBrowseRushes,
   playerRef,
   compact = false,
 }) {
@@ -866,6 +868,7 @@ export default function Timeline({
               <span className="font-mono text-sm font-semibold tabular-nums text-[var(--editor-text)]">{formatTimecode(playheadSec)}</span>
               <span className="text-[10px] text-[var(--editor-muted)]">sur {formatTimecode(layout.total)}</span>
             </div>
+            {onBrowseRushes && <ToolButton icon={<FolderOpen size={16} />} label="Rushs" onClick={onBrowseRushes} title="Choisir une autre vidéo dans les rushs" />}
             <ToolButton icon={<MousePointer2 size={16} />} label="Sélection" shortcut="V" active={toolMode === 'select'} onClick={() => setToolMode('select')} />
             <ToolButton icon={<Scissors size={16} />} label="Lame" shortcut="B" active={toolMode === 'blade'} onClick={() => setToolMode('blade')} />
             <ToolButton icon={<Scissors size={16} />} label="Couper au curseur" shortcut="⌘K" disabled={clips.length === 0} onClick={() => splitAt(playheadSec)} />
@@ -939,6 +942,15 @@ export default function Timeline({
             <Video size={28} className="mx-auto mb-2 text-[var(--editor-muted)]" />
             <p className="text-sm font-semibold text-[var(--editor-text)]">La timeline est vide</p>
             <p className="mt-1 text-xs text-[var(--editor-muted)]">Depuis les rushs, choisissez une vidéo puis « Ajouter à la timeline ».</p>
+            {onBrowseRushes && (
+              <button
+                type="button"
+                onClick={onBrowseRushes}
+                className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-[var(--editor-accent)] px-3 text-xs font-bold text-[var(--editor-accent)] transition-[transform,background-color] duration-150 ease-[var(--ease-out)] hover:bg-[var(--editor-accent)]/10 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+              >
+                <FolderOpen size={15} /> Choisir dans les rushs
+              </button>
+            )}
           </div>
         </div>
       ) : (

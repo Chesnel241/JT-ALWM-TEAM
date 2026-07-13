@@ -395,25 +395,27 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
             </button>
           </div>
 
-          {/* Confirm / Cancel */}
-          <div className="flex gap-3 mt-1">
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)] text-sm transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={duration === 0}
-              className={`flex-1 py-2.5 rounded-xl text-[color:var(--paper)] font-semibold text-sm transition-opacity flex items-center justify-center gap-2 ${
-                duration === 0 ? 'bg-[color:var(--muted)] cursor-not-allowed' : 'bg-[var(--ink)] hover:opacity-90'
-              }`}
-            >
-              <Scissors size={15} />
-              {file.instanceId ? 'Appliquer le trim' : 'Ajouter à la Timeline'}
-            </button>
-          </div>
+        </div>
+
+        {/* Action principale persistante : elle reste visible même lorsque
+            le player ou les réglages occupent toute la hauteur disponible. */}
+        <div className="flex shrink-0 gap-3 border-t border-[var(--border)] bg-[var(--paper)] px-5 py-3 shadow-[0_-8px_24px_oklch(0.2_0.01_70/0.06)]">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)] text-sm transition-[transform,color,background-color] duration-150 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={duration === 0}
+            className={`flex-1 py-2.5 rounded-xl text-[color:var(--paper)] font-semibold text-sm transition-[transform,opacity] duration-150 flex items-center justify-center gap-2 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+              duration === 0 ? 'bg-[color:var(--muted)] cursor-not-allowed' : 'bg-[var(--ink)] hover:opacity-90'
+            }`}
+          >
+            <Scissors size={15} />
+            {file.instanceId ? 'Appliquer le trim' : 'Ajouter à la Timeline'}
+          </button>
         </div>
     </div>
   );

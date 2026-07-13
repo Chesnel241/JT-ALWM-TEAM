@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -21,6 +21,11 @@ import ActionSheet from './ActionSheet.jsx';
 // Clés localStorage : la timeline et le job de montage en cours survivent au
 // refresh/changement d'onglet (le rendu continue côté serveur).
 const JOB_STORE_KEY = 'jt-editor-job';
+const STUDIO_TIMELINE_HEIGHT_KEY = 'jt-studio-timeline-height';
+const STUDIO_TIMELINE_MIN_HEIGHT = 260;
+const STUDIO_PREVIEW_MIN_HEIGHT = 230;
+const STUDIO_SPLITTER_HEIGHT = 20;
+const STUDIO_TIMELINE_DEFAULT_HEIGHT = 320;
 const timelineKey = (weekId) => `jt-timeline-${weekId}`;
 const brandingKey = (weekId) => `jt-branding-${weekId}`;
 const DEFAULT_BRANDING = {
@@ -33,6 +38,11 @@ const DEFAULT_BRANDING = {
   voiceover: { enabled: false, filename: '', startTime: 0, volume: 1 },
   imageOverlays: [],
 };
+
+function clampTimelineHeight(value, maxHeight) {
+  const safeMax = Math.max(STUDIO_TIMELINE_MIN_HEIGHT, maxHeight);
+  return Math.min(safeMax, Math.max(STUDIO_TIMELINE_MIN_HEIGHT, Math.round(value)));
+}
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, onContentChange }) {
   const [content, setContent] = useState('');
@@ -277,10 +287,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [exportElapsed, setExportElapsed] = useState(0);
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
   const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
+  const [selectedBin, setSelectedBin] = useState(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const sseRef = useRef(null);
   const pollRef = useRef(null);
   const safetyRef = useRef(null);
   const playerRef = useRef(null);
+  const lastRushBinRef = useRef(null);
+  const studioWorkspaceRef = useRef(null);
+  const timelineResizeRef = useRef(null);
+  const [studioTimelineMaxHeight, setStudioTimelineMaxHeight] = useState(STUDIO_TIMELINE_DEFAULT_HEIGHT);
+  const [studioTimelineHeight, setStudioTimelineHeight] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(STUDIO_TIMELINE_HEIGHT_KEY));
+      return Number.isFinite(saved) ? Math.max(STUDIO_TIMELINE_MIN_HEIGHT, saved) : STUDIO_TIMELINE_DEFAULT_HEIGHT;
+    } catch {
+      return STUDIO_TIMELINE_DEFAULT_HEIGHT;
+    }
+  });
+  const [isResizingTimeline, setIsResizingTimeline] = useState(false);
   // Verrou synchrone anti double-clic sur Générer le Master. setState
   // (setIsGeneratingVideo) est asynchrone : un 2e clic dans le même tick
   // React lance un 2e job avant que le 1er ait mis à jour l'état.
@@ -313,6 +338,102 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setSubtitleTarget(null);
     setShowGlobalPanel(true);
   };
+
+  useEffect(() => {
+    if (selectedBin && selectedBin !== 'studio' && selectedBin !== 'delivery') {
+      lastRushBinRef.current = selectedBin;
+    }
+  }, [selectedBin]);
+
+  const updateStudioTimelineHeight = (nextHeight) => {
+    setStudioTimelineHeight(clampTimelineHeight(nextHeight, studioTimelineMaxHeight));
+  };
+
+  const beginTimelineResize = (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    timelineResizeRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: studioTimelineHeight,
+    };
+    setIsResizingTimeline(true);
+  };
+
+  const handleTimelineResizeKeyDown = (event) => {
+    const step = event.shiftKey ? 64 : 24;
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      updateStudioTimelineHeight(studioTimelineHeight + step);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      updateStudioTimelineHeight(studioTimelineHeight - step);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      updateStudioTimelineHeight(studioTimelineMaxHeight);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      updateStudioTimelineHeight(STUDIO_TIMELINE_MIN_HEIGHT);
+    }
+  };
+
+  useEffect(() => {
+    try { localStorage.setItem(STUDIO_TIMELINE_HEIGHT_KEY, String(studioTimelineHeight)); } catch { /* mode privé */ }
+  }, [studioTimelineHeight]);
+
+  useEffect(() => {
+    if (selectedBin !== 'studio' || !studioWorkspaceRef.current) return undefined;
+    const workspace = studioWorkspaceRef.current;
+    const updateBounds = () => {
+      const availableHeight = workspace.getBoundingClientRect().height;
+      const maxHeight = Math.max(
+        STUDIO_TIMELINE_MIN_HEIGHT,
+        availableHeight - STUDIO_PREVIEW_MIN_HEIGHT - STUDIO_SPLITTER_HEIGHT,
+      );
+      setStudioTimelineMaxHeight(maxHeight);
+      setStudioTimelineHeight((current) => clampTimelineHeight(current, maxHeight));
+    };
+    updateBounds();
+    // Deux mesures différées couvrent le chargement paresseux du studio et
+    // les navigateurs embarqués qui n'exposent pas ResizeObserver.
+    const settleFrame = window.requestAnimationFrame(updateBounds);
+    const settleTimer = window.setTimeout(updateBounds, 250);
+    const finalSettleTimer = window.setTimeout(updateBounds, 1000);
+    window.addEventListener('resize', updateBounds);
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateBounds) : null;
+    observer?.observe(workspace);
+    return () => {
+      window.cancelAnimationFrame(settleFrame);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(finalSettleTimer);
+      window.removeEventListener('resize', updateBounds);
+      observer?.disconnect();
+    };
+  }, [selectedBin]);
+
+  useEffect(() => {
+    const move = (event) => {
+      const drag = timelineResizeRef.current;
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const nextHeight = drag.startHeight + (drag.startY - event.clientY);
+      setStudioTimelineHeight(clampTimelineHeight(nextHeight, studioTimelineMaxHeight));
+    };
+    const finish = (event) => {
+      const drag = timelineResizeRef.current;
+      if (!drag || (event.pointerId != null && event.pointerId !== drag.pointerId)) return;
+      timelineResizeRef.current = null;
+      setIsResizingTimeline(false);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+  }, [studioTimelineMaxHeight]);
 
   // Chrono d'assemblage : temps écoulé depuis le lancement du rendu.
   useEffect(() => {
@@ -1020,9 +1141,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     return Array.from(new Set([...uploaded, ...manualBins]));
   }, [dashboard, manualBins]);
 
-  const [selectedBin, setSelectedBin] = useState(null);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-
   // Bins spéciaux toujours valides (rubriques fixes, pas des pays avec
   // uploads). Sans ça, sélectionner "JT Prêt"/"MOT DU JT" était
   // immédiatement réinitialisé par l'effet ci-dessous → la fenêtre
@@ -1334,11 +1452,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             /* =========================================
                STUDIO DE MONTAGE (NLE Workspace) 
                ========================================= */
-            <div className="flex flex-col h-full bg-[var(--paper-2)] w-full overflow-hidden">
+            <div ref={studioWorkspaceRef} className={`flex flex-col h-full bg-[var(--paper-2)] w-full overflow-hidden ${isResizingTimeline ? 'select-none cursor-row-resize' : ''}`}>
               <h2 className="sr-only">Studio de montage</h2>
               
               {/* Zone Supérieure : Player (Centre) + Inspecteur (Droite) */}
-              <div className="flex flex-col xl:flex-row h-auto xl:h-[clamp(230px,38dvh,420px)] xl:min-h-[230px] border-b border-[var(--border)] bg-[var(--paper-2)] shrink-0">
+              <div className="flex flex-col xl:flex-row min-h-[230px] border-b border-[var(--border)] bg-[var(--paper-2)] flex-1 overflow-hidden">
                 
                 {/* PLAYER CENTER */}
                 <div className="flex-1 bg-[oklch(0.12_0.018_245)] relative flex items-center justify-center p-2 xl:p-4 shadow-[inset_0_0_40px_oklch(0.05_0.02_245/0.7)]">
@@ -1433,8 +1551,35 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
               </div>
 
+              {/* Séparateur redimensionnable : glisser vers le haut agrandit
+                  la timeline, vers le bas rend plus de place au player. */}
+              <div
+                role="separator"
+                aria-label="Redimensionner la hauteur de la timeline"
+                aria-orientation="horizontal"
+                aria-valuemin={STUDIO_TIMELINE_MIN_HEIGHT}
+                aria-valuemax={Math.round(studioTimelineMaxHeight)}
+                aria-valuenow={Math.round(studioTimelineHeight)}
+                aria-valuetext={`Timeline haute de ${Math.round(studioTimelineHeight)} pixels`}
+                tabIndex={0}
+                onPointerDown={beginTimelineResize}
+                onKeyDown={handleTimelineResizeKeyDown}
+                onDoubleClick={() => updateStudioTimelineHeight(STUDIO_TIMELINE_DEFAULT_HEIGHT)}
+                title="Glisser pour régler la hauteur. Flèches haut/bas au clavier. Double-clic pour réinitialiser."
+                className={`group relative z-30 hidden h-5 shrink-0 touch-none cursor-row-resize items-center justify-center border-y bg-[var(--paper)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] xl:flex ${isResizingTimeline ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--accent)]'}`}
+              >
+                <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--border)] group-hover:bg-[var(--accent)]" aria-hidden="true" />
+                <span className="relative flex h-5 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--paper)] px-2.5 text-[10px] font-semibold text-[color:var(--muted)] shadow-sm group-hover:border-[var(--accent)] group-hover:text-[color:var(--accent)]">
+                  <GripHorizontal size={14} aria-hidden="true" />
+                  Glisser pour régler la hauteur · {Math.round(studioTimelineHeight)} px
+                </span>
+              </div>
+
               {/* TIMELINE BOTTOM */}
-              <div className="flex-1 min-h-[280px] overflow-hidden flex flex-col bg-[var(--paper-2)]">
+              <div
+                className="min-h-[260px] overflow-hidden flex flex-col bg-[var(--paper-2)] xl:shrink-0"
+                style={{ height: `min(${Math.round(studioTimelineHeight)}px, 100%)` }}
+              >
                 <Timeline
                   clips={timelineClips}
                   setClips={setTimelineClips}
@@ -1449,6 +1594,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   onSubtitleClip={openSubtitleInspector}
                   playerRef={playerRef}
                   onSplitText={handleSplitTextAtPlayhead}
+                  onBrowseRushes={() => setSelectedBin(lastRushBinRef.current || countriesWithUploads[0] || null)}
                 />
               </div>
             </div>
