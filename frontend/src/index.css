@@ -65,6 +65,20 @@ body {
 	background: linear-gradient(180deg, oklch(0.98 0.01 85 / 0.85), oklch(0.98 0.01 85 / 0.95));
 }
 
+/* Le studio est une application de production autonome dans la plateforme.
+   Ces variables locales rendent l'inspecteur et ses panneaux cohérents avec
+   la timeline sans modifier les écrans clairs du reste du hub. */
+.studio-shell {
+	color-scheme: dark;
+	--paper: var(--editor-panel);
+	--paper-2: var(--editor-bg);
+	--ink: var(--editor-text);
+	--muted: var(--editor-muted);
+	--border: var(--editor-border);
+	--accent: var(--editor-accent-strong);
+	--accent-deep: var(--editor-accent);
+}
+
 @layer components {
 	.panel {
 		background: var(--paper-2);

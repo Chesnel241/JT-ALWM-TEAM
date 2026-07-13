@@ -22,10 +22,10 @@ import ActionSheet from './ActionSheet.jsx';
 // refresh/changement d'onglet (le rendu continue côté serveur).
 const JOB_STORE_KEY = 'jt-editor-job';
 const STUDIO_TIMELINE_HEIGHT_KEY = 'jt-studio-timeline-height';
-const STUDIO_TIMELINE_MIN_HEIGHT = 260;
-const STUDIO_PREVIEW_MIN_HEIGHT = 230;
-const STUDIO_SPLITTER_HEIGHT = 20;
-const STUDIO_TIMELINE_DEFAULT_HEIGHT = 320;
+const STUDIO_TIMELINE_MIN_HEIGHT = 340;
+const STUDIO_PREVIEW_MIN_HEIGHT = 220;
+const STUDIO_SPLITTER_HEIGHT = 16;
+const STUDIO_TIMELINE_DEFAULT_HEIGHT = 360;
 const timelineKey = (weekId) => `jt-timeline-${weekId}`;
 const brandingKey = (weekId) => `jt-branding-${weekId}`;
 const DEFAULT_BRANDING = {
@@ -1430,30 +1430,30 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   }
 
   return (
-    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-5 py-4 md:h-[calc(100dvh-8.5rem)] md:min-h-[640px] min-h-screen flex flex-col">
-      <div className="flex flex-col flex-1 border-0 md:border border-[var(--border)] md:rounded-2xl shadow-sm overflow-hidden bg-[var(--app-bg)] min-h-0">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--app-bg)]">
         
         {/* Top Tabs (Tableau de bord) */}
-        <div className="flex bg-[var(--paper)] border-b border-[var(--border)] shrink-0 overflow-x-auto">
+        {selectedBin !== 'studio' && <div className="flex h-11 shrink-0 overflow-x-auto border-b border-[var(--border)] bg-[var(--paper)]">
           <button 
             onClick={() => setSelectedBin(countriesWithUploads[0] || null)} 
-            className={`flex items-center gap-2 px-6 py-4 font-bold text-sm uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+            className={`flex items-center gap-2 border-b-2 px-5 text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
           >
             <Folder size={18} /> Chutiers (Rushs)
           </button>
           <button 
             onClick={() => setSelectedBin('studio')} 
-            className={`flex items-center gap-2 px-6 py-4 font-bold text-sm uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${selectedBin === 'studio' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+            className="flex items-center gap-2 border-b-2 border-transparent px-5 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)] transition-colors whitespace-nowrap hover:text-[color:var(--ink)]"
           >
             <Video size={18} /> Studio de Montage
           </button>
           <button 
             onClick={() => setSelectedBin('delivery')} 
-            className={`flex items-center gap-2 px-6 py-4 font-bold text-sm uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${selectedBin === 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+            className={`flex items-center gap-2 border-b-2 px-5 text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${selectedBin === 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
           >
             <UploadCloud size={18} /> Livraison JT
           </button>
-        </div>
+        </div>}
 
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0">
           
@@ -1530,14 +1530,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             /* =========================================
                STUDIO DE MONTAGE (NLE Workspace) 
                ========================================= */
-            <div ref={studioWorkspaceRef} className={`flex flex-col h-full bg-[var(--paper-2)] w-full overflow-hidden ${isResizingTimeline ? 'select-none cursor-row-resize' : ''}`}>
+            <div ref={studioWorkspaceRef} className={`studio-shell flex h-full w-full flex-col overflow-hidden bg-[var(--editor-bg)] ${isResizingTimeline ? 'select-none cursor-row-resize' : ''}`}>
               <h2 className="sr-only">Studio de montage</h2>
               
               {/* Zone Supérieure : Player (Centre) + Inspecteur (Droite) */}
-              <div className="flex flex-col xl:flex-row min-h-[230px] border-b border-[var(--border)] bg-[var(--paper-2)] flex-1 overflow-hidden">
+              <div className="flex min-h-[220px] flex-1 flex-row overflow-hidden border-b border-[var(--editor-border)] bg-[var(--editor-bg)]">
                 
                 {/* PLAYER CENTER */}
-                <div className="flex-1 bg-[oklch(0.12_0.018_245)] relative flex items-center justify-center p-2 xl:p-4 shadow-[inset_0_0_40px_oklch(0.05_0.02_245/0.7)]">
+                <div className="relative flex min-w-0 flex-1 items-center justify-center bg-[oklch(0.11_0.018_245)] p-2 shadow-[inset_0_0_32px_oklch(0.05_0.02_245/0.6)]">
                   <RemotionLivePreview 
                     playerRef={playerRef} 
                     inline={true} 
@@ -1550,7 +1550,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
 
                 {/* INSPECTOR RIGHT */}
-                <div className="w-full xl:w-[400px] bg-[var(--paper)] border-l-0 xl:border-l border-[var(--border)] overflow-y-auto shrink-0 flex flex-col relative z-10">
+                <div className="relative z-10 flex w-[clamp(360px,32vw,520px)] shrink-0 flex-col overflow-y-auto border-l border-[var(--editor-border)] bg-[var(--editor-panel)]">
                   {overlayTarget ? (
                     <OverlayPanel
                       inline={true}
@@ -1616,13 +1616,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       }}
                     />
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-[color:var(--muted)] p-8 text-center gap-4">
-                      <div className="w-20 h-20 rounded-full bg-[var(--paper-2)] flex items-center justify-center border border-[var(--border)] shadow-sm">
-                        <Scissors size={32} className="opacity-40" />
+                    <div className="flex min-h-full flex-1 flex-col text-[color:var(--muted)]">
+                      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
+                        <Scissors size={16} className="text-[var(--accent)]" />
+                        <p className="text-sm font-semibold text-[color:var(--ink)]">Inspecteur</p>
                       </div>
-                      <div>
-                        <p className="font-semibold text-[color:var(--ink)] mb-1">Inspecteur Vide</p>
-                        <p className="text-sm">Sélectionnez un clip dans la timeline ci-dessous ou cliquez sur "Habillage JT" pour afficher les paramètres.</p>
+                      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+                        <Scissors size={26} className="opacity-35" />
+                        <div>
+                          <p className="mb-1 text-sm font-semibold text-[color:var(--ink)]">Aucun clip sélectionné</p>
+                          <p className="mx-auto max-w-[34ch] text-xs leading-5">Sélectionnez un clip dans la timeline ou ouvrez Habillage JT.</p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1644,18 +1648,18 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 onKeyDown={handleTimelineResizeKeyDown}
                 onDoubleClick={() => updateStudioTimelineHeight(STUDIO_TIMELINE_DEFAULT_HEIGHT)}
                 title="Glisser pour régler la hauteur. Flèches haut/bas au clavier. Double-clic pour réinitialiser."
-                className={`group relative z-30 hidden h-5 shrink-0 touch-none cursor-row-resize items-center justify-center border-y bg-[var(--paper)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] xl:flex ${isResizingTimeline ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--accent)]'}`}
+                className={`group relative z-30 flex h-4 shrink-0 touch-none cursor-row-resize items-center justify-center border-y bg-[var(--editor-panel)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] ${isResizingTimeline ? 'border-[var(--accent)]' : 'border-[var(--editor-border)] hover:border-[var(--accent)]'}`}
               >
-                <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--border)] group-hover:bg-[var(--accent)]" aria-hidden="true" />
-                <span className="relative flex h-5 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--paper)] px-2.5 text-[10px] font-semibold text-[color:var(--muted)] shadow-sm group-hover:border-[var(--accent)] group-hover:text-[color:var(--accent)]">
-                  <GripHorizontal size={14} aria-hidden="true" />
-                  Glisser pour régler la hauteur · {Math.round(studioTimelineHeight)} px
+                <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--editor-border)] group-hover:bg-[var(--accent)]" aria-hidden="true" />
+                <span className="relative flex h-4 items-center gap-1 rounded border border-[var(--editor-border)] bg-[var(--editor-panel)] px-2 text-[9px] font-semibold text-[color:var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[color:var(--accent)]">
+                  <GripHorizontal size={12} aria-hidden="true" />
+                  Timeline · {Math.round(studioTimelineHeight)} px
                 </span>
               </div>
 
               {/* TIMELINE BOTTOM */}
               <div
-                className="min-h-[260px] overflow-hidden flex flex-col bg-[var(--paper-2)] xl:shrink-0"
+                className="flex min-h-[340px] shrink-0 flex-col overflow-hidden bg-[var(--editor-bg)]"
                 style={{ height: `min(${Math.round(studioTimelineHeight)}px, 100%)` }}
               >
                 <Timeline
