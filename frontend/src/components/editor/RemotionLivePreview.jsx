@@ -16,8 +16,11 @@ export default function RemotionLivePreview({ clips, global, branding, timelineO
       return {
         ...clip,
         url,
-        // s'assure qu'on a bien durationSec, comme attendu par JTMaster
-        durationSec: clip.durationSec || (clip.outPoint != null ? clip.outPoint - (clip.inPoint || 0) : null) || 5
+        // La plage source est prioritaire : aperçu et export doivent lire
+        // exactement les mêmes bornes après un trim ou un split.
+        durationSec: clip.outPoint != null
+          ? Math.max(0.3, clip.outPoint - (clip.inPoint || 0))
+          : Math.max(0.3, Number(clip.durationSec) || 5)
       };
     });
 

@@ -19,6 +19,18 @@ const secToFrames = (s, fps) => {
   return Math.max(1, Math.round(n * fps));
 };
 
+// Une transition doit rester strictement plus courte que la moitié de chacun
+// des deux plans. Cette fonction est partagée par le rendu et le calcul de la
+// durée totale afin que le Player, la règle et l'export ne divergent jamais.
+export function effectiveTransitionFrames(clip, nextClip, fps = FPS) {
+  if (!clip?.transition || !nextClip) return 0;
+  const currentFrames = secToFrames(clip.durationSec, fps);
+  const nextFrames = secToFrames(nextClip.durationSec, fps);
+  const requested = secToFrames(clip.transition.duration || 0.5, fps);
+  const maximum = Math.max(1, Math.min(Math.floor(currentFrames / 2), Math.floor(nextFrames / 2)) - 1);
+  return Math.min(requested, maximum);
+}
+
 // Mappe notre type de transition (xfade) → presentation Remotion.
 function presentation(type) {
   if (!type) return null;
@@ -191,10 +203,7 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
           let tr = null;
           if (clip.transition && i < list.length - 1) {
             const next = list[i + 1];
-            const nextDur = secToFrames(next.durationSec, fps);
-            const requested = secToFrames(clip.transition.duration || 0.5, fps);
-            const maxTr = Math.max(1, Math.min(Math.floor(dur / 2), Math.floor(nextDur / 2)) - 1);
-            const trFrames = Math.min(requested, maxTr);
+            const trFrames = effectiveTransitionFrames(clip, next, fps);
             tr = (
               <TransitionSeries.Transition
                 key={`t${i}`}
@@ -267,7 +276,7 @@ export function totalDurationInFrames(clips = [], fps = FPS) {
   let total = 0;
   clips.forEach((c, i) => {
     total += secToFrames(c.durationSec, fps);
-    if (c.transition && i < clips.length - 1) total -= secToFrames(c.transition.duration || 0.5, fps);
+    total -= effectiveTransitionFrames(c, clips[i + 1], fps);
   });
   return Math.max(1, total);
 }
