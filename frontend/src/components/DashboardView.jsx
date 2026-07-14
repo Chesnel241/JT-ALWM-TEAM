@@ -255,7 +255,7 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
     </div>
   );
 }
-export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries, isActive = true }) {
+export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, countries, isActive = true, isDesktopEditorAvailable = true }) {
   const { t, lang } = useI18n();
   const { addToast } = useToast();
   const [dashboard, setDashboard] = useState({});
@@ -316,6 +316,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const safetyRef = useRef(null);
   const playerRef = useRef(null);
   const lastRushBinRef = useRef(null);
+  const timelineHydratedWeekRef = useRef(null);
+  const timelineSaveTimerRef = useRef(null);
+  const pendingTimelineSaveRef = useRef(null);
+  const lastSyncedTimelineRef = useRef('');
   const studioWorkspaceRef = useRef(null);
   const timelineResizeRef = useRef(null);
   const [studioTimelineMaxHeight, setStudioTimelineMaxHeight] = useState(STUDIO_TIMELINE_DEFAULT_HEIGHT);
@@ -328,6 +332,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }
   });
   const [isResizingTimeline, setIsResizingTimeline] = useState(false);
+  const [timelineSyncState, setTimelineSyncState] = useState('loading');
   // Verrou synchrone anti double-clic sur Générer le Master. setState
   // (setIsGeneratingVideo) est asynchrone : un 2e clic dans le même tick
   // React lance un 2e job avant que le 1er ait mis à jour l'état.
@@ -527,49 +532,109 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   // Supression de l'effacement du mot de passe (le mot de passe est gardé en mémoire pour la session)
 
-  // Charge le dashboard + restaure la timeline persistée à chaque changement
-  // de semaine. (Dépend UNIQUEMENT de selectedWeek : inclure addToast/t la
-  // ferait se relancer à chaque render et viderait la timeline.)
+  // Charge le dashboard et le projet de montage partagé à chaque changement
+  // de semaine. Le serveur est la source de vérité ; le localStorage ne sert
+  // qu'à migrer une ancienne timeline créée avant cette fonctionnalité.
   useEffect(() => {
     if (!selectedWeek) return;
+    let cancelled = false;
     setLoading(true);
     setGeneratedVideoUrl(null);
-    try {
-      const saved = localStorage.getItem(timelineKey(selectedWeek));
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const mapped = parsed.map(clip => {
-            const isExternal = clip.filename?.startsWith('http') || clip.filename?.startsWith('blob:');
-            // Le mot de passe admin N'est PLUS passé en query string (fuite en
-            // clair dans logs proxy/Sentry/historique). Le backend valide via
-            // X-Admin-Password header ou dl_token signé. Pour la timeline
-            // restaurée on charge simplement l'URL publique : les bins
-            // protégés (mj) demanderont un dl_token au moment du DL.
-            const url = isExternal ? clip.filename : `${API_BASE}/uploads/${encodeURIComponent(clip.filename || clip.name)}?cors=2`;
-            return { ...clip, url };
-          });
-          setTimelineClips(mapped);
-        } else {
-          setTimelineClips([]);
+    setTimelineSyncState('loading');
+    timelineHydratedWeekRef.current = null;
+
+    const pending = pendingTimelineSaveRef.current;
+    if (pending && pending.weekId !== selectedWeek) {
+      window.clearTimeout(timelineSaveTimerRef.current);
+      api.saveTimelineWorkspace(pending.weekId, pending.payload).catch(console.error);
+      pendingTimelineSaveRef.current = null;
+    }
+
+    const readLegacyWorkspace = () => {
+      try {
+        const clips = JSON.parse(localStorage.getItem(timelineKey(selectedWeek)) || '[]');
+        const overlays = JSON.parse(localStorage.getItem(`jt-timeline-overlays-${selectedWeek}`) || '[]');
+        const savedBranding = JSON.parse(localStorage.getItem(brandingKey(selectedWeek)) || 'null');
+        return {
+          clips: Array.isArray(clips) ? clips : [],
+          overlays: Array.isArray(overlays) ? overlays : [],
+          branding: savedBranding && typeof savedBranding === 'object'
+            ? { ...DEFAULT_BRANDING, ...savedBranding }
+            : DEFAULT_BRANDING,
+        };
+      } catch {
+        return { clips: [], overlays: [], branding: DEFAULT_BRANDING };
+      }
+    };
+
+    const hydrateTimeline = async () => {
+      let workspace;
+      let migratedFromBrowser = false;
+      let onlineAvailable = true;
+      try {
+        const response = await api.getTimelineWorkspace(selectedWeek);
+        workspace = response?.workspace;
+        if (!workspace) {
+          workspace = readLegacyWorkspace();
+          migratedFromBrowser = workspace.clips.length > 0
+            || workspace.overlays.length > 0
+            || localStorage.getItem(brandingKey(selectedWeek)) != null;
         }
-      } else {
-        setTimelineClips([]);
+      } catch (error) {
+        console.error(error);
+        onlineAvailable = false;
+        workspace = readLegacyWorkspace();
+        if (!cancelled) {
+          setTimelineSyncState('error');
+          addToast('Sauvegarde en ligne indisponible, montage conservé sur ce poste', 'error');
+        }
       }
-    } catch { setTimelineClips([]); }
-    try {
-      const savedOverlays = localStorage.getItem(`jt-timeline-overlays-${selectedWeek}`);
-      if (savedOverlays) {
-        const p = JSON.parse(savedOverlays);
-        setTimelineOverlays(Array.isArray(p) ? p : []);
-      } else {
-        setTimelineOverlays([]);
+      if (cancelled) return;
+
+      const safeClips = Array.isArray(workspace?.clips) ? workspace.clips : [];
+      const mappedClips = safeClips.map((clip) => {
+        const filename = clip.filename || clip.name || '';
+        const isExternal = filename.startsWith('http') || filename.startsWith('blob:');
+        return {
+          ...clip,
+          url: isExternal ? filename : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`,
+        };
+      });
+      const nextOverlays = Array.isArray(workspace?.overlays) ? workspace.overlays : [];
+      const nextBranding = workspace?.branding && typeof workspace.branding === 'object'
+        ? { ...DEFAULT_BRANDING, ...workspace.branding }
+        : DEFAULT_BRANDING;
+      const payload = {
+        clips: safeClips.map(({ url: _url, ...clip }) => clip),
+        overlays: nextOverlays,
+        branding: nextBranding,
+      };
+
+      setTimelineClips(mappedClips);
+      setTimelineOverlays(nextOverlays);
+      setBranding(nextBranding);
+      lastSyncedTimelineRef.current = onlineAvailable ? JSON.stringify(payload) : '';
+      timelineHydratedWeekRef.current = selectedWeek;
+      setTimelineSyncState(onlineAvailable ? 'saved' : 'error');
+
+      if (migratedFromBrowser) {
+        try {
+          setTimelineSyncState('saving');
+          await api.saveTimelineWorkspace(selectedWeek, payload);
+          if (cancelled) return;
+          localStorage.removeItem(timelineKey(selectedWeek));
+          localStorage.removeItem(`jt-timeline-overlays-${selectedWeek}`);
+          localStorage.removeItem(brandingKey(selectedWeek));
+          setTimelineSyncState('saved');
+          addToast('Ancien montage transféré vers la sauvegarde en ligne', 'success', 2500);
+        } catch (error) {
+          console.error(error);
+          if (!cancelled) setTimelineSyncState('error');
+        }
       }
-    } catch { setTimelineOverlays([]); }
-    try {
-      const b = localStorage.getItem(brandingKey(selectedWeek));
-      setBranding(b ? { ...DEFAULT_BRANDING, ...JSON.parse(b) } : DEFAULT_BRANDING);
-    } catch { setBranding(DEFAULT_BRANDING); }
+    };
+
+    hydrateTimeline();
 
     api.getDashboard(selectedWeek)
       .then(setDashboard)
@@ -582,37 +647,48 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     api.getDeliveries(selectedWeek)
       .then(setDeliveries)
       .catch(console.error);
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek]);
 
-  // Persiste la timeline (survit refresh / changement d'onglet).
+  // Sauvegarde en ligne, debouncée pour ne pas envoyer une requête à chaque
+  // pixel pendant le rognage. Le projet est ensuite disponible sur tout poste.
   useEffect(() => {
-    if (!selectedWeek) return;
-    try {
-      if (timelineClips.length) {
-        // Les URL sont reconstruites à la restauration. Ne jamais persister
-        // une query d'authentification éventuellement présente dans `url`.
-        const safeClips = timelineClips.map(({ url: _url, ...clip }) => clip);
-        localStorage.setItem(timelineKey(selectedWeek), JSON.stringify(safeClips));
+    if (!selectedWeek || timelineHydratedWeekRef.current !== selectedWeek) return;
+    const payload = {
+      clips: timelineClips.map(({ url: _url, ...clip }) => clip),
+      overlays: timelineOverlays,
+      branding,
+    };
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastSyncedTimelineRef.current) return;
+
+    window.clearTimeout(timelineSaveTimerRef.current);
+    pendingTimelineSaveRef.current = { weekId: selectedWeek, payload, serialized };
+    setTimelineSyncState('saving');
+    timelineSaveTimerRef.current = window.setTimeout(async () => {
+      const pendingSave = pendingTimelineSaveRef.current;
+      if (!pendingSave || pendingSave.weekId !== selectedWeek) return;
+      try {
+        await api.saveTimelineWorkspace(selectedWeek, pendingSave.payload);
+        if (pendingTimelineSaveRef.current?.serialized === pendingSave.serialized) {
+          lastSyncedTimelineRef.current = pendingSave.serialized;
+          pendingTimelineSaveRef.current = null;
+          setTimelineSyncState('saved');
+        }
+      } catch (error) {
+        console.error(error);
+        setTimelineSyncState('error');
+        addToast('Le montage n’a pas pu être sauvegardé en ligne', 'error');
       }
-      else localStorage.removeItem(timelineKey(selectedWeek));
-    } catch { /* quota / mode privé : on ignore */ }
-  }, [timelineClips, selectedWeek]);
+    }, 600);
+  }, [timelineClips, timelineOverlays, branding, selectedWeek]);
 
-  // Persiste les overlays globaux
-  useEffect(() => {
-    if (!selectedWeek) return;
-    try {
-      if (timelineOverlays.length) localStorage.setItem(`jt-timeline-overlays-${selectedWeek}`, JSON.stringify(timelineOverlays));
-      else localStorage.removeItem(`jt-timeline-overlays-${selectedWeek}`);
-    } catch { /* ignore */ }
-  }, [timelineOverlays, selectedWeek]);
-
-  // Persiste l'habillage global du JT.
-  useEffect(() => {
-    if (!selectedWeek) return;
-    try { localStorage.setItem(brandingKey(selectedWeek), JSON.stringify(branding)); } catch { /* ignore */ }
-  }, [branding, selectedWeek]);
+  useEffect(() => () => {
+    window.clearTimeout(timelineSaveTimerRef.current);
+    const pending = pendingTimelineSaveRef.current;
+    if (pending) api.saveTimelineWorkspace(pending.weekId, pending.payload).catch(console.error);
+  }, []);
 
   // Reprend le suivi d'un montage en cours après un refresh/onglet : le rendu
   // continue côté serveur, on récupère sa progression et son résultat.
@@ -1223,6 +1299,23 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const binIsValid = (bin) =>
     bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
 
+  const openRushes = () => {
+    let savedBin = null;
+    try { savedBin = selectedWeek ? localStorage.getItem(`jt-bin-${selectedWeek}`) : null; } catch { /* ignore */ }
+    const candidates = [lastRushBinRef.current, savedBin, ...countriesWithUploads];
+    const target = candidates.find((bin) => (
+      bin && bin !== 'studio' && bin !== 'delivery' && binIsValid(bin)
+    )) || countries[0]?.id || 'tj';
+    lastRushBinRef.current = target;
+    setSelectedBin(target);
+  };
+
+  useEffect(() => {
+    if (!isDesktopEditorAvailable && selectedBin === 'studio') openRushes();
+    // openRushes est volontairement recalculé avec les chutiers disponibles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDesktopEditorAvailable, selectedBin, selectedWeek, countriesWithUploads]);
+
   useEffect(() => {
     if (binIsValid(selectedBin)) return;
     // Restaure le dernier chutier choisi (survit refresh/onglet) s'il est
@@ -1361,7 +1454,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           <div className="text-[10px] text-[color:var(--muted)] truncate" title={file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}>
             {file.uploadedAt ? formatRelative(file.uploadedAt, lang) : ''}
           </div>
-          {isVideo && (
+          {isVideo && isDesktopEditorAvailable && (
             <button
               type="button"
               onClick={(event) => {
@@ -1429,24 +1522,34 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     );
   }
 
+  const isStudioActive = isDesktopEditorAvailable && selectedBin === 'studio';
+
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--app-bg)]">
+    <div className={isDesktopEditorAvailable
+      ? 'flex h-full min-h-0 w-full flex-col overflow-hidden'
+      : 'w-full min-h-[calc(100dvh-8rem)]'
+    }>
+      <div className={isDesktopEditorAvailable
+        ? 'flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--app-bg)]'
+        : 'bg-[var(--app-bg)]'
+      }>
         
         {/* Top Tabs (Tableau de bord) */}
-        {selectedBin !== 'studio' && <div className="flex h-11 shrink-0 overflow-x-auto border-b border-[var(--border)] bg-[var(--paper)]">
+        {!isStudioActive && <div className="flex h-11 shrink-0 overflow-x-auto border-b border-[var(--border)] bg-[var(--paper)]">
           <button 
-            onClick={() => setSelectedBin(countriesWithUploads[0] || null)} 
+            onClick={openRushes}
             className={`flex items-center gap-2 border-b-2 px-5 text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
           >
             <Folder size={18} /> Chutiers (Rushs)
           </button>
-          <button 
-            onClick={() => setSelectedBin('studio')} 
-            className="flex items-center gap-2 border-b-2 border-transparent px-5 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)] transition-colors whitespace-nowrap hover:text-[color:var(--ink)]"
-          >
-            <Video size={18} /> Studio de Montage
-          </button>
+          {isDesktopEditorAvailable && (
+            <button
+              onClick={() => setSelectedBin('studio')}
+              className="flex items-center gap-2 border-b-2 border-transparent px-5 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)] transition-colors whitespace-nowrap hover:text-[color:var(--ink)]"
+            >
+              <Video size={18} /> Studio de Montage
+            </button>
+          )}
           <button 
             onClick={() => setSelectedBin('delivery')} 
             className={`flex items-center gap-2 border-b-2 px-5 text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${selectedBin === 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
@@ -1455,10 +1558,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </button>
         </div>}
 
-        <div className="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0">
+        <div className={isDesktopEditorAvailable
+          ? 'flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row'
+          : 'block'
+        }>
           
         {/* Sidebar Bins (Mobile Collapsible) - Seulement visible pour les chutiers */}
-        {selectedBin !== 'studio' && selectedBin !== 'delivery' && (
+        {!isStudioActive && selectedBin !== 'delivery' && (
         <aside id="tour-editing-sidebar" className={`w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 ${isMobileSidebarOpen ? 'block' : 'hidden md:flex'}`}>
           <div className="p-2 md:p-4 md:flex-1 w-full overflow-hidden">
             <div className="flex items-center justify-between px-2 mb-3 md:mb-0">
@@ -1523,9 +1629,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         )}
 
         {/* Main Content Area */}
-        <main id="tour-editing-grid" className={`flex-1 flex flex-col min-w-0 bg-[var(--paper)] ${selectedBin !== 'studio' ? 'overflow-y-auto' : ''}`}>
+        <main id="tour-editing-grid" className={`flex min-w-0 flex-1 flex-col bg-[var(--paper)] ${!isStudioActive ? 'overflow-y-auto' : ''}`}>
           
-          {selectedBin === 'studio' ? (
+          {isStudioActive ? (
             
             /* =========================================
                STUDIO DE MONTAGE (NLE Workspace) 
@@ -1653,7 +1759,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--editor-border)] group-hover:bg-[var(--accent)]" aria-hidden="true" />
                 <span className="relative flex h-4 items-center gap-1 rounded border border-[var(--editor-border)] bg-[var(--editor-panel)] px-2 text-[9px] font-semibold text-[color:var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[color:var(--accent)]">
                   <GripHorizontal size={12} aria-hidden="true" />
-                  Timeline · {Math.round(studioTimelineHeight)} px
+                  Timeline · {Math.round(studioTimelineHeight)} px · {
+                    timelineSyncState === 'saving'
+                      ? 'Sauvegarde…'
+                      : timelineSyncState === 'error'
+                        ? 'Hors ligne'
+                        : timelineSyncState === 'loading'
+                          ? 'Chargement…'
+                          : 'Enregistrée en ligne'
+                  }
                 </span>
               </div>
 
@@ -1676,7 +1790,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   onSubtitleClip={openSubtitleInspector}
                   playerRef={playerRef}
                   onSplitText={handleSplitTextAtPlayhead}
-                  onBrowseRushes={() => setSelectedBin(lastRushBinRef.current || countriesWithUploads[0] || null)}
+                  onBrowseRushes={openRushes}
                 />
               </div>
             </div>
@@ -1690,8 +1804,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               {/* Top Toolbar */}
               <header id="tour-dashboard-header" className="p-4 bg-[var(--paper)] border-b border-[var(--border)] flex justify-between items-center z-10 shrink-0 relative">
                 <div className="flex items-center gap-3">
-                  <button 
-                    className="md:hidden p-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] shrink-0" 
+                  <button
+                    type="button"
+                    aria-label="Choisir un chutier"
+                    title="Choisir un pays ou un chutier"
+                    className="md:hidden p-1.5 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] shrink-0"
                     onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
                   >
                     <Folder size={18} />
@@ -2093,7 +2210,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </div>
 
           {/* Mini Timeline (visible dans les rushs pour confirmation visuelle) */}
-          {selectedBin && selectedBin !== 'delivery' && (
+          {isDesktopEditorAvailable && selectedBin && selectedBin !== 'delivery' && (
             <div className="shrink-0 bg-[var(--paper-2)]">
               <Timeline
                 clips={timelineClips}

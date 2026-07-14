@@ -36,7 +36,6 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount, isDe
       icon: <LayoutDashboard size={20} className="sm:w-[18px] sm:h-[18px]" />,
       label: t.nav.editing,
       match: ['dashboard'],
-      desktopOnly: true,
       badge: newUploadsCount > 0 ? newUploadsCount : null
     },
     {
@@ -61,7 +60,7 @@ export default function Nav({ currentView, setCurrentView, newUploadsCount, isDe
       match: ['stats']
     }
   ];
-  const visibleNavItems = navItems.filter((item) => !item.desktopOnly || isDesktopEditorAvailable);
+  const visibleNavItems = navItems;
 
   return (
     <>

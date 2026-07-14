@@ -196,8 +196,9 @@ export async function flushStore() {
 }
 
 // Clés réservées d'une entrée de semaine (`db[weekId][...]`) qui ne sont
-// pas des correspondants. `_delivery` = montage final ("JT Prêt").
-const RESERVED_WEEK_KEYS = new Set(['_delivery']);
+// pas des correspondants. `_delivery` = montage final ("JT Prêt"),
+// `_timeline` = projet de montage partagé entre les postes de travail.
+const RESERVED_WEEK_KEYS = new Set(['_delivery', '_timeline']);
 
 export function getWeekUploads(weekId) {
   const week = db[weekId];
@@ -217,6 +218,31 @@ export function getCountryUploads(weekId, countryId) {
 
 export function getDelivery(weekId) {
   return db[weekId]?._delivery || [];
+}
+
+export function getTimelineWorkspace(weekId) {
+  const workspace = db[weekId]?._timeline;
+  if (!workspace || typeof workspace !== 'object' || Array.isArray(workspace)) return null;
+  // Ne jamais exposer une référence mutable vers le store en mémoire.
+  return JSON.parse(JSON.stringify(workspace));
+}
+
+export function saveTimelineWorkspace(weekId, workspace) {
+  if (!db[weekId]) db[weekId] = {};
+  const previousRevision = Number(db[weekId]._timeline?.revision) || 0;
+  const saved = {
+    clips: Array.isArray(workspace?.clips) ? workspace.clips : [],
+    overlays: Array.isArray(workspace?.overlays) ? workspace.overlays : [],
+    branding: workspace?.branding && typeof workspace.branding === 'object'
+      ? workspace.branding
+      : {},
+    revision: previousRevision + 1,
+    updatedAt: new Date().toISOString(),
+  };
+  // Copie profonde pour empêcher une mutation ultérieure du body Express.
+  db[weekId]._timeline = JSON.parse(JSON.stringify(saved));
+  persistDb();
+  return getTimelineWorkspace(weekId);
 }
 
 export function addDelivery(weekId, fileData) {
@@ -280,7 +306,7 @@ export function deleteTheme(themeId) {
 // correspondants. addUpload doit refuser tout countryId qui collide
 // avec ces clés — défense en profondeur si un appelant contourne la
 // validation route-level.
-const RESERVED_FOR_UPLOAD = new Set(['_delivery', '_subscriptions', '_extensions']);
+const RESERVED_FOR_UPLOAD = new Set(['_delivery', '_subscriptions', '_extensions', '_timeline']);
 
 export function addUpload(weekId, countryId, fileData) {
   if (RESERVED_FOR_UPLOAD.has(countryId)) {
@@ -377,7 +403,7 @@ export function getFileMetadata(filename) {
     
     // Check countries
     for (const countryId of Object.keys(weekData)) {
-      if (countryId === '_delivery' || countryId === '_subscriptions') continue;
+      if (RESERVED_WEEK_KEYS.has(countryId) || countryId === '_subscriptions') continue;
       const list = weekData[countryId];
       if (Array.isArray(list)) {
         const found = list.find(f => f.filename === filename);
@@ -445,7 +471,10 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
     const weekUploads = db[weekId];
     if (weekUploads) {
       for (const countryId of Object.keys(weekUploads)) {
-        for (const upload of weekUploads[countryId]) {
+        if (RESERVED_WEEK_KEYS.has(countryId) || countryId === '_subscriptions') continue;
+        const uploads = weekUploads[countryId];
+        if (!Array.isArray(uploads)) continue;
+        for (const upload of uploads) {
           if (await deleteUploadFile(upload, uploadsDir)) {
             removedCount++;
             removedFiles.push({ weekId, countryId, filename: upload.filename });
@@ -484,7 +513,8 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
         for (const weekId of Object.keys(db)) {
           if (META_KEYS.has(weekId)) continue;
           for (const countryId of Object.keys(db[weekId])) {
-            if (db[weekId][countryId].some((u) => u.filename === file)) {
+            const uploads = db[weekId][countryId];
+            if (Array.isArray(uploads) && uploads.some((u) => u.filename === file)) {
               found = true;
               break;
             }
