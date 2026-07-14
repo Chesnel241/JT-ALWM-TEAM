@@ -55,12 +55,6 @@ function AppShell() {
     return () => media.removeEventListener?.('change', update);
   }, []);
 
-  useEffect(() => {
-    if (!isDesktopEditorAvailable && currentView === 'dashboard') {
-      setCurrentView('home');
-    }
-  }, [currentView, isDesktopEditorAvailable]);
-
   const { addToast } = useToast();
   const [newUploadsCount, setNewUploadsCount] = useState(0);
   const previousTotalRef = useRef(null);
@@ -177,17 +171,19 @@ function AppShell() {
                 />
               </div>
             )}
-            {isDesktopEditorAvailable && (
-              <div className={currentView === 'dashboard' ? 'h-full min-h-0' : 'hidden'}>
-                <DashboardView
-                  weeks={weeks}
-                  selectedWeek={selectedWeek}
-                  setSelectedWeek={setSelectedWeek}
-                  countries={countries}
-                  isActive={currentView === 'dashboard'}
-                />
-              </div>
-            )}
+            <div className={currentView === 'dashboard'
+              ? (isDesktopEditorAvailable ? 'h-full min-h-0' : 'block')
+              : 'hidden'
+            }>
+              <DashboardView
+                weeks={weeks}
+                selectedWeek={selectedWeek}
+                setSelectedWeek={setSelectedWeek}
+                countries={countries}
+                isActive={currentView === 'dashboard'}
+                isDesktopEditorAvailable={isDesktopEditorAvailable}
+              />
+            </div>
             <div className={currentView === 'delivery' ? 'block' : 'hidden'}>
               <DeliveryView
                 weeks={weeks}

@@ -3,12 +3,50 @@ import { body, validationResult } from 'express-validator';
 import { concatenateVideos, XFADE_TRANSITIONS } from '../services/editorService.js';
 import { addListener, removeListener, finishJob, getJobState } from '../services/editorProgress.js';
 import { TEXT_ANIMATIONS_IDS, OVERLAY_TEMPLATES } from '../data/overlayTemplates.js';
+import { buildWeeks } from '../data/constants.js';
+import { getTimelineWorkspace, saveTimelineWorkspace } from '../data/store.js';
 
 // Allowlist des templateId valides (source unique = registre des modèles).
 const TEMPLATE_IDS = OVERLAY_TEMPLATES.map((t) => t.id);
 import logger from '../logger/index.js';
 
 const router = express.Router();
+const isValidWeek = (weekId) => buildWeeks().some((week) => week.id === weekId);
+
+// Projet de montage partagé par semaine. La source de vérité est le store
+// serveur (disque persistant et Redis si configuré), pas le navigateur.
+router.get('/timeline/:weekId', (req, res) => {
+  const { weekId } = req.params;
+  if (!isValidWeek(weekId)) {
+    return res.status(404).json({ code: 'INVALID_WEEK', message: 'Semaine introuvable' });
+  }
+  return res.json({ workspace: getTimelineWorkspace(weekId) });
+});
+
+router.put(
+  '/timeline/:weekId',
+  [
+    body('clips').isArray({ max: 500 }).withMessage('clips doit être un tableau de 500 éléments maximum.'),
+    body('clips.*.filename').isString().notEmpty().isLength({ max: 512 }),
+    body('overlays').isArray({ max: 1000 }).withMessage('overlays doit être un tableau de 1000 éléments maximum.'),
+    body('branding').isObject().withMessage('branding doit être un objet.'),
+  ],
+  (req, res) => {
+    const { weekId } = req.params;
+    if (!isValidWeek(weekId)) {
+      return res.status(404).json({ code: 'INVALID_WEEK', message: 'Semaine introuvable' });
+    }
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        code: 'INVALID_TIMELINE',
+        message: errors.array()[0]?.msg || 'Projet de montage invalide.',
+        errors: errors.array(),
+      });
+    }
+    return res.json({ workspace: saveTimelineWorkspace(weekId, req.body) });
+  },
+);
 
 // GET /api/editor/progress/:jobId — flux SSE de progression du montage.
 // EventSource ne peut pas poser de header → auth via ?pwd= (supporté

@@ -156,6 +156,16 @@ export const api = {
   getDashboard: (weekId) =>
     request(`/uploads/${weekId}`),
 
+  getTimelineWorkspace: (weekId) =>
+    request(`/editor/timeline/${weekId}`),
+
+  saveTimelineWorkspace: (weekId, workspace) =>
+    request(`/editor/timeline/${weekId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(workspace),
+    }),
+
   subscribeToNotifications: (weekId, countryId, phone) =>
     request(`/notifications/${weekId}/${countryId}/subscribe`, {
       method: 'POST',
