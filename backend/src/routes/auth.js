@@ -14,8 +14,6 @@ import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD ? String(process.env.GLOBAL_PASSWORD).trim() : undefined;
-
 // Normalise un mot de passe avant comparaison :
 // - NFC unicode (un même caractère accentué peut arriver en deux formes
 //   différentes selon le clavier ou l'OS)
@@ -62,39 +60,13 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// POST /api/auth/login — body: { password }
-router.post('/login', loginLimiter, asyncHandler(async (req, res, next) => {
-  const raw = (req.body || {}).password;
-  if (!raw || typeof raw !== 'string') {
-    return next(createErrors.badRequest('Mot de passe requis'));
-  }
-  const password = normalizePassword(raw);
-  const expected = normalizePassword(GLOBAL_PASSWORD);
-  if (!GLOBAL_PASSWORD) {
-    // Dev local sans password configuré : on accepte n'importe quoi
-    return res.json({ success: true, token: 'dev-noauth' });
-  }
-  if (!safeEqual(password, expected)) {
-    // Log diagnostic : on enregistre les LONGUEURS reçues/attendues + le
-    // delta après normalisation, pas le contenu. Permet de voir si un pays
-    // est rejeté pour raison de caractère invisible (raw.length différent
-    // de normalized.length) ou de vrai mismatch.
-    logger.warn('Login: incorrect password', {
-      context: {
-        ip: req.ip,
-        rawLen: raw.length,
-        normalizedLen: password.length,
-        expectedLen: expected.length,
-      },
-    });
-    return next(createErrors.unauthorized('Mot de passe incorrect'));
-  }
-
-  logger.info('Login successful', { context: { ip: req.ip } });
-  // Retourne le mot de passe normalisé qui servira de "token" à insérer
-  // dans X-App-Password ; requireAuth re-normalise donc le header sera
-  // accepté même si le frontend l'a stocké avec espaces/casse différente.
-  return res.json({ success: true, token: password });
+// POST /api/auth/login — mot de passe de session global retiré (décision
+// produit). Accepte toujours, sans exiger de body : le frontend peut encore
+// appeler cette route (compat), mais elle ne bloque plus jamais personne.
+// requireAdmin (ADMIN_PASSWORD) reste, lui, entièrement inchangé.
+router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
+  logger.info('Login (no-auth)', { context: { ip: req.ip } });
+  return res.json({ success: true, token: 'no-auth' });
 }));
 
 // POST /api/auth/logout — ne fait plus rien côté serveur
@@ -102,16 +74,12 @@ router.post('/logout', (req, res) => {
   return res.json({ success: true });
 });
 
-// GET /api/auth/check — pour que le front sache si la session est valide
-router.get('/check', authLimiter, (req, res) => {
-  const token = normalizePassword(req.headers['x-app-password']);
-  if (!token) return res.status(401).json({ authenticated: false });
-
-  if (!GLOBAL_PASSWORD) return res.json({ authenticated: true });
-  if (!safeEqual(token, normalizePassword(GLOBAL_PASSWORD))) {
-    return res.status(401).json({ authenticated: false });
-  }
-
+// GET /api/auth/check — plus de mot de passe de session à vérifier : toujours
+// authentifié. Important : NE PAS remettre un `if (!token) return 401`
+// avant ce point — ordonné ainsi, ça bloquait le frontend (App.jsx gate le
+// rendu entier sur ce endpoint) même une fois le mot de passe retiré
+// partout ailleurs, puisque localStorage n'a plus de token à envoyer.
+router.get('/check', authLimiter, (_req, res) => {
   return res.json({ authenticated: true });
 });
 

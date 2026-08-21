@@ -2,9 +2,7 @@ import { createErrors } from './errorHandler.js';
 import logger from '../logger/index.js';
 import { timingSafeEqual, createHash } from 'crypto';
 
-const GLOBAL_PASSWORD = process.env.GLOBAL_PASSWORD ? String(process.env.GLOBAL_PASSWORD).trim() : undefined;
 const IS_TEST = process.env.NODE_ENV === 'test';
-const IS_PROD = process.env.NODE_ENV === 'production';
 
 // Mêmes règles que routes/auth.js : NFC + retrait des caractères invisibles
 // (NBSP, ZW*, BOM) + trim + lowercase (décision : login insensible à la
@@ -32,40 +30,19 @@ export function safeEqual(a, b) {
   return timingSafeEqual(hashA, hashB);
 }
 
-// Fail-closed en prod si pas de mot de passe configuré.
-if (IS_PROD && !GLOBAL_PASSWORD) {
-  logger.error('FATAL: GLOBAL_PASSWORD not set in production — refusing to start');
-  throw new Error('GLOBAL_PASSWORD environment variable is required in production');
-}
-
+// Mot de passe global de session RETIRÉ intentionnellement (décision produit :
+// la plateforme n'a plus besoin d'un mot de passe partagé pour les
+// correspondants). Le check est supprimé ici EN CODE, pas seulement en
+// laissant GLOBAL_PASSWORD vide en .env : une variable restaurée par
+// erreur dans le .env ne doit plus jamais pouvoir rouvrir cette porte
+// toute seule (avant : un ancien garde fail-closed refusait même de
+// démarrer le serveur en prod si la variable était absente).
+// requireAdmin (ADMIN_PASSWORD) reste inchangé : c'est une protection
+// distincte pour les actions d'équipe montage, hors du périmètre de ce
+// retrait. Pour réintroduire un mot de passe de session, il faudra
+// réécrire cette fonction (voir l'historique git pour l'ancienne logique).
 export function requireAuth(req, res, next) {
-  if (req.method === 'OPTIONS') return next();
-  if (IS_TEST) return next();
-
-  // EXCEPTION : Le téléchargement d'archive ZIP d'un pays est public
-  // (décision produit — voir bypass dédié). On SCOPE le bypass à l'URL
-  // EXACTE attendue (`/api/uploads/:weekId/:countryId/archive`) pour éviter
-  // qu'une future route ou un path forgé finissant par `/archive` ne
-  // contourne l'auth.
-  if (req.method === 'GET'
-      && /^\/api\/uploads\/[^/?#]+\/[^/?#]+\/archive(?:[/?#]|$)/.test(req.originalUrl)) {
-    return next();
-  }
-
-  // Si aucun mot de passe n'est configuré (ex: dev local), on laisse passer
-  if (!GLOBAL_PASSWORD) return next();
-
-  const raw = req.header('x-app-password') || req.query?.pwd;
-  const token = normalizeToken(raw);
-
-  if (token && safeEqual(token, normalizeToken(GLOBAL_PASSWORD))) {
-    return next();
-  }
-
-  logger.warn('Authentication failed: Invalid or missing X-App-Password', {
-    context: { path: req.path, ip: req.ip },
-  });
-  return next(createErrors.unauthorized('Session requise'));
+  return next();
 }
 
 export function requireAdmin(req, res, next) {

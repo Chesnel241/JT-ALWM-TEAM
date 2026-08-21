@@ -2,12 +2,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { authorizeTusUpload, validateTusExtension } from '../src/routes/tus.js';
 
 /**
- * Régression sécurité : la route /api/tus est montée AVANT requireAuth
- * (app.js — les body-parsers casseraient le protocole TUS). L'auth se fait
- * donc dans onUploadCreate via authorizeTusUpload. Historique : aucune
- * vérification du mot de passe global → upload anonyme par n'importe qui.
+ * Le mot de passe de session global (GLOBAL_PASSWORD) a ete retire (decision
+ * produit) : authorizeTusUpload accepte desormais TOUJOURS l'upload
+ * (`ok: true` inconditionnel), quel que soit l'etat de GLOBAL_PASSWORD en
+ * env -- le check est supprime en code, pas seulement contourne via une
+ * variable vide. `isAdmin` (ADMIN_PASSWORD) reste, lui, une protection
+ * distincte et pleinement active (bypass cutoff, rubrique `mj`).
  */
-describe('authorizeTusUpload — auth TUS fail-closed', () => {
+describe('authorizeTusUpload -- mot de passe global retire', () => {
   let prevGlobal;
   let prevAdmin;
 
@@ -25,40 +27,35 @@ describe('authorizeTusUpload — auth TUS fail-closed', () => {
     else process.env.ADMIN_PASSWORD = prevAdmin;
   });
 
-  it('refuse un upload sans token quand GLOBAL_PASSWORD est configuré', () => {
-    expect(authorizeTusUpload({}).ok).toBe(false);
-    expect(authorizeTusUpload({ adminPassword: '' }).ok).toBe(false);
+  it('accepte un upload sans aucun token, meme avec GLOBAL_PASSWORD configure', () => {
+    expect(authorizeTusUpload({}).ok).toBe(true);
+    expect(authorizeTusUpload({ adminPassword: '' }).ok).toBe(true);
   });
 
-  it('refuse un token invalide', () => {
-    expect(authorizeTusUpload({ adminPassword: 'mauvais' }).ok).toBe(false);
+  it('accepte un token quelconque (non compare au mot de passe global)', () => {
+    expect(authorizeTusUpload({ adminPassword: 'nimporte-quoi' }).ok).toBe(true);
   });
 
-  it('accepte le mot de passe global (token de session journaliste)', () => {
-    const r = authorizeTusUpload({ adminPassword: 'motdepasse-global' });
-    expect(r.ok).toBe(true);
-    expect(r.isAdmin).toBe(false);
+  it('accepte toujours, meme sans GLOBAL_PASSWORD en env', () => {
+    delete process.env.GLOBAL_PASSWORD;
+    expect(authorizeTusUpload({}).ok).toBe(true);
   });
 
-  it('accepte le mot de passe admin et le marque isAdmin (bypass cutoff)', () => {
+  it('marque isAdmin=true si le mot de passe admin est fourni (protection distincte, inchangee)', () => {
     const r = authorizeTusUpload({ adminPassword: 'motdepasse-admin' });
     expect(r.ok).toBe(true);
     expect(r.isAdmin).toBe(true);
   });
 
-  it('normalise le token comme requireAuth (casse + espaces invisibles)', () => {
-    const r = authorizeTusUpload({ adminPassword: '  MOTDEPASSE-GLOBAL ' });
+  it("n'accorde jamais isAdmin sans le bon mot de passe admin", () => {
+    const r = authorizeTusUpload({ adminPassword: 'mauvais' });
     expect(r.ok).toBe(true);
-  });
-
-  it('laisse passer en dev local sans GLOBAL_PASSWORD', () => {
-    delete process.env.GLOBAL_PASSWORD;
-    expect(authorizeTusUpload({}).ok).toBe(true);
+    expect(r.isAdmin).toBe(false);
   });
 
   it("n'accorde jamais isAdmin si ADMIN_PASSWORD absent", () => {
     delete process.env.ADMIN_PASSWORD;
-    const r = authorizeTusUpload({ adminPassword: 'motdepasse-global' });
+    const r = authorizeTusUpload({ adminPassword: 'motdepasse-admin' });
     expect(r.ok).toBe(true);
     expect(r.isAdmin).toBe(false);
   });
