@@ -86,96 +86,106 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
         </div>
       </div>
 
-      {/* Police */}
-      <div className="flex flex-col gap-1 mt-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">Police</label>
+      {/* Police, Taille et Interligne */}
+      <div className="space-y-3 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Police de caractères</label>
           <select
             value={overlay.font || ''}
             onChange={(e) => onChange({ ...overlay, font: e.target.value || undefined })}
-            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            className="w-full px-3 py-2 bg-[var(--paper)] border border-[var(--border)] rounded-lg text-sm font-medium text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
           >
-            <option value="">Par défaut</option>
+            <option value="">Par défaut (Système)</option>
             {FONT_FAMILIES.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
           </select>
-      </div>
+        </div>
 
-      {/* Taille et Interligne */}
-      <div className="grid grid-cols-2 gap-3 mt-1">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Taille</label>
-            <span className="text-[10px] font-medium text-[color:var(--muted)]">{overlay.fontSize || 100}%</span>
-          </div>
-          <input
-            type="range"
-            min="50"
-            max="200"
-            value={overlay.fontSize || 100}
-            onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
-            className="w-full accent-[color:var(--accent)]"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Interligne</label>
-            <span className="text-[10px] font-medium text-[color:var(--muted)]">{overlay.lineHeight || 100}%</span>
-          </div>
-          <input
-            type="range"
-            min="50"
-            max="200"
-            value={overlay.lineHeight || 100}
-            onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) || 100 })}
-            className="w-full accent-[color:var(--accent)]"
-          />
-        </div>
-      </div>
-
-      {/* Typographie étendue */}
-      <div className="grid grid-cols-2 gap-3 mt-2 mb-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Taille Texte : {overlay.fontSize ?? 100}%</label>
-          <input type="range" min="50" max="250" step="5" value={overlay.fontSize ?? 100}
-            onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
-            className="w-full accent-[var(--accent)]" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Interligne : {overlay.lineHeight ?? 120}%</label>
-          <input type="range" min="50" max="250" step="5" value={overlay.lineHeight ?? 120}
-            onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) || 120 })}
-            className="w-full accent-[var(--accent)]" />
-        </div>
-      </div>
-
-      {/* Couleurs (3 slots : texte / fond / accent) */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          ['text', 'Texte'],
-          ['bg', 'Fond'],
-          ['accent', 'Accent'],
-        ].map(([k, lab]) => (
-          <div key={k} className="flex items-center justify-between gap-2 border border-[var(--border)] rounded-lg px-2 py-1.5">
-            <span className="text-xs text-[color:var(--muted)]">{lab}</span>
-            <div className="flex items-center gap-1">
-              <input
-                type="color"
-                value={(overlay.colors && overlay.colors[k]) || '#000000'}
-                onChange={(e) => onChange({ ...overlay, colors: { ...(overlay.colors || {}), [k]: e.target.value } })}
-                className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent"
-                title={`Couleur ${lab}`}
-              />
-              {overlay.colors && overlay.colors[k] && (
-                <button
-                  onClick={() => { const c = { ...(overlay.colors || {}) }; delete c[k]; onChange({ ...overlay, colors: c }); }}
-                  className="text-[10px] text-[color:var(--muted)] hover:text-[var(--signal)]"
-                  title="Réinitialiser"
-                >×</button>
-              )}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Taille</label>
+              <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.fontSize || 100}%</span>
             </div>
+            <input
+              type="range"
+              min="50"
+              max="250"
+              step="5"
+              value={overlay.fontSize || 100}
+              onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
+              className="w-full accent-[var(--accent)]"
+            />
           </div>
-        ))}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Interligne</label>
+              <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.lineHeight || 120}%</span>
+            </div>
+            <input
+              type="range"
+              min="50"
+              max="250"
+              step="5"
+              value={overlay.lineHeight || 120}
+              onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) || 120 })}
+              className="w-full accent-[var(--accent)]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Palettes Thématiques TV & Couleurs personnalisées */}
+      <div className="space-y-2.5 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
+        <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider block">Thèmes de Couleurs TV</label>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { id: 'breaking', label: '🔴 Urgent', colors: { bg: '#dc2626', text: '#ffffff', accent: '#fbbf24' } },
+            { id: 'news', label: '🔵 Info JT', colors: { bg: '#1e3a8a', text: '#ffffff', accent: '#38bdf8' } },
+            { id: 'gold', label: '🟡 ALWM Signature', colors: { bg: '#0f172a', text: '#ffffff', accent: '#eab308' } },
+            { id: 'emerald', label: '🟢 Éco', colors: { bg: '#064e3b', text: '#ffffff', accent: '#34d399' } },
+            { id: 'dark', label: '⚫ Dark Luxe', colors: { bg: '#18181b', text: '#f4f4f5', accent: '#a1a1aa' } },
+          ].map((theme) => (
+            <button
+              key={theme.id}
+              type="button"
+              onClick={() => onChange({ ...overlay, colors: { ...(overlay.colors || {}), ...theme.colors } })}
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-[var(--accent)]/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 transition-all"
+            >
+              {theme.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 3 slots manuels : texte / fond / accent */}
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          {[
+            ['text', 'Texte'],
+            ['bg', 'Fond'],
+            ['accent', 'Accent'],
+          ].map(([k, lab]) => (
+            <div key={k} className="flex items-center justify-between gap-1 border border-[var(--border)] rounded-lg px-2 py-1 bg-[var(--paper)]">
+              <span className="text-[11px] font-medium text-[color:var(--muted)]">{lab}</span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="color"
+                  value={(overlay.colors && overlay.colors[k]) || '#000000'}
+                  onChange={(e) => onChange({ ...overlay, colors: { ...(overlay.colors || {}), [k]: e.target.value } })}
+                  className="w-6 h-6 rounded cursor-pointer border-0 p-0 bg-transparent"
+                  title={`Couleur ${lab}`}
+                />
+                {overlay.colors && overlay.colors[k] && (
+                  <button
+                    onClick={() => { const c = { ...(overlay.colors || {}) }; delete c[k]; onChange({ ...overlay, colors: c }); }}
+                    className="text-[10px] text-[color:var(--muted)] hover:text-[var(--signal)] font-bold"
+                    title="Réinitialiser"
+                  >×</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Contour + halo (gravés par libass \bord + \blur) */}

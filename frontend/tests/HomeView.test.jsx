@@ -27,30 +27,30 @@ beforeEach(() => {
 describe('HomeView', () => {
   it('renders one button per country', () => {
     renderHome();
-    expect(screen.getByText('Sénégal')).toBeInTheDocument();
-    expect(screen.getByText('Cameroun')).toBeInTheDocument();
+    expect(screen.getAllByText('Sénégal')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Cameroun')[0]).toBeInTheDocument();
   });
 
   it('shows the country count badge', () => {
     renderHome();
-    expect(screen.getByText(/2 pays/)).toBeInTheDocument();
+    expect(screen.getAllByText(/2 pays/)[0]).toBeInTheDocument();
   });
 
   it('calls onSelectCountry when a country is clicked', () => {
     const onSelect = vi.fn();
     renderHome({ onSelectCountry: onSelect });
-    fireEvent.click(screen.getByLabelText('Entrer dans Sénégal'));
+    fireEvent.click(screen.getAllByLabelText('Entrer dans Sénégal')[0]);
     expect(onSelect).toHaveBeenCalledWith(COUNTRIES[0]);
   });
 
   it('shows the "Ajouter un pays" button', () => {
     renderHome();
-    expect(screen.getByLabelText('Ajouter un nouveau pays')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Ajouter un nouveau pays')[0]).toBeInTheDocument();
   });
 
   it('opens the dialog when "Ajouter un pays" is clicked', () => {
     renderHome();
-    fireEvent.click(screen.getByLabelText('Ajouter un nouveau pays'));
+    fireEvent.click(screen.getAllByLabelText('Ajouter un nouveau pays')[0]);
     expect(screen.getByRole('dialog', { name: /Ajouter un pays/i })).toBeInTheDocument();
   });
 });

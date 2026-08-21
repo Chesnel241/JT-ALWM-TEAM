@@ -20,6 +20,7 @@ const FILE_ICONS = {
 };
 
 import Tutorial5W1H from './Tutorial5W1H.jsx';
+import MobileUploaderView from './MobileUploaderView.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
   const { t, lang } = useI18n();
@@ -276,17 +277,52 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-      <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
-        <button onClick={onBack} type="button" className="btn btn-ghost border border-[var(--border)] py-1.5 sm:py-2 text-sm sm:text-base active:scale-[0.97]">
-          {t.uploader.back}
-        </button>
-        <ChevronRight size={16} className="text-[color:var(--muted)] hidden sm:block" />
-        <span className="font-semibold text-xl sm:text-2xl text-[color:var(--ink)] flex items-center gap-2">
-          <CountryAvatar country={country} className="w-8 h-8 mr-1" />
-          {country.name}
-        </span>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-10">
+      {/* MOBILE VIEW (md:hidden) */}
+      <div className="md:hidden">
+        <MobileUploaderView
+          country={country}
+          weeks={weeks}
+          selectedWeek={selectedWeek}
+          setSelectedWeek={setSelectedWeek}
+          uploads={uploads}
+          setUploads={setUploads}
+          uploading={uploading}
+          setUploading={setUploading}
+          isLoadingUploads={isLoadingUploads}
+          reportageCount={reportageCount}
+          setReportageCount={setReportageCount}
+          isLocked={isLocked}
+          extensionStatus={extensionStatus}
+          handleRequestDelay={handleRequestDelay}
+          handleFiles={handleFiles}
+          handleScriptSubmit={handleScriptSubmit}
+          submittingScripts={submittingScripts}
+          openDeleteDialog={openDeleteDialog}
+          hasPhoneNumber={hasPhoneNumber}
+          setHasPhoneNumber={setHasPhoneNumber}
+          phone={phone}
+          setPhone={setPhone}
+          handleSubscribe={handleSubscribe}
+          isSubscribing={isSubscribing}
+          onBack={onBack}
+          scriptText={scriptText}
+          setScriptText={setScriptText}
+        />
       </div>
+
+      {/* DESKTOP VIEW (hidden md:block) - UNCHANGED */}
+      <div className="hidden md:block">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <button onClick={onBack} type="button" className="btn btn-ghost border border-[var(--border)] py-1.5 sm:py-2 text-sm sm:text-base active:scale-[0.97]">
+            {t.uploader.back}
+          </button>
+          <ChevronRight size={16} className="text-[color:var(--muted)] hidden sm:block" />
+          <span className="font-semibold text-xl sm:text-2xl text-[color:var(--ink)] flex items-center gap-2">
+            <CountryAvatar country={country} className="w-8 h-8 mr-1" />
+            {country.name}
+          </span>
+        </div>
 
       {country.id !== 'tj' && country.id !== 'mj' && <Tutorial5W1H />}
 
@@ -707,6 +743,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       })}
       </>
       )}
+      </div>
 
       <ConfirmDialog
         isOpen={deleteDialogOpen}

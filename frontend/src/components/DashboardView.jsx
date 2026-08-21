@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -309,8 +309,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [exportElapsed, setExportElapsed] = useState(0);
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
   const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
-  const [selectedBin, setSelectedBin] = useState(null);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [showRushesDrawer, setShowRushesDrawer] = useState(false);
+  const [rushesSearch, setRushesSearch] = useState('');
+  const [rushesCountryFilter, setRushesCountryFilter] = useState('all');
   const sseRef = useRef(null);
   const pollRef = useRef(null);
   const safetyRef = useRef(null);
@@ -1267,21 +1268,41 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     return match ? { filename: match.filename, name: match.name } : null;
   };
 
-  // Fichiers audio / image de la semaine (tous chutiers) pour l'habillage global.
-  const { weekAudioFiles, weekImageFiles } = useMemo(() => {
+  // Fichiers audio / image / vidéo de la semaine (tous chutiers) pour l'habillage et le studio.
+  const { weekAudioFiles, weekImageFiles, weekVideoFiles } = useMemo(() => {
     const audio = [];
     const image = [];
-    Object.values(dashboard || {}).forEach((list) => {
+    const video = [];
+    Object.entries(dashboard || {}).forEach(([countryId, list]) => {
       if (!Array.isArray(list)) return;
       list.forEach((f) => {
         if (!f || !f.filename) return;
-        const entry = { filename: f.filename, name: f.name || f.filename };
+        const entry = { ...f, countryId, filename: f.filename, name: f.name || f.filename };
         if (/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.filename) || f.type === 'image') image.push(entry);
         else if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(f.filename) || f.type === 'audio') audio.push(entry);
+        else if (/\.(mp4|mov|avi|mkv|webm)$/i.test(f.filename) || f.type === 'video') video.push(entry);
       });
     });
-    return { weekAudioFiles: audio, weekImageFiles: image };
+    return { weekAudioFiles: audio, weekImageFiles: image, weekVideoFiles: video };
   }, [dashboard]);
+
+  const addClipDirectlyToTimeline = (file) => {
+    const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+    const isExternal = file.filename?.startsWith('http') || file.filename?.startsWith('blob:');
+    const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
+    const url = isExternal ? file.filename : `${API_BASE}/uploads/${file.filename || file.name}?cors=2${authQuery}`;
+    const newClip = {
+      ...file,
+      url,
+      inPoint: 0,
+      outPoint: undefined,
+      durationSec: file.durationSec || 10,
+      instanceId: generateId(),
+      overlays: file.overlays || [],
+    };
+    setTimelineClips((prev) => [...prev, newClip]);
+    addToast(`"${file.name || file.filename}" ajouté à la timeline`, 'success', 2000);
+  };
 
   const countriesWithUploads = useMemo(() => {
     const uploaded = Object.keys(dashboard).filter(
@@ -1290,6 +1311,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     return Array.from(new Set([...uploaded, ...manualBins]));
   }, [dashboard, manualBins]);
 
+  const [selectedBin, setSelectedBin] = useState(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [mobileRushFilter, setMobileRushFilter] = useState('all');
   // Bins spéciaux toujours valides (rubriques fixes, pas des pays avec
   // uploads). Sans ça, sélectionner "JT Prêt"/"MOT DU JT" était
   // immédiatement réinitialisé par l'effet ci-dessous → la fenêtre
@@ -1638,9 +1662,148 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                ========================================= */
             <div ref={studioWorkspaceRef} className={`studio-shell flex h-full w-full flex-col overflow-hidden bg-[var(--editor-bg)] ${isResizingTimeline ? 'select-none cursor-row-resize' : ''}`}>
               <h2 className="sr-only">Studio de montage</h2>
+
+              {/* MODAL / DRAWER BIBLIOTHÈQUE DE RUSHS DU STUDIO */}
+              {showRushesDrawer && (
+                <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm animate-in fade-in duration-200">
+                  <div className="bg-[var(--paper)] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
+                    {/* Header */}
+                    <div className="px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center font-bold">
+                          <FolderOpen size={18} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-[color:var(--ink)] text-base">Bibliothèque de Rushs Vidéo</h3>
+                          <p className="text-xs text-[color:var(--muted)]">
+                            {weekVideoFiles.length} rush{weekVideoFiles.length > 1 ? 's' : ''} disponible{weekVideoFiles.length > 1 ? 's' : ''} cette semaine
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowRushesDrawer(false)}
+                        className="p-2 rounded-xl text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--border)] transition-colors"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    {/* Filters and search */}
+                    <div className="p-4 border-b border-[var(--border)] bg-[var(--paper)] flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+                        <button
+                          onClick={() => setRushesCountryFilter('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            rushesCountryFilter === 'all'
+                              ? 'bg-[var(--accent)] text-white shadow-sm'
+                              : 'bg-[var(--paper-2)] text-[color:var(--ink)] border border-[var(--border)] hover:bg-[var(--border)]'
+                          }`}
+                        >
+                          Tous ({weekVideoFiles.length})
+                        </button>
+                        {countriesWithUploads.map((cId) => {
+                          const cObj = countries.find((c) => c.id === cId);
+                          const count = weekVideoFiles.filter((f) => f.countryId === cId).length;
+                          if (count === 0) return null;
+                          return (
+                            <button
+                              key={cId}
+                              onClick={() => setRushesCountryFilter(cId)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                                rushesCountryFilter === cId
+                                  ? 'bg-[var(--accent)] text-white shadow-sm'
+                                  : 'bg-[var(--paper-2)] text-[color:var(--ink)] border border-[var(--border)] hover:bg-[var(--border)]'
+                              }`}
+                            >
+                              <span>{cObj?.name || cId}</span>
+                              <span className="text-[10px] opacity-75 font-mono">({count})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="relative min-w-[200px]">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--muted)]" />
+                        <input
+                          type="text"
+                          placeholder="Filtrer par nom..."
+                          value={rushesSearch}
+                          onChange={(e) => setRushesSearch(e.target.value)}
+                          className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[var(--paper-2)] border border-[var(--border)] text-xs text-[color:var(--ink)] focus:outline-none focus:border-[var(--accent)]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Video Grid */}
+                    <div className="p-5 overflow-y-auto flex-1 bg-[var(--paper-2)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {weekVideoFiles
+                        .filter((f) => rushesCountryFilter === 'all' || f.countryId === rushesCountryFilter)
+                        .filter((f) => !rushesSearch || (f.name || f.filename).toLowerCase().includes(rushesSearch.toLowerCase()))
+                        .map((file) => {
+                          const cObj = countries.find((c) => c.id === file.countryId);
+                          return (
+                            <div
+                              key={file.id}
+                              className="bg-[var(--paper)] rounded-2xl border border-[var(--border)] shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group"
+                            >
+                              <div className="aspect-video bg-black/90 relative flex items-center justify-center overflow-hidden">
+                                <video
+                                  src={`${API_BASE}/uploads/${file.filename}`}
+                                  className="w-full h-full object-cover"
+                                  preload="metadata"
+                                  onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.pause();
+                                    e.currentTarget.currentTime = 0.1;
+                                  }}
+                                  muted
+                                />
+                                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold backdrop-blur-xs">
+                                  {cObj?.name || file.countryId}
+                                </div>
+                              </div>
+                              <div className="p-3.5 flex-1 flex flex-col justify-between gap-3">
+                                <div>
+                                  <p className="font-bold text-xs text-[color:var(--ink)] line-clamp-1" title={file.name || file.filename}>
+                                    {file.name || file.filename}
+                                  </p>
+                                  <p className="text-[10px] text-[color:var(--muted)] mt-0.5">{file.size}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setTrimTarget(file);
+                                      setShowRushesDrawer(false);
+                                    }}
+                                    className="py-1.5 px-2 rounded-xl bg-[var(--paper-2)] hover:bg-[var(--border)] border border-[var(--border)] text-[color:var(--ink)] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                                  >
+                                    <Scissors size={13} /> Rogner
+                                  </button>
+                                  <button
+                                    onClick={() => addClipDirectlyToTimeline(file)}
+                                    className="py-1.5 px-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-deep)] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
+                                  >
+                                    <Plus size={13} /> Ajouter
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      {weekVideoFiles.length === 0 && (
+                        <div className="col-span-full py-12 text-center text-[color:var(--muted)]">
+                          <Video size={36} className="mx-auto mb-2 opacity-30" />
+                          <p className="font-bold text-sm text-[color:var(--ink)]">Aucun rush vidéo disponible</p>
+                          <p className="text-xs mt-1">Les vidéos déposées par les correspondants apparaîtront ici.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Zone Supérieure : Player (Centre) + Inspecteur (Droite) */}
-              <div className="flex min-h-[220px] flex-1 flex-row overflow-hidden border-b border-[var(--editor-border)] bg-[var(--editor-bg)]">
+              <div className="flex h-auto xl:h-[55vh] xl:min-h-[450px] border-b border-[var(--border)] bg-[var(--paper-2)] shrink-0">
                 
                 {/* PLAYER CENTER */}
                 <div className="relative flex min-w-0 flex-1 items-center justify-center bg-[oklch(0.11_0.018_245)] p-2 shadow-[inset_0_0_32px_oklch(0.05_0.02_245/0.6)]">
@@ -1794,7 +1957,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 />
               </div>
             </div>
-
           ) : (
             
             /* =========================================
@@ -2065,7 +2227,68 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 )}
               </div>
             ) : (
-              <div className="mt-4 flex flex-col gap-8">
+              <div className="mt-4 flex flex-col gap-6">
+                {/* Mobile Country Bar & Rush Filters */}
+                <div className="md:hidden px-2 pt-1 pb-3 space-y-2 border-b border-[var(--border)]">
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 custom-scrollbar">
+                    {countriesWithUploads.map((countryId) => {
+                      const country = countries.find((c) => c.id === countryId);
+                      const count = dashboard[countryId]?.length || 0;
+                      const isActive = selectedBin === countryId;
+                      return (
+                        <button
+                          key={`mob-dash-bin-${countryId}`}
+                          onClick={() => setSelectedBin(countryId)}
+                          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl font-bold text-xs transition-transform active:scale-95 ${
+                            isActive
+                              ? 'bg-[var(--accent)] text-white shadow-sm'
+                              : 'bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)]'
+                          }`}
+                        >
+                          <CountryAvatar country={country || { id: countryId, name: countryId }} className="w-4 h-4" />
+                          <span className="truncate max-w-[100px]">{country?.name || countryId}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--paper)] text-[color:var(--muted)] border border-[var(--border)]'}`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Filter Pills & ZIP */}
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+                      {[
+                        { id: 'all', label: 'Tous' },
+                        { id: 'video', label: '📹 Vidéos' },
+                        { id: 'audio', label: '🎙️ Voix Off' },
+                        { id: 'script', label: '📝 Scripts' },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          onClick={() => setMobileRushFilter(f.id)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition-all ${
+                            mobileRushFilter === f.id
+                              ? 'bg-[color:var(--ink)] text-[var(--paper)]'
+                              : 'bg-[var(--paper-2)] text-[color:var(--muted)] border border-[var(--border)]'
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                    {selectedBin && (
+                      <button
+                        onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
+                        className="px-2.5 py-1 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] text-xs font-bold shrink-0 flex items-center gap-1 active:scale-95"
+                        title="Télécharger tout le pays en ZIP"
+                      >
+                        <Download size={12} /> ZIP
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {(() => {
                   const allFiles = Array.isArray(dashboard[selectedBin]) ? dashboard[selectedBin] : [];
                   if (allFiles.length === 0) {
@@ -2081,13 +2304,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   const audioFiles = allFiles.filter(f => f?.type === 'audio' || !!f?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i));
                   const scriptFiles = allFiles.filter(f => !videoFiles.includes(f) && !audioFiles.includes(f));
 
+                  const showVideos = mobileRushFilter === 'all' || mobileRushFilter === 'video';
+                  const showAudios = mobileRushFilter === 'all' || mobileRushFilter === 'audio';
+                  const showScripts = mobileRushFilter === 'all' || mobileRushFilter === 'script';
+
                   return (
                     <>
                       {/* Videos & Rushs */}
-                      {videoFiles.length > 0 && (
+                      {videoFiles.length > 0 && showVideos && (
                         <section>
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
-                            <Video size={16} /> Vidéos & Rushs
+                            <Video size={16} /> Vidéos & Rushs ({videoFiles.length})
                           </h3>
                           <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
                             {videoFiles.map(file => renderFileCard(file))}
@@ -2096,10 +2323,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       )}
 
                       {/* Voix Off */}
-                      {audioFiles.length > 0 && (
+                      {audioFiles.length > 0 && showAudios && (
                         <section>
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
-                            <Mic size={16} /> Voix Off
+                            <Mic size={16} /> Voix Off ({audioFiles.length})
                           </h3>
                           <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
                             {audioFiles.map(file => renderFileCard(file))}
@@ -2108,10 +2335,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       )}
 
                       {/* Scripts & Documents */}
-                      {scriptFiles.length > 0 && (
+                      {scriptFiles.length > 0 && showScripts && (
                         <section>
                           <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
-                            <FileText size={16} /> Scripts & Documents
+                            <FileText size={16} /> Scripts & Documents ({scriptFiles.length})
                           </h3>
                           <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
                             {scriptFiles.map(file => renderFileCard(file))}
