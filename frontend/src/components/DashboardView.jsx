@@ -260,6 +260,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const { addToast } = useToast();
   const [dashboard, setDashboard] = useState({});
   const [manualBins, setManualBins] = useState([]);
+  const [selectedBin, setSelectedBin] = useState(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [mobileRushFilter, setMobileRushFilter] = useState('all');
 
   const [loading, setLoading] = useState(true);
   const [viewingScript, setViewingScript] = useState(null);
@@ -334,14 +337,69 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   });
   const [isResizingTimeline, setIsResizingTimeline] = useState(false);
   const [timelineSyncState, setTimelineSyncState] = useState('loading');
-  // Verrou synchrone anti double-clic sur Générer le Master. setState
-  // (setIsGeneratingVideo) est asynchrone : un 2e clic dans le même tick
-  // React lance un 2e job avant que le 1er ait mis à jour l'état.
   const generateLockRef = useRef(false);
 
-  // Un seul inspecteur doit être visible à la fois. Auparavant quatre états
-  // concurrents pouvaient rester actifs : cliquer sur « Trim » semblait alors
-  // ne rien faire si l'habillage avait une priorité de rendu supérieure.
+  const countriesWithUploads = useMemo(() => {
+    const uploaded = Object.keys(dashboard).filter(
+      (id) => dashboard[id]?.length > 0 || id === 'tj'
+    );
+    return Array.from(new Set([...uploaded, ...manualBins]));
+  }, [dashboard, manualBins]);
+
+  const SPECIAL_BINS = ['delivery', 'mj', 'tj', 'studio'];
+
+  const binIsValid = (bin) =>
+    bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
+
+  const isStudioActive = isDesktopEditorAvailable && selectedBin === 'studio';
+
+  const { weekAudioFiles, weekImageFiles, weekVideoFiles } = useMemo(() => {
+    const audio = [];
+    const image = [];
+    const video = [];
+    Object.entries(dashboard || {}).forEach(([countryId, list]) => {
+      if (!Array.isArray(list)) return;
+      list.forEach((f) => {
+        if (!f || !f.filename) return;
+        const entry = { ...f, countryId, filename: f.filename, name: f.name || f.filename };
+        if (/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.filename) || f.type === 'image') image.push(entry);
+        else if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(f.filename) || f.type === 'audio') audio.push(entry);
+        else if (/\.(mp4|mov|avi|mkv|webm)$/i.test(f.filename) || f.type === 'video') video.push(entry);
+      });
+    });
+    return { weekAudioFiles: audio, weekImageFiles: image, weekVideoFiles: video };
+  }, [dashboard]);
+
+  const openRushes = () => {
+    let savedBin = null;
+    try { savedBin = selectedWeek ? localStorage.getItem(`jt-bin-${selectedWeek}`) : null; } catch { /* ignore */ }
+    const candidates = [lastRushBinRef.current, savedBin, ...countriesWithUploads];
+    const target = candidates.find((bin) => (
+      bin && bin !== 'studio' && bin !== 'delivery' && binIsValid(bin)
+    )) || countries[0]?.id || 'tj';
+    lastRushBinRef.current = target;
+    setSelectedBin(target);
+  };
+
+  const addClipDirectlyToTimeline = (file) => {
+    const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+    const isExternal = file.filename?.startsWith('http') || file.filename?.startsWith('blob:');
+    const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
+    const url = isExternal ? file.filename : `${API_BASE}/uploads/${file.filename || file.name}?cors=2${authQuery}`;
+    const newClip = {
+      ...file,
+      url,
+      inPoint: 0,
+      outPoint: undefined,
+      durationSec: file.durationSec || 10,
+      instanceId: generateId(),
+      overlays: file.overlays || [],
+    };
+    setTimelineClips((prev) => [...prev, newClip]);
+    addToast(`"${file.name || file.filename}" ajouté à la timeline`, 'success', 2000);
+  };
+
+  // Un seul inspecteur doit être visible à la fois.
   const openTrimInspector = (clip) => {
     setOverlayTarget(null);
     setSubtitleTarget(null);
@@ -1268,72 +1326,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     return match ? { filename: match.filename, name: match.name } : null;
   };
 
-  // Fichiers audio / image / vidéo de la semaine (tous chutiers) pour l'habillage et le studio.
-  const { weekAudioFiles, weekImageFiles, weekVideoFiles } = useMemo(() => {
-    const audio = [];
-    const image = [];
-    const video = [];
-    Object.entries(dashboard || {}).forEach(([countryId, list]) => {
-      if (!Array.isArray(list)) return;
-      list.forEach((f) => {
-        if (!f || !f.filename) return;
-        const entry = { ...f, countryId, filename: f.filename, name: f.name || f.filename };
-        if (/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.filename) || f.type === 'image') image.push(entry);
-        else if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(f.filename) || f.type === 'audio') audio.push(entry);
-        else if (/\.(mp4|mov|avi|mkv|webm)$/i.test(f.filename) || f.type === 'video') video.push(entry);
-      });
-    });
-    return { weekAudioFiles: audio, weekImageFiles: image, weekVideoFiles: video };
-  }, [dashboard]);
-
-  const addClipDirectlyToTimeline = (file) => {
-    const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
-    const isExternal = file.filename?.startsWith('http') || file.filename?.startsWith('blob:');
-    const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
-    const url = isExternal ? file.filename : `${API_BASE}/uploads/${file.filename || file.name}?cors=2${authQuery}`;
-    const newClip = {
-      ...file,
-      url,
-      inPoint: 0,
-      outPoint: undefined,
-      durationSec: file.durationSec || 10,
-      instanceId: generateId(),
-      overlays: file.overlays || [],
-    };
-    setTimelineClips((prev) => [...prev, newClip]);
-    addToast(`"${file.name || file.filename}" ajouté à la timeline`, 'success', 2000);
-  };
-
-  const countriesWithUploads = useMemo(() => {
-    const uploaded = Object.keys(dashboard).filter(
-      (id) => dashboard[id]?.length > 0 || id === 'tj'
-    );
-    return Array.from(new Set([...uploaded, ...manualBins]));
-  }, [dashboard, manualBins]);
-
-  const [selectedBin, setSelectedBin] = useState(null);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [mobileRushFilter, setMobileRushFilter] = useState('all');
-  // Bins spéciaux toujours valides (rubriques fixes, pas des pays avec
-  // uploads). Sans ça, sélectionner "JT Prêt"/"MOT DU JT" était
-  // immédiatement réinitialisé par l'effet ci-dessous → la fenêtre
-  // d'upload s'ouvrait puis se refermait en quelques ms.
-  const SPECIAL_BINS = ['delivery', 'mj', 'tj', 'studio'];
-
-  const binIsValid = (bin) =>
-    bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
-
-  const openRushes = () => {
-    let savedBin = null;
-    try { savedBin = selectedWeek ? localStorage.getItem(`jt-bin-${selectedWeek}`) : null; } catch { /* ignore */ }
-    const candidates = [lastRushBinRef.current, savedBin, ...countriesWithUploads];
-    const target = candidates.find((bin) => (
-      bin && bin !== 'studio' && bin !== 'delivery' && binIsValid(bin)
-    )) || countries[0]?.id || 'tj';
-    lastRushBinRef.current = target;
-    setSelectedBin(target);
-  };
-
   useEffect(() => {
     if (!isDesktopEditorAvailable && selectedBin === 'studio') openRushes();
     // openRushes est volontairement recalculé avec les chutiers disponibles.
@@ -1545,8 +1537,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       </div>
     );
   }
-
-  const isStudioActive = isDesktopEditorAvailable && selectedBin === 'studio';
 
   return (
     <div className={isDesktopEditorAvailable
