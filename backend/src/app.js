@@ -26,6 +26,7 @@ import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter, archiveLimiter } from './middleware/rateLimiter.js';
 import { errorHandlerMiddleware, notFoundMiddleware } from './middleware/errorHandler.js';
 import { Server } from 'socket.io';
+import { setProgressIo } from './services/editorProgress.js';
 
 export let io;
 
@@ -44,6 +45,41 @@ export function initSocket(server) {
     transports: ['websocket'],
     pingInterval: 25000,
     pingTimeout: 20000,
+  });
+
+  setProgressIo(io);
+
+  io.on('connection', (socket) => {
+    socket.on('join_week', (weekId) => {
+      if (weekId && typeof weekId === 'string') {
+        const roomName = `week:${weekId}`;
+        socket.join(roomName);
+        const room = io.sockets.adapter.rooms.get(roomName);
+        const count = room ? room.size : 1;
+        io.to(roomName).emit('editor_presence', { weekId, count });
+      }
+    });
+
+    socket.on('leave_week', (weekId) => {
+      if (weekId && typeof weekId === 'string') {
+        const roomName = `week:${weekId}`;
+        socket.leave(roomName);
+        const room = io.sockets.adapter.rooms.get(roomName);
+        const count = room ? room.size : 0;
+        io.to(roomName).emit('editor_presence', { weekId, count });
+      }
+    });
+
+    socket.on('disconnecting', () => {
+      for (const roomName of socket.rooms) {
+        if (roomName.startsWith('week:')) {
+          const weekId = roomName.replace('week:', '');
+          const room = io.sockets.adapter.rooms.get(roomName);
+          const count = room ? Math.max(0, room.size - 1) : 0;
+          io.to(roomName).emit('editor_presence', { weekId, count });
+        }
+      }
+    });
   });
 }
 

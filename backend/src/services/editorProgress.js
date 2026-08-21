@@ -7,7 +7,14 @@
  * Mono-instance only (Map en mémoire) — cohérent avec scaling=1.
  */
 
-const jobs = new Map(); // jobId -> { percent, status, url, listeners:Set<res>, timeout, stall, doneAt }
+let progressIo = null;
+export function setProgressIo(io) {
+  progressIo = io;
+}
+
+const jobs = new Map(); // jobId -> { percent, status, url, listeners:Set<res>, timeout, stall, doneAt, weekId }
+const jobWeekMap = new Map(); // jobId -> weekId
+const weekActiveJobs = new Map(); // weekId -> { jobId, weekId, startedAt }
 // Tombstones : IDs de jobs déjà terminés puis purgés. Empêche qu'un callback
 // worker rejoué (réseau lent, retry) tardif ressuscite un job fantôme
 // (nouveau pending + re-émission d'un 2e 'done'/'error'). Borné en taille.
@@ -37,6 +44,27 @@ const STALL_MS = Number(process.env.RENDER_STALL_MS) || 10 * 60 * 1000;
 // récupérer le résultat même si le SSE a été coupé pendant le rendu.
 const FINISHED_RETENTION_MS = 15 * 60 * 1000;
 
+export function registerJobWeek(jobId, weekId) {
+  if (jobId && weekId) {
+    jobWeekMap.set(jobId, weekId);
+    weekActiveJobs.set(weekId, { jobId, weekId, startedAt: Date.now() });
+    const job = jobs.get(jobId);
+    if (job) job.weekId = weekId;
+  }
+}
+
+export function getWeekActiveJob(weekId) {
+  if (!weekId) return null;
+  const entry = weekActiveJobs.get(weekId);
+  if (!entry) return null;
+  const state = getJobState(entry.jobId);
+  if (!state) {
+    weekActiveJobs.delete(weekId);
+    return null;
+  }
+  return { ...entry, ...state };
+}
+
 // (Re)arme le watchdog de stagnation. Appelé à la création + à chaque
 // progression. Si le délai expire sans nouvelle progression → erreur.
 function armStall(job, jobId) {
@@ -53,7 +81,8 @@ function ensure(jobId) {
     const timeout = setTimeout(() => {
       finishJob(jobId, 'error');
     }, JOB_TTL_MS);
-    const job = { percent: 0, status: 'pending', url: null, listeners: new Set(), timeout, stall: null, doneAt: null };
+    const weekId = jobWeekMap.get(jobId) || null;
+    const job = { percent: 0, status: 'pending', url: null, listeners: new Set(), timeout, stall: null, doneAt: null, weekId };
     jobs.set(jobId, job);
     armStall(job, jobId);
   }
@@ -82,6 +111,8 @@ export function setProgress(jobId, percent, status = 'processing') {
       res.flush?.();
     } catch { /* client parti */ }
   }
+  const weekId = job.weekId || jobWeekMap.get(jobId);
+  progressIo?.emit('editor_job_update', { jobId, weekId, percent: job.percent, status: job.status, url: job.url });
 }
 
 export function finishJob(jobId, status = 'done', url = null) {
@@ -104,9 +135,18 @@ export function finishJob(jobId, status = 'done', url = null) {
     } catch { /* ignore */ }
   }
   job.listeners.clear();
+  const weekId = job.weekId || jobWeekMap.get(jobId);
+  progressIo?.emit('editor_job_update', { jobId, weekId, percent: job.percent, status, url });
   // Conserve l'état terminé un moment (récupérable via /result ou reconnexion
   // SSE), puis purge + pose un tombstone pour bloquer les callbacks rejoués.
-  job.timeout = setTimeout(() => { jobs.delete(jobId); tombstone(jobId); }, FINISHED_RETENTION_MS);
+  job.timeout = setTimeout(() => {
+    jobs.delete(jobId);
+    jobWeekMap.delete(jobId);
+    if (weekId && weekActiveJobs.get(weekId)?.jobId === jobId) {
+      weekActiveJobs.delete(weekId);
+    }
+    tombstone(jobId);
+  }, FINISHED_RETENTION_MS);
 }
 
 /** État courant d'un job pour le fallback polling. null si inconnu/purgé. */

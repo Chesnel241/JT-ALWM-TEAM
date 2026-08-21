@@ -529,6 +529,8 @@ export default function Timeline({
   onSplitText,
   onBrowseRushes,
   playerRef,
+  syncState = 'saved',
+  presenceCount = 1,
   compact = false,
 }) {
   const rootRef = useRef(null);
@@ -878,6 +880,23 @@ export default function Timeline({
             <ToolButton icon={<Redo2 size={16} />} label="Rétablir" disabled={history.future.length === 0} onClick={redo} compact title="Rétablir" />
             {onSplitText && <ToolButton icon={<Type size={16} />} label="Couper le titre" disabled={timelineOverlays.length === 0} onClick={onSplitText} title="Couper le titre actif à la tête de lecture" responsiveCompact />}
             {onGlobalLayer && <ToolButton icon={<Newspaper size={16} />} label="Habillage JT" active={!!brandingActive} onClick={onGlobalLayer} responsiveCompact />}
+            
+            {/* Indicateur de présence & synchro cloud */}
+            <div className="hidden min-[1280px]:flex items-center gap-2 px-1">
+              {presenceCount > 1 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold shadow-xs animate-in fade-in" title={`${presenceCount} collaborateurs sont connectés sur cette semaine`}>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{presenceCount} monteurs</span>
+                </div>
+              )}
+              {syncState && (
+                <div className="flex items-center gap-1.5 text-[11px] font-mono text-[var(--editor-muted)]" title="Statut de synchronisation Cloud automatique">
+                  <span className={`w-2 h-2 rounded-full ${syncState === 'saved' ? 'bg-emerald-400' : syncState === 'saving' ? 'bg-amber-400 animate-ping' : 'bg-red-400'}`} />
+                  <span className="hidden min-[1500px]:inline">{syncState === 'saved' ? 'Cloud à jour' : syncState === 'saving' ? 'Sauvegarde…' : 'Erreur synchro'}</span>
+                </div>
+              )}
+            </div>
+
             <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
               <ToolButton icon={<Minus size={15} />} label="Dézoomer" compact onClick={() => setPxPerSec((value) => clamp(value - 10, PX_PER_SEC_MIN, PX_PER_SEC_MAX))} title="Dézoomer la timeline" />
               <input

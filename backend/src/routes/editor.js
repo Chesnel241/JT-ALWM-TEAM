@@ -1,10 +1,11 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { concatenateVideos, XFADE_TRANSITIONS } from '../services/editorService.js';
-import { addListener, removeListener, finishJob, getJobState } from '../services/editorProgress.js';
+import { addListener, removeListener, finishJob, getJobState, registerJobWeek, getWeekActiveJob } from '../services/editorProgress.js';
 import { TEXT_ANIMATIONS_IDS, OVERLAY_TEMPLATES } from '../data/overlayTemplates.js';
 import { buildWeeks } from '../data/constants.js';
 import { getTimelineWorkspace, saveTimelineWorkspace } from '../data/store.js';
+import { io } from '../app.js';
 
 // Allowlist des templateId valides (source unique = registre des modèles).
 const TEMPLATE_IDS = OVERLAY_TEMPLATES.map((t) => t.id);
@@ -21,6 +22,15 @@ router.get('/timeline/:weekId', (req, res) => {
     return res.status(404).json({ code: 'INVALID_WEEK', message: 'Semaine introuvable' });
   }
   return res.json({ workspace: getTimelineWorkspace(weekId) });
+});
+
+router.get('/job/:weekId', (req, res) => {
+  const { weekId } = req.params;
+  if (!isValidWeek(weekId)) {
+    return res.status(404).json({ code: 'INVALID_WEEK', message: 'Semaine introuvable' });
+  }
+  const job = getWeekActiveJob(weekId);
+  return res.json({ job });
 });
 
 router.put(
@@ -44,7 +54,15 @@ router.put(
         errors: errors.array(),
       });
     }
-    return res.json({ workspace: saveTimelineWorkspace(weekId, req.body) });
+    const saved = saveTimelineWorkspace(weekId, req.body);
+    const senderClientId = req.headers['x-client-id'] || null;
+    io?.emit('timeline_update', {
+      weekId,
+      revision: saved.revision,
+      updatedAt: saved.updatedAt,
+      clientId: senderClientId,
+    });
+    return res.json({ workspace: saved });
   },
 );
 
@@ -220,6 +238,7 @@ router.post(
     body('atmosphere.vignette').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
     body('atmosphere.grain').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
     body('atmosphere.sweep').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
+    body('weekId').optional({ values: 'null' }).isString().isLength({ max: 64 }),
   ],
   async (req, res, next) => {
     try {
@@ -240,9 +259,11 @@ router.post(
         });
       }
 
-      const { clips, jobId, globalOverlays, logo, logoPosition, music, voiceover, imageOverlays, atmosphere } = req.body;
+      const { clips, jobId, weekId, globalOverlays, logo, logoPosition, music, voiceover, imageOverlays, atmosphere } = req.body;
 
-      logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo, music: !!(music && music.filename), voiceover: !!(voiceover && voiceover.filename), images: Array.isArray(imageOverlays) ? imageOverlays.length : 0 });
+      if (weekId) registerJobWeek(jobId, weekId);
+
+      logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, weekId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo, music: !!(music && music.filename), voiceover: !!(voiceover && voiceover.filename), images: Array.isArray(imageOverlays) ? imageOverlays.length : 0 });
 
       // Run async to prevent Render 100s timeout on HTTP request
       concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, logoPosition, music, voiceover, imageOverlays, atmosphere })

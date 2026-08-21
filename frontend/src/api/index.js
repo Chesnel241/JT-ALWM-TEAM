@@ -79,6 +79,19 @@ const delaysApi = {
   }
 };
 
+export const getClientId = () => {
+  try {
+    let id = sessionStorage.getItem('jt-client-id');
+    if (!id) {
+      id = (window.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2));
+      sessionStorage.setItem('jt-client-id', id);
+    }
+    return id;
+  } catch {
+    return 'client-' + Date.now();
+  }
+};
+
 export const api = {
   ...delaysApi,
   // === Auth ===
@@ -162,9 +175,12 @@ export const api = {
   saveTimelineWorkspace: (weekId, workspace) =>
     request(`/editor/timeline/${weekId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-Id': getClientId() },
       body: JSON.stringify(workspace),
     }),
+
+  getWeekActiveJob: (weekId) =>
+    request(`/editor/job/${encodeURIComponent(weekId)}`),
 
   subscribeToNotifications: (weekId, countryId, phone) =>
     request(`/notifications/${weekId}/${countryId}/subscribe`, {

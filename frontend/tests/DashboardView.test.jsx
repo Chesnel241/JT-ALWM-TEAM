@@ -15,8 +15,10 @@ vi.mock('../src/api/index.js', () => ({
     checkAdminPassword: vi.fn().mockResolvedValue({ ok: true }),
     getSubscriptions: vi.fn().mockResolvedValue([{ countryId: 'ga', phone: '+24107000000' }]),
     updateFileStatus: vi.fn().mockResolvedValue({ ok: true }),
+    getWeekActiveJob: vi.fn().mockResolvedValue({ job: null }),
   },
   API_BASE: 'http://localhost:3010',
+  getClientId: vi.fn().mockReturnValue('test-client-id'),
 }));
 
 const mockWeeks = [

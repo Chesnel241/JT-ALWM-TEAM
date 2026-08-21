@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone } from 'lucide-react';
-import { api, API_BASE } from '../api/index.js';
+import { api, API_BASE, getClientId } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
@@ -339,6 +339,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   });
   const [isResizingTimeline, setIsResizingTimeline] = useState(false);
   const [timelineSyncState, setTimelineSyncState] = useState('loading');
+  const [editorPresenceCount, setEditorPresenceCount] = useState(1);
   const generateLockRef = useRef(false);
 
   const countriesWithUploads = useMemo(() => {
@@ -756,13 +757,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (pending) api.saveTimelineWorkspace(pending.weekId, pending.payload).catch(console.error);
   }, []);
 
-  // Reprend le suivi d'un montage en cours après un refresh/onglet : le rendu
-  // continue côté serveur, on récupère sa progression et son résultat.
+  // Reprend le suivi d'un montage en cours après un refresh/onglet ou si un collègue
+  // a lancé le rendu sur cette semaine : le rendu continue côté serveur, on récupère sa progression.
   useEffect(() => {
-    const jobId = localStorage.getItem(JOB_STORE_KEY);
-    if (jobId) trackJob(jobId, { resume: true });
+    const localJobId = localStorage.getItem(JOB_STORE_KEY);
+    if (localJobId) {
+      trackJob(localJobId, { resume: true });
+    } else if (selectedWeek && isAuthenticatedAdmin) {
+      api.getWeekActiveJob(selectedWeek)
+        .then((res) => {
+          if (res?.job && res.job.status === 'processing') {
+            trackJob(res.job.jobId, { resume: true });
+          } else if (res?.job && res.job.status === 'done' && res.job.url) {
+            setGeneratedVideoUrl(/^https?:\/\//.test(res.job.url) ? res.job.url : `${API_BASE}${res.job.url}`);
+          }
+        })
+        .catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedWeek, isAuthenticatedAdmin]);
 
   // Refresh dashboard quietly when becoming active
   useEffect(() => {
@@ -779,12 +792,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   useEffect(() => {
     if (!isAuthenticatedAdmin || !selectedWeek) return;
 
-    // Connect to the same origin/host as the API.
-    // - transports: ['websocket'] : skip Engine.IO long-polling (sature les
-    //   liens 4G instables et double le trafic en parallèle de la WS).
-    // - auth.token : le backend valide le X-App-Password sur le handshake
-    //   (cf. backend/src/app.js initSocket).
-    // - reconnect exponentiel borné : évite les bursts CPU si le réseau saute.
     const socketUrl = API_BASE || window.location.origin;
     const token = localStorage.getItem('app-password') || '';
     const socket = io(socketUrl, {
@@ -795,8 +802,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30000,
     });
+
+    socket.on('connect', () => {
+      socket.emit('join_week', selectedWeek);
+    });
+
     socket.on('connect_error', (err) => {
       console.warn('[socket] connect_error', err.message);
+    });
+
+    socket.on('editor_presence', (data) => {
+      if (data.weekId === selectedWeek && typeof data.count === 'number') {
+        setEditorPresenceCount(data.count);
+      }
     });
 
     socket.on('upload_update', (data) => {
@@ -807,7 +825,60 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       }
     });
 
+    socket.on('timeline_update', async (data) => {
+      if (data.weekId === selectedWeek && data.clientId !== getClientId()) {
+        // Synchronisation automatique si nous n'avons pas de modification locale en attente d'enregistrement
+        if (!pendingTimelineSaveRef.current) {
+          try {
+            const resp = await api.getTimelineWorkspace(selectedWeek);
+            if (resp?.workspace) {
+              const safeClips = Array.isArray(resp.workspace.clips) ? resp.workspace.clips : [];
+              const mappedClips = safeClips.map((clip) => {
+                const filename = clip.filename || clip.name || '';
+                const isExternal = filename.startsWith('http') || filename.startsWith('blob:');
+                return {
+                  ...clip,
+                  url: isExternal ? filename : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`,
+                };
+              });
+              const nextOverlays = Array.isArray(resp.workspace.overlays) ? resp.workspace.overlays : [];
+              const nextBranding = resp.workspace.branding && typeof resp.workspace.branding === 'object'
+                ? { ...DEFAULT_BRANDING, ...resp.workspace.branding }
+                : DEFAULT_BRANDING;
+              const payload = {
+                clips: safeClips.map(({ url: _url, ...clip }) => clip),
+                overlays: nextOverlays,
+                branding: nextBranding,
+              };
+              lastSyncedTimelineRef.current = JSON.stringify(payload);
+              setTimelineClips(mappedClips);
+              setTimelineOverlays(nextOverlays);
+              setBranding(nextBranding);
+              setTimelineSyncState('saved');
+              addToast('⚡ Timeline synchronisée avec un collaborateur', 'info', 2500);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      }
+    });
+
+    socket.on('editor_job_update', (data) => {
+      if (data.weekId === selectedWeek) {
+        if (data.status === 'processing' && !isGeneratingVideo) {
+          trackJob(data.jobId, { resume: true });
+        } else if (data.status === 'done' && data.url) {
+          setGeneratedVideoUrl(/^https?:\/\//.test(data.url) ? data.url : `${API_BASE}${data.url}`);
+          setIsGeneratingVideo(false);
+          setExportProgress(100);
+          setExportPhase('done');
+        }
+      }
+    });
+
     return () => {
+      socket.emit('leave_week', selectedWeek);
       socket.disconnect();
     };
   }, [isAuthenticatedAdmin, selectedWeek, addToast]);
@@ -979,6 +1050,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         credentials: 'include',
         body: JSON.stringify({
           jobId,
+          weekId: selectedWeek,
           clips: timelineClips.map((clip, i) => ({
             filename: clip.filename,
             inPoint: clip.inPoint,
@@ -2015,6 +2087,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   playerRef={playerRef}
                   onSplitText={handleSplitTextAtPlayhead}
                   onBrowseRushes={openRushes}
+                  syncState={timelineSyncState}
+                  presenceCount={editorPresenceCount}
                 />
               </div>
             </div>
@@ -2584,6 +2658,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   setSelectedBin('studio');
                   openSubtitleInspector(clip);
                 }}
+                syncState={timelineSyncState}
+                presenceCount={editorPresenceCount}
                 compact
               />
             </div>
