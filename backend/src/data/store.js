@@ -341,8 +341,11 @@ export function addSubscription(weekId, countryId, phone) {
   if (!db[weekId]._subscriptions) db[weekId]._subscriptions = [];
   
   const subs = db[weekId]._subscriptions;
-  // Prevent duplicate numbers
-  if (!subs.some(sub => sub.phone === phone)) {
+  const existingIdx = subs.findIndex(sub => sub.countryId === countryId);
+  if (existingIdx !== -1) {
+    subs[existingIdx] = { countryId, phone, timestamp: new Date().toISOString() };
+    persistDb();
+  } else if (!subs.some(sub => sub.phone === phone)) {
     subs.push({ countryId, phone, timestamp: new Date().toISOString() });
     persistDb();
   }

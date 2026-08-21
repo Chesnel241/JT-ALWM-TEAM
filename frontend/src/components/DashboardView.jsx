@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -17,6 +17,7 @@ import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import ActionSheet from './ActionSheet.jsx';
+import FeedbackModal from './FeedbackModal.jsx';
 
 // Clés localStorage : la timeline et le job de montage en cours survivent au
 // refresh/changement d'onglet (le rendu continue côté serveur).
@@ -295,6 +296,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [feedbackStatus, setFeedbackStatus] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [subscriptions, setSubscriptions] = useState([]);
   
   // Editor State
   const [timelineClips, setTimelineClips] = useState([]);
@@ -352,6 +354,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
 
   const isStudioActive = isDesktopEditorAvailable && selectedBin === 'studio';
+
+  const getCountryPhone = (cId) => {
+    const sub = subscriptions.find((s) => s.countryId === cId);
+    return sub ? sub.phone : null;
+  };
 
   const { weekAudioFiles, weekImageFiles, weekVideoFiles } = useMemo(() => {
     const audio = [];
@@ -1237,20 +1244,23 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const openFeedbackDialog = (countryId, fileId, status) => {
     const file = dashboard[countryId]?.find(f => f.id === fileId);
     if (file) {
-      setFileToFeedback({ countryId, fileId, fileName: file.name });
-      setFeedbackStatus(status);
-      setFeedbackText(file.feedback || '');
+      setFileToFeedback({ ...file, countryId, fileId, fileName: file.name });
+      setFeedbackStatus(status || file.status || 'rejected');
+      setFeedbackText(file.feedback || file.adminFeedback || '');
+      const directPhone = getCountryPhone(countryId);
+      setFeedbackPhone(directPhone);
       setFeedbackDialogOpen(true);
       
-      if (authenticatedAdminPassword) {
+      if (authenticatedAdminPassword && !directPhone) {
         api.getSubscriptions(selectedWeek, authenticatedAdminPassword)
           .then(subs => {
-            const sub = subs.find(s => s.countryId === countryId);
-            setFeedbackPhone(sub ? sub.phone : null);
+            if (Array.isArray(subs)) {
+              setSubscriptions(subs);
+              const found = subs.find(s => s.countryId === countryId);
+              if (found) setFeedbackPhone(found.phone);
+            }
           })
-          .catch(() => setFeedbackPhone(null));
-      } else {
-        setFeedbackPhone(null);
+          .catch(() => {});
       }
     }
   };
@@ -1418,14 +1428,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 Assemblé
               </div>
             )}
-            {/* Badge UNIQUEMENT pour les décisions explicites de la team
-                montage. Tout autre statut (pending/completed/legacy) =
-                neutre, pas de "Rejeté" par défaut. */}
             {(file.status === 'approved' || file.status === 'rejected') && (
               <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white ${
                 file.status === 'approved' ? 'bg-[var(--accent)]' : 'bg-[var(--signal)]'
               }`}>
-                {file.status === 'approved' ? 'Approuvé' : 'Rejeté'}
+                {file.status === 'approved' ? 'Approuvé' : 'Refusé'}
               </div>
             )}
           </div>
@@ -1470,6 +1477,42 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           <div className="text-[10px] text-[color:var(--muted)] truncate" title={file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}>
             {file.uploadedAt ? formatRelative(file.uploadedAt, lang) : ''}
           </div>
+
+          {/* Motif de refus / commentaire si présent */}
+          {(file.feedback || file.adminFeedback) && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                openFeedbackDialog(selectedBin, file.id, file.status || 'rejected');
+              }}
+              className="mt-0.5 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-[11px] font-medium flex items-center gap-1.5 cursor-pointer border border-red-500/20 transition-colors"
+              title={`Motif : ${file.feedback || file.adminFeedback} (Cliquer pour modifier/notifier)`}
+            >
+              <MessageSquare size={12} className="shrink-0 text-red-500" />
+              <span className="truncate">{file.feedback || file.adminFeedback}</span>
+            </div>
+          )}
+
+          {/* Bouton WhatsApp direct / Statut */}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              openFeedbackDialog(selectedBin, file.id, file.status || 'rejected');
+            }}
+            className={`mt-1.5 w-full text-xs font-semibold py-1.5 px-2 rounded-lg border transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm ${
+              file.status === 'rejected'
+                ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20'
+                : file.status === 'approved'
+                ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-500/20'
+                : 'bg-[var(--paper-2)] border-[var(--border)] text-[color:var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)]'
+            }`}
+            title="Refuser ou valider le rush et notifier sur WhatsApp"
+          >
+            <MessageSquare size={13} className={file.status === 'rejected' ? 'text-red-500' : file.status === 'approved' ? 'text-green-600' : 'text-[#25D366]'} />
+            <span>{file.status === 'rejected' ? 'Refusé (WhatsApp)' : file.status === 'approved' ? 'Validé (WhatsApp)' : 'Statut & WhatsApp'}</span>
+          </button>
+
           {isVideo && isDesktopEditorAvailable && (
             <button
               type="button"
@@ -1480,9 +1523,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   ?.duration;
                 addRushDirectlyToTimeline(file, cardDuration);
               }}
-              className="mt-2 w-full text-sm font-bold py-2 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-[transform,opacity] duration-150 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 shadow-md flex items-center justify-center gap-2"
+              className="mt-1 w-full text-xs font-bold py-1.5 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-[transform,opacity] duration-150 active:scale-[0.97] focus:outline-none shadow-sm flex items-center justify-center gap-1.5"
             >
-              <Video size={16} aria-hidden="true" />
+              <Video size={14} aria-hidden="true" />
               Ajouter à la timeline
             </button>
           )}
@@ -1490,6 +1533,28 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       </div>
     );
   };
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('jt-admin-pass');
+    if (saved) {
+      api.checkAdminPassword(saved).then((ok) => {
+        if (ok) {
+          setAuthenticatedAdminPassword(saved);
+          setIsAuthenticatedAdmin(true);
+        }
+      }).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticatedAdmin && authenticatedAdminPassword && selectedWeek) {
+      api.getSubscriptions(selectedWeek, authenticatedAdminPassword)
+        .then((subs) => {
+          if (Array.isArray(subs)) setSubscriptions(subs);
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticatedAdmin, authenticatedAdminPassword, selectedWeek]);
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
@@ -1499,6 +1564,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       const ok = await api.checkAdminPassword(authenticatedAdminPassword);
       if (ok) {
         setIsAuthenticatedAdmin(true);
+        sessionStorage.setItem('jt-admin-pass', authenticatedAdminPassword);
+        api.getSubscriptions(selectedWeek, authenticatedAdminPassword)
+          .then((subs) => {
+            if (Array.isArray(subs)) setSubscriptions(subs);
+          })
+          .catch(() => {});
       } else {
         setAuthError('Mot de passe incorrect');
       }
@@ -1975,6 +2046,34 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       <h2 className="text-lg font-semibold text-[color:var(--ink)]">
                         {selectedBin === 'delivery' ? 'Livraison JT' : countries.find(c => c.id === selectedBin)?.name || selectedBin}
                       </h2>
+                      {selectedBin && selectedBin !== 'delivery' && selectedBin !== 'studio' && selectedBin !== 'tj' && selectedBin !== 'mj' && (
+                        <div className="ml-2 hidden sm:block">
+                          {getCountryPhone(selectedBin) ? (
+                            <a
+                              href={`https://wa.me/${getCountryPhone(selectedBin).replace(/[^\d+]/g, '').replace(/^\+/, '')}?text=${encodeURIComponent(`Bonjour ${countries.find(c => c.id === selectedBin)?.name || selectedBin}, ici l'équipe de montage ALWM (Semaine ${selectedWeek}).`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#128C7E] dark:text-[#25D366] font-semibold text-xs border border-[#25D366]/30 transition-all shadow-sm active:scale-95"
+                              title={`Contacter le correspondant (${getCountryPhone(selectedBin)}) sur WhatsApp`}
+                            >
+                              <MessageSquare size={13} className="text-[#25D366]" />
+                              <span>WhatsApp : {getCountryPhone(selectedBin)}</span>
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFileToFeedback({ id: 'general', name: `Contact ${countries.find(c => c.id === selectedBin)?.name || selectedBin}`, countryId: selectedBin });
+                                setFeedbackDialogOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold border border-amber-500/20 hover:bg-amber-500/20 transition-all"
+                              title="Ajouter un contact WhatsApp pour ce pays"
+                            >
+                              <span>📱 Aucun WhatsApp (+ Ajouter)</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </>
                   ) : (
                     <h2 className="text-lg font-semibold text-[color:var(--muted)]">Media Pool</h2>
@@ -2277,6 +2376,39 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       </button>
                     )}
                   </div>
+
+                  {/* Mobile WhatsApp Correspondent Contact */}
+                  {selectedBin && selectedBin !== 'delivery' && selectedBin !== 'tj' && selectedBin !== 'mj' && selectedBin !== 'studio' && (
+                    <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <MessageSquare size={14} className="text-[#25D366] shrink-0" />
+                        <span className="text-xs font-semibold text-[color:var(--ink)] truncate">
+                          {getCountryPhone(selectedBin) ? `WhatsApp : ${getCountryPhone(selectedBin)}` : 'Aucun WhatsApp pour ce pays'}
+                        </span>
+                      </div>
+                      {getCountryPhone(selectedBin) ? (
+                        <a
+                          href={`https://wa.me/${getCountryPhone(selectedBin).replace(/[^\d+]/g, '').replace(/^\+/, '')}?text=${encodeURIComponent(`Bonjour ${countries.find(c => c.id === selectedBin)?.name || selectedBin}, ici l'équipe de montage ALWM (Semaine ${selectedWeek}).`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 rounded-lg bg-[#25D366] text-white text-xs font-bold shrink-0 flex items-center gap-1 shadow-sm active:scale-95"
+                        >
+                          <span>Écrire</span>
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFileToFeedback({ id: 'general', name: `Contact ${countries.find(c => c.id === selectedBin)?.name || selectedBin}`, countryId: selectedBin });
+                            setFeedbackDialogOpen(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-800 dark:text-amber-300 text-xs font-bold shrink-0"
+                        >
+                          + Ajouter
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {(() => {
@@ -2500,46 +2632,28 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         }}
       />
 
-      <ConfirmDialog
+      {/* Feedback & WhatsApp Rejection Modal */}
+      <FeedbackModal
         isOpen={feedbackDialogOpen}
-        title={feedbackStatus === 'approved' ? 'Approuver le reportage' : 'Rejeter le reportage'}
-        message={
-          <div className="mt-2 text-left">
-            <p className="text-[color:var(--muted)] mb-4">
-              {feedbackStatus === 'approved' ? 'Confirmer la validation de ce reportage.' : 'Expliquez pourquoi ce reportage doit être corrigé ou renvoyé.'}
-            </p>
-            {feedbackStatus === 'rejected' && (
-              <textarea
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder="Ex: Le son sature à 1:20, peux-tu refaire la prise ?"
-                className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all min-h-[100px] mb-4"
-              />
-            )}
-          </div>
-        }
-        confirmText={feedbackStatus === 'approved' ? 'Approuver' : 'Rejeter & Notifier'}
-        cancelText="Annuler"
-        variant={feedbackStatus === 'approved' ? 'primary' : 'danger'}
-        isLoading={isSubmittingFeedback}
-        extraActions={
-          feedbackStatus === 'rejected' && feedbackPhone && (
-            <a
-              href={`https://wa.me/${feedbackPhone.replace(/\+/g, '')}?text=${encodeURIComponent(`⚠️ Problème avec votre fichier "${fileToFeedback?.fileName}".\nMotif : ${feedbackText || 'Veuillez vérifier votre fichier et le renvoyer.'}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#128C7E] text-white transition-colors font-medium text-sm flex items-center gap-2 mr-auto"
-              title="Notifier sur WhatsApp"
-            >
-              WhatsApp
-            </a>
-          )
-        }
-        onConfirm={handleConfirmFeedback}
-        onCancel={() => {
+        onClose={() => {
           setFeedbackDialogOpen(false);
           setFileToFeedback(null);
-          setFeedbackText('');
+        }}
+        file={fileToFeedback}
+        countryName={countries.find(c => c.id === (fileToFeedback?.countryId || selectedBin))?.name || (fileToFeedback?.countryId || selectedBin)}
+        countryId={fileToFeedback?.countryId || selectedBin}
+        weekId={selectedWeek}
+        initialPhone={feedbackPhone || getCountryPhone(fileToFeedback?.countryId || selectedBin)}
+        adminPassword={authenticatedAdminPassword}
+        onStatusUpdated={(updatedFile) => {
+          const targetCountry = fileToFeedback?.countryId || selectedBin;
+          setDashboard(prev => {
+            const list = prev[targetCountry] || [];
+            return {
+              ...prev,
+              [targetCountry]: list.map(f => f.id === updatedFile.id ? { ...f, ...updatedFile } : f)
+            };
+          });
         }}
       />
 
@@ -2571,6 +2685,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         isVideo={actionSheetFile?.type === 'video' || !!actionSheetFile?.name?.match(/\.(mp4|mov|avi|mkv)$/i)}
         onApprove={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'approved')}
         onReject={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'rejected')}
+        onOpenFeedback={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, actionSheetFile?.status || 'rejected')}
         onDownload={() => openDownloadDialog(actionSheetFile)}
         onDelete={() => openDeleteDialog(selectedBin, actionSheetFile?.id)}
         onViewScript={(f) => setViewingScript(f)}

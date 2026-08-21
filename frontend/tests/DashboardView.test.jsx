@@ -13,6 +13,8 @@ vi.mock('../src/api/index.js', () => ({
     getEditorialReport: vi.fn().mockResolvedValue(null),
     saveTimelineWorkspace: vi.fn().mockResolvedValue({ ok: true }),
     checkAdminPassword: vi.fn().mockResolvedValue({ ok: true }),
+    getSubscriptions: vi.fn().mockResolvedValue([{ countryId: 'ga', phone: '+24107000000' }]),
+    updateFileStatus: vi.fn().mockResolvedValue({ ok: true }),
   },
   API_BASE: 'http://localhost:3010',
 }));

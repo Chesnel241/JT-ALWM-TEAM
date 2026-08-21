@@ -43,14 +43,20 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [isSubscribing, setIsSubscribing] = useState(false);
 
   useEffect(() => {
-    const savedPhone = localStorage.getItem('uploader_phone');
-    if (savedPhone) {
+    const savedCountryPhone = localStorage.getItem(`uploader_phone_${country.id}`);
+    const savedGlobalPhone = localStorage.getItem('uploader_phone');
+    const phoneToUse = savedCountryPhone || savedGlobalPhone || '';
+    if (phoneToUse && phoneToUse.trim().length >= 5) {
       setHasPhoneNumber(true);
-      setPhone(savedPhone);
+      setPhone(phoneToUse);
+      if (selectedWeek) {
+        api.subscribeToNotifications(selectedWeek, country.id, phoneToUse).catch(() => {});
+      }
     } else {
       setHasPhoneNumber(false);
+      setPhone('');
     }
-  }, []);
+  }, [country.id, selectedWeek]);
 
   const [delaysData, setDelaysData] = useState(null);
   const [isRequestingDelay, setIsRequestingDelay] = useState(false);
@@ -261,14 +267,17 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     }
   };
 
-  const handleSubscribe = async () => {
-    if (!phone || phone.trim().length < 5) return;
+  const handleSubscribe = async (customPhone) => {
+    const phoneToSub = (typeof customPhone === 'string' ? customPhone : phone || '').trim();
+    if (!phoneToSub || phoneToSub.length < 5) return;
     setIsSubscribing(true);
     try {
-      await api.subscribeToNotifications(selectedWeek, country.id, phone);
-      localStorage.setItem('uploader_phone', phone);
+      await api.subscribeToNotifications(selectedWeek, country.id, phoneToSub);
+      localStorage.setItem('uploader_phone', phoneToSub);
+      localStorage.setItem(`uploader_phone_${country.id}`, phoneToSub);
+      setPhone(phoneToSub);
       setHasPhoneNumber(true);
-      addToast(t.uploader.notifySuccess, 'success', 3000);
+      addToast(t.uploader.notifySuccess || 'Numéro WhatsApp enregistré avec succès !', 'success', 3000);
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
@@ -331,18 +340,31 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.weekTitle}</h3>
           <p className="text-sm text-[color:var(--muted)]">{t.uploader.weekSubtitle}</p>
         </div>
-        <select
-          id="tour-week-selector"
-          value={selectedWeek}
-          onChange={(e) => setSelectedWeek(e.target.value)}
-          className="w-full sm:w-auto bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-full px-4 py-2.5 sm:py-2 font-medium"
-        >
-          {weeks.map((w) => (
-            <option key={w.id} value={w.id}>
-              {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          {hasPhoneNumber && phone && country.id !== 'tj' && country.id !== 'mj' && (
+            <button
+              onClick={() => setHasPhoneNumber(false)}
+              type="button"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 text-xs font-semibold hover:bg-green-500/20 transition-colors active:scale-95"
+              title="Cliquer pour modifier le numéro WhatsApp"
+            >
+              <span>📱 WhatsApp : {phone}</span>
+              <span className="text-[10px] underline opacity-75">(Modifier)</span>
+            </button>
+          )}
+          <select
+            id="tour-week-selector"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            className="w-full sm:w-auto bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-full px-4 py-2.5 sm:py-2 font-medium"
+          >
+            {weeks.map((w) => (
+              <option key={w.id} value={w.id}>
+                {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {currentWeek && <CountdownTimer week={currentWeek} />}

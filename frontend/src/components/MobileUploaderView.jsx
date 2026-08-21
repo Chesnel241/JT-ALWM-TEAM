@@ -240,6 +240,25 @@ export default function MobileUploaderView({
       ) : (
         /* 6. STANDARD REPORTAGES VIEW */
         <div className="space-y-4">
+          {/* WHATSAPP CONTACT PILL */}
+          {hasPhoneNumber && phone && (
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-xs">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[#25D366]">📱</span>
+                <span className="font-semibold text-green-800 dark:text-green-300 truncate">
+                  WhatsApp : {phone}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHasPhoneNumber(false)}
+                className="text-[11px] font-bold text-green-700 dark:text-green-400 underline shrink-0 active:scale-95"
+              >
+                Modifier
+              </button>
+            </div>
+          )}
+
           {/* HORIZONTAL REPORTAGES TABS */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between px-1">
