@@ -26,22 +26,13 @@ import { sanitizerMiddleware } from './middleware/sanitizer.js';
 import { globalLimiter, uploadLimiter, archiveLimiter } from './middleware/rateLimiter.js';
 import { errorHandlerMiddleware, notFoundMiddleware } from './middleware/errorHandler.js';
 import { Server } from 'socket.io';
-import { createHash, timingSafeEqual } from 'crypto';
 
 export let io;
 
-function normalizeWsToken(s) {
-  if (typeof s !== 'string') return '';
-  return s.normalize('NFC').replace(/[\u0009\u00A0\u1680\u2000-\u200D\u202F\u205F\u2060\u3000\uFEFF]/g, '').trim().toLowerCase();
-}
-
-function safeEqualToken(a, b) {
-  if (a == null || b == null) return false;
-  const ha = createHash('sha256').update(normalizeWsToken(a)).digest();
-  const hb = createHash('sha256').update(normalizeWsToken(b)).digest();
-  return timingSafeEqual(ha, hb);
-}
-
+// Le canal WebSocket ne fait que pousser des signaux de rafraîchissement UI
+// (upload_update) — rien de sensible. Le mot de passe de session global a
+// été retiré (décision produit, voir middleware/auth.js) ; gate les sockets
+// derrière lui n'aurait plus de sens alors que le reste de l'API est ouvert.
 export function initSocket(server) {
   const allow = (process.env.CORS_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
   const corsOpts = allow.length === 0 || allow.includes('*')
@@ -53,18 +44,6 @@ export function initSocket(server) {
     transports: ['websocket'],
     pingInterval: 25000,
     pingTimeout: 20000,
-  });
-
-  io.use((socket, next) => {
-    const token = (socket.handshake.auth && socket.handshake.auth.token) || socket.handshake.headers['x-app-password'];
-    const GLOBAL = process.env.GLOBAL_PASSWORD;
-    const ADMIN = process.env.ADMIN_PASSWORD;
-    if (!GLOBAL) return next();
-    if (!token) return next(new Error('unauthorized'));
-    if (safeEqualToken(token, GLOBAL) || (ADMIN && safeEqualToken(token, ADMIN))) {
-      return next();
-    }
-    return next(new Error('unauthorized'));
   });
 }
 

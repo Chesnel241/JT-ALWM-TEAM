@@ -55,19 +55,19 @@ function checkUploadCutoff(weekId, countryId) {
 
 /**
  * Authentifie une création d'upload TUS. La route /api/tus est montée AVANT
- * le middleware requireAuth (les body-parsers casseraient le protocole TUS),
- * donc l'auth DOIT se faire ici. Le client envoie son token de session dans
- * metadata.adminPassword (admin OU mot de passe global — voir api/index.js).
- * Fail-closed : si GLOBAL_PASSWORD est configuré, aucun token valide = 401.
+ * le middleware requireAuth (les body-parsers casseraient le protocole TUS).
+ *
+ * Le mot de passe de session global a été retiré (décision produit) : tout
+ * upload est accepté (`ok: true` inconditionnel). On calcule quand même
+ * `isAdmin` à partir d'ADMIN_PASSWORD — cette protection-là reste active et
+ * distincte (bypass du cutoff hebdo, rubrique `mj`), hors périmètre du
+ * retrait du mot de passe global.
  */
 export function authorizeTusUpload(meta = {}) {
-  const GLOBAL = process.env.GLOBAL_PASSWORD;
   const ADMIN = process.env.ADMIN_PASSWORD;
   const token = normalizeToken(String(meta.adminPassword || meta.appPassword || ''));
   const isAdmin = !!(ADMIN && token && safeEqual(token, normalizeToken(String(ADMIN))));
-  if (!GLOBAL) return { ok: true, isAdmin }; // dev local sans mot de passe
-  const isUser = !!(token && safeEqual(token, normalizeToken(String(GLOBAL))));
-  return { ok: isAdmin || isUser, isAdmin };
+  return { ok: true, isAdmin };
 }
 
 /** Allowlist d'extensions — même règle que le chemin multer (lib/upload.js). */
