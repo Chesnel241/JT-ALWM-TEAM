@@ -32,7 +32,21 @@ function AppShell() {
   const { t } = useI18n();
   const [currentView, setCurrentView] = useState('home');
   const [selectedCountry, setSelectedCountry] = useState(null);
-  const [selectedWeek, setSelectedWeek] = useState('');
+  const [selectedWeek, setSelectedWeekState] = useState(() => {
+    try {
+      return localStorage.getItem('jt-selected-week') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const setSelectedWeek = (weekId) => {
+    setSelectedWeekState(weekId);
+    try {
+      if (weekId) localStorage.setItem('jt-selected-week', weekId);
+    } catch {}
+  };
+
   const [countries, setCountries] = useState([]);
   const [weeks, setWeeks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,11 +80,17 @@ function AppShell() {
       .then(([c, w]) => {
         setCountries(c);
         setWeeks(w);
+        const saved = localStorage.getItem('jt-selected-week');
+        const match = saved && w.find((wk) => wk.id === saved);
         const active = w.find((wk) => wk.status === 'active');
-        if (active) {
-          setSelectedWeek(active.id);
+        if (match) {
+          setSelectedWeekState(match.id);
+        } else if (active) {
+          setSelectedWeekState(active.id);
+          localStorage.setItem('jt-selected-week', active.id);
         } else if (w.length > 0) {
-          setSelectedWeek(w[0].id);
+          setSelectedWeekState(w[0].id);
+          localStorage.setItem('jt-selected-week', w[0].id);
         }
       })
       .catch((err) => {

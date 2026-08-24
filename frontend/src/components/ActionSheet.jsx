@@ -109,6 +109,8 @@ export default function ActionSheet({
             <a
               href={onDownloadHref}
               download={file.name}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={onClose}
               className="flex items-center gap-3.5 w-full p-3 rounded-2xl hover:bg-[var(--paper-2)] transition-colors active:scale-[0.98] text-left"
             >

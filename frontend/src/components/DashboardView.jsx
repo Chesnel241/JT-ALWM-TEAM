@@ -1264,12 +1264,26 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         dlTokenQuery = `&dl_token=${encodeURIComponent(token)}`;
       }
 
-      if (isArchive) {
-        // Les archives ne sont pas dans la rubrique `mj` — DL public direct.
-        window.location.assign(`${API_BASE}/api/uploads/${fileToDownload.filename}`);
-      } else {
-        window.location.assign(`${API_BASE}/uploads/${fileToDownload.filename}?dl=1${dlTokenQuery}`);
+      const downloadUrl = isArchive
+        ? `${API_BASE}/api/uploads/${fileToDownload.filename}`
+        : `${API_BASE}/uploads/${fileToDownload.filename}?dl=1${dlTokenQuery}`;
+
+      // Déclenchement non-bloquant et non-naviguant : évite que la page recharge ou perde la semaine sélectionnée
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      if (fileToDownload.name) {
+        link.download = fileToDownload.name;
       }
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        try {
+          document.body.removeChild(link);
+        } catch {}
+      }, 2000);
+      addToast('Téléchargement lancé…', 'info', 2000);
     } catch (err) {
       console.error('Erreur de téléchargement', err);
       addToast('Erreur de téléchargement (vérifiez vos droits)', 'error');
@@ -2369,6 +2383,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             <a
                               href={`${API_BASE}/uploads/${file.filename}?dl=1`}
                               download={file.name}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="p-1.5 md:p-2 rounded-lg text-gray-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
                               title={t.delivery.download}
                             >

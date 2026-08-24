@@ -79,6 +79,8 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
               <a
                 href={`${API_BASE}/uploads/${encodeURIComponent(previewVideo.filename)}?dl=1`}
                 download={previewVideo.name}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="px-4 py-1.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 shadow-sm"
               >
                 <Download size={13} /> Télécharger
@@ -184,6 +186,8 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                     <a
                       href={`${API_BASE}/uploads/${encodeURIComponent(file.filename)}?dl=1`}
                       download={file.name}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className={`py-2.5 px-3 rounded-2xl bg-[var(--accent)] text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-[var(--accent)]/30 transition-transform ${
                         !isVideo ? 'col-span-2' : ''
                       }`}
@@ -322,6 +326,8 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                         <a
                           href={`${API_BASE}/uploads/${encodeURIComponent(file.filename)}?dl=1`}
                           download={file.name}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1.5 rounded-lg"
                           title={t.delivery.downloadFile}
                         >

@@ -29,7 +29,10 @@ registerRoute(
         cacheWillUpdate: async ({ response }) =>
           response && response.status === 200 ? response : null,
       }],
-    })
+    }),
+    {
+      denylist: [/^\/api\//, /^\/uploads\//],
+    }
   )
 );
 
