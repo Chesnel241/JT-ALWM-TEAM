@@ -205,18 +205,12 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use(cookieParser());
   app.use(sanitizerMiddleware);
 
-  app.get('/uploads/*', async (req, res, next) => {
+  const serveUploadDownload = async (req, res, next) => {
     try {
       const filename = req.params[0];
       const metadata = (await import('./data/store.js')).getFileMetadata(filename);
       if (metadata && metadata.countryId === 'mj') {
         const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
-        // Accepte uniquement l'en-tête X-Admin-Password OU un dl_token signé.
-        // Avant : le mot de passe admin pouvait être passé en ?adminPassword=...
-        // et se retrouvait loggé en clair (errorHandler logge req.originalUrl,
-        // historique navigateur, proxy intermédiaires). Le frontend doit
-        // désormais demander un dl_token via POST /api/uploads/download-token
-        // (HMAC, 1 h, lié au filename).
         let providedToken = req.header('x-admin-password');
         let dlToken = req.query.dl_token;
 
@@ -243,7 +237,9 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
         const safePath = normalize(filename).replace(/^(\.\.(\/|\\|$))+/, '');
         const fullPath = join(dir, safePath);
         if (fullPath.startsWith(resolve(dir))) {
-          return res.download(fullPath, metadata?.name || basename(safePath));
+          return res.download(fullPath, metadata?.name || basename(safePath), (err) => {
+            if (err && !res.headersSent) next(err);
+          });
         }
       }
 
@@ -251,14 +247,17 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     } catch (err) {
       next(err);
     }
-  });
+  };
+
+  app.get('/uploads/*', serveUploadDownload);
+  app.get('/api/uploads/files/*', serveUploadDownload);
 
   // Servi en static. nosniff + attachment force pour les types non-média :
   // un upload .txt/.docx/.zip pourrait sinon être chargé inline et son
   // contenu sniffé en HTML/SVG → stored XSS. On garde inline pour audio/
   // vidéo/image (lecture du master + chutiers).
   const INLINE_EXT = /\.(mp4|mov|webm|mkv|mp3|wav|m4a|ogg|jpg|jpeg|png|webp|gif|bmp|heic|svg)$/i;
-  app.use('/uploads', express.static(dir, {
+  const staticConfig = {
     maxAge: '1y',
     immutable: true,
     setHeaders: (res, p) => {
@@ -268,7 +267,9 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
         res.setHeader('Content-Disposition', 'attachment');
       }
     },
-  }));
+  };
+  app.use('/uploads', express.static(dir, staticConfig));
+  app.use('/api/uploads/files', express.static(dir, staticConfig));
 
   app.get('/', (req, res) => res.status(200).send('ALWM Backend API is running.'));
 
