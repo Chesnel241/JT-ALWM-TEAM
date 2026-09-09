@@ -126,15 +126,15 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
 
           {/* Week Selector */}
           <div className="p-2.5 bg-[var(--paper-2)] rounded-2xl border border-[var(--border)] flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-[color:var(--muted)]">Semaine</span>
+            <span className="shrink-0 text-xs font-semibold text-[color:var(--muted)]">Semaine</span>
             <select
               value={selectedWeek}
               onChange={(e) => setSelectedWeek(e.target.value)}
-              className="bg-transparent border-0 text-[color:var(--ink)] text-xs font-bold outline-none cursor-pointer"
+              className="min-w-0 flex-1 truncate bg-transparent border-0 text-right text-[color:var(--ink)] text-xs font-bold outline-none cursor-pointer"
             >
               {weeks.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? ' • EN COURS' : ''}
+                  {formatWeekLabel(w, lang)}{w.status === 'active' ? ' • EN COURS' : ''}
                 </option>
               ))}
             </select>

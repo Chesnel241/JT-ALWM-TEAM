@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import Nav from '../src/components/Nav.jsx';
 import { I18nProvider } from '../src/i18n/I18nContext.jsx';
@@ -113,5 +113,44 @@ describe('Nav — espace journalistes', () => {
   it('n\'affiche pas le bouton Accueil quand on y est déjà', () => {
     renderReporter({ currentView: 'hub' });
     expect(screen.queryByRole('button', { name: 'Accueil' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Nav — téléphone', () => {
+  const realWidth = window.innerWidth;
+  afterEach(() => {
+    window.innerWidth = realWidth;
+  });
+
+  function renderMobile(props = {}) {
+    window.innerWidth = 375;
+    return render(
+      <I18nProvider>
+        <Nav currentView="home" setCurrentView={() => {}} {...props} />
+      </I18nProvider>
+    );
+  }
+
+  it('raccourcit les libellés d\'onglets qui ne tiennent pas sur la largeur', () => {
+    renderMobile();
+    expect(screen.getAllByText('Reportages')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Montage')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Stats')[0]).toBeInTheDocument();
+    expect(screen.queryByText('Espace Reportages')).not.toBeInTheDocument();
+    expect(screen.queryByText('Stats & Délais')).not.toBeInTheDocument();
+  });
+
+  it('réduit cloche et sélecteur de langue en icônes', () => {
+    renderMobile();
+    // En compact, les pastilles de langue ne portent plus le texte FR/EN.
+    expect(screen.queryByRole('button', { name: 'FR' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'EN' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Activer Notifications')).not.toBeInTheDocument();
+  });
+
+  it('garde le titre court côté journalistes', () => {
+    renderMobile({ workspace: WORKSPACES.REPORTER, currentView: 'delivery' });
+    expect(screen.getByText('Journalistes')).toBeInTheDocument();
+    expect(screen.queryByText('Espace journalistes')).not.toBeInTheDocument();
   });
 });

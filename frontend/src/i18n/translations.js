@@ -4,14 +4,20 @@ export const translations = {
       brand: 'JT ALWM',
       tagline: 'Hub de reportages',
       correspondents: 'Espace Reportages',
+      correspondentsShort: 'Reportages',
       editing: 'Espace Montage',
+      editingShort: 'Montage',
       delivery: 'JT Prêt',
+      voixOff: 'Voix Off',
+      stats: 'Stats & Délais',
+      statsShort: 'Stats',
     },
     // Espace journalistes (URL /journalistes) : deux actions, rien d'autre.
     // Textes volontairement explicites — beaucoup de correspondants sont peu
     // familiers du web et lisent sur un petit écran.
     reporter: {
       badge: 'Espace journalistes',
+      badgeShort: 'Journalistes',
       welcome: 'Bienvenue',
       title: 'Que souhaitez-vous faire ?',
       subtitle: 'Choisissez l’une des deux options ci-dessous. Vous pourrez revenir ici à tout moment.',
@@ -289,11 +295,17 @@ export const translations = {
       brand: 'JT ALWM',
       tagline: 'Reports Hub',
       correspondents: 'Reports Space',
+      correspondentsShort: 'Reports',
       editing: 'Editing Room',
+      editingShort: 'Editing',
       delivery: 'Final Cut',
+      voixOff: 'Voice Over',
+      stats: 'Stats & Delays',
+      statsShort: 'Stats',
     },
     reporter: {
       badge: 'Reporters space',
+      badgeShort: 'Reporters',
       welcome: 'Welcome',
       title: 'What would you like to do?',
       subtitle: 'Pick one of the two options below. You can always come back to this page.',

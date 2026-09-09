@@ -344,7 +344,7 @@ function AppShell() {
 
       <ToastContainer />
       {!isEditorWorkspace && !isReporterHub && <HelpButton />}
-      {!isEditorWorkspace && !isReporterHub && <AIAssistant currentPage={currentView} />}
+      {!isEditorWorkspace && !isReporterHub && <AIAssistant currentPage={currentView} showBubble={!isReporter} />}
     </div>
   );
 }

@@ -37,12 +37,18 @@ export default function Nav({
       : isEditorWorkspace
         ? 'text-xs sm:px-2.5 sm:py-2 sm:rounded-md'
         : 'text-xs sm:text-sm px-1 sm:px-4 py-2 sm:py-2.5 rounded-xl';
-    return `flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-[transform,background-color,color,box-shadow] duration-150 font-medium flex-1 sm:flex-none ${size} ${
+    return `flex min-w-0 flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-[transform,background-color,color,box-shadow] duration-150 font-medium flex-1 sm:flex-none ${size} ${
       isActive
         ? 'bg-[var(--accent)] text-white shadow-md scale-105 sm:scale-100'
         : 'text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--paper-2)]'
     }`;
   };
+
+  // Sur téléphone, la ligne « cloche + langues (+ Accueil) » libellée dépasse
+  // la largeur de l'écran : on repasse ces contrôles en icônes. Les libellés
+  // restent en `title`/`aria-label`, et la navigation reste dans la barre du
+  // bas, plus grosse et plus lisible.
+  const compactActions = isEditorWorkspace || isMobile;
 
   const iconSize = isReporter ? 24 : 20;
   const iconClass = isReporter ? 'sm:w-[22px] sm:h-[22px]' : 'sm:w-[18px] sm:h-[18px]';
@@ -71,14 +77,14 @@ export default function Nav({
       id: 'tour-country-list', // Surtout utilisé sur mobile pour la visite
       view: 'home',
       icon: <MapPin size={iconSize} className={iconClass} />,
-      label: t.nav.correspondents,
+      label: isMobile ? t.nav.correspondentsShort : t.nav.correspondents,
       match: ['home', 'uploader']
     },
     {
       id: 'tour-nav-dashboard',
       view: 'dashboard',
       icon: <LayoutDashboard size={iconSize} className={iconClass} />,
-      label: t.nav.editing,
+      label: isMobile ? t.nav.editingShort : t.nav.editing,
       match: ['dashboard'],
       badge: newUploadsCount > 0 ? newUploadsCount : null
     },
@@ -86,7 +92,7 @@ export default function Nav({
       id: 'tour-nav-voixoff',
       view: 'voixoff',
       icon: <Mic size={iconSize} className={iconClass} />,
-      label: 'Voix Off',
+      label: t.nav.voixOff,
       match: ['voixoff']
     },
     {
@@ -100,7 +106,7 @@ export default function Nav({
       id: 'tour-nav-stats',
       view: 'stats',
       icon: <BarChart2 size={iconSize} className={iconClass} />,
-      label: 'Stats & Délais',
+      label: isMobile ? t.nav.statsShort : t.nav.stats,
       match: ['stats']
     }
   ];
@@ -115,7 +121,7 @@ export default function Nav({
       className={getNavClass(item.match.includes(currentView))}
       aria-current={item.match.includes(currentView) ? 'page' : undefined}
     >
-      <div className={keyPrefix === 'mobile' ? 'relative mb-1' : 'relative'}>
+      <div className={keyPrefix === 'mobile' ? 'relative mb-1 shrink-0' : 'relative shrink-0'}>
         {item.icon}
         {item.badge && item.match.includes('dashboard') && currentView !== 'dashboard' && (
           <span className="absolute -top-2 -right-2 bg-[var(--signal)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-pulse min-w-[20px] text-center">
@@ -138,12 +144,12 @@ export default function Nav({
       <img
         src="/logo-lwm.png"
         alt="Logo ALWM"
-        className={`${isEditorWorkspace ? 'h-9 w-9' : 'h-10 w-10 sm:h-11 sm:w-11'} rounded-full object-contain`}
+        className={`${isEditorWorkspace ? 'h-9 w-9' : 'h-10 w-10 sm:h-11 sm:w-11'} shrink-0 rounded-full object-contain`}
       />
-      <div className="text-left">
+      <div className="hidden min-w-0 text-left min-[360px]:block">
         <p className={`${isEditorWorkspace ? 'text-[9px]' : 'text-[10px] sm:text-xs'} uppercase tracking-[0.3em] text-[color:var(--muted)]`}>{t.nav.brand}</p>
-        <h1 className={`${isEditorWorkspace ? 'text-sm xl:text-base' : 'text-lg sm:text-xl'} whitespace-nowrap font-semibold text-[color:var(--ink)]`}>
-          {isReporter ? t.reporter.badge : t.nav.tagline}
+        <h1 className={`${isEditorWorkspace ? 'text-sm xl:text-base' : 'text-sm sm:text-xl'} truncate font-semibold text-[color:var(--ink)]`}>
+          {isReporter ? (isMobile ? t.reporter.badgeShort : t.reporter.badge) : t.nav.tagline}
         </h1>
       </div>
     </>
@@ -164,18 +170,18 @@ export default function Nav({
               type="button"
               onClick={() => setCurrentView('hub')}
               aria-label={t.reporter.homeAria}
-              className="flex shrink-0 items-center gap-3 rounded-2xl px-1 py-1 -ml-1 transition-colors hover:bg-[var(--paper-2)] active:scale-95"
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-1 py-1 -ml-1 transition-colors hover:bg-[var(--paper-2)] active:scale-95 sm:flex-none"
             >
               {brand}
             </button>
           ) : (
-            <div className={`flex shrink-0 items-center ${isEditorWorkspace ? 'gap-2' : 'gap-3'}`}>
+            <div className={`flex min-w-0 flex-1 items-center sm:flex-none ${isEditorWorkspace ? 'shrink-0 gap-2' : 'gap-3'}`}>
               {brand}
             </div>
           )}
 
           {/* Top Actions (always visible) */}
-          <div className={`flex shrink-0 items-center gap-2 sm:gap-3 ${isEditorWorkspace ? 'order-3' : ''}`}>
+          <div className={`flex shrink-0 items-center gap-1.5 sm:gap-3 ${isEditorWorkspace ? 'order-3' : ''}`}>
             {/* Retour explicite : ne pas compter sur le seul logo cliquable,
                 le repère « Accueil » doit être lisible pour tout le monde. */}
             {isReporter && currentView !== 'hub' && (
@@ -191,13 +197,13 @@ export default function Nav({
             )}
             {/* Cloche push : utile aux deux équipes (les journalistes veulent
                 être prévenus dès que le JT est prêt). */}
-            <NotificationToggle compact={isEditorWorkspace} />
-            <LanguageSwitcher compact={isEditorWorkspace} />
+            <NotificationToggle compact={compactActions} />
+            <LanguageSwitcher compact={compactActions} />
           </div>
 
           {/* Desktop nav (hidden on mobile) */}
           {showTabs && !isReporter && (
-            <div className={`hidden min-w-0 flex-1 items-center sm:flex ${isEditorWorkspace ? 'order-2 flex-nowrap justify-center gap-1' : 'flex-wrap gap-2'}`}>
+            <div className={`hidden min-w-0 items-center sm:flex ${isEditorWorkspace ? 'order-2 flex-1 flex-nowrap justify-center gap-1' : 'basis-full flex-wrap justify-center gap-2 lg:basis-0 lg:flex-1 lg:justify-start'}`}>
               {visibleNavItems.map((item) => renderTab(item, 'desktop', !isMobile))}
             </div>
           )}

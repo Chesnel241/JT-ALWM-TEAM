@@ -10,7 +10,10 @@ import { getAIResponse, getSuggestedQuestions } from '../data/faqKnowledge';
 // d'action sur mobile à chaque visite).
 const BUBBLE_HIDDEN_KEY = 'jt-ai-bubble-hidden-until';
 
-export default function AIAssistant({ currentPage }) {
+// `showBubble` : la bulle d'invitation flotte au-dessus du contenu. Utile
+// pour l'équipe montage, gênante côté journalistes où elle recouvrait les
+// cartes sur petit écran — le bouton de chat, lui, reste accessible.
+export default function AIAssistant({ currentPage, showBubble = true }) {
   const { t, lang } = useI18n();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [bubbleHidden, setBubbleHidden] = useState(() => {
@@ -145,11 +148,11 @@ export default function AIAssistant({ currentPage }) {
       <div className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-[9999] flex flex-col items-end">
         
         {/* Floating Bubble Prompt */}
-        {!isChatOpen && !runTour && !bubbleHidden && (
-          <div className="flex items-center gap-1 bg-[var(--paper)] text-[color:var(--ink)] pl-4 pr-1 py-1 rounded-full shadow-lg border border-[var(--border)] mb-4 animate-bounce">
+        {showBubble && !isChatOpen && !runTour && !bubbleHidden && (
+          <div className="flex max-w-[calc(100vw-2rem)] items-center gap-1 bg-[var(--paper)] text-[color:var(--ink)] pl-4 pr-1 py-1 rounded-full shadow-lg border border-[var(--border)] mb-4 animate-bounce">
             <button
               onClick={() => setIsChatOpen(true)}
-              className="text-sm font-medium py-1"
+              className="min-w-0 truncate text-sm font-medium py-1"
             >
               {t.aiAssistant.greeting}
             </button>
