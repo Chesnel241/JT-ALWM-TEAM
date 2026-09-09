@@ -80,18 +80,18 @@ describe('MobileUploaderView', () => {
 
     // Switch to Reportage 2
     fireEvent.click(tab2);
-    expect(screen.getByText('Aucun fichier pour ce reportage.')).toBeInTheDocument();
+    expect(screen.getByText("Aucun fichier pour l'instant.")).toBeInTheDocument();
   });
 
   it('renders 2 quick action buttons (Video / Media and Script)', () => {
     renderMobileUploader();
-    expect(screen.getByText(/Ajouter Vidéo \/ Média/i)).toBeInTheDocument();
-    expect(screen.getByText(/Rédiger un Script/i)).toBeInTheDocument();
+    expect(screen.getByText('Envoyer une vidéo')).toBeInTheDocument();
+    expect(screen.getByText('Écrire le script')).toBeInTheDocument();
   });
 
   it('opens script bottom sheet modal on click', () => {
     renderMobileUploader();
-    const scriptBtn = screen.getByText(/Rédiger un Script/i).closest('button');
+    const scriptBtn = screen.getByText('Écrire le script').closest('button');
     fireEvent.click(scriptBtn);
     expect(screen.getByText(/Script : Reportage 1/i)).toBeInTheDocument();
     expect(screen.getByText(/Enregistrer le script/i)).toBeInTheDocument();
@@ -102,5 +102,46 @@ describe('MobileUploaderView', () => {
     renderMobileUploader({ onBack });
     fireEvent.click(screen.getByText('Pays').closest('button'));
     expect(onBack).toHaveBeenCalled();
+  });
+});
+
+describe('MobileUploaderView — repères ajoutés', () => {
+  it('affiche l\'échéance de la semaine, absente jusque-là sur téléphone', () => {
+    renderMobileUploader();
+    expect(screen.getByText(/Temps restant pour envoyer|VOUS êtes en retard/i)).toBeInTheDocument();
+  });
+
+  it('explique ce qu\'on dépose dans la section active', () => {
+    renderMobileUploader();
+    expect(screen.getByText(/Votre sujet de la semaine/i)).toBeInTheDocument();
+  });
+
+  it('accuse réception quand la section contient des fichiers', () => {
+    renderMobileUploader();
+    expect(screen.getByText('2 fichiers bien reçus')).toBeInTheDocument();
+  });
+
+  it('n\'accuse pas réception pendant un envoi en cours', () => {
+    renderMobileUploader({
+      uploading: [{ id: 'u1', name: 'a.mp4', progress: 40, phase: 'uploading', reportage: 'Reportage 1' }],
+    });
+    expect(screen.queryByText('2 fichiers bien reçus')).not.toBeInTheDocument();
+    expect(screen.getByText(/Gardez cette page ouverte/i)).toBeInTheDocument();
+  });
+
+  it('propose toutes les sections sans défilement caché', () => {
+    renderMobileUploader();
+    // Libellés courts dans les onglets, nom complet dans l'en-tête de section.
+    expect(screen.getByRole('button', { name: /Séminaires/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Annonces/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Séminaires/i }));
+    expect(screen.getByText('Séminaires de la semaine')).toBeInTheDocument();
+  });
+
+  it('laisse le journaliste ajouter un reportage', () => {
+    const setReportageCount = vi.fn();
+    renderMobileUploader({ setReportageCount });
+    fireEvent.click(screen.getByText('Ajouter un reportage'));
+    expect(setReportageCount).toHaveBeenCalled();
   });
 });

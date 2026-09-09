@@ -42,10 +42,13 @@ const ROUTES = {
     ['uploader', 'reportage/envoi'],
     ['delivery', 'telecharger-le-jt'],
   ],
+  // L'équipe montage ouvre directement sur son studio : c'est là qu'elle
+  // travaille, et c'est l'écran sur lequel elle atterrissait déjà avant que
+  // la redirection accidentelle de EditorView soit corrigée.
   [WORKSPACES.EDITOR]: [
-    ['home', ''],
+    ['dashboard', ''],
+    ['home', 'reportages'],
     ['uploader', 'reportage/envoi'],
-    ['dashboard', 'montage'],
     ['voixoff', 'voix-off'],
     ['delivery', 'jt-pret'],
     ['stats', 'stats'],
@@ -53,9 +56,17 @@ const ROUTES = {
   ],
 };
 
+// Segments encore en circulation (favoris, liens partagés) qui ne sont plus
+// la forme canonique. Ils ouvrent la bonne vue, puis l'URL est réécrite.
+const LEGACY_SEGMENTS = {
+  [WORKSPACES.EDITOR]: {
+    montage: 'dashboard',
+  },
+};
+
 export const DEFAULT_VIEW = Object.freeze({
   [WORKSPACES.REPORTER]: 'hub',
-  [WORKSPACES.EDITOR]: 'home',
+  [WORKSPACES.EDITOR]: 'dashboard',
 });
 
 function routesFor(workspace) {
@@ -88,8 +99,10 @@ export function parsePath(pathname) {
   const workspace = alias ? alias.workspace : WORKSPACES.EDITOR;
   const rest = (alias ? segments.slice(1) : segments).join('/');
   const route = routesFor(workspace).find(([, segment]) => segment === rest);
+  if (route) return { workspace, view: route[0] };
 
-  return { workspace, view: route ? route[0] : defaultViewFor(workspace) };
+  const legacy = (LEGACY_SEGMENTS[workspace] || {})[rest];
+  return { workspace, view: legacy || defaultViewFor(workspace) };
 }
 
 /** { workspace, view } → URL canonique. */

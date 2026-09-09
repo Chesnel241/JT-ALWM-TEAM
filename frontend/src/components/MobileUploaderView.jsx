@@ -2,16 +2,19 @@ import { useState, useRef } from 'react';
 import {
   UploadCloud, FileText, Video, Mic, CheckCircle,
   Clock, ChevronRight, Trash2, AlertCircle, Plus,
-  HelpCircle, X, ArrowLeft, Send
+  HelpCircle, X, ArrowLeft, Send, MessageCircle
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import SkeletonCard from './SkeletonCard.jsx';
+import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import PhoneInput from 'react-phone-number-input';
+import PhoneCountryBadge from './PhoneCountryBadge.jsx';
+import { phoneCountryFor } from '../lib/phone.js';
 import 'react-phone-number-input/style.css';
 
 const FILE_ICONS = {
@@ -39,6 +42,9 @@ export default function MobileUploaderView({
   submittingScripts,
   openDeleteDialog,
   hasPhoneNumber,
+  // Transmise par UploaderView mais jamais déstructurée ici : le bouton
+  // « Modifier » du numéro levait une erreur au lieu de rouvrir le champ.
+  setHasPhoneNumber,
   phone,
   setPhone,
   handleSubscribe,
@@ -49,30 +55,39 @@ export default function MobileUploaderView({
 }) {
   const { t, lang } = useI18n();
   const { addToast } = useToast();
+  const currentWeek = weeks.find((w) => w.id === selectedWeek);
+  const defaultPhoneCountry = phoneCountryFor(country.id);
   const [activeTabId, setActiveTabId] = useState('reportage-0');
   const [scriptModalOpen, setScriptModalOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [previewScriptFile, setPreviewScriptFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Define sections
+  // Chaque section porte une phrase qui dit ce qu'on y dépose : « Annonces »
+  // ou « Séminaires » seuls ne parlaient qu'à l'équipe montage.
   const sections = [
     ...Array.from({ length: reportageCount }, (_, i) => ({
       id: `reportage-${i}`,
       name: t.uploader.reportageName(i + 1),
+      shortName: t.uploader.reportageName(i + 1),
       badge: `${i + 1}`,
+      hint: t.uploader.sectionHintReportage,
       isFirst: i === 0,
     })),
     {
       id: 'annonces',
       name: 'Annonces',
+      shortName: 'Annonces',
       badge: 'A',
+      hint: t.uploader.sectionHintAnnonces,
       isFirst: false,
     },
     {
       id: 'seminaires',
       name: 'Séminaires de la semaine',
+      shortName: 'Séminaires',
       badge: 'S',
+      hint: t.uploader.sectionHintSeminaires,
       isFirst: false,
     },
   ];
@@ -103,66 +118,69 @@ export default function MobileUploaderView({
   const activeScriptContent = scriptText[activeReportageName] || '';
   const wordCount = activeScriptContent.trim() ? activeScriptContent.trim().split(/\s+/).length : 0;
 
+  // pb-28 : la barre d'onglets est fixée en bas de l'écran. Sans cette
+  // réserve, elle recouvrait la moitié basse des boutons d'envoi et les
+  // appuis partaient sur l'onglet au lieu du bouton.
   return (
-    <div className="space-y-4 pb-12">
-      {/* 1. TOP APP BAR */}
-      <div className="flex items-center justify-between gap-2 bg-[var(--paper)] p-3 rounded-2xl border border-[var(--border)] shadow-sm">
-        <button
-          onClick={onBack}
-          type="button"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--paper-2)] text-[color:var(--ink)] font-semibold text-xs border border-[var(--border)] active:scale-95 transition-transform"
-        >
-          <ArrowLeft size={14} />
-          <span>{t.uploader.back}</span>
-        </button>
+    <div className="space-y-4 pb-28">
+      {/* En-tête unique : pays, semaine et échéance. Auparavant deux cartes
+          empilées poussaient les boutons d'envoi sous la ligne de flottaison —
+          le correspondant devait faire défiler pour trouver l'action. */}
+      <div className="rounded-2xl bg-[var(--paper)] border border-[var(--border)] shadow-sm p-3 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={onBack}
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--paper-2)] text-[color:var(--ink)] font-semibold text-xs border border-[var(--border)] active:scale-95 transition-transform"
+          >
+            <ArrowLeft size={14} />
+            <span>{t.uploader.back}</span>
+          </button>
 
-        <div className="flex items-center gap-2 min-w-0">
-          <CountryAvatar country={country} className="w-7 h-7 shrink-0" />
-          <span className="font-bold text-sm text-[color:var(--ink)] truncate">
-            {country.name}
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <CountryAvatar country={country} className="w-7 h-7 shrink-0" />
+            <span className="font-bold text-sm text-[color:var(--ink)] truncate">
+              {country.name}
+            </span>
+          </div>
+
+          {country.id !== 'tj' && country.id !== 'mj' && (
+            <button
+              onClick={() => setTutorialOpen(true)}
+              type="button"
+              className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
+            >
+              <HelpCircle size={14} />
+              <span>Guide</span>
+            </button>
+          )}
         </div>
 
-        {country.id !== 'tj' && country.id !== 'mj' && (
-          <button
-            onClick={() => setTutorialOpen(true)}
-            type="button"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            aria-label={t.uploader.weekLabel}
+            className="min-w-0 flex-1 bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-sm font-semibold rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
           >
-            <HelpCircle size={14} />
-            <span>Guide</span>
-          </button>
-        )}
-      </div>
-
-      {/* 2. WEEK SELECTOR & DEADLINE PILL */}
-      <div className="p-3 rounded-2xl bg-[var(--paper)] border border-[var(--border)] shadow-sm space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-[color:var(--muted)]">
-            Semaine de diffusion
-          </span>
-          {isLocked ? (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--signal)] text-white">
+            {/* Sans les dates : l'intitulé complet était coupé par le champ
+                natif, et c'est « EN COURS » qui disparaissait. */}
+            {weeks.map((w) => (
+              <option key={w.id} value={w.id}>
+                {formatWeekLabel(w, lang)}{w.status === 'active' ? ' • EN COURS' : ''}
+              </option>
+            ))}
+          </select>
+          {isLocked && (
+            <span className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[var(--signal)] text-white">
               Clôturé
-            </span>
-          ) : (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
-              En cours
             </span>
           )}
         </div>
 
-        <select
-          value={selectedWeek}
-          onChange={(e) => setSelectedWeek(e.target.value)}
-          className="w-full bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-xs font-semibold rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
-        >
-          {weeks.map((w) => (
-            <option key={w.id} value={w.id}>
-              {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? ' • EN COURS' : ''}
-            </option>
-          ))}
-        </select>
+        {/* L'échéance n'existait que sur ordinateur : sur téléphone, le
+            correspondant ne découvrait le retard qu'une fois clôturé. */}
+        {currentWeek && <CountdownTimer week={currentWeek} compact />}
       </div>
 
       {/* 3. LATE / LOCK NOTIFICATION */}
@@ -197,20 +215,24 @@ export default function MobileUploaderView({
             <div className="bg-[color:var(--accent)] text-white p-2.5 rounded-full shrink-0">
               <AlertCircle size={20} />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-[color:var(--ink)]">
+            <div className="min-w-0">
+              <h3 className="text-base font-bold text-[color:var(--ink)]">
                 {t.uploader.mandatoryPhoneTitle || 'Numéro WhatsApp requis'}
               </h3>
-              <p className="text-xs text-[color:var(--muted)] mt-0.5">
-                Pour vous notifier immédiatement en cas de problème sur un fichier.
+              <p className="text-sm text-[color:var(--muted)] mt-0.5">
+                {t.uploader.phoneWhy}
               </p>
             </div>
           </div>
 
           <div className="space-y-3">
+            {/* L'indicatif est déduit du pays choisi : les correspondants
+                devaient sinon retrouver le leur dans une longue liste,
+                proposée par défaut sur la France. */}
             <PhoneInput
               international
-              defaultCountry="FR"
+              defaultCountry={defaultPhoneCountry}
+              flagComponent={PhoneCountryBadge}
               value={phone}
               onChange={setPhone}
               className="w-full uploader-phone-input"
@@ -218,13 +240,17 @@ export default function MobileUploaderView({
             <button
               onClick={handleSubscribe}
               disabled={isSubscribing || !phone || phone.length < 5}
-              className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-[var(--accent)] text-white font-bold text-base shadow-md shadow-[var(--accent)]/25 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSubscribing && (
-                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               )}
               <span>{t.uploader.mandatoryPhoneSubmit || 'Valider et continuer'}</span>
             </button>
+            {/* Dire ce qui vient après : l'écran était un mur sans horizon. */}
+            <p className="text-center text-xs text-[color:var(--muted)]">
+              {t.uploader.phoneNext}
+            </p>
           </div>
         </div>
       ) : country.id === 'tj' || country.id === 'mj' ? (
@@ -240,43 +266,12 @@ export default function MobileUploaderView({
       ) : (
         /* 6. STANDARD REPORTAGES VIEW */
         <div className="space-y-4">
-          {/* WHATSAPP CONTACT PILL */}
-          {hasPhoneNumber && phone && (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-xs">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[#25D366]">📱</span>
-                <span className="font-semibold text-green-800 dark:text-green-300 truncate">
-                  WhatsApp : {phone}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setHasPhoneNumber(false)}
-                className="text-[11px] font-bold text-green-700 dark:text-green-400 underline shrink-0 active:scale-95"
-              >
-                Modifier
-              </button>
-            </div>
-          )}
-
-          {/* HORIZONTAL REPORTAGES TABS */}
+          {/* Sections : une rangée compacte, libellés courts, bouton d'ajout
+              intégré. Le titre en pleine largeur repoussait les boutons
+              d'envoi hors du premier écran, et le bandeau défilait
+              horizontalement sans indice — « Séminaires » restait invisible. */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--muted)]">
-                Sections du JT
-              </span>
-              {reportageCount < 5 && (
-                <button
-                  onClick={() => setReportageCount((prev) => Math.min(5, prev + 1))}
-                  className="flex items-center gap-1 text-[11px] font-bold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-full active:scale-95"
-                >
-                  <Plus size={12} />
-                  <span>Ajouter un reportage</span>
-                </button>
-              )}
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-1 pt-1 no-scrollbar -mx-4 px-4 custom-scrollbar">
+            <div className="flex flex-wrap gap-2">
               {sections.map((sec) => {
                 const isActive = sec.id === activeTabId;
                 const count = uploads.filter(
@@ -288,7 +283,7 @@ export default function MobileUploaderView({
                     key={sec.id}
                     onClick={() => setActiveTabId(sec.id)}
                     type="button"
-                    className={`shrink-0 flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs transition-all active:scale-95 ${
+                    className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs transition-all active:scale-95 ${
                       isActive
                         ? 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/25 scale-[1.02]'
                         : 'bg-[var(--paper)] text-[color:var(--ink)] border border-[var(--border)]'
@@ -301,7 +296,7 @@ export default function MobileUploaderView({
                     >
                       {sec.badge}
                     </span>
-                    <span>{sec.name}</span>
+                    <span>{sec.shortName}</span>
                     {count > 0 && (
                       <span
                         className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
@@ -314,39 +309,52 @@ export default function MobileUploaderView({
                   </button>
                 );
               })}
+
+              {/* Le journaliste reste libre d'ouvrir une section de plus. */}
+              {reportageCount < 5 && (
+                <button
+                  onClick={() => setReportageCount((prev) => Math.min(5, prev + 1))}
+                  type="button"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl border border-dashed border-[var(--border)] text-[color:var(--accent-deep)] font-bold text-xs active:scale-95"
+                >
+                  <Plus size={14} />
+                  <span>Ajouter un reportage</span>
+                </button>
+              )}
             </div>
           </div>
 
           {/* ACTIVE SECTION CONTAINER */}
-          <div className="bg-[var(--paper)] rounded-3xl border border-[var(--border)] p-4 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs">
+          <div className="bg-[var(--paper)] rounded-3xl border border-[var(--border)] p-3.5 shadow-sm space-y-3">
+            <div>
+              <h3 className="flex items-center gap-2 font-bold text-base text-[color:var(--ink)]">
+                <span className="w-6 h-6 shrink-0 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center font-bold text-[11px]">
                   {currentSection.badge}
                 </span>
-                <div>
-                  <h3 className="font-bold text-sm text-[color:var(--ink)]">{activeReportageName}</h3>
-                  <span className="text-[11px] text-[color:var(--muted)]">
-                    {activeUploads.length} {activeUploads.length > 1 ? 'fichiers envoyés' : 'fichier envoyé'}
-                  </span>
-                </div>
-              </div>
+                <span className="truncate">{activeReportageName}</span>
+              </h3>
+              <p className="mt-0.5 text-xs text-[color:var(--muted)]">{currentSection.hint}</p>
             </div>
 
-            {/* QUICK ACTIONS HUB (3 Thumb Buttons) */}
-            <div className="grid grid-cols-2 gap-2.5">
+            {/* Deux actions, une seule hiérarchie : l'envoi de fichier est
+                l'action principale (bouton plein), le script la seconde
+                (bouton bordé). Le bleu et l'orange d'origine mettaient les
+                deux au même niveau et juraient avec l'accent maison. */}
+            <div className="space-y-2.5">
               {/* Button 1: Add Video / File */}
               <button
                 onClick={handleTriggerFileInput}
                 disabled={isLocked}
                 type="button"
-                className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 text-blue-700 dark:text-blue-400 font-bold text-xs shadow-sm active:scale-95 transition-all text-center gap-1.5 disabled:opacity-50"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--accent)] text-white font-bold text-base shadow-md shadow-[var(--accent)]/25 active:scale-[0.98] transition-all text-left disabled:opacity-50"
               >
-                <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/30">
-                  <Video size={20} />
-                </div>
-                <span className="leading-tight">Ajouter Vidéo / Média</span>
-                <span className="text-[10px] font-normal opacity-80">Galerie ou Caméra</span>
+                <span className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+                  <Video size={24} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block leading-tight">{t.uploader.addMedia}</span>
+                  <span className="block text-xs font-medium opacity-85">{t.uploader.addMediaHint}</span>
+                </span>
               </button>
 
               {/* Hidden file input */}
@@ -370,13 +378,15 @@ export default function MobileUploaderView({
                 onClick={() => setScriptModalOpen(true)}
                 disabled={isLocked}
                 type="button"
-                className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/20 text-amber-800 dark:text-amber-400 font-bold text-xs shadow-sm active:scale-95 transition-all text-center gap-1.5 disabled:opacity-50"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--paper-2)] border-2 border-[var(--border)] text-[color:var(--ink)] font-bold text-base active:scale-[0.98] transition-all text-left disabled:opacity-50"
               >
-                <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/30">
-                  <FileText size={20} />
-                </div>
-                <span className="leading-tight">Rédiger un Script</span>
-                <span className="text-[10px] font-normal opacity-80">Texte & Voix Off</span>
+                <span className="w-12 h-12 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center shrink-0">
+                  <FileText size={24} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block leading-tight">{t.uploader.addScript}</span>
+                  <span className="block text-xs font-medium text-[color:var(--muted)]">{t.uploader.addScriptHint}</span>
+                </span>
               </button>
             </div>
 
@@ -393,6 +403,12 @@ export default function MobileUploaderView({
                   </span>
                 </div>
 
+                {/* La compression tourne dans le téléphone : quitter la page
+                    perdait le travail sans que rien ne l'ait annoncé. */}
+                <p className="text-[11px] font-medium text-[color:var(--muted)]">
+                  {t.uploader.keepOpen}
+                </p>
+
                 <div className="space-y-2">
                   {activeUploading.map((f) => (
                     <div key={f.id} className="bg-[var(--paper)] p-2.5 rounded-xl border border-[var(--border)] space-y-1.5">
@@ -400,7 +416,7 @@ export default function MobileUploaderView({
                         <span className="font-semibold text-[color:var(--ink)] truncate">{f.name}</span>
                         <span className="text-[10px] font-bold text-[color:var(--accent-deep)] shrink-0">
                           {f.phase === 'compressing'
-                            ? `Compression ${Math.round(f.progress)}%`
+                            ? `${t.uploader.compressing} ${Math.round(f.progress)}%`
                             : f.phase === 'processing'
                             ? 'Finalisation...'
                             : `${Math.round(f.progress)}%`}
@@ -414,6 +430,22 @@ export default function MobileUploaderView({
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Accusé de réception explicite : la liste de fichiers seule ne
+                disait pas au correspondant que son envoi était terminé. */}
+            {activeUploads.length > 0 && activeUploading.length === 0 && (
+              <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-green-500/10 border border-green-500/25">
+                <CheckCircle size={20} className="shrink-0 text-green-600 dark:text-green-400" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-green-800 dark:text-green-300">
+                    {t.uploader.sectionDone(activeUploads.length)}
+                  </p>
+                  <p className="text-xs text-green-700/80 dark:text-green-400/80">
+                    {t.uploader.sectionDoneHint}
+                  </p>
                 </div>
               </div>
             )}
@@ -434,9 +466,9 @@ export default function MobileUploaderView({
               ) : activeUploads.length === 0 ? (
                 <div className="p-6 text-center rounded-2xl bg-[var(--paper-2)] border border-dashed border-[var(--border)] text-[color:var(--muted)] space-y-2">
                   <UploadCloud size={24} className="mx-auto text-[color:var(--muted)] opacity-60" />
-                  <p className="text-xs font-medium">Aucun fichier pour ce reportage.</p>
-                  <p className="text-[11px] opacity-75">
-                    Touchez « Ajouter Vidéo » ou « Rédiger un Script » ci-dessus.
+                  <p className="text-sm font-medium">Aucun fichier pour l'instant.</p>
+                  <p className="text-xs opacity-75">
+                    Touchez « {t.uploader.addMedia} » ou « {t.uploader.addScript} » ci-dessus.
                   </p>
                 </div>
               ) : (
@@ -507,6 +539,26 @@ export default function MobileUploaderView({
               )}
             </div>
           </div>
+
+          {/* Rappel du contact, relégué en bas : ce n'est pas une étape du
+              parcours, seulement un réglage à vérifier de temps en temps. */}
+          {hasPhoneNumber && phone && (
+            <div className="flex items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--paper-2)] border border-[var(--border)] text-xs">
+              <span className="flex items-center gap-2 min-w-0">
+                <MessageCircle size={15} className="shrink-0 text-[#25D366]" />
+                <span className="font-semibold text-[color:var(--ink)] truncate">
+                  WhatsApp : {phone}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setHasPhoneNumber?.(false)}
+                className="shrink-0 rounded-lg px-2.5 py-1.5 font-bold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 active:scale-95"
+              >
+                Modifier
+              </button>
+            </div>
+          )}
         </div>
       )}
 

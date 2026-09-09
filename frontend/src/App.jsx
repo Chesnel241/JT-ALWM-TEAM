@@ -343,8 +343,11 @@ function AppShell() {
       )}
 
       <ToastContainer />
-      {!isEditorWorkspace && !isReporterHub && <HelpButton />}
-      {!isEditorWorkspace && !isReporterHub && <AIAssistant currentPage={currentView} showBubble={!isReporter} />}
+      {/* Côté journalistes, les deux pastilles flottantes se posaient sur les
+          boutons d'envoi et détournaient les appuis. L'aide est dans la page :
+          encart WhatsApp de l'accueil et bouton « Guide » de l'écran d'envoi. */}
+      {!isEditorWorkspace && !isReporter && <HelpButton />}
+      {!isEditorWorkspace && !isReporter && <AIAssistant currentPage={currentView} />}
     </div>
   );
 }
