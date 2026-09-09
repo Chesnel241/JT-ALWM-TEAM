@@ -161,7 +161,7 @@ export default function Nav({
       <nav className="shrink-0 border-b border-[var(--border)] bg-[var(--paper)] sticky top-0 z-40 shadow-sm">
         <div className={isEditorWorkspace
           ? 'mx-auto flex h-16 w-full max-w-[1920px] flex-nowrap items-center gap-3 px-4 xl:px-5'
-          : 'max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-4'
+          : 'max-w-6xl mx-auto px-4 sm:px-6 py-2.5 sm:py-4 flex flex-wrap items-center justify-between gap-4'
         }>
           {isReporter ? (
             // Le logo ramène à l'accueil des deux boutons : un seul repère de

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Clock } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 
-export default function CountdownTimer({ week }) {
+// `compact` : version en une ligne pour le téléphone. Le grand cadran ne
+// tenait pas sur un petit écran, si bien que l'échéance — l'information la
+// plus utile au correspondant — n'y était tout simplement pas affichée.
+export default function CountdownTimer({ week, compact = false }) {
   const { t } = useI18n();
   const [now, setNow] = useState(new Date());
 
@@ -31,6 +34,48 @@ export default function CountdownTimer({ week }) {
   const h = Math.floor((absRemaining / (1000 * 60 * 60)) % 24);
   const m = Math.floor((absRemaining / 1000 / 60) % 60);
   const s = Math.floor((absRemaining / 1000) % 60);
+
+  if (compact) {
+    const remainingLabel = isLate
+      ? t.countdown.finished
+      : d > 0
+        ? `${d}${t.countdown.days} ${h.toString().padStart(2, '0')}${t.countdown.hours}`
+        : `${h.toString().padStart(2, '0')}${t.countdown.hours} ${m.toString().padStart(2, '0')}${t.countdown.minutes}`;
+
+    return (
+      <div
+        className={`rounded-2xl border px-3 py-2.5 space-y-1.5 ${
+          isLate
+            ? 'border-[var(--signal)]/40 bg-[var(--signal)]/10'
+            : 'border-[var(--border)] bg-[var(--paper-2)]'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2 min-w-0">
+            {isLate
+              ? <AlertCircle size={16} className="shrink-0 text-[var(--signal)]" />
+              : <Clock size={16} className="shrink-0 text-[color:var(--accent-deep)]" />}
+            <span className={`text-xs font-semibold truncate ${isLate ? 'text-[var(--signal)]' : 'text-[color:var(--ink)]'}`}>
+              {isLate ? t.countdown.lateTitle : t.countdown.compactLabel}
+            </span>
+          </span>
+          <span
+            className={`shrink-0 tabular-nums text-sm font-black ${
+              isLate ? 'text-[var(--signal)]' : 'text-[color:var(--ink)]'
+            }`}
+          >
+            {remainingLabel}
+          </span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
+          <div
+            className={`h-full rounded-full transition-all duration-1000 ${isLate ? 'bg-[var(--signal)]' : 'bg-[var(--accent)]'}`}
+            style={{ width: `${Math.max(2, percentage)}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   const radius = 54;
   const circumference = 2 * Math.PI * radius;

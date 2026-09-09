@@ -21,8 +21,10 @@ describe('ReporterHomeView', () => {
     renderHub();
     expect(screen.getByText('Espace reportage')).toBeInTheDocument();
     expect(screen.getByText('Télécharger le JT')).toBeInTheDocument();
-    // Deux cartes cliquables + le lien WhatsApp d'aide, rien d'autre.
-    expect(screen.getAllByRole('button')).toHaveLength(2);
+    // Les deux cartes sont les seuls choix de navigation proposés.
+    expect(screen.getByText('Envoyer mes fichiers')).toBeInTheDocument();
+    expect(screen.getByText('Ouvrir le JT prêt')).toBeInTheDocument();
+    expect(screen.queryByText('Espace Montage')).not.toBeInTheDocument();
   });
 
   it('ouvre l\'espace reportage', () => {
@@ -43,6 +45,12 @@ describe('ReporterHomeView', () => {
     renderHub();
     const link = screen.getByRole('link', { name: /WhatsApp/i });
     expect(link).toHaveAttribute('href', expect.stringContaining('wa.me/33778669907'));
+  });
+
+
+  it("propose de s'abonner aux notifications depuis l'accueil", () => {
+    renderHub();
+    expect(screen.getByText('Être prévenu quand le JT est prêt')).toBeInTheDocument();
   });
 
   it('bascule en anglais avec la langue', () => {

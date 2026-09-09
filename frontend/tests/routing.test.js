@@ -85,3 +85,20 @@ describe('routing — périmètre des espaces', () => {
     expect(defaultViewFor(WORKSPACES.EDITOR)).toBe('home');
   });
 });
+
+describe('indicatif téléphonique par défaut', () => {
+  it("part du pays choisi plutôt que de la France", async () => {
+    const { phoneCountryFor } = await import('../src/lib/phone.js');
+    expect(phoneCountryFor('cm')).toBe('CM');
+    expect(phoneCountryFor('sn')).toBe('SN');
+    expect(phoneCountryFor('CI')).toBe('CI');
+  });
+
+  it("retombe sur la France pour les entrées qui ne sont pas des pays", async () => {
+    const { phoneCountryFor } = await import('../src/lib/phone.js');
+    expect(phoneCountryFor('tj')).toBe('FR');
+    expect(phoneCountryFor('mj')).toBe('FR');
+    expect(phoneCountryFor('')).toBe('FR');
+    expect(phoneCountryFor(undefined)).toBe('FR');
+  });
+});

@@ -12,6 +12,8 @@ import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import PhoneInput from 'react-phone-number-input';
+import PhoneCountryBadge from './PhoneCountryBadge.jsx';
+import { phoneCountryFor } from '../lib/phone.js';
 import 'react-phone-number-input/style.css';
 
 const FILE_ICONS = {
@@ -24,6 +26,7 @@ import MobileUploaderView from './MobileUploaderView.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
   const { t, lang } = useI18n();
+  const defaultPhoneCountry = phoneCountryFor(country.id);
   const { addToast } = useToast();
   const [uploads, setUploads] = useState([]);
   const [uploading, setUploading] = useState([]);
@@ -423,7 +426,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             </label>
             <PhoneInput
               international
-              defaultCountry="FR"
+              defaultCountry={defaultPhoneCountry}
+              flagComponent={PhoneCountryBadge}
               value={phone}
               onChange={setPhone}
               className="w-full mb-4 uploader-phone-input"

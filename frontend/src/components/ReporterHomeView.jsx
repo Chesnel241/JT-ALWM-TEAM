@@ -1,6 +1,7 @@
-import { Upload, Download, ChevronRight, MessageCircle } from 'lucide-react';
+import { Upload, Download, ChevronRight, MessageCircle, Bell } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { whatsappSupportLink } from '../lib/support.js';
+import NotificationToggle from './NotificationToggle.jsx';
 
 /**
  * Accueil de l'espace journalistes (URL /journalistes) : deux boutons, rien
@@ -97,8 +98,25 @@ export default function ReporterHomeView({ onOpenReports, onOpenDelivery }) {
         ))}
       </div>
 
-      <div className="mt-8 sm:mt-12 p-5 sm:p-6 rounded-3xl bg-[var(--paper-2)] border border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-        <div>
+      {/* Sur téléphone la cloche de l'en-tête est réduite à une icône : cet
+          encart rend l'abonnement visible là où il a du sens. */}
+      <div className="mt-4 sm:mt-6 p-5 sm:p-6 rounded-3xl bg-[var(--paper)] border border-[var(--border)] flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex items-start gap-3 flex-1 text-left">
+          <span className="h-11 w-11 shrink-0 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center">
+            <Bell size={22} />
+          </span>
+          <div className="min-w-0">
+            <p className="font-bold text-[color:var(--ink)]">{r.notifyTitle}</p>
+            <p className="text-sm text-[color:var(--muted)] mt-0.5">{r.notifyText}</p>
+          </div>
+        </div>
+        <div className="shrink-0 sm:self-center">
+          <NotificationToggle />
+        </div>
+      </div>
+
+      <div className="mt-4 p-5 sm:p-6 rounded-3xl bg-[var(--paper-2)] border border-[var(--border)] flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1 text-left">
           <p className="font-bold text-[color:var(--ink)]">{r.helpTitle}</p>
           <p className="text-sm text-[color:var(--muted)] mt-1">{r.helpText}</p>
         </div>
