@@ -4,6 +4,32 @@ Plateforme de centralisation des reportages pour l'équipe JT ALWM.
 Les correspondants déposent vidéos / audios / scripts par semaine et
 par pays ; les éditeurs téléchargent les packs ZIP.
 
+## Deux espaces, deux URLs
+
+L'application est une seule SPA, mais l'URL d'entrée décide de ce que
+l'équipe voit. Le découpage est défini dans `frontend/src/lib/routing.js`.
+
+| Équipe | URL à partager | Onglets disponibles |
+|--------|----------------|---------------------|
+| Montage | `https://<domaine>/monteurs` | Espace Reportages, Espace Montage, Voix Off, JT Prêt, Stats & Délais |
+| Reportage (journalistes) | `https://<domaine>/journalistes` | Espace reportage, Télécharger le JT |
+
+- `/` reste l'entrée historique de l'équipe montage : les favoris existants
+  continuent de fonctionner et l'URL est simplement réécrite en `/monteurs`.
+- `/journalistes` ouvre un accueil à deux grands boutons — envoyer un
+  reportage, ou télécharger le JT de la semaine — pensé pour des
+  correspondants peu à l'aise avec l'outil, sur mobile comme sur ordinateur.
+- Les alias `/journaliste`, `/reporter`, `/reporters`, `/reportages` et
+  `/monteur`, `/montage`, `/editeurs` sont acceptés puis normalisés, pour
+  qu'un lien mal recopié dans WhatsApp ouvre quand même le bon espace.
+- Une URL hors périmètre (`/journalistes/montage`, par exemple) retombe sur
+  l'accueil de l'espace : les vues montage ne sont jamais montées côté
+  journalistes.
+
+⚠️ C'est un filtre d'usage, pas une frontière de sécurité : l'API reste
+publique (voir *Avertissements* plus bas). Le but est de simplifier
+l'écran des journalistes, pas de protéger des données.
+
 ## Structure
 
 ```
@@ -100,7 +126,9 @@ vers le backend sur le port 3010.
 
 1. `curl https://<domaine-vps>/health` → 200
 2. `curl https://<domaine-vps>/api/weeks` → JSON semaines
-3. Naviguer Home → Uploader → Dashboard
+3. Naviguer Home → Uploader → Dashboard sur `/monteurs`
+3bis. Ouvrir `/journalistes` : deux boutons seulement, chacun menant à
+   sa section (liste des pays / JT prêt)
 4. Upload d'un fichier 50 MB, vérifier liste + download ZIP + suppression
 5. Vérifier que Sentry reçoit un event de test (si configuré)
 6. Redémarrer les conteneurs, vérifier que les données persistent

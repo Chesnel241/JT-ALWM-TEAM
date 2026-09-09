@@ -51,8 +51,10 @@ jt-alwm-team.duckdns.org {
 		@assets path *.js *.css *.woff2 *.woff *.ttf *.png *.jpg *.svg *.ico
 		header @assets Cache-Control "public, max-age=31536000, immutable"
 		# index.html jamais mis en cache (SPA → toujours la dernière version
-		# après un nouveau build).
-		@html path / /index.html
+		# après un nouveau build). Les routes des deux espaces (/monteurs pour
+		# l'équipe montage, /journalistes pour l'équipe reportage) servent ce
+		# même index.html : elles suivent donc la même règle.
+		@html path / /index.html /monteurs /monteurs/* /journalistes /journalistes/*
 		header @html Cache-Control "no-cache, must-revalidate"
 		reverse_proxy frontend:80
 	}

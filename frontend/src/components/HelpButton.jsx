@@ -1,14 +1,13 @@
 import { MessageCircle } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
-
-const WHATSAPP_NUMBER = '33778669907';
+import { whatsappSupportLink } from '../lib/support.js';
 
 export default function HelpButton() {
   const { t } = useI18n();
   const cta = t.help?.cta || 'Besoin d\'aide ?';
   const message = t.help?.message || 'Bonjour, j\'ai besoin d\'aide sur la plateforme JT ALWM.';
   const aria = t.help?.aria || 'Contacter le support sur WhatsApp';
-  const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  const href = whatsappSupportLink(message);
 
   return (
     <a
