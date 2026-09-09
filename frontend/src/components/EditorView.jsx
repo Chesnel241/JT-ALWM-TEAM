@@ -13,9 +13,11 @@ export default function EditorView({ setCurrentView }) {
   const { t } = useI18n();
 
   useEffect(() => {
-    // Redirection immédiate vers le Dashboard (Studio de Montage)
+    // Redirection immédiate vers le Dashboard (Studio de Montage). En
+    // `replace` : sinon /monteurs/editeur resterait dans l'historique et le
+    // bouton Précédent renverrait ici, qui redirigerait à nouveau.
     if (typeof setCurrentView === 'function') {
-      setCurrentView('dashboard');
+      setCurrentView('dashboard', { replace: true });
     }
   }, [setCurrentView]);
 

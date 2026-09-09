@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import Nav from './components/Nav.jsx';
 import ToastContainer from './components/Toast.jsx';
 import HelpButton from './components/HelpButton.jsx';
@@ -9,6 +9,13 @@ import { I18nProvider, useI18n } from './i18n/I18nContext.jsx';
 import { api } from './api/index.js';
 import SkeletonCard from './components/SkeletonCard.jsx';
 import { useVersionCheck } from './hooks/useVersionCheck.js';
+import {
+  WORKSPACES,
+  parsePath,
+  buildPath,
+  isViewAllowed,
+  defaultViewFor,
+} from './lib/routing.js';
 
 const HomeView = lazy(() => import('./components/HomeView.jsx'));
 const UploaderView = lazy(() => import('./components/UploaderView.jsx'));
@@ -17,6 +24,7 @@ const DeliveryView = lazy(() => import('./components/DeliveryView.jsx'));
 const VoixOffView = lazy(() => import('./components/VoixOffView.jsx'));
 const EditorView = lazy(() => import('./components/EditorView.jsx'));
 const StatsView = lazy(() => import('./components/StatsView.jsx'));
+const ReporterHomeView = lazy(() => import('./components/ReporterHomeView.jsx'));
 import LoginView from './components/LoginView.jsx';
 
 function LoadingFallback() {
@@ -27,10 +35,58 @@ function LoadingFallback() {
   );
 }
 
+function currentPathname() {
+  return typeof window !== 'undefined' ? window.location.pathname : '/';
+}
+
 function AppShell() {
   useVersionCheck(); // Hook silencieux qui forcera le reload si nouvelle version
   const { t } = useI18n();
-  const [currentView, setCurrentView] = useState('home');
+
+  // L'URL est la source de vérité : elle porte l'espace de travail (montage
+  // ou reportage) ET la vue courante. Voir lib/routing.js.
+  const [route, setRoute] = useState(() => parsePath(currentPathname()));
+  const { workspace, view: currentView } = route;
+  const isReporter = workspace === WORKSPACES.REPORTER;
+
+  // Lu par navigate() sans le remettre en dépendance : évite de recréer le
+  // callback (et donc de relancer les effets qui en dépendent) à chaque vue.
+  const routeRef = useRef(route);
+  routeRef.current = route;
+
+  const navigate = useCallback((nextView, { replace = false } = {}) => {
+    const target = routeRef.current.workspace;
+    // Garde-fou : une vue hors périmètre de l'espace retombe sur son accueil.
+    // C'est ce qui empêche un lien /journalistes/montage d'exister.
+    const view = isViewAllowed(target, nextView) ? nextView : defaultViewFor(target);
+    const path = buildPath(target, view);
+    if (typeof window !== 'undefined' && window.location.pathname !== path) {
+      const url = `${path}${window.location.search}${window.location.hash}`;
+      if (replace) window.history.replaceState(null, '', url);
+      else window.history.pushState(null, '', url);
+    }
+    setRoute((prev) => (prev.view === view ? prev : { ...prev, view }));
+  }, []);
+
+  // Boutons Précédent/Suivant du navigateur.
+  useEffect(() => {
+    const onPopState = () => setRoute(parsePath(currentPathname()));
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Canonicalisation au chargement : `/` → `/monteurs`, `/journaliste` →
+  // `/journalistes`, une vue inconnue → l'accueil de l'espace. L'utilisateur
+  // repart toujours avec une URL propre, partageable telle quelle.
+  useEffect(() => {
+    const path = buildPath(route.workspace, route.view);
+    if (window.location.pathname !== path) {
+      window.history.replaceState(null, '', `${path}${window.location.search}${window.location.hash}`);
+    }
+    // Volontairement au montage uniquement : navigate() gère la suite.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [selectedWeek, setSelectedWeekState] = useState(() => {
     try {
@@ -105,6 +161,9 @@ function AppShell() {
 
   useEffect(() => {
     if (!selectedWeek) return;
+    // Le badge « nouveaux uploads » sert au suivi côté montage. Inutile de
+    // faire payer ce polling aux journalistes (souvent en 4G limitée).
+    if (isReporter) return;
 
     const checkNewUploads = async () => {
       // Onglet en arrière-plan : on ne sonde pas (économie réseau/CPU, utile
@@ -136,7 +195,7 @@ function AppShell() {
     const onVis = () => { if (!document.hidden) checkNewUploads(); };
     document.addEventListener('visibilitychange', onVis);
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVis); };
-  }, [selectedWeek, currentView, addToast, isAuthenticated]);
+  }, [selectedWeek, currentView, addToast, isAuthenticated, isReporter]);
 
   useEffect(() => {
     if (currentView === 'dashboard') {
@@ -144,9 +203,17 @@ function AppShell() {
     }
   }, [currentView]);
 
+  // Lien direct vers l'envoi sans pays choisi (favori, lien partagé) : on
+  // renvoie sur la liste des pays plutôt que d'afficher un écran vide.
+  useEffect(() => {
+    if (currentView === 'uploader' && !selectedCountry) {
+      navigate('home', { replace: true });
+    }
+  }, [currentView, selectedCountry, navigate]);
+
   const handleSelectCountry = (country) => {
     setSelectedCountry(country);
-    setCurrentView('uploader');
+    navigate('uploader');
   };
 
   if (isAuthenticated === null) {
@@ -156,15 +223,25 @@ function AppShell() {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
   }
 
-  const isEditorWorkspace = currentView === 'dashboard' && isDesktopEditorAvailable;
+  const isEditorWorkspace = !isReporter && currentView === 'dashboard' && isDesktopEditorAvailable;
+  // L'accueil journalistes doit rester un écran à deux boutons : les bulles
+  // flottantes (aide WhatsApp, assistant) recouvraient les cartes sur mobile
+  // et dupliquaient le bloc d'aide déjà présent dans la page.
+  const isReporterHub = isReporter && currentView === 'hub';
+  const canRender = (view) => isViewAllowed(workspace, view);
 
   return (
-    <div className={`app-shell flex flex-col ${isEditorWorkspace ? 'h-dvh overflow-hidden' : 'pb-[72px] sm:pb-0'}`}>
+    // Le padding bas réserve la place de la barre d'onglets mobile ;
+    // l'accueil journalistes n'en a pas.
+    <div className={`app-shell flex flex-col ${
+      isEditorWorkspace ? 'h-dvh overflow-hidden' : isReporterHub ? '' : 'pb-[72px] sm:pb-0'
+    }`}>
       <Nav
         currentView={currentView}
-        setCurrentView={setCurrentView}
+        setCurrentView={navigate}
         newUploadsCount={newUploadsCount}
         isDesktopEditorAvailable={isDesktopEditorAvailable}
+        workspace={workspace}
       />
 
       <main className={`flex-1 ${isEditorWorkspace ? 'min-h-0 overflow-hidden pb-0' : 'pb-12'}`}>
@@ -172,6 +249,14 @@ function AppShell() {
           <LoadingFallback />
         ) : (
           <Suspense fallback={<LoadingFallback />}>
+            {canRender('hub') && (
+              <div className={currentView === 'hub' ? 'block' : 'hidden'}>
+                <ReporterHomeView
+                  onOpenReports={() => navigate('home')}
+                  onOpenDelivery={() => navigate('delivery')}
+                />
+              </div>
+            )}
             <div className={currentView === 'home' ? 'block' : 'hidden'}>
               <HomeView
                 countries={countries}
@@ -186,55 +271,64 @@ function AppShell() {
                   weeks={weeks}
                   selectedWeek={selectedWeek}
                   setSelectedWeek={setSelectedWeek}
-                  onBack={() => setCurrentView('home')}
+                  onBack={() => navigate('home')}
                   isActive={currentView === 'uploader'}
                 />
               </div>
             )}
-            <div className={currentView === 'dashboard'
-              ? (isDesktopEditorAvailable ? 'h-full min-h-0' : 'block')
-              : 'hidden'
-            }>
-              <DashboardView
-                weeks={weeks}
-                selectedWeek={selectedWeek}
-                setSelectedWeek={setSelectedWeek}
-                countries={countries}
-                isActive={currentView === 'dashboard'}
-                isDesktopEditorAvailable={isDesktopEditorAvailable}
-              />
-            </div>
+            {canRender('dashboard') && (
+              <div className={currentView === 'dashboard'
+                ? (isDesktopEditorAvailable ? 'h-full min-h-0' : 'block')
+                : 'hidden'
+              }>
+                <DashboardView
+                  weeks={weeks}
+                  selectedWeek={selectedWeek}
+                  setSelectedWeek={setSelectedWeek}
+                  countries={countries}
+                  isActive={currentView === 'dashboard'}
+                  isDesktopEditorAvailable={isDesktopEditorAvailable}
+                />
+              </div>
+            )}
             <div className={currentView === 'delivery' ? 'block' : 'hidden'}>
               <DeliveryView
                 weeks={weeks}
                 selectedWeek={selectedWeek}
                 setSelectedWeek={setSelectedWeek}
                 isActive={currentView === 'delivery'}
+                audience={isReporter ? 'reporter' : 'editor'}
               />
             </div>
-            <div className={currentView === 'voixoff' ? 'block' : 'hidden'}>
-              <VoixOffView
-                weeks={weeks}
-                selectedWeek={selectedWeek}
-                setSelectedWeek={setSelectedWeek}
-                countries={countries}
-                isActive={currentView === 'voixoff'}
-              />
-            </div>
-            <div className={currentView === 'stats' ? 'block' : 'hidden'}>
-              <StatsView
-                weeks={weeks}
-                selectedWeek={selectedWeek}
-                setSelectedWeek={setSelectedWeek}
-                isActive={currentView === 'stats'}
-              />
-            </div>
-            <div className={currentView === 'editor' ? 'block' : 'hidden'}>
-              <EditorView
-                isActive={currentView === 'editor'}
-                setCurrentView={setCurrentView}
-              />
-            </div>
+            {canRender('voixoff') && (
+              <div className={currentView === 'voixoff' ? 'block' : 'hidden'}>
+                <VoixOffView
+                  weeks={weeks}
+                  selectedWeek={selectedWeek}
+                  setSelectedWeek={setSelectedWeek}
+                  countries={countries}
+                  isActive={currentView === 'voixoff'}
+                />
+              </div>
+            )}
+            {canRender('stats') && (
+              <div className={currentView === 'stats' ? 'block' : 'hidden'}>
+                <StatsView
+                  weeks={weeks}
+                  selectedWeek={selectedWeek}
+                  setSelectedWeek={setSelectedWeek}
+                  isActive={currentView === 'stats'}
+                />
+              </div>
+            )}
+            {/* EditorView n'est qu'une redirection vers le studio de montage.
+                Montée en permanence (même masquée), son effet de redirection
+                partait à chaque chargement et forçait l'onglet Montage. */}
+            {canRender('editor') && currentView === 'editor' && (
+              <div>
+                <EditorView isActive setCurrentView={navigate} />
+              </div>
+            )}
           </Suspense>
         )}
       </main>
@@ -249,8 +343,8 @@ function AppShell() {
       )}
 
       <ToastContainer />
-      {!isEditorWorkspace && <HelpButton />}
-      {!isEditorWorkspace && <AIAssistant currentPage={currentView} />}
+      {!isEditorWorkspace && !isReporterHub && <HelpButton />}
+      {!isEditorWorkspace && !isReporterHub && <AIAssistant currentPage={currentView} showBubble={!isReporter} />}
     </div>
   );
 }

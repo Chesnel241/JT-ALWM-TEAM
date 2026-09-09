@@ -16,8 +16,17 @@ const FILE_ICONS = {
   document: { Icon: FileText, color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30' },
 };
 
-export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
+// `audience` : le même écran sert les deux équipes. Côté montage il porte
+// l'outil de notification des correspondants ; côté journalistes ce bloc
+// disparaît — un correspondant n'a pas à voir les numéros WhatsApp de ses
+// confrères — et l'état vide dit d'attendre le JT plutôt que de le publier.
+export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, audience = 'editor' }) {
   const { t, lang } = useI18n();
+  const isReporterAudience = audience === 'reporter';
+  const showNotifyPanel = !isReporterAudience;
+  const emptyHint = isReporterAudience
+    ? (t.delivery.emptyHintReporter || t.delivery.emptyHint)
+    : t.delivery.emptyHint;
   const { addToast } = useToast();
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,10 +45,14 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
       })
       .finally(() => setLoading(false));
 
+    if (!showNotifyPanel) {
+      setSubscriptions([]);
+      return;
+    }
     api.getSubscriptions(selectedWeek)
       .then((s) => setSubscriptions(Array.isArray(s) ? s : []))
       .catch(() => setSubscriptions([]));
-  }, [selectedWeek, addToast, t.uploader.errorPrefix]);
+  }, [selectedWeek, addToast, t.uploader.errorPrefix, showNotifyPanel]);
 
   const whatsappMessage = t.delivery.whatsappMessage || 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme.';
   const week = weeks.find((w) => w.id === selectedWeek);
@@ -113,15 +126,15 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
 
           {/* Week Selector */}
           <div className="p-2.5 bg-[var(--paper-2)] rounded-2xl border border-[var(--border)] flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-[color:var(--muted)]">Semaine</span>
+            <span className="shrink-0 text-xs font-semibold text-[color:var(--muted)]">Semaine</span>
             <select
               value={selectedWeek}
               onChange={(e) => setSelectedWeek(e.target.value)}
-              className="bg-transparent border-0 text-[color:var(--ink)] text-xs font-bold outline-none cursor-pointer"
+              className="min-w-0 flex-1 truncate bg-transparent border-0 text-right text-[color:var(--ink)] text-xs font-bold outline-none cursor-pointer"
             >
               {weeks.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? ' • EN COURS' : ''}
+                  {formatWeekLabel(w, lang)}{w.status === 'active' ? ' • EN COURS' : ''}
                 </option>
               ))}
             </select>
@@ -142,7 +155,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
             <div className="p-8 bg-[var(--paper)] rounded-3xl border border-[var(--border)] text-center space-y-2">
               <Sparkles size={32} className="mx-auto text-[color:var(--muted)] opacity-50" />
               <p className="font-bold text-sm text-[color:var(--ink)]">{t.delivery.empty}</p>
-              <p className="text-xs text-[color:var(--muted)]">{t.delivery.emptyHint}</p>
+              <p className="text-xs text-[color:var(--muted)]">{emptyHint}</p>
             </div>
           ) : (
             deliveries.map((file) => {
@@ -203,6 +216,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
         </div>
 
         {/* WhatsApp Notification Hub */}
+        {showNotifyPanel && (
         <div className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] shadow-sm space-y-3">
           <div className="flex items-center gap-2">
             <MessageCircle size={18} className="text-[#25D366]" />
@@ -232,6 +246,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
             </p>
           )}
         </div>
+        )}
       </div>
 
       {/* ================================================================ */}
@@ -287,7 +302,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
               <div className="text-center text-[color:var(--muted)] py-8 flex flex-col items-center">
                 <Sparkles size={32} className="text-[color:var(--muted)] mb-3" />
                 <p className="text-sm font-medium text-[color:var(--ink)]">{t.delivery.empty}</p>
-                <p className="text-xs mt-2 max-w-xs">{t.delivery.emptyHint}</p>
+                <p className="text-xs mt-2 max-w-xs">{emptyHint}</p>
               </div>
             ) : (
               <ul className="space-y-3">
@@ -340,6 +355,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
               </ul>
             )}
 
+            {showNotifyPanel && (
             <div id="tour-delivery-whatsapp" className="mt-8 pt-6 border-t border-[var(--border)]">
               <h4 className="font-semibold text-sm text-[color:var(--ink)] mb-3 flex items-center gap-2">
                 <MessageCircle size={16} className="text-[#25D366]" />
@@ -364,6 +380,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek }) {
                 <p className="text-xs text-[color:var(--muted)]">Les boutons de notification apparaîtront ici lorsqu'un reportage sera publié et que des journalistes seront abonnés.</p>
               )}
             </div>
+            )}
           </div>
         </div>
       </div>

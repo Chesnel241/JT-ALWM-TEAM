@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { Lock, MessageCircle } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import { api } from '../api/index.js';
+import { whatsappSupportLink } from '../lib/support.js';
 
 export default function LoginView({ onLogin }) {
   const { t } = useI18n();
@@ -45,7 +46,7 @@ export default function LoginView({ onLogin }) {
     }
   };
 
-  const whatsappUrl = `https://wa.me/33778669907?text=${encodeURIComponent(t.login?.whatsappMessage || 'Bonjour, je n\'arrive pas à accéder à la plateforme ALWM. Pouvez-vous m\'aider ?')}`;
+  const whatsappUrl = whatsappSupportLink(t.login?.whatsappMessage || 'Bonjour, je n\'arrive pas à accéder à la plateforme ALWM. Pouvez-vous m\'aider ?');
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--background)] p-4 relative">

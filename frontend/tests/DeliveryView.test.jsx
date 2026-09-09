@@ -31,6 +31,9 @@ function renderDelivery(props = {}) {
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('jt-alwm-lang', 'fr');
+  // Les espions survivent d'un test à l'autre : on repart d'un compteur
+  // d'appels vierge pour pouvoir affirmer qu'un appel n'a PAS eu lieu.
+  vi.clearAllMocks();
   vi.spyOn(api, 'getDeliveries').mockResolvedValue(MOCK_DELIVERIES);
   vi.spyOn(api, 'getSubscriptions').mockResolvedValue([{ countryId: 'ga', phone: '+24100000000' }]);
 });
@@ -51,5 +54,33 @@ describe('DeliveryView', () => {
     fireEvent.click(watchBtn);
 
     expect(screen.getByRole('button', { name: '' })).toBeInTheDocument(); // Close button
+  });
+
+  it('affiche le bloc de notification WhatsApp pour l\'équipe montage', async () => {
+    renderDelivery();
+    expect(await screen.findAllByText(/GA/)).not.toHaveLength(0);
+    expect(api.getSubscriptions).toHaveBeenCalled();
+  });
+
+  it('masque le bloc de notification et les numéros côté journalistes', async () => {
+    renderDelivery({ audience: 'reporter' });
+    await screen.findAllByText('JT_ALWM_2026_W34.mp4');
+    expect(screen.queryByText(/\+24100000000/)).not.toBeInTheDocument();
+    expect(api.getSubscriptions).not.toHaveBeenCalled();
+    // Le téléchargement, lui, reste disponible.
+    expect(screen.getAllByText('Télécharger').length).toBeGreaterThan(0);
+  });
+
+  it('dit au journaliste d\'attendre quand le JT n\'est pas publié', async () => {
+    api.getDeliveries.mockResolvedValue([]);
+    renderDelivery({ audience: 'reporter' });
+    expect(await screen.findAllByText(/pas encore publié/i)).not.toHaveLength(0);
+    expect(screen.queryByText(/peut déposer le rendu final/i)).not.toBeInTheDocument();
+  });
+
+  it('garde la consigne de publication côté montage', async () => {
+    api.getDeliveries.mockResolvedValue([]);
+    renderDelivery();
+    expect(await screen.findAllByText(/peut déposer le rendu final/i)).not.toHaveLength(0);
   });
 });
