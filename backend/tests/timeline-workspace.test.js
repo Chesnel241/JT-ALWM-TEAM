@@ -65,3 +65,95 @@ describe('projet de montage partagé', () => {
     expect(unknown.status).toBe(404);
   });
 });
+
+
+// Concurrence optimiste : deux monteurs peuvent ouvrir la même semaine. Le
+// serveur numérote chaque sauvegarde (revision) ; `baseRevision` dit sur
+// quelle version le client a travaillé.
+describe('concurrence de la timeline (baseRevision)', () => {
+  const workspaceDe = (label) => ({
+    clips: [{ instanceId: `clip-${label}`, filename: `${label}.mp4`, name: label }],
+    overlays: [],
+    branding: { logo: true },
+  });
+
+  const revisionCourante = async () => {
+    const res = await request(app).get(`/api/editor/timeline/${WEEK}`);
+    return Number(res.body.workspace?.revision) || 0;
+  };
+
+  it('refuse en 409 une sauvegarde basée sur une révision périmée et n’écrit rien', async () => {
+    const premier = await request(app)
+      .put(`/api/editor/timeline/${WEEK}`)
+      .send(workspaceDe('monteur-a'));
+    expect(premier.status).toBe(200);
+    const revisionApresA = premier.body.workspace.revision;
+
+    // Le monteur B avait chargé la version d'AVANT la sauvegarde de A.
+    const conflit = await request(app)
+      .put(`/api/editor/timeline/${WEEK}`)
+      .send({ ...workspaceDe('monteur-b'), baseRevision: revisionApresA - 1 });
+
+    expect(conflit.status).toBe(409);
+    expect(conflit.body.code).toBe('TIMELINE_CONFLICT');
+    expect(typeof conflit.body.message).toBe('string');
+    expect(conflit.body.message.length).toBeGreaterThan(0);
+    // Le corps rend l'état courant pour que le client puisse fusionner.
+    expect(conflit.body.workspace.revision).toBe(revisionApresA);
+    expect(conflit.body.workspace.clips[0].filename).toBe('monteur-a.mp4');
+
+    // Rien n'a été écrit : ni le contenu ni la révision n'ont bougé.
+    const apres = await request(app).get(`/api/editor/timeline/${WEEK}`);
+    expect(apres.body.workspace.revision).toBe(revisionApresA);
+    expect(apres.body.workspace.clips[0].filename).toBe('monteur-a.mp4');
+  });
+
+  it('accepte une sauvegarde basée sur la révision courante', async () => {
+    const base = await revisionCourante();
+    const res = await request(app)
+      .put(`/api/editor/timeline/${WEEK}`)
+      .send({ ...workspaceDe('monteur-c'), baseRevision: base });
+
+    expect(res.status).toBe(200);
+    expect(res.body.workspace.revision).toBe(base + 1);
+    expect(res.body.workspace.clips[0].filename).toBe('monteur-c.mp4');
+    // baseRevision est un champ de protocole, pas du projet de montage.
+    expect(res.body.workspace).not.toHaveProperty('baseRevision');
+  });
+
+  it('reste compatible avec un client qui n’envoie pas baseRevision', async () => {
+    const base = await revisionCourante();
+    const res = await request(app)
+      .put(`/api/editor/timeline/${WEEK}`)
+      .send(workspaceDe('client-ancien'));
+
+    expect(res.status).toBe(200);
+    expect(res.body.workspace.revision).toBe(base + 1);
+  });
+
+  it('refuse le second des deux monteurs partis de la même révision', async () => {
+    const base = await revisionCourante();
+
+    const premier = await request(app)
+      .put(`/api/editor/timeline/${WEEK}`)
+      .send({ ...workspaceDe('simultane-a'), baseRevision: base });
+    const second = await request(app)
+      .put(`/api/editor/timeline/${WEEK}`)
+      .send({ ...workspaceDe('simultane-b'), baseRevision: base });
+
+    expect(premier.status).toBe(200);
+    expect(second.status).toBe(409);
+    expect(second.body.code).toBe('TIMELINE_CONFLICT');
+
+    const apres = await request(app).get(`/api/editor/timeline/${WEEK}`);
+    expect(apres.body.workspace.clips[0].filename).toBe('simultane-a.mp4');
+  });
+
+  it('rejette un baseRevision qui n’est pas un entier positif', async () => {
+    const res = await request(app)
+      .put(`/api/editor/timeline/${WEEK}`)
+      .send({ ...workspaceDe('base-invalide'), baseRevision: 'pas-un-nombre' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('INVALID_TIMELINE');
+  });
+});

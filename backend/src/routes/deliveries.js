@@ -26,7 +26,11 @@ router.get('/:weekId', (req, res, next) => {
   return res.json(getDelivery(weekId));
 });
 
-router.post('/:weekId', asyncHandler(async (req, res, next) => {
+// Publier le JT : requireAdmin comme la suppression plus bas. C'est le
+// fichier que tous les correspondants téléchargent (et qui déclenche la
+// notification push "JT prêt") — laisser n'importe qui le remplacer
+// revenait à laisser n'importe qui diffuser à toute l'équipe.
+router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
   const startTime = Date.now();
   const { weekId } = req.params;
 

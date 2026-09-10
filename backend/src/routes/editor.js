@@ -5,6 +5,7 @@ import { addListener, removeListener, finishJob, getJobState, registerJobWeek, g
 import { TEXT_ANIMATIONS_IDS, OVERLAY_TEMPLATES } from '../data/overlayTemplates.js';
 import { buildWeeks } from '../data/constants.js';
 import { getTimelineWorkspace, saveTimelineWorkspace } from '../data/store.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { io } from '../app.js';
 
 // Allowlist des templateId valides (source unique = registre des modèles).
@@ -33,13 +34,22 @@ router.get('/job/:weekId', (req, res) => {
   return res.json({ job });
 });
 
+// Écrase le montage de la semaine pour tout le monde : réservé à l'équipe
+// montage (requireAdmin), au même titre que /concat.
 router.put(
   '/timeline/:weekId',
+  requireAdmin,
   [
     body('clips').isArray({ max: 500 }).withMessage('clips doit être un tableau de 500 éléments maximum.'),
     body('clips.*.filename').isString().notEmpty().isLength({ max: 512 }),
     body('overlays').isArray({ max: 1000 }).withMessage('overlays doit être un tableau de 1000 éléments maximum.'),
     body('branding').isObject().withMessage('branding doit être un objet.'),
+    // Optionnel : un client qui ne l'envoie pas garde l'ancien comportement
+    // (dernier écrivain gagne). Voir le garde de concurrence plus bas.
+    body('baseRevision')
+      .optional({ values: 'null' })
+      .isInt({ min: 0 })
+      .withMessage('baseRevision doit être un entier positif.'),
   ],
   (req, res) => {
     const { weekId } = req.params;
@@ -54,6 +64,27 @@ router.put(
         errors: errors.array(),
       });
     }
+    // Concurrence optimiste : deux monteurs ouvrent la même semaine, le
+    // second PUT écrasait le travail du premier sans le moindre signal. Si le
+    // client dit sur quelle révision il a travaillé et qu'elle a bougé, on
+    // refuse d'écrire et on lui rend l'état courant pour qu'il puisse
+    // fusionner. Absent = ancien client, comportement inchangé.
+    const { baseRevision } = req.body;
+    if (baseRevision !== undefined && baseRevision !== null) {
+      const current = getTimelineWorkspace(weekId);
+      const currentRevision = Number(current?.revision) || 0;
+      if (Number(baseRevision) !== currentRevision) {
+        logger.warn('Conflit de timeline détecté', {
+          context: { weekId, baseRevision: Number(baseRevision), currentRevision },
+        });
+        return res.status(409).json({
+          code: 'TIMELINE_CONFLICT',
+          message: `Un autre monteur a enregistré ce montage entre-temps (révision ${currentRevision}, la vôtre : ${Number(baseRevision)}). Rechargez la timeline avant de sauvegarder pour ne pas écraser son travail.`,
+          workspace: current,
+        });
+      }
+    }
+
     const saved = saveTimelineWorkspace(weekId, req.body);
     const senderClientId = req.headers['x-client-id'] || null;
     io?.emit('timeline_update', {
@@ -90,8 +121,11 @@ router.get('/result/:jobId', (req, res) => {
   res.json(state);
 });
 
+// Déclenche un rendu ffmpeg (CPU + disque) : réservé à l'équipe montage,
+// sinon n'importe qui peut saturer le serveur en lançant des rendus.
 router.post(
   '/concat',
+  requireAdmin,
   [
     body('clips')
       .isArray({ min: 1 })
