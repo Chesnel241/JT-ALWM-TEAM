@@ -25,18 +25,26 @@
 	--border: oklch(0.84 0.015 85);
 	/* Charte ALWM : les deux bleus du logo, le blanc et le noir des textes.
 	   #0d4d8b (bleu profond) et #51b5e7 (bleu clair) sont relevés directement
-	   sur logo-lwm.png. Le vert n'est plus une couleur d'interface : il est
-	   réservé aux confirmations et aux jauges (--success).
+	   sur logo-lwm.png. Deux rôles, deux familles : le bleu porte la
+	   structure, le vert porte l'action (voir --action plus bas).
 	   Contrastes vérifiés sur --paper : blanc sur --accent 8,6:1 ;
 	   --accent-deep sur papier 10,3:1 ; --accent-soft n'accepte JAMAIS de
 	   texte blanc (2,3:1) mais du texte foncé (7,7:1). */
 	--brand-navy: #0d4d8b;
 	--brand-sky: #51b5e7;
+	/* Bleu = structure : onglets, grands titres, cartes, en-têtes, pastilles. */
 	--accent: var(--brand-navy);
 	--accent-deep: #0a3d6e;
 	--accent-soft: var(--brand-sky);
-	--success: #15803d;
-	--success-deep: #166534;
+	/* Vert = action et progression : boutons qui déclenchent quelque chose,
+	   jauges de remplissage, confirmations. C'est le vert historique de la
+	   plateforme, assombri de #00a081 à #008065 : à la teinte d'origine, le
+	   texte blanc des boutons n'était qu'à 3,3:1, sous le seuil de lisibilité.
+	   Ici 4,9:1 sur le bouton et 4,6:1 en texte sur fond clair. */
+	--action: #008065;
+	--action-deep: #00654f;
+	--success: var(--action);
+	--success-deep: var(--action-deep);
 	--signal: oklch(0.72 0.16 65);
 	--app-bg: oklch(0.935 0.012 85);
 	--editor-bg: oklch(0.145 0.022 245);
@@ -113,13 +121,13 @@ body {
 	}
 
 	.btn-primary {
-		background: var(--accent);
-		color: oklch(0.98 0.005 85);
-		box-shadow: 0 10px 20px -12px rgb(13 77 139 / 0.55);
+		background: var(--action);
+		color: #ffffff;
+		box-shadow: 0 10px 20px -12px rgb(0 128 101 / 0.55);
 	}
 
 	.btn-primary:focus-visible {
-		box-shadow: 0 0 0 3px rgb(81 181 231 / 0.4), 0 0 0 6px rgb(13 77 139 / 0.5);
+		box-shadow: 0 0 0 3px rgb(0 128 101 / 0.35), 0 0 0 6px rgb(0 101 79 / 0.5);
 	}
 
 	.btn-ghost {
@@ -134,8 +142,8 @@ body {
 		}
 		
 		.btn-primary:hover {
-			background: var(--accent-deep);
-			box-shadow: 0 12px 24px -12px rgb(13 77 139 / 0.7);
+			background: var(--action-deep);
+			box-shadow: 0 12px 24px -12px rgb(0 128 101 / 0.7);
 		}
 		
 		.btn-ghost:hover {

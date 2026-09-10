@@ -152,7 +152,7 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, o
             </button>
             <button 
               onClick={handleSave} 
-              className="px-4 py-2 rounded-lg font-medium text-sm bg-[var(--accent)] text-[var(--paper)] hover:bg-[var(--accent-deep)] transition-colors shadow-sm disabled:opacity-50"
+              className="px-4 py-2 rounded-lg font-medium text-sm bg-[var(--action)] text-white hover:bg-[var(--action-deep)] transition-colors shadow-sm disabled:opacity-50"
               disabled={isSaving}
             >
               {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
@@ -1543,7 +1543,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             )}
             {(file.status === 'approved' || file.status === 'rejected') && (
               <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white ${
-                file.status === 'approved' ? 'bg-[var(--accent)]' : 'bg-[var(--signal)]'
+                file.status === 'approved' ? 'bg-[var(--action)]' : 'bg-[var(--signal)]'
               }`}>
                 {file.status === 'approved' ? 'Approuvé' : 'Refusé'}
               </div>
@@ -1636,7 +1636,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   ?.duration;
                 addRushDirectlyToTimeline(file, cardDuration);
               }}
-              className="mt-1 w-full text-xs font-bold py-1.5 rounded-lg bg-[var(--accent)] text-white hover:opacity-90 transition-[transform,opacity] duration-150 active:scale-[0.97] focus:outline-none shadow-sm flex items-center justify-center gap-1.5"
+              className="mt-1 w-full text-xs font-bold py-1.5 rounded-lg bg-[var(--action)] text-white hover:opacity-90 transition-[transform,opacity] duration-150 active:scale-[0.97] focus:outline-none shadow-sm flex items-center justify-center gap-1.5"
             >
               <Video size={14} aria-hidden="true" />
               Ajouter à la timeline
@@ -1964,7 +1964,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                   </button>
                                   <button
                                     onClick={() => addClipDirectlyToTimeline(file)}
-                                    className="py-1.5 px-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-deep)] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
+                                    className="py-1.5 px-2 rounded-xl bg-[var(--action)] hover:bg-[var(--action-deep)] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
                                   >
                                     <Plus size={13} /> Ajouter
                                   </button>
@@ -2226,7 +2226,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <>
                   <button
                     onClick={() => setAdminUploadOpen(true)}
-                    className="btn border border-transparent bg-[var(--signal)] hover:opacity-90 text-[var(--paper)] shadow-sm py-1.5 px-3 text-sm flex items-center gap-1.5 transition-opacity"
+                    className="btn border border-transparent bg-[var(--action)] hover:bg-[var(--action-deep)] text-white shadow-sm py-1.5 px-3 text-sm flex items-center gap-1.5 transition-colors"
                     title="Uploader un reportage final (Admin)"
                   >
                     <UploadCloud size={14} /> <span className="hidden sm:inline">Uploader le reportage assemblé</span>
@@ -2316,7 +2316,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <div
                   className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center transition-colors ${
                     deliveryDragActive
-                      ? 'border-[color:var(--accent)] bg-[var(--accent)]/10'
+                      ? 'border-[color:var(--action)] bg-[var(--action)]/10'
                       : 'border-[var(--border)] bg-[var(--paper)] hover:border-[color:var(--accent)]'
                   }`}
                   onDragEnter={handleDeliveryDrag}
@@ -2376,7 +2376,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             <div
                               className={`h-2 rounded-full transition-all duration-300 ${
                                 f.status === 'completed'
-                                  ? 'bg-[var(--accent)]'
+                                  ? 'bg-[var(--action)]'
                                   : f.status === 'error'
                                   ? 'bg-[var(--signal)]'
                                   : 'bg-[color:var(--accent)]'
@@ -2496,7 +2496,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     {selectedBin && (
                       <button
                         onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
-                        className="px-2.5 py-1 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] text-xs font-bold shrink-0 flex items-center gap-1 active:scale-95"
+                        className="px-2.5 py-1 rounded-xl bg-[var(--action)]/10 text-[color:var(--action-deep)] text-xs font-bold shrink-0 flex items-center gap-1 active:scale-95"
                         title="Télécharger tout le pays en ZIP"
                       >
                         <Download size={12} /> ZIP
@@ -2612,7 +2612,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             
             {/* EXPORT PROGRESS (réel : download → encodage → upload) */}
             {isGeneratingVideo && (
-              <div className="mt-8 bg-[var(--accent)]/5 border border-[var(--accent)] rounded-2xl p-6 shadow-md" role="status" aria-live="polite">
+              <div className="mt-8 bg-[var(--action)]/5 border border-[var(--action)] rounded-2xl p-6 shadow-md" role="status" aria-live="polite">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 border-4 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin shrink-0" />

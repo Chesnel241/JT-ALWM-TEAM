@@ -97,7 +97,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                 download={previewVideo.name}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-1.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 shadow-sm"
+                className="px-4 py-1.5 rounded-xl bg-[var(--action)] text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 shadow-sm"
               >
                 <Download size={13} /> Télécharger
               </a>
@@ -204,7 +204,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                       download={file.name}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`py-2.5 px-3 rounded-2xl bg-[var(--accent)] text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-[var(--accent)]/30 transition-transform ${
+                      className={`py-2.5 px-3 rounded-2xl bg-[var(--action)] text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-[var(--action)]/30 transition-transform ${
                         !isVideo ? 'col-span-2' : ''
                       }`}
                     >
@@ -346,7 +346,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                           download={file.name}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/10 p-1.5 rounded-lg"
+                          className="text-[color:var(--action-deep)] hover:bg-[var(--action)]/10 p-1.5 rounded-lg"
                           title={t.delivery.downloadFile}
                         >
                           <Download size={16} />

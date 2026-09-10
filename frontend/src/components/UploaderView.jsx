@@ -572,7 +572,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                     isLocked
                       ? 'border-[var(--border)] bg-[var(--paper-2)] opacity-50 cursor-not-allowed'
                       : isDragActive
-                        ? 'border-[color:var(--accent)] bg-[var(--accent)]/10 scale-[1.02]'
+                        ? 'border-[color:var(--action)] bg-[var(--action)]/10 scale-[1.02]'
                         : 'border-[var(--border)] bg-[var(--paper)] sm:hover:border-[color:var(--accent)]'
                   }`}
                   onDragEnter={(e) => !isLocked && handleDrag(e, reportageName)}
@@ -646,7 +646,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                             <div
                               className={`h-2 rounded-full transition-all duration-300 ${
                                 f.status === 'completed'
-                                  ? 'bg-[var(--accent)]'
+                                  ? 'bg-[var(--action)]'
                                   : f.status === 'error'
                                   ? 'bg-[var(--signal)]'
                                   : 'bg-[color:var(--accent)]'

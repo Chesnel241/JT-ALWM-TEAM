@@ -248,7 +248,7 @@ export default function MobileUploaderView({
             <button
               onClick={handleSubscribe}
               disabled={isSubscribing || !phone || phone.length < 5}
-              className="w-full py-4 rounded-2xl bg-[var(--accent)] text-white font-bold text-base shadow-md shadow-[var(--accent)]/25 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-[var(--action)]/25 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSubscribing && (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -335,11 +335,11 @@ export default function MobileUploaderView({
                 <button
                   onClick={() => setReportageCount((prev) => Math.min(5, prev + 1))}
                   type="button"
-                  className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-[color:var(--accent)]/40 bg-[var(--accent)]/5 text-[color:var(--accent-deep)] font-bold text-sm active:scale-[0.98] transition-transform"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-[color:var(--action)]/45 bg-[var(--action)]/5 text-[color:var(--action-deep)] font-bold text-sm active:scale-[0.98] transition-transform"
                 >
                   <Plus size={18} className="shrink-0" />
                   <span className="truncate">{t.uploader.addReportage}</span>
-                  <span className="shrink-0 rounded-full bg-[var(--accent)]/12 px-2 py-0.5 text-[11px] font-bold">
+                  <span className="shrink-0 rounded-full bg-[var(--action)]/12 px-2 py-0.5 text-[11px] font-bold">
                     {reportageCount}
                   </span>
                 </button>
@@ -378,7 +378,7 @@ export default function MobileUploaderView({
                 onClick={handleTriggerFileInput}
                 disabled={isLocked}
                 type="button"
-                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--accent)] text-white font-bold text-base shadow-md shadow-[var(--accent)]/25 active:scale-[0.98] transition-all text-left disabled:opacity-50"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-[var(--action)]/25 active:scale-[0.98] transition-all text-left disabled:opacity-50"
               >
                 <span className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
                   <Video size={24} />
@@ -430,7 +430,7 @@ export default function MobileUploaderView({
               <div className="p-3.5 rounded-2xl bg-[var(--paper-2)] border border-[var(--border)] space-y-2.5 animate-fadeIn">
                 <div className="flex items-center justify-between text-xs font-bold text-[color:var(--ink)]">
                   <span className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 border-2 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin" />
+                    <div className="w-3 h-3 border-2 border-[var(--action)]/30 border-t-[var(--action)] rounded-full animate-spin" />
                     <span>Envoi en cours...</span>
                   </span>
                   <span className="text-[11px] text-[color:var(--muted)]">
@@ -449,7 +449,7 @@ export default function MobileUploaderView({
                     <div key={f.id} className="bg-[var(--paper)] p-2.5 rounded-xl border border-[var(--border)] space-y-1.5">
                       <div className="flex items-center justify-between text-xs gap-2">
                         <span className="font-semibold text-[color:var(--ink)] truncate">{f.name}</span>
-                        <span className="text-[10px] font-bold text-[color:var(--accent-deep)] shrink-0">
+                        <span className="text-[10px] font-bold text-[color:var(--action-deep)] shrink-0">
                           {f.phase === 'compressing'
                             ? `${t.uploader.compressing} ${Math.round(f.progress)}%`
                             : f.phase === 'processing'
@@ -459,7 +459,7 @@ export default function MobileUploaderView({
                       </div>
                       <div className="w-full bg-[var(--paper-2)] rounded-full h-1.5 overflow-hidden">
                         <div
-                          className="h-1.5 bg-[var(--accent)] rounded-full transition-all duration-300"
+                          className="h-1.5 bg-[var(--action)] rounded-full transition-all duration-300"
                           style={{ width: `${Math.max(5, f.progress)}%` }}
                         />
                       </div>
@@ -641,7 +641,7 @@ export default function MobileUploaderView({
               <button
                 onClick={handleScriptModalSubmit}
                 disabled={!activeScriptContent.trim() || submittingScripts[activeReportageName]}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-[var(--accent)] text-white font-bold rounded-xl text-xs shadow-md shadow-[var(--accent)]/30 active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-[var(--action)] text-white font-bold rounded-xl text-xs shadow-md shadow-[var(--action)]/30 active:scale-95 disabled:opacity-50"
               >
                 {submittingScripts[activeReportageName] ? (
                   <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

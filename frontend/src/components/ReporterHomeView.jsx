@@ -24,11 +24,11 @@ export default function ReporterHomeView({ onOpenReports, onOpenDelivery }) {
       cta: r.uploadCta,
       onClick: onOpenReports,
       // Accent maison pour l'action principale (envoyer un reportage).
-      // Bleu profond du logo : fond plein, texte blanc (8,6:1).
+      // Bleu pour l'identité de la carte, vert pour le bouton qui agit.
       tone: {
         card: 'border-[color:var(--accent)]/40 hover:border-[color:var(--accent)]',
         icon: 'bg-[var(--accent)] text-white',
-        cta: 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/25',
+        cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
         step: 'bg-[var(--accent)]/10 text-[color:var(--accent-deep)]',
       },
     },
@@ -46,7 +46,7 @@ export default function ReporterHomeView({ onOpenReports, onOpenDelivery }) {
       tone: {
         card: 'border-[var(--border)] hover:border-[color:var(--accent-soft)]',
         icon: 'bg-[var(--accent-soft)] text-[#111827]',
-        cta: 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/25',
+        cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
         step: 'bg-[var(--accent-soft)]/25 text-[color:var(--accent-deep)]',
       },
     },
