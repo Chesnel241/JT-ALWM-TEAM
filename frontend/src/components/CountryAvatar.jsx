@@ -36,11 +36,13 @@ export default function CountryAvatar({ country, className = "w-10 h-10" }) {
   }
 
   if (isSpecial || imgError) {
+    // Fond OPAQUE : en translucide, cette pastille posée sur le chutier
+    // sélectionné (fond bleu profond) rendait le code pays illisible.
     return (
-       <div className={`${className} rounded-full flex items-center justify-center font-semibold shrink-0 ${
+       <div className={`${className} rounded-full flex items-center justify-center font-semibold shrink-0 border ${
           country.id === 'tj' || country.id === 'mj'
-            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-            : 'bg-[var(--accent)]/15 text-[color:var(--accent-deep)]'
+            ? 'bg-[var(--signal)] text-[color:var(--ink)] border-black/10'
+            : 'bg-white text-[color:var(--accent-deep)] border-black/10'
         }`}>
           <span className="text-sm">{country.code}</span>
        </div>

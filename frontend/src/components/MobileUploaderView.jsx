@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import {
   UploadCloud, FileText, Video, Mic, CheckCircle,
   Clock, ChevronRight, Trash2, AlertCircle, Plus,
-  HelpCircle, X, ArrowLeft, Send, MessageCircle
+  HelpCircle, X, ArrowLeft, Send, MessageCircle, Image as ImageIcon
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -15,12 +15,18 @@ import Tutorial5W1H from './Tutorial5W1H.jsx';
 import PhoneInput from 'react-phone-number-input';
 import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
+import { UPLOAD_ACCEPT } from '../lib/mediaTypes.js';
+import { reportageTone } from '../lib/branding.js';
 import 'react-phone-number-input/style.css';
 
+// Charte : bleus du logo et neutres. Le texte coloré sur aplat coloré de la
+// version précédente (bleu 500 sur bleu 100, ambre sur ambre) descendait sous
+// le seuil de lisibilité ; on passe au bleu profond, à 8:1 sur ces fonds.
 const FILE_ICONS = {
-  video: { Icon: Video, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-  script: { Icon: FileText, color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30' },
-  audio: { Icon: Mic, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+  video: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent)]/10' },
+  image: { Icon: ImageIcon, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
+  audio: { Icon: Mic, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
+  script: { Icon: FileText, color: 'text-[color:var(--ink)]', bg: 'bg-[var(--paper-2)]' },
 };
 
 export default function MobileUploaderView({
@@ -45,6 +51,7 @@ export default function MobileUploaderView({
   // Transmise par UploaderView mais jamais déstructurée ici : le bouton
   // « Modifier » du numéro levait une erreur au lieu de rouvrir le champ.
   setHasPhoneNumber,
+  onEditPhone,
   phone,
   setPhone,
   handleSubscribe,
@@ -71,6 +78,7 @@ export default function MobileUploaderView({
       name: t.uploader.reportageName(i + 1),
       shortName: t.uploader.reportageName(i + 1),
       badge: `${i + 1}`,
+      tone: reportageTone(i),
       hint: t.uploader.sectionHintReportage,
       isFirst: i === 0,
     })),
@@ -194,7 +202,7 @@ export default function MobileUploaderView({
             Les envois pour cette semaine sont clôturés. Vous pouvez demander un délai exceptionnel à l'équipe.
           </p>
           {extensionStatus === 'pending' ? (
-            <div className="inline-block px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 text-xs font-bold">
+            <div className="inline-block px-3 py-1.5 rounded-xl bg-[var(--signal)]/15 border border-[var(--signal)]/40 text-[color:var(--ink)] text-xs font-bold">
               Demande de délai en cours de validation
             </div>
           ) : (
@@ -283,15 +291,22 @@ export default function MobileUploaderView({
                     key={sec.id}
                     onClick={() => setActiveTabId(sec.id)}
                     type="button"
+                    style={isActive && sec.tone ? { backgroundColor: sec.tone.fill, color: sec.tone.onFill } : undefined}
                     className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs transition-all active:scale-95 ${
                       isActive
-                        ? 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/25 scale-[1.02]'
+                        ? (sec.tone ? 'shadow-md scale-[1.02]' : 'bg-[var(--accent)] text-white shadow-md scale-[1.02]')
                         : 'bg-[var(--paper)] text-[color:var(--ink)] border border-[var(--border)]'
                     }`}
                   >
+                    {/* La pastille garde la teinte du reportage même quand
+                        l'onglet n'est pas actif : c'est elle qui distingue
+                        Reportage 1 de Reportage 2 d'un coup d'œil. */}
                     <span
+                      style={sec.tone && !isActive ? { backgroundColor: sec.tone.fill, color: sec.tone.onFill } : undefined}
                       className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-[var(--accent)]/15 text-[color:var(--accent-deep)]'
+                        isActive
+                          ? 'bg-white/25'
+                          : (sec.tone ? '' : 'bg-[var(--accent)]/15 text-[color:var(--accent-deep)]')
                       }`}
                     >
                       {sec.badge}
@@ -310,16 +325,28 @@ export default function MobileUploaderView({
                 );
               })}
 
-              {/* Le journaliste reste libre d'ouvrir une section de plus. */}
-              {reportageCount < 5 && (
+            </div>
+
+            {/* Ajouter un reportage : pleine largeur sous les onglets. En
+                puce au bout de la rangée, l'action passait inaperçue alors
+                que beaucoup de correspondants couvrent plusieurs sujets. */}
+            <div className="pt-1">
+              {reportageCount < 5 ? (
                 <button
                   onClick={() => setReportageCount((prev) => Math.min(5, prev + 1))}
                   type="button"
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl border border-dashed border-[var(--border)] text-[color:var(--accent-deep)] font-bold text-xs active:scale-95"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-[color:var(--accent)]/40 bg-[var(--accent)]/5 text-[color:var(--accent-deep)] font-bold text-sm active:scale-[0.98] transition-transform"
                 >
-                  <Plus size={14} />
-                  <span>Ajouter un reportage</span>
+                  <Plus size={18} className="shrink-0" />
+                  <span className="truncate">{t.uploader.addReportage}</span>
+                  <span className="shrink-0 rounded-full bg-[var(--accent)]/12 px-2 py-0.5 text-[11px] font-bold">
+                    {reportageCount}
+                  </span>
                 </button>
+              ) : (
+                <p className="text-center text-xs text-[color:var(--muted)]">
+                  {t.uploader.addReportageMax}
+                </p>
               )}
             </div>
           </div>
@@ -328,7 +355,12 @@ export default function MobileUploaderView({
           <div className="bg-[var(--paper)] rounded-3xl border border-[var(--border)] p-3.5 shadow-sm space-y-3">
             <div>
               <h3 className="flex items-center gap-2 font-bold text-base text-[color:var(--ink)]">
-                <span className="w-6 h-6 shrink-0 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center font-bold text-[11px]">
+                <span
+                  style={currentSection.tone ? { backgroundColor: currentSection.tone.fill, color: currentSection.tone.onFill } : undefined}
+                  className={`w-6 h-6 shrink-0 rounded-lg flex items-center justify-center font-bold text-[11px] ${
+                    currentSection.tone ? '' : 'bg-[var(--accent)] text-white'
+                  }`}
+                >
                   {currentSection.badge}
                 </span>
                 <span className="truncate">{activeReportageName}</span>
@@ -362,7 +394,7 @@ export default function MobileUploaderView({
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="video/*,audio/*,image/*,.mp4,.mov,.webm,.avi,.mkv,.pdf,.docx,.doc,.txt"
+                accept={UPLOAD_ACCEPT}
                 className="hidden"
                 disabled={isLocked}
                 onChange={(e) => {
@@ -388,6 +420,9 @@ export default function MobileUploaderView({
                   <span className="block text-xs font-medium text-[color:var(--muted)]">{t.uploader.addScriptHint}</span>
                 </span>
               </button>
+              <p className="pt-0.5 text-center text-xs text-[color:var(--muted)]">
+                {t.uploader.formatsHint}
+              </p>
             </div>
 
             {/* LIVE UPLOAD / COMPRESSION PROGRESS (if active) */}
@@ -437,13 +472,13 @@ export default function MobileUploaderView({
             {/* Accusé de réception explicite : la liste de fichiers seule ne
                 disait pas au correspondant que son envoi était terminé. */}
             {activeUploads.length > 0 && activeUploading.length === 0 && (
-              <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-green-500/10 border border-green-500/25">
-                <CheckCircle size={20} className="shrink-0 text-green-600 dark:text-green-400" />
+              <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-[var(--success)]/10 border border-[var(--success)]/30">
+                <CheckCircle size={20} className="shrink-0 text-[color:var(--success-deep)]" />
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-green-800 dark:text-green-300">
+                  <p className="text-sm font-bold text-[color:var(--success-deep)]">
                     {t.uploader.sectionDone(activeUploads.length)}
                   </p>
-                  <p className="text-xs text-green-700/80 dark:text-green-400/80">
+                  <p className="text-xs text-[color:var(--ink)]/75">
                     {t.uploader.sectionDoneHint}
                   </p>
                 </div>
@@ -500,7 +535,7 @@ export default function MobileUploaderView({
                               )}
                             </div>
                             {file.status === 'approved' && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 mt-1">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[color:var(--success-deep)] mt-1">
                                 <CheckCircle size={11} /> Validé
                               </span>
                             )}
@@ -552,7 +587,7 @@ export default function MobileUploaderView({
               </span>
               <button
                 type="button"
-                onClick={() => setHasPhoneNumber?.(false)}
+                onClick={() => (onEditPhone ? onEditPhone() : setHasPhoneNumber?.(false))}
                 className="shrink-0 rounded-lg px-2.5 py-1.5 font-bold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 active:scale-95"
               >
                 Modifier
@@ -574,7 +609,7 @@ export default function MobileUploaderView({
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FileText className="text-amber-500" size={20} />
+                <FileText className="text-[color:var(--accent-deep)]" size={20} />
                 <h3 className="font-bold text-base text-[color:var(--ink)]">
                   Script : {activeReportageName}
                 </h3>
@@ -626,7 +661,7 @@ export default function MobileUploaderView({
           <div className="relative w-full max-w-md bg-[var(--paper)] rounded-3xl p-5 border border-[var(--border)] shadow-2xl space-y-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-2">
-                <FileText className="text-amber-500" size={18} />
+                <FileText className="text-[color:var(--accent-deep)]" size={18} />
                 <h3 className="font-bold text-sm text-[color:var(--ink)] truncate">
                   {previewScriptFile.name}
                 </h3>

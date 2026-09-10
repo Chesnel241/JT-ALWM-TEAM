@@ -10,10 +10,13 @@ import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 
+// Charte : bleus du logo et neutres, avec un texte à fort contraste sur
+// chaque aplat (le bleu 500 sur bleu 100 précédent était illisible).
 const FILE_ICONS = {
-  video: { Icon: Video, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-  audio: { Icon: Music, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30' },
-  document: { Icon: FileText, color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+  video: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent)]/10' },
+  image: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
+  audio: { Icon: Music, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
+  document: { Icon: FileText, color: 'text-[color:var(--ink)]', bg: 'bg-[var(--paper-2)]' },
 };
 
 // `audience` : le même écran sert les deux équipes. Côté montage il porte
@@ -114,7 +117,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
               <Sparkles size={13} /> {t.nav.delivery}
             </div>
             {deliveries.length > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-green-500/10 text-green-600 border border-green-500/20">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--success)]/12 text-[color:var(--success-deep)] border border-[var(--success)]/30">
                 DISPONIBLE
               </span>
             )}
@@ -166,7 +169,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                   className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] shadow-sm space-y-3.5"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center shrink-0">
                       <Video size={20} />
                     </div>
                     <div className="min-w-0 flex-1">

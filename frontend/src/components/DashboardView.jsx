@@ -1,10 +1,22 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone, Image as ImageIcon } from 'lucide-react';
 import { api, API_BASE, getClientId } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
+import { MEDIA_ORDER, MEDIA_TYPES, groupByReportage, classifyFile } from '../lib/mediaTypes.js';
+import { reportageTone } from '../lib/branding.js';
+
+// Les quatre familles de rushes, dans l'ordre où l'équipe montage les
+// parcourt. Les images n'avaient pas de rubrique : elles se retrouvaient
+// mélangées aux scripts.
+const MEDIA_SECTIONS = {
+  [MEDIA_TYPES.VIDEO]: { label: 'Vidéos', Icon: Video },
+  [MEDIA_TYPES.IMAGE]: { label: 'Images', Icon: ImageIcon },
+  [MEDIA_TYPES.AUDIO]: { label: 'Audios', Icon: Mic },
+  [MEDIA_TYPES.DOCUMENT]: { label: 'Textes & documents', Icon: FileText },
+};
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import AIChecklist from './AIChecklist.jsx';
@@ -1458,8 +1470,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   );
 
   const renderFileCard = (file) => {
-    const isVideo = file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i);
-    const isAudio = file?.type === 'audio' || !!file?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
+    // Même classement que le regroupement au-dessus : une carte montrait une
+    // caméra pour un fichier audio et une feuille pour une photo, parce que
+    // sa détection était plus étroite que celle des sections.
+    const kind = classifyFile(file);
+    const isVideo = kind === MEDIA_TYPES.VIDEO;
+    const isAudio = kind === MEDIA_TYPES.AUDIO;
+    const isImage = kind === MEDIA_TYPES.IMAGE;
     
     return (
       <div key={file.id} className="group flex flex-col gap-2 shrink-0 w-64 md:w-auto snap-start relative">
@@ -1498,12 +1515,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             </>
+          ) : isImage ? (
+            /* Une photo mérite son aperçu : elle tombait dans la branche
+               « document » et s'affichait comme une feuille de papier. */
+            <img
+              src={`${API_BASE}/uploads/${file.filename}`}
+              alt={file.name || file.filename}
+              loading="lazy"
+              className="w-full h-full object-cover relative z-10"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
           ) : isAudio ? (
-            <div className="absolute inset-0 flex items-center justify-center text-[color:var(--signal)]/40 z-0 bg-gradient-to-tr from-[var(--paper)] to-blue-50">
-               <Mic className="w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10 text-blue-400" />
+            <div className="absolute inset-0 flex items-center justify-center z-0 bg-[var(--accent-soft)]/15">
+               <Mic className="w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10 text-[color:var(--accent-deep)]" />
             </div>
           ) : (
-            <FileText className="text-[color:var(--signal)]/40 w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10" />
+            <FileText className="text-[color:var(--accent-deep)]/60 w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10" />
           )}
 
           {/* Status Badge */}
@@ -1905,8 +1932,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                   }}
                                   muted
                                 />
-                                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold backdrop-blur-xs">
-                                  {cObj?.name || file.countryId}
+                                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                                  <span className="px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold backdrop-blur-xs">
+                                    {cObj?.name || file.countryId}
+                                  </span>
+                                  {/* De quel reportage vient ce rush : sans ça, le
+                                      tiroir mélangeait les sujets d'un même pays. */}
+                                  {file.reportage && (
+                                    <span className="px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold backdrop-blur-xs">
+                                      {file.reportage}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="p-3.5 flex-1 flex flex-col justify-between gap-3">
@@ -2154,7 +2190,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                 setFileToFeedback({ id: 'general', name: `Contact ${countries.find(c => c.id === selectedBin)?.name || selectedBin}`, countryId: selectedBin });
                                 setFeedbackDialogOpen(true);
                               }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold border border-amber-500/20 hover:bg-amber-500/20 transition-all"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[var(--signal)]/15 text-[color:var(--ink)] text-xs font-semibold border border-[var(--signal)]/40 hover:bg-[var(--signal)]/25 transition-all"
                               title="Ajouter un contact WhatsApp pour ce pays"
                             >
                               <span>📱 Aucun WhatsApp (+ Ajouter)</span>
@@ -2439,9 +2475,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
                       {[
                         { id: 'all', label: 'Tous' },
-                        { id: 'video', label: '📹 Vidéos' },
-                        { id: 'audio', label: '🎙️ Voix Off' },
-                        { id: 'script', label: '📝 Scripts' },
+                        { id: MEDIA_TYPES.VIDEO, label: 'Vidéos' },
+                        { id: MEDIA_TYPES.IMAGE, label: 'Images' },
+                        { id: MEDIA_TYPES.AUDIO, label: 'Audios' },
+                        { id: MEDIA_TYPES.DOCUMENT, label: 'Textes' },
                       ].map((f) => (
                         <button
                           key={f.id}
@@ -2512,53 +2549,63 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     );
                   }
 
-                  const videoFiles = allFiles.filter(f => f?.type === 'video' || !!f?.name?.match(/\.(mp4|mov|avi|mkv)$/i));
-                  const audioFiles = allFiles.filter(f => f?.type === 'audio' || !!f?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i));
-                  const scriptFiles = allFiles.filter(f => !videoFiles.includes(f) && !audioFiles.includes(f));
+                  // Un reportage = un bloc, et dans chaque bloc les quatre
+                  // familles séparées. Avant, tout le pays était versé dans
+                  // trois listes à plat : impossible de savoir quelle vidéo
+                  // allait avec quel script.
+                  const groups = groupByReportage(allFiles);
 
-                  const showVideos = mobileRushFilter === 'all' || mobileRushFilter === 'video';
-                  const showAudios = mobileRushFilter === 'all' || mobileRushFilter === 'audio';
-                  const showScripts = mobileRushFilter === 'all' || mobileRushFilter === 'script';
+                  return groups.map((group) => {
+                    const tone = reportageTone(group.index);
+                    const sections = MEDIA_ORDER
+                      .map((type) => ({ type, files: group.byType[type] }))
+                      .filter(({ type, files }) => (
+                        files.length > 0 && (mobileRushFilter === 'all' || mobileRushFilter === type)
+                      ));
 
-                  return (
-                    <>
-                      {/* Videos & Rushs */}
-                      {videoFiles.length > 0 && showVideos && (
-                        <section>
-                          <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
-                            <Video size={16} /> Vidéos & Rushs ({videoFiles.length})
-                          </h3>
-                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
-                            {videoFiles.map(file => renderFileCard(file))}
-                          </div>
-                        </section>
-                      )}
+                    if (sections.length === 0) return null;
 
-                      {/* Voix Off */}
-                      {audioFiles.length > 0 && showAudios && (
-                        <section>
-                          <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
-                            <Mic size={16} /> Voix Off ({audioFiles.length})
-                          </h3>
-                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
-                            {audioFiles.map(file => renderFileCard(file))}
-                          </div>
-                        </section>
-                      )}
+                    return (
+                      <section key={group.label} className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--paper)] overflow-hidden">
+                        <header
+                          className="flex flex-wrap items-center gap-2 px-4 py-2.5"
+                          style={{ backgroundColor: tone.fill, color: tone.onFill }}
+                        >
+                          <Folder size={16} className="shrink-0" />
+                          <h3 className="font-bold text-sm">{group.label}</h3>
+                          <span
+                            className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold"
+                            style={{
+                              // Voile sombre sur teinte foncée, clair sur teinte
+                              // claire : l'inverse délavait le fond et faisait
+                              // passer le compteur sous le seuil de lisibilité.
+                              backgroundColor: tone.onFill === '#ffffff'
+                                ? 'rgb(0 0 0 / 0.22)'
+                                : 'rgb(255 255 255 / 0.55)',
+                            }}
+                          >
+                            {group.files.length} {group.files.length > 1 ? 'fichiers' : 'fichier'}
+                          </span>
+                        </header>
 
-                      {/* Scripts & Documents */}
-                      {scriptFiles.length > 0 && showScripts && (
-                        <section>
-                          <h3 className="text-sm uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
-                            <FileText size={16} /> Scripts & Documents ({scriptFiles.length})
-                          </h3>
-                          <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
-                            {scriptFiles.map(file => renderFileCard(file))}
-                          </div>
-                        </section>
-                      )}
-                    </>
-                  );
+                        <div className="p-4 space-y-5">
+                          {sections.map(({ type, files }) => {
+                            const { label, Icon } = MEDIA_SECTIONS[type];
+                            return (
+                              <div key={type}>
+                                <h4 className="text-xs uppercase tracking-widest text-[color:var(--muted)] font-semibold mb-3 flex items-center gap-2">
+                                  <Icon size={15} /> {label} ({files.length})
+                                </h4>
+                                <div className="flex overflow-x-auto snap-x snap-mandatory pb-4 gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 md:overflow-visible">
+                                  {files.map((file) => renderFileCard(file))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  });
                 })()}
               </div>
             )}

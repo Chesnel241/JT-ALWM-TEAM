@@ -4,9 +4,15 @@
  */
 
 import { openSync, readSync, closeSync } from 'fs';
-import { MAX_FILE_SIZE as UPLOAD_MAX_FILE_SIZE } from '../lib/upload.js';
+import {
+  MAX_FILE_SIZE as UPLOAD_MAX_FILE_SIZE,
+  ALLOWED_EXTENSIONS as UPLOAD_ALLOWED_EXTENSIONS,
+  IMAGE_EXTENSIONS,
+} from '../lib/upload.js';
 
-const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mp3', '.wav', '.txt', '.docx', '.zip', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.webm', '.ogg', '.aac'];
+// Même liste que multer et TUS : une seule source de vérité, sinon un fichier
+// accepté à l'écriture se faisait refuser juste après par le validateur.
+const ALLOWED_EXTENSIONS = [...UPLOAD_ALLOWED_EXTENSIONS];
 // Source de vérité unique : on prend MAX_FILE_SIZE depuis lib/upload.js
 // (qui lit l'env). Avant : valeur hardcodée 200 Mo divergente — multer
 // acceptait jusqu'à 2 Go puis le validateur rejetait avec un message
@@ -166,8 +172,9 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE, allowImages = fals
 
   // Vérifier l'extension
   const ext = getFileExtension(file.originalname);
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic'];
-  const allowedExts = allowImages ? ALLOWED_EXTENSIONS : ALLOWED_EXTENSIONS.filter(e => !imageExtensions.includes(e));
+  const allowedExts = allowImages
+    ? ALLOWED_EXTENSIONS
+    : ALLOWED_EXTENSIONS.filter((e) => !IMAGE_EXTENSIONS.includes(e));
   
   if (!allowedExts.includes(ext.toLowerCase())) {
     return { 
@@ -176,21 +183,28 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE, allowImages = fals
     };
   }
 
-  // Vérifier le MIME type (validation basique)
-  const allowedMimes = [
-    'video/mp4', 'video/quicktime', 'video/webm',
-    'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/aac',
-    'text/plain',
+  // MIME : on raisonne par FAMILLE, pas par liste fermée. Les téléphones
+  // annoncent des types très variables pour un même format (video/x-matroska,
+  // audio/3gpp, et très souvent application/octet-stream depuis un navigateur
+  // mobile). Une liste fermée rejetait des fichiers parfaitement valides.
+  // Le garde-fou réel reste l'extension autorisée ci-dessus, doublée de la
+  // signature binaire vérifiée par validateMagicNumber().
+  const mime = String(file.mimetype).toLowerCase();
+  const family = mime.split('/')[0];
+  const MEDIA_FAMILIES = allowImages ? ['video', 'audio', 'image'] : ['video', 'audio'];
+  const DOCUMENT_MIMES = [
+    'text/plain', 'text/markdown', 'text/rtf', 'application/rtf', 'application/pdf',
+    'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/zip', 'application/x-zip-compressed'
+    'application/vnd.oasis.opendocument.text',
+    'application/zip', 'application/x-zip-compressed',
+    // Envoi depuis un navigateur mobile qui ne sait pas nommer le format.
+    'application/octet-stream',
   ];
-  if (allowImages) {
-    allowedMimes.push('image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/heic');
-  }
-  
-  if (!allowedMimes.includes(file.mimetype)) {
-    return { 
-      valid: false, 
+
+  if (!MEDIA_FAMILIES.includes(family) && !DOCUMENT_MIMES.includes(mime)) {
+    return {
+      valid: false,
       error: `Type MIME non autorisé: ${file.mimetype}`
     };
   }

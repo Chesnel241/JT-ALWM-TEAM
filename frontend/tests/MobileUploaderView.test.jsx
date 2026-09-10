@@ -55,6 +55,15 @@ function renderMobileUploader(props = {}) {
   );
 }
 
+
+// L'onglet d'une section, en écartant le bouton « Ajouter un reportage » qui
+// porte lui aussi un chiffre dans son libellé.
+function sectionTab(label) {
+  return screen
+    .getAllByRole('button', { name: new RegExp(label, 'i') })
+    .find((btn) => !/Ajouter/i.test(btn.textContent));
+}
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('jt-alwm-lang', 'fr');
@@ -70,8 +79,8 @@ describe('MobileUploaderView', () => {
 
   it('renders reportage tabs and allows switching active tab', () => {
     renderMobileUploader();
-    const tab1 = screen.getByRole('button', { name: /Reportage 1/i });
-    const tab2 = screen.getByRole('button', { name: /Reportage 2/i });
+    const tab1 = sectionTab('Reportage 1');
+    const tab2 = sectionTab('Reportage 2');
     expect(tab1).toBeInTheDocument();
     expect(tab2).toBeInTheDocument();
 
@@ -136,6 +145,26 @@ describe('MobileUploaderView — repères ajoutés', () => {
     expect(screen.getByRole('button', { name: /Annonces/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Séminaires/i }));
     expect(screen.getByText('Séminaires de la semaine')).toBeInTheDocument();
+  });
+
+
+  it('rassure sur les formats acceptés', () => {
+    renderMobileUploader();
+    expect(screen.getByText(/Tous les formats vidéo, photo et audio sont acceptés/i)).toBeInTheDocument();
+  });
+
+  it('donne une teinte propre à chaque reportage', () => {
+    renderMobileUploader({ reportageCount: 3 });
+    const tabs = ['Reportage 1', 'Reportage 2', 'Reportage 3'].map(sectionTab);
+    // La pastille de chaque onglet porte une couleur de fond distincte.
+    const fills = tabs.map((tab) => tab.querySelector('span')?.getAttribute('style') || tab.getAttribute('style') || '');
+    expect(new Set(fills).size).toBe(3);
+  });
+
+  it('annonce le nombre de reportages en cours', () => {
+    renderMobileUploader({ reportageCount: 2 });
+    const addBtn = screen.getByText('Ajouter un reportage').closest('button');
+    expect(addBtn).toHaveTextContent('2');
   });
 
   it('laisse le journaliste ajouter un reportage', () => {

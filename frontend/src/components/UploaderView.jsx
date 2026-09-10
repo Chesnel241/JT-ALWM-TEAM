@@ -14,6 +14,7 @@ import CountryAvatar from './CountryAvatar.jsx';
 import PhoneInput from 'react-phone-number-input';
 import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
+import { readCountryPhone, saveCountryPhone, forgetCountryPhone, isUsablePhone } from '../lib/countryPhone.js';
 import 'react-phone-number-input/style.css';
 
 const FILE_ICONS = {
@@ -46,14 +47,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [isSubscribing, setIsSubscribing] = useState(false);
 
   useEffect(() => {
-    const savedCountryPhone = localStorage.getItem(`uploader_phone_${country.id}`);
-    const savedGlobalPhone = localStorage.getItem('uploader_phone');
-    const phoneToUse = savedCountryPhone || savedGlobalPhone || '';
-    if (phoneToUse && phoneToUse.trim().length >= 5) {
+    // Strictement le numéro de CE pays : chaque bureau renseigne le sien.
+    const savedPhone = readCountryPhone(country.id);
+    if (isUsablePhone(savedPhone)) {
       setHasPhoneNumber(true);
-      setPhone(phoneToUse);
+      setPhone(savedPhone);
       if (selectedWeek) {
-        api.subscribeToNotifications(selectedWeek, country.id, phoneToUse).catch(() => {});
+        api.subscribeToNotifications(selectedWeek, country.id, savedPhone).catch(() => {});
       }
     } else {
       setHasPhoneNumber(false);
@@ -270,14 +270,20 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     }
   };
 
+  const handleEditPhone = () => {
+    // On garde le numéro dans le champ pour le corriger d'un chiffre, mais on
+    // efface l'enregistrement : sans ça, quitter la page le faisait revenir.
+    forgetCountryPhone(country.id);
+    setHasPhoneNumber(false);
+  };
+
   const handleSubscribe = async (customPhone) => {
     const phoneToSub = (typeof customPhone === 'string' ? customPhone : phone || '').trim();
-    if (!phoneToSub || phoneToSub.length < 5) return;
+    if (!isUsablePhone(phoneToSub)) return;
     setIsSubscribing(true);
     try {
       await api.subscribeToNotifications(selectedWeek, country.id, phoneToSub);
-      localStorage.setItem('uploader_phone', phoneToSub);
-      localStorage.setItem(`uploader_phone_${country.id}`, phoneToSub);
+      saveCountryPhone(country.id, phoneToSub);
       setPhone(phoneToSub);
       setHasPhoneNumber(true);
       addToast(t.uploader.notifySuccess || 'Numéro WhatsApp enregistré avec succès !', 'success', 3000);
@@ -313,6 +319,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           openDeleteDialog={openDeleteDialog}
           hasPhoneNumber={hasPhoneNumber}
           setHasPhoneNumber={setHasPhoneNumber}
+          onEditPhone={handleEditPhone}
           phone={phone}
           setPhone={setPhone}
           handleSubscribe={handleSubscribe}
@@ -346,13 +353,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           {hasPhoneNumber && phone && country.id !== 'tj' && country.id !== 'mj' && (
             <button
-              onClick={() => setHasPhoneNumber(false)}
+              onClick={handleEditPhone}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 text-xs font-semibold hover:bg-green-500/20 transition-colors active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--success)]/10 text-[color:var(--success-deep)] border border-[var(--success)]/30 text-xs font-semibold hover:bg-[var(--success)]/20 transition-colors active:scale-95"
               title="Cliquer pour modifier le numéro WhatsApp"
             >
               <span>📱 WhatsApp : {phone}</span>
-              <span className="text-[10px] underline opacity-75">(Modifier)</span>
+              <span className="text-[10px] underline">(Modifier)</span>
             </button>
           )}
           <select

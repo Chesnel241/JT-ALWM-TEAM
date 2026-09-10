@@ -15,7 +15,7 @@ import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { requireAdmin, safeEqual, normalizeToken } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { audit } from '../logger/audit.js';
-import { fileUpload as upload, uploadsDir } from '../lib/upload.js';
+import { fileUpload as upload, uploadsDir, classifyUpload } from '../lib/upload.js';
 import { generateDownloadToken } from '../lib/downloadTokens.js';
 import { getFileMetadata } from '../data/store.js';
 
@@ -272,10 +272,11 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
       }
 
     const reportageName = req.query.reportage || '';
-    const allowImages = reportageName === 'Séminaires de la semaine' || reportageName === 'Annonces';
 
-    // Valider le fichier avec fileValidator (extension + MIME + nom)
-    let validation = validateFile(file, { allowImages });
+    // Les images sont acceptées dans toutes les sections. Elles n'étaient
+    // permises que sur « Séminaires » et « Annonces » : une photo envoyée
+    // avec un reportage était rejetée sans raison compréhensible.
+    let validation = validateFile(file, { allowImages: true });
     // Puis valider le magic number (contenu réel) sur le fichier écrit
     if (validation.valid) {
       const ext = path.extname(file.originalname).toLowerCase();
@@ -312,9 +313,6 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
     }
 
 
-    const isScript = file.mimetype.startsWith('text/') || file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    const isImage = file.mimetype.startsWith('image/');
-    const isAudio = file.mimetype.startsWith('audio/');
     const reportage = req.query.reportage || null;
 
     let finalSize = file.size;
@@ -323,7 +321,9 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
       id: uuidv4(),
       name: file.originalname,
       filename: file.filename,
-      type: isScript ? 'script' : isImage ? 'image' : isAudio ? 'audio' : 'video',
+      // Classement par extension d'abord : le MIME envoyé par les téléphones
+      // est trop souvent générique (cf. classifyUpload).
+      type: classifyUpload(file.originalname, file.mimetype),
       size: `${(finalSize / (1024 * 1024)).toFixed(1)} MB`,
       // 'pending' = en attente de revue par l'équipe montage.
       // (Avant: 'completed' → l'UI l'affichait à tort comme "Rejeté".)

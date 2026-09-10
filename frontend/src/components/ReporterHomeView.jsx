@@ -24,6 +24,7 @@ export default function ReporterHomeView({ onOpenReports, onOpenDelivery }) {
       cta: r.uploadCta,
       onClick: onOpenReports,
       // Accent maison pour l'action principale (envoyer un reportage).
+      // Bleu profond du logo : fond plein, texte blanc (8,6:1).
       tone: {
         card: 'border-[color:var(--accent)]/40 hover:border-[color:var(--accent)]',
         icon: 'bg-[var(--accent)] text-white',
@@ -39,11 +40,14 @@ export default function ReporterHomeView({ onOpenReports, onOpenDelivery }) {
       text: r.downloadText,
       cta: r.downloadCta,
       onClick: onOpenDelivery,
+      // Bleu clair du logo pour la tuile d'icône : il n'accepte que du texte
+      // foncé (2,3:1 avec du blanc), d'où l'encre sur la pastille et le bleu
+      // profond conservé sur le bouton.
       tone: {
-        card: 'border-[var(--border)] hover:border-emerald-500',
-        icon: 'bg-emerald-600 text-white',
-        cta: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25',
-        step: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        card: 'border-[var(--border)] hover:border-[color:var(--accent-soft)]',
+        icon: 'bg-[var(--accent-soft)] text-[#111827]',
+        cta: 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/25',
+        step: 'bg-[var(--accent-soft)]/25 text-[color:var(--accent-deep)]',
       },
     },
   ];
