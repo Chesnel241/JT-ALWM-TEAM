@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { X, Scissors, SkipBack, SkipForward, Play, Pause } from 'lucide-react';
-import { API_BASE } from '../../api/index.js';
+import { previewUrl } from '../../lib/mediaSource.js';
 
 function formatTime(seconds) {
   if (seconds == null || isNaN(seconds)) return '0:00.0';
@@ -30,8 +30,8 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
   const mediaSrc = useMemo(() => {
     if (!file) return '';
     if (file.url?.startsWith('http') || file.url?.startsWith('blob:')) return file.url;
-    return `${API_BASE}/uploads/${encodeURIComponent(file.filename || file.name || '')}?cors=2`;
-  }, [file?.url, file?.filename, file?.name]);
+    return previewUrl(file);
+  }, [file?.url, file?.filename, file?.proxyFilename, file?.name]);
 
   useEffect(() => {
     const nextIn = Math.max(0, Number(file?.inPoint) || 0);

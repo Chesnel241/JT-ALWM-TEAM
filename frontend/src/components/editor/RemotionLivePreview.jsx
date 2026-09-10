@@ -3,6 +3,7 @@ import { Player } from '@remotion/player';
 import { X } from 'lucide-react';
 import { JTMaster, totalDurationInFrames } from '../../../../remotion/src/JTMaster.jsx';
 import { API_BASE } from '../../api/index.js';
+import { previewUrl } from '../../lib/mediaSource.js';
 
 // Le mot de passe admin ne transite plus par l'URL des médias : /uploads est
 // servi sans authentification, et un secret en query string finissait dans les
@@ -12,9 +13,7 @@ export default function RemotionLivePreview({ clips, global, branding, timelineO
   const inputProps = useMemo(() => {
     // On résout les URLs relatives pour que Remotion puisse lire les vidéos depuis l'API locale.
     const resolvedClips = clips.map(clip => {
-      const filename = clip.filename || clip.name || '';
-      const isExternal = filename.startsWith('http') || filename.startsWith('blob:');
-      const url = isExternal ? filename : `${API_BASE}/uploads/${filename}?cors=2`;
+      const url = previewUrl(clip);
       return {
         ...clip,
         url,

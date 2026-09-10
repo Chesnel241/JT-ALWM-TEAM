@@ -405,6 +405,25 @@ export function updateUploadSize(weekId, countryId, fileId, sizeLabel) {
 }
 
 /**
+ * Attache au fichier le nom de sa copie légère, une fois fabriquée.
+ *
+ * Le master garde son `filename` : rien de ce qui l'adresse ne bouge, et
+ * l'export continue de repartir de lui. Seuls l'aperçu et le montage
+ * préfèrent `proxyFilename` quand il existe. `proxySize` sert à afficher le
+ * poids réellement transféré au navigateur.
+ */
+export function setUploadProxy(weekId, countryId, fileId, proxyFilename, proxySize) {
+  const list = db[weekId]?.[countryId];
+  if (!Array.isArray(list)) return null;
+  const file = list.find((f) => f && f.id === fileId);
+  if (!file) return null;
+  file.proxyFilename = proxyFilename || '';
+  if (proxySize) file.proxySize = proxySize;
+  persistDb();
+  return file;
+}
+
+/**
  * Pays propriétaire d'un fichier, ou '' s'il est introuvable ou s'il s'agit
  * d'un JT publié. Sert à ne prévenir que le correspondant concerné quand un
  * rush est refusé, plutôt que d'annoncer à tous les pays qu'un rush a été
@@ -471,6 +490,17 @@ export function getStore() {
 async function deleteUploadFile(upload, uploadsDir) {
   if (!upload?.filename || !uploadsDir) return false;
   const filePath = join(uploadsDir, upload.filename);
+  // La copie légère part avec son master. La balayeuse d'orphelins la
+  // rattraperait après 24 h, mais s'en remettre à elle laisserait le disque
+  // porter deux fois le poids d'une semaine entière pendant une journée.
+  if (upload.proxyFilename) {
+    const proxyPath = join(uploadsDir, upload.proxyFilename);
+    try {
+      if (existsSync(proxyPath)) await unlink(proxyPath);
+    } catch (err) {
+      logger.warn(`Proxy non supprimé: ${upload.proxyFilename}`, { error: err.message });
+    }
+  }
   try {
     if (existsSync(filePath)) {
       await unlink(filePath);
@@ -564,7 +594,12 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
           if (META_KEYS.has(weekId)) continue;
           for (const countryId of Object.keys(db[weekId])) {
             const uploads = db[weekId][countryId];
-            if (Array.isArray(uploads) && uploads.some((u) => u.filename === file)) {
+            // Une copie légère est référencée par `proxyFilename`, pas par
+            // `filename` : sans ce test, la balayeuse la prendrait pour un
+            // orphelin et supprimerait le proxy d'un master bien vivant,
+            // 24 h après sa fabrication.
+            if (Array.isArray(uploads)
+              && uploads.some((u) => u.filename === file || u.proxyFilename === file)) {
               found = true;
               break;
             }

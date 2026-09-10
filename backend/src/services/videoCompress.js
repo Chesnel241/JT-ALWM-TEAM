@@ -2,29 +2,46 @@ import ffmpeg from '../lib/ffmpeg.js';
 import fs from 'fs';
 import path from 'path';
 import logger from '../logger/index.js';
+import { VIDEO_EXTENSIONS } from '../lib/upload.js';
 
-const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm']);
+// Toutes les extensions vidéo acceptées à l'envoi, pas seulement trois.
+// Avant, un .mkv ou un .mts traversait la fabrication de proxy sans rien
+// produire : le monteur travaillait alors sur le master selon le téléphone
+// du correspondant, sans que rien ne le signale.
+const VIDEO_EXTS = new Set(VIDEO_EXTENSIONS);
+
+/** Nom du proxy associé à un fichier : `<uuid>.proxy.mp4`. */
+export function proxyNameFor(filename) {
+  const base = path.basename(String(filename || ''));
+  const dot = base.lastIndexOf('.');
+  return `${dot > 0 ? base.slice(0, dot) : base}.proxy.mp4`;
+}
 
 /**
- * Compresse une vidéo à 720p max si elle dépasse cette hauteur.
- * - N'upscale jamais (expression scale conditionnelle).
- * - Réencode H.264 CRF 28 preset veryfast → poids fortement réduit,
- *   crucial quand 20-30 rushes s'accumulent (budget disque/RAM).
- * - Remplace le fichier d'origine sur place (même filename).
+ * Fabrique une copie 720p À CÔTÉ du master, pour l'aperçu et le montage.
  *
- * Retourne { compressed: boolean, newSize: number } (taille en octets).
- * En cas d'erreur ffmpeg, conserve l'original et retourne compressed:false.
+ * Le master n'est jamais touché. La version précédente renommait le
+ * réencodage par-dessus l'original : un rush 1080p devenait définitivement
+ * 720p, et l'export — qui rend en 1080p — repartait de ce 720p, donc
+ * l'agrandissait. Ici le master reste intact pour le rendu final, et seul
+ * l'aperçu consomme la copie légère, ce qui garde le studio fluide sur une
+ * machine modeste et sur une connexion faible.
  *
- * @param {string} filePath  chemin local du fichier
- * @param {string} ext       extension (.mp4, .mov, .webm)
+ * Retourne { compressed, proxyName, newSize } — `newSize` étant la taille du
+ * proxy quand il existe, sinon celle du master. Une erreur ffmpeg n'est pas
+ * fatale : on repart simplement sans proxy.
+ *
+ * @param {string} filePath  chemin local du master
+ * @param {string} ext       extension du master
  */
 export async function compressTo720(filePath, ext) {
-  if (!VIDEO_EXTS.has(ext.toLowerCase())) {
-    return { compressed: false, newSize: fs.statSync(filePath).size };
+  if (!VIDEO_EXTS.has(String(ext).toLowerCase())) {
+    return { compressed: false, proxyName: '', newSize: fs.statSync(filePath).size };
   }
 
   const dir = path.dirname(filePath);
-  const tmpOut = path.join(dir, `c_${path.basename(filePath)}`);
+  const proxyName = proxyNameFor(filePath);
+  const tmpOut = path.join(dir, `c_${path.basename(filePath)}.mp4`);
 
   try {
     await new Promise((resolve, reject) => {
@@ -52,18 +69,19 @@ export async function compressTo720(filePath, ext) {
     const origSize = fs.statSync(filePath).size;
     const newSize = fs.statSync(tmpOut).size;
 
-    // Ne garde le réencodage que s'il est plus petit (sinon inutile).
+    // Un proxy plus lourd que le master n'apporte rien : on le jette et le
+    // montage lira le master, comme avant.
     if (newSize < origSize) {
-      fs.renameSync(tmpOut, filePath);
-      logger.info(`Compression OK: ${(origSize / 1e6).toFixed(1)}→${(newSize / 1e6).toFixed(1)} MB`);
-      return { compressed: true, newSize };
+      fs.renameSync(tmpOut, path.join(dir, proxyName));
+      logger.info(`Proxy 720p: ${(origSize / 1e6).toFixed(1)}→${(newSize / 1e6).toFixed(1)} MB (master conservé)`);
+      return { compressed: true, proxyName, newSize };
     }
     fs.unlinkSync(tmpOut);
-    return { compressed: false, newSize: origSize };
+    return { compressed: false, proxyName: '', newSize: origSize };
   } catch (err) {
-    logger.warn(`Compression échouée, fichier original conservé: ${err.message}`);
+    logger.warn(`Proxy non fabriqué, le montage lira le master: ${err.message}`);
     try { if (fs.existsSync(tmpOut)) fs.unlinkSync(tmpOut); } catch { /* ignore */ }
-    return { compressed: false, newSize: fs.statSync(filePath).size };
+    return { compressed: false, proxyName: '', newSize: fs.statSync(filePath).size };
   }
 }
 

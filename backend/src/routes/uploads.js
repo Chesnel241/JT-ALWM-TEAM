@@ -7,7 +7,7 @@ import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { getCustomCountries } from '../data/store.js';
-import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry, updateUploadSize } from '../data/store.js';
+import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry, updateUploadSize, setUploadProxy } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
 import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
@@ -375,10 +375,12 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
       // Compression 720p en arrière-plan, une à la fois (cf. tus.js).
       if (fileData.type === 'video') {
         const ext = path.extname(file.originalname).toLowerCase();
-        queueCompression(file.path, ext, ({ compressed, newSize }) => {
+        queueCompression(file.path, ext, ({ compressed, proxyName, newSize }) => {
           if (!compressed) return;
+          // La taille affichée reste celle du master : c'est lui qu'on
+          // conserve et qu'on exporte. Le proxy ne sert qu'à l'aperçu.
           const label = `${(newSize / (1024 * 1024)).toFixed(1)} MB`;
-          if (updateUploadSize(weekId, countryId, fileData.id, label)) {
+          if (setUploadProxy(weekId, countryId, fileData.id, proxyName, label)) {
             io?.emit('upload_update', { weekId, countryId });
           }
         });

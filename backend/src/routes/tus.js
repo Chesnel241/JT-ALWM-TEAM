@@ -5,7 +5,7 @@ import path from 'path';
 import { existsSync, unlinkSync } from 'fs';
 import logger from '../logger/index.js';
 import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyUpload } from '../lib/upload.js';
-import { addUpload, getCustomCountries, getExtensions, updateUploadSize } from '../data/store.js';
+import { addUpload, getCustomCountries, getExtensions, updateUploadSize, setUploadProxy } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { recordUpload } from '../monitoring/metrics.js';
@@ -185,10 +185,12 @@ export const tusServer = new Server({
       if (fileData.type === 'video') {
         const ext = path.extname(originalName).toLowerCase();
         const absolutePath = path.join(uploadsDir, filename);
-        queueCompression(absolutePath, ext, ({ compressed, newSize }) => {
+        queueCompression(absolutePath, ext, ({ compressed, proxyName, newSize }) => {
           if (!compressed) return;
+          // La taille affichée reste celle du master : c'est lui qu'on
+          // conserve et qu'on exporte. Le proxy ne sert qu'à l'aperçu.
           const label = `${(newSize / (1024 * 1024)).toFixed(1)} MB`;
-          if (updateUploadSize(weekId, countryId, fileData.id, label)) {
+          if (setUploadProxy(weekId, countryId, fileData.id, proxyName, label)) {
             io?.emit('upload_update', { weekId, countryId });
           }
         });

@@ -1,4 +1,4 @@
-import { API_BASE } from '../../api/index.js';
+import { previewUrl } from '../../lib/mediaSource.js';
 
 // Habillage par défaut d'un montage : un workspace serveur peut n'en décrire
 // qu'une partie (ancien enregistrement, champ ajouté depuis), le reste est
@@ -20,14 +20,9 @@ export const DEFAULT_BRANDING = {
 // trois copies de ce mapping finissaient par diverger.
 export function normalizeWorkspace(workspace) {
   const safeClips = Array.isArray(workspace?.clips) ? workspace.clips : [];
-  const clips = safeClips.map((clip) => {
-    const filename = clip.filename || clip.name || '';
-    const isExternal = filename.startsWith('http') || filename.startsWith('blob:');
-    return {
-      ...clip,
-      url: isExternal ? filename : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`,
-    };
-  });
+  // `url` sert l'aperçu, donc la copie légère quand elle existe. `filename`
+  // reste le master : c'est lui que le serveur réassemble à l'export.
+  const clips = safeClips.map((clip) => ({ ...clip, url: previewUrl(clip) }));
   const overlays = Array.isArray(workspace?.overlays) ? workspace.overlays : [];
   const branding = workspace?.branding && typeof workspace.branding === 'object'
     ? { ...DEFAULT_BRANDING, ...workspace.branding }
