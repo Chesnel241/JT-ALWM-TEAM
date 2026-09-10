@@ -16,6 +16,9 @@ vi.mock('../src/api/index.js', () => ({
     getSubscriptions: vi.fn().mockResolvedValue([{ countryId: 'ga', phone: '+24107000000' }]),
     updateFileStatus: vi.fn().mockResolvedValue({ ok: true }),
     getWeekActiveJob: vi.fn().mockResolvedValue({ job: null }),
+    getSujets: vi.fn().mockResolvedValue([
+      { id: 's1', countryId: 'ga', titre: 'Marché de Libreville', etat: 'recu', nbPieces: 1 },
+    ]),
   },
   API_BASE: 'http://localhost:3010',
   getClientId: vi.fn().mockReturnValue('test-client-id'),

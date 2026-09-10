@@ -43,6 +43,16 @@ const STUDIO_TIMELINE_DEFAULT_HEIGHT = 360;
 const timelineKey = (weekId) => `jt-timeline-${weekId}`;
 const brandingKey = (weekId) => `jt-branding-${weekId}`;
 
+// Les états d'un sujet, en clair. C'est ce que la rédaction lit sur ses
+// blocs : « recu » brut ne dit rien à quelqu'un qui prépare un conducteur.
+const ETAT_LABELS = {
+  attendu: 'Attendu',
+  recu: 'Reçu',
+  a_corriger: 'À corriger',
+  valide: 'Validé',
+  au_conducteur: 'Au conducteur',
+};
+
 function clampTimelineHeight(value, maxHeight) {
   const safeMax = Math.max(STUDIO_TIMELINE_MIN_HEIGHT, maxHeight);
   return Math.min(safeMax, Math.max(STUDIO_TIMELINE_MIN_HEIGHT, Math.round(value)));
@@ -332,6 +342,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const { t, lang } = useI18n();
   const { addToast } = useToast();
   const [dashboard, setDashboard] = useState({});
+  // Sujets de la semaine, toutes équipes confondues : ce sont eux qui portent
+  // le titre et l'état, là où le fichier ne porte qu'une étiquette.
+  const [sujets, setSujets] = useState([]);
   const [manualBins, setManualBins] = useState([]);
   const [selectedBin, setSelectedBin] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -437,8 +450,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const uploaded = Object.keys(dashboard).filter(
       (id) => dashboard[id]?.length > 0 || id === 'tj'
     );
-    return Array.from(new Set([...uploaded, ...manualBins]));
-  }, [dashboard, manualBins]);
+    // Un pays qui a ouvert un sujet sans encore rien envoyer doit apparaître :
+    // c'est précisément lui qu'il faut relancer le dimanche après-midi. Avant,
+    // il était simplement absent de la liste, donc invisible.
+    const annonces = sujets.map((s) => s.countryId).filter(Boolean);
+    return Array.from(new Set([...uploaded, ...annonces, ...manualBins]));
+  }, [dashboard, manualBins, sujets]);
+
+  /** Pays qui ont annoncé un sujet mais n'ont encore rien déposé. */
+  const countriesAttendus = useMemo(() => {
+    const set = new Set();
+    for (const sujet of sujets) {
+      if (!sujet.countryId) continue;
+      if ((dashboard[sujet.countryId]?.length || 0) === 0) set.add(sujet.countryId);
+    }
+    return set;
+  }, [sujets, dashboard]);
 
   const SPECIAL_BINS = ['delivery', 'mj', 'tj', 'studio'];
 
@@ -786,6 +813,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       })
       .finally(() => setLoading(false));
 
+    api.getSujets(selectedWeek)
+      .then((list) => setSujets(Array.isArray(list) ? list : []))
+      .catch(() => setSujets([]));
+
     api.getDeliveries(selectedWeek)
       .then(setDeliveries)
       .catch(console.error);
@@ -913,6 +944,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         addToast('Nouveau fichier !', 'info');
         api.getDashboard(selectedWeek).then(setDashboard).catch(console.error);
         api.getDeliveries(selectedWeek).then(setDeliveries).catch(console.error);
+        api.getSujets(selectedWeek).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
+      }
+    });
+
+    // Un sujet ouvert ou renommé par un correspondant doit apparaître sans
+    // recharger : le monteur travaille avec cet écran ouvert des heures.
+    socket.on('sujet_update', (data) => {
+      if (data.weekId === selectedWeek) {
+        api.getSujets(selectedWeek).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
       }
     });
 
@@ -1808,9 +1848,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         <Folder size={16} className={isActive ? 'fill-current opacity-30' : ''} />
                         <span className="truncate whitespace-nowrap text-sm md:text-base">{country?.name || countryId}</span>
                       </div>
-                      <span className={`ml-3 text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)]'}`}>
-                        {fileCount}
-                      </span>
+                      {countriesAttendus.has(countryId) ? (
+                        // Sujet annoncé, rien reçu : c'est le pays à relancer.
+                        <span className={`ml-3 text-[10px] px-1.5 py-0.5 rounded font-bold ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--signal)]/15 border border-[var(--signal)]/40 text-[color:var(--ink)]'}`}>
+                          Attendu
+                        </span>
+                      ) : (
+                        <span className={`ml-3 text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)]'}`}>
+                          {fileCount}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -2557,7 +2604,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   // familles séparées. Avant, tout le pays était versé dans
                   // trois listes à plat : impossible de savoir quelle vidéo
                   // allait avec quel script.
-                  const groups = groupByReportage(allFiles);
+                  const groups = groupByReportage(allFiles, { sujets });
 
                   return groups.map((group) => {
                     const tone = reportageTone(group.index);
@@ -2570,13 +2617,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     if (sections.length === 0) return null;
 
                     return (
-                      <section key={group.label} className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--paper)] overflow-hidden">
+                      <section key={group.key} className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--paper)] overflow-hidden">
                         <header
                           className="flex flex-wrap items-center gap-2 px-4 py-2.5"
                           style={{ backgroundColor: tone.fill, color: tone.onFill }}
                         >
                           <Folder size={16} className="shrink-0" />
                           <h3 className="font-bold text-sm">{group.label}</h3>
+                          {group.etat && (
+                            <span
+                              className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                              style={{
+                                backgroundColor: tone.onFill === '#ffffff'
+                                  ? 'rgb(0 0 0 / 0.22)'
+                                  : 'rgb(255 255 255 / 0.55)',
+                              }}
+                            >
+                              {ETAT_LABELS[group.etat] || group.etat}
+                            </span>
+                          )}
                           <span
                             className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold"
                             style={{

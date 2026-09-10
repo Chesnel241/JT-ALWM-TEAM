@@ -281,7 +281,18 @@ export async function flushStore() {
 // Clés réservées d'une entrée de semaine (`db[weekId][...]`) qui ne sont
 // pas des correspondants. `_delivery` = montage final ("JT Prêt"),
 // `_timeline` = projet de montage partagé entre les postes de travail.
-const RESERVED_WEEK_KEYS = new Set(['_delivery', '_timeline', '_sujets']);
+const RESERVED_WEEK_KEYS = new Set(['_delivery', '_timeline', '_sujets', '_subscriptions', '_extensions']);
+
+/**
+ * Un identifiant de pays ne commence jamais par un tiret bas : c'est la marque
+ * des clés internes. La règle vaut mieux que la liste, qui était incomplète —
+ * `_subscriptions` remontait jusque dans la barre latérale de la rédaction
+ * comme un pays nommé « _subscriptions », avec le compte des numéros WhatsApp
+ * en guise de nombre de fichiers.
+ */
+function isInternalKey(key) {
+  return typeof key === 'string' && (key.startsWith('_') || RESERVED_WEEK_KEYS.has(key));
+}
 
 // --------------------------------------------------------------------------
 // SUJETS
@@ -399,14 +410,15 @@ export function getWeekUploads(weekId) {
   // Exclut les clés réservées (deliveries sont récupérées séparément).
   const result = {};
   for (const [k, v] of Object.entries(week)) {
-    if (!RESERVED_WEEK_KEYS.has(k)) result[k] = v;
+    if (!isInternalKey(k) && Array.isArray(v)) result[k] = v;
   }
   return result;
 }
 
 export function getCountryUploads(weekId, countryId) {
-  if (RESERVED_WEEK_KEYS.has(countryId)) return [];
-  return db[weekId]?.[countryId] || [];
+  if (isInternalKey(countryId)) return [];
+  const list = db[weekId]?.[countryId];
+  return Array.isArray(list) ? list : [];
 }
 
 export function getDelivery(weekId) {

@@ -117,19 +117,30 @@ function sectionRank(label, untitledLabel) {
  * puis, dans chaque section, par famille de média. Les fichiers sans section —
  * envois antérieurs à ce découpage — sont rassemblés à part plutôt qu'éparpillés.
  */
-export function groupByReportage(files, { untitledLabel = 'Sans section' } = {}) {
+export function groupByReportage(files, { untitledLabel = 'Sans section', sujets = [] } = {}) {
+  // Le sujet fait foi quand il existe : deux pièces d'un même reportage
+  // restent ensemble même si leurs étiquettes divergent. L'étiquette reste le
+  // repli pour les envois antérieurs et pour les rubriques fixes.
+  const titres = new Map((sujets || []).map((s) => [s.id, s]));
   const groups = new Map();
+  const labels = new Map();
 
   (files || []).forEach((file) => {
     if (!file) return;
-    const label = (file.reportage || '').trim() || untitledLabel;
-    if (!groups.has(label)) groups.set(label, []);
-    groups.get(label).push(file);
+    const sujet = file.sujetId ? titres.get(file.sujetId) : null;
+    const key = sujet ? `sujet:${sujet.id}` : ((file.reportage || '').trim() || untitledLabel);
+    const label = sujet ? (sujet.titre || untitledLabel) : key;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      labels.set(key, { label, etat: sujet?.etat || null, sujetId: sujet?.id || null });
+    }
+    groups.get(key).push(file);
   });
 
   return [...groups.entries()]
-    .map(([label, list], index) => ({
-      label,
+    .map(([key, list], index) => ({
+      ...labels.get(key),
+      key,
       index,
       files: list,
       byType: splitByMediaType(list),

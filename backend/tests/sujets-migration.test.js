@@ -107,3 +107,28 @@ describe('migration des étiquettes vers des sujets', () => {
     expect(store.getSujets('2026-w37')).toHaveLength(1);
   });
 });
+
+describe('clés internes', () => {
+  it('ne fait jamais passer une clé technique pour un pays', async () => {
+    // `_subscriptions` remontait jusque dans la barre latérale de la
+    // rédaction, affiché comme un pays nommé « _subscriptions », avec le
+    // nombre de numéros WhatsApp en guise de nombre de fichiers.
+    const store = await loadStoreWith({
+      '2026-w37': {
+        _subscriptions: [{ countryId: 'sn', phone: '+221' }],
+        _extensions: { requests: {} },
+        _delivery: [{ id: 'jt' }],
+        _timeline: { clips: [] },
+        sn: [{ id: 'a', reportage: 'Reportage 1', status: 'pending' }],
+      },
+    });
+
+    const parPays = store.getWeekUploads('2026-w37');
+    expect(Object.keys(parPays)).toEqual(['sn']);
+    expect(store.getCountryUploads('2026-w37', '_subscriptions')).toEqual([]);
+    expect(store.getCountryUploads('2026-w37', '_sujets')).toEqual([]);
+    // Les données restent lisibles par leurs accesseurs dédiés.
+    expect(store.getDelivery('2026-w37')).toHaveLength(1);
+    expect(store.getSubscriptions('2026-w37')).toHaveLength(1);
+  });
+});

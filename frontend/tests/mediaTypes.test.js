@@ -115,3 +115,44 @@ describe('sections déduites des envois', () => {
     expect(groups.map((g) => g.label)).toEqual(['Report 2', 'Report 10']);
   });
 });
+
+describe('regroupement par sujet', () => {
+  const SUJETS = [
+    { id: 's1', titre: 'Marché de Kermel', etat: 'valide' },
+    { id: 's2', titre: 'Rentrée à Pikine', etat: 'a_corriger' },
+  ];
+
+  it('rassemble les pièces d\'un sujet, quelles que soient leurs étiquettes', () => {
+    // Le défaut d'origine : deux étiquettes divergentes coupaient en deux ce
+    // qui était un seul reportage.
+    const groups = groupByReportage([
+      { name: 'a.mp4', sujetId: 's1', reportage: 'Reportage 1' },
+      { name: 'b.txt', sujetId: 's1', reportage: 'reportage 1 ' },
+    ], { sujets: SUJETS });
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].label).toBe('Marché de Kermel');
+    expect(groups[0].files).toHaveLength(2);
+  });
+
+  it('porte l\'état du sujet jusqu\'à la rédaction', () => {
+    const groups = groupByReportage([{ name: 'a.mp4', sujetId: 's2' }], { sujets: SUJETS });
+    expect(groups[0].etat).toBe('a_corriger');
+    expect(groups[0].sujetId).toBe('s2');
+  });
+
+  it('retombe sur l\'étiquette pour les envois sans sujet', () => {
+    const groups = groupByReportage([
+      { name: 'a.mp4', reportage: 'Annonces' },
+      { name: 'b.mp4' },
+    ], { sujets: SUJETS });
+    expect(groups.map((g) => g.label)).toContain('Annonces');
+    expect(groups.map((g) => g.label)).toContain('Sans section');
+  });
+
+  it('ignore un sujetId qui ne correspond à rien de connu', () => {
+    // Sujet supprimé entre-temps : le fichier doit rester visible.
+    const groups = groupByReportage([{ name: 'a.mp4', sujetId: 'disparu', reportage: 'Reportage 1' }], { sujets: SUJETS });
+    expect(groups[0].label).toBe('Reportage 1');
+  });
+});
