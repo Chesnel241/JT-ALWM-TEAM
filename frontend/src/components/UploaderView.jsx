@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
@@ -32,6 +33,7 @@ const FILE_ICONS = {
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import MobileUploaderView from './MobileUploaderView.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
+import OfflineBanner from './OfflineBanner.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
@@ -46,6 +48,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [pendingUploads, setPendingUploads] = useState([]);
   // Fichiers gardés le temps de la session pour un « réessayer » immédiat.
   const filesByUploadRef = useRef(new Map());
+  // Fichiers choisis sans réseau : ils partent seuls dès le retour.
+  const offlineQueueRef = useRef([]);
+  const isOnline = useOnlineStatus();
+  const queuedCount = uploading.filter((f) => f.status === 'queued').length;
   const [reportageCount, setReportageCount] = useState(1);
   const [scriptText, setScriptText] = useState({});
   const [dragActive, setDragActive] = useState({});
@@ -97,6 +103,21 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   useEffect(() => {
     setPendingUploads(listPendingUploads(selectedWeek, country.id));
   }, [selectedWeek, country.id]);
+
+  // Retour de la connexion : la file part toute seule, sans que le
+  // correspondant ait quoi que ce soit à relancer.
+  useEffect(() => {
+    if (!isOnline) return;
+    const queued = offlineQueueRef.current.splice(0);
+    if (!queued.length) return;
+    addToast(t.uploader.offlineResumed(queued.length), 'success', 3000);
+    for (const item of queued) {
+      startUpload(item.file, item.reportage, item.tempId);
+    }
+    // startUpload est stable en pratique (il ne dépend que de refs et de
+    // setters) ; le relister rejouerait la file à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
 
   // Cutoff dimanche 17h30
   const currentWeek = weeks.find(w => w.id === selectedWeek);
@@ -158,13 +179,17 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     rememberUpload({ weekId: selectedWeek, countryId: country.id, reportage: reportageName, file });
     setPendingUploads(listPendingUploads(selectedWeek, country.id));
 
+    // Hors ligne : on n'attaque pas le réseau pour rien. Le fichier est mis
+    // en file d'attente et part de lui-même au retour de la connexion.
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+
     setUploading((prev) => {
       const entry = {
         id: tempId,
         name: file.name,
         progress: 0,
-        status: 'uploading',
-        phase: 'uploading',
+        status: offline ? 'queued' : 'uploading',
+        phase: offline ? 'queued' : 'uploading',
         isVideo,
         reportage: reportageName,
       };
@@ -172,6 +197,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         ? prev.map((f) => (f.id === tempId ? entry : f))
         : [...prev, entry];
     });
+
+    if (offline) {
+      if (!offlineQueueRef.current.some((q) => q.tempId === tempId)) {
+        offlineQueueRef.current.push({ tempId, file, reportage: reportageName });
+      }
+      return;
+    }
 
     const uploadFile = file;
 
@@ -211,6 +243,20 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           addToast(t.uploader.uploadSuccess(result.name || uploadFile.name), 'success', 3000);
         })
         .catch((err) => {
+          // Coupure en cours d'envoi : l'échec n'est pas la faute du
+          // correspondant, on remet la pièce en file plutôt que de lui
+          // afficher une erreur rouge à traiter lui-même.
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            setUploading((prev) =>
+              prev.map((f) =>
+                f.id === tempId ? { ...f, progress: 0, status: 'queued', phase: 'queued' } : f
+              )
+            );
+            if (!offlineQueueRef.current.some((q) => q.tempId === tempId)) {
+              offlineQueueRef.current.push({ tempId, file: uploadFile, reportage: reportageName });
+            }
+            return;
+          }
           // L'entrée reste mémorisée : c'est précisément le cas où il faudra
           // pouvoir reprendre, y compris après avoir fermé l'application.
           setUploading((prev) =>
@@ -373,6 +419,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           onResumeUpload={handleResumeUpload}
           onDismissPending={handleDismissPending}
           onRetryUpload={handleRetryUpload}
+          isOnline={isOnline}
+          queuedCount={queuedCount}
         />
       </div>
 
@@ -390,6 +438,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </div>
 
       {country.id !== 'tj' && country.id !== 'mj' && <Tutorial5W1H />}
+
+      {!isOnline && <OfflineBanner queuedCount={queuedCount} />}
 
       <PendingUploadsCard
         entries={pendingUploads}
@@ -687,6 +737,11 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                             {f.status === 'error' && (
                               <span className="text-[var(--signal)] flex items-center gap-1 shrink-0">
                                 <AlertCircle size={14} /> {f.error}
+                              </span>
+                            )}
+                            {f.status === 'queued' && (
+                              <span className="text-[color:var(--muted)] flex items-center gap-1 shrink-0 text-xs sm:text-sm">
+                                <Clock size={14} /> {t.uploader.offlineBadge}
                               </span>
                             )}
                             {f.status === 'uploading' && (

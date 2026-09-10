@@ -14,6 +14,7 @@ import CountryAvatar from './CountryAvatar.jsx';
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
+import OfflineBanner from './OfflineBanner.jsx';
 import PhoneInput from 'react-phone-number-input';
 import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
@@ -65,6 +66,8 @@ export default function MobileUploaderView({
   onResumeUpload,
   onDismissPending,
   onRetryUpload,
+  isOnline = true,
+  queuedCount = 0,
 }) {
   const { t, lang } = useI18n();
   const { addToast } = useToast();
@@ -196,6 +199,8 @@ export default function MobileUploaderView({
             correspondant ne découvrait le retard qu'une fois clôturé. */}
         {currentWeek && <CountdownTimer week={currentWeek} compact />}
       </div>
+
+      {!isOnline && <OfflineBanner queuedCount={queuedCount} />}
 
       {/* Reprise d'un envoi coupé : placé haut, c'est la première chose à
           régler en revenant sur l'application. */}
@@ -464,7 +469,9 @@ export default function MobileUploaderView({
                       <div className="flex items-center justify-between text-xs gap-2">
                         <span className="font-semibold text-[color:var(--ink)] truncate">{f.name}</span>
                         <span className="text-[10px] font-bold text-[color:var(--action-deep)] shrink-0">
-                          {f.phase === 'processing'
+                          {f.status === 'queued'
+                            ? t.uploader.offlineBadge
+                            : f.phase === 'processing'
                             ? 'Finalisation...'
                             : `${Math.round(f.progress)}%`}
                         </span>
@@ -472,7 +479,11 @@ export default function MobileUploaderView({
                       <div className="w-full bg-[var(--paper-2)] rounded-full h-1.5 overflow-hidden">
                         <div
                           className={`h-1.5 rounded-full transition-all duration-300 ${
-                            f.status === 'error' ? 'bg-[var(--signal)]' : 'bg-[var(--action)]'
+                            f.status === 'error'
+                              ? 'bg-[var(--signal)]'
+                              : f.status === 'queued'
+                              ? 'bg-[var(--border)]'
+                              : 'bg-[var(--action)]'
                           }`}
                           style={{ width: `${Math.max(5, f.progress)}%` }}
                         />
