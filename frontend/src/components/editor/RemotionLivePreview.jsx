@@ -4,15 +4,17 @@ import { X } from 'lucide-react';
 import { JTMaster, totalDurationInFrames } from '../../../../remotion/src/JTMaster.jsx';
 import { API_BASE } from '../../api/index.js';
 
-export default function RemotionLivePreview({ clips, global, branding, timelineOverlays, onClose, inline = false, playerRef = null, adminPassword = null }) {
+// Le mot de passe admin ne transite plus par l'URL des médias : /uploads est
+// servi sans authentification, et un secret en query string finissait dans les
+// journaux d'accès (Caddy, nginx) et l'historique du navigateur.
+export default function RemotionLivePreview({ clips, global, branding, timelineOverlays, onClose, inline = false, playerRef = null }) {
   // Prépare les données pour le Player (exactement comme pour le backend)
   const inputProps = useMemo(() => {
-    const authQuery = adminPassword ? `&adminPassword=${encodeURIComponent(adminPassword)}` : '';
     // On résout les URLs relatives pour que Remotion puisse lire les vidéos depuis l'API locale.
     const resolvedClips = clips.map(clip => {
       const filename = clip.filename || clip.name || '';
       const isExternal = filename.startsWith('http') || filename.startsWith('blob:');
-      const url = isExternal ? filename : `${API_BASE}/uploads/${filename}?cors=2${authQuery}`;
+      const url = isExternal ? filename : `${API_BASE}/uploads/${filename}?cors=2`;
       return {
         ...clip,
         url,
@@ -31,13 +33,13 @@ export default function RemotionLivePreview({ clips, global, branding, timelineO
       timelineOverlays: timelineOverlays || [],
       music: branding?.music?.enabled && branding.music.filename ? {
         filename: branding.music.filename,
-        url: branding.music.filename.startsWith('http') ? branding.music.filename : `${API_BASE}/uploads/${branding.music.filename}?cors=2${authQuery}`,
+        url: branding.music.filename.startsWith('http') ? branding.music.filename : `${API_BASE}/uploads/${branding.music.filename}?cors=2`,
         volume: branding.music.volume,
         duck: branding.music.duck
       } : null,
       voiceover: branding?.voiceover?.filename ? {
         filename: branding.voiceover.filename,
-        url: branding.voiceover.filename.startsWith('http') ? branding.voiceover.filename : `${API_BASE}/uploads/${branding.voiceover.filename}?cors=2${authQuery}`,
+        url: branding.voiceover.filename.startsWith('http') ? branding.voiceover.filename : `${API_BASE}/uploads/${branding.voiceover.filename}?cors=2`,
         volume: branding.voiceover.volume
       } : null
     };

@@ -1,12 +1,17 @@
 // Transcription audio → sous-titres, 100% navigateur (Whisper base via
 // Transformers.js). Aucune charge serveur, aucune API payante. Import dynamique
 // pour ne pas alourdir le bundle initial (chunk séparé chargé à la demande).
+//
+// Paquet @huggingface/transformers : c'est le successeur maintenu de
+// @xenova/transformers, resté figé en 2.17.2 et porteur de CVE héritées de
+// sharp (libvips, libheif). Les identifiants de modèles du Hub sont les mêmes,
+// « Xenova/whisper-base » reste donc valide.
 
 let _pipe = null;
 
 async function getTranscriber(onModelProgress) {
   if (_pipe) return _pipe;
-  const { pipeline, env } = await import('@xenova/transformers');
+  const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = false; // modèles depuis le CDN Hugging Face
   _pipe = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {
     progress_callback: (p) => {

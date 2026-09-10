@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone, Image as ImageIcon } from 'lucide-react';
 import { api, API_BASE, getClientId } from '../api/index.js';
@@ -28,6 +28,7 @@ import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
+import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
 import ActionSheet from './ActionSheet.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
 
@@ -41,16 +42,6 @@ const STUDIO_SPLITTER_HEIGHT = 16;
 const STUDIO_TIMELINE_DEFAULT_HEIGHT = 360;
 const timelineKey = (weekId) => `jt-timeline-${weekId}`;
 const brandingKey = (weekId) => `jt-branding-${weekId}`;
-const DEFAULT_BRANDING = {
-  ticker: { enabled: false, categorie: 'ALERTE', texte: '', speed: 1 },
-  atmosphere: { vignette: 0, grain: 0, sweep: 0 },
-  live: { enabled: false, label: 'DIRECT' },
-  logo: false,
-  logoPosition: 'br',
-  music: { enabled: false, filename: '', volume: 0.2, duck: true },
-  voiceover: { enabled: false, filename: '', startTime: 0, volume: 1 },
-  imageOverlays: [],
-};
 
 function clampTimelineHeight(value, maxHeight) {
   const safeMax = Math.max(STUDIO_TIMELINE_MIN_HEIGHT, maxHeight);
@@ -77,6 +68,45 @@ function probeVideoDuration(url) {
     video.onerror = () => finish();
     video.src = url;
   });
+}
+
+// Le chutier aligne des dizaines de vignettes : avec preload="metadata" sur
+// chacune, ouvrir un pays déclenchait autant de requêtes vidéo d'un coup. On
+// ne demande les métadonnées que pour les vignettes réellement à l'écran ;
+// l'icône de fond reste visible tant que l'aperçu n'est pas chargé.
+function LazyVideoThumbnail({ src, className }) {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    if (inView) return undefined;
+    const node = ref.current;
+    if (!node) return undefined;
+    if (typeof IntersectionObserver !== 'function') {
+      // Navigateur (ou jsdom) sans IntersectionObserver : mieux vaut une
+      // vignette chargée qu'une vignette qui n'apparaît jamais.
+      setInView(true);
+      return undefined;
+    }
+    // La marge laisse le temps de charger avant que la carte n'entre à l'écran.
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) setInView(true);
+    }, { rootMargin: '200px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [inView]);
+
+  return (
+    <video
+      ref={ref}
+      src={inView ? src : undefined}
+      className={className}
+      preload={inView ? 'metadata' : 'none'}
+      muted
+      playsInline
+      onError={(e) => { e.target.style.display = 'none'; }}
+    />
+  );
 }
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, onContentChange }) {
@@ -353,6 +383,28 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [timelineSyncState, setTimelineSyncState] = useState('loading');
   const [editorPresenceCount, setEditorPresenceCount] = useState(1);
   const generateLockRef = useRef(false);
+  // Révision du montage telle que le serveur nous l'a donnée : renvoyée en
+  // baseRevision pour qu'il refuse (409) d'écraser le travail d'un collègue.
+  const timelineRevisionRef = useRef(null);
+  // Valeurs lues depuis des fermetures de longue durée (flush au démontage,
+  // gestionnaires socket). Les mettre en dépendance d'effet reconnecterait la
+  // socket ou relancerait l'hydratation à chaque changement.
+  const adminPasswordRef = useRef(authenticatedAdminPassword);
+  const isGeneratingVideoRef = useRef(false);
+  useEffect(() => { adminPasswordRef.current = authenticatedAdminPassword; }, [authenticatedAdminPassword]);
+  useEffect(() => { isGeneratingVideoRef.current = isGeneratingVideo; }, [isGeneratingVideo]);
+
+  // Charge un workspace serveur dans l'état local. markSynced=false marque le
+  // montage comme non synchronisé (mode hors ligne) sans toucher à l'affichage.
+  const applyWorkspace = useCallback((workspace, { markSynced = true } = {}) => {
+    const next = normalizeWorkspace(workspace);
+    setTimelineClips(next.clips);
+    setTimelineOverlays(next.overlays);
+    setBranding(next.branding);
+    timelineRevisionRef.current = next.revision;
+    lastSyncedTimelineRef.current = markSynced ? JSON.stringify(next.payload) : '';
+    return next;
+  }, []);
 
   const countriesWithUploads = useMemo(() => {
     const uploaded = Object.keys(dashboard).filter(
@@ -404,8 +456,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const addClipDirectlyToTimeline = (file) => {
     const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
     const isExternal = file.filename?.startsWith('http') || file.filename?.startsWith('blob:');
-    const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
-    const url = isExternal ? file.filename : `${API_BASE}/uploads/${file.filename || file.name}?cors=2${authQuery}`;
+    // Pas de mot de passe dans l'URL : /uploads est servi sans authentification
+    // et une query string finit dans les journaux d'accès et l'historique.
+    const url = isExternal ? file.filename : `${API_BASE}/uploads/${file.filename || file.name}?cors=2`;
     const newClip = {
       ...file,
       url,
@@ -625,7 +678,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const pending = pendingTimelineSaveRef.current;
     if (pending && pending.weekId !== selectedWeek) {
       window.clearTimeout(timelineSaveTimerRef.current);
-      api.saveTimelineWorkspace(pending.weekId, pending.payload).catch(console.error);
+      api.saveTimelineWorkspace(pending.weekId, pending.payload, adminPasswordRef.current).catch(console.error);
       pendingTimelineSaveRef.current = null;
     }
 
@@ -670,36 +723,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       }
       if (cancelled) return;
 
-      const safeClips = Array.isArray(workspace?.clips) ? workspace.clips : [];
-      const mappedClips = safeClips.map((clip) => {
-        const filename = clip.filename || clip.name || '';
-        const isExternal = filename.startsWith('http') || filename.startsWith('blob:');
-        return {
-          ...clip,
-          url: isExternal ? filename : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`,
-        };
-      });
-      const nextOverlays = Array.isArray(workspace?.overlays) ? workspace.overlays : [];
-      const nextBranding = workspace?.branding && typeof workspace.branding === 'object'
-        ? { ...DEFAULT_BRANDING, ...workspace.branding }
-        : DEFAULT_BRANDING;
-      const payload = {
-        clips: safeClips.map(({ url: _url, ...clip }) => clip),
-        overlays: nextOverlays,
-        branding: nextBranding,
-      };
-
-      setTimelineClips(mappedClips);
-      setTimelineOverlays(nextOverlays);
-      setBranding(nextBranding);
-      lastSyncedTimelineRef.current = onlineAvailable ? JSON.stringify(payload) : '';
+      const { payload } = applyWorkspace(workspace, { markSynced: onlineAvailable });
       timelineHydratedWeekRef.current = selectedWeek;
       setTimelineSyncState(onlineAvailable ? 'saved' : 'error');
 
       if (migratedFromBrowser) {
         try {
           setTimelineSyncState('saving');
-          await api.saveTimelineWorkspace(selectedWeek, payload);
+          const migrated = await api.saveTimelineWorkspace(
+            selectedWeek,
+            { ...payload, baseRevision: timelineRevisionRef.current },
+            adminPasswordRef.current,
+          );
+          if (migrated?.workspace?.revision != null) timelineRevisionRef.current = migrated.workspace.revision;
           if (cancelled) return;
           localStorage.removeItem(timelineKey(selectedWeek));
           localStorage.removeItem(`jt-timeline-overlays-${selectedWeek}`);
@@ -749,7 +785,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       const pendingSave = pendingTimelineSaveRef.current;
       if (!pendingSave || pendingSave.weekId !== selectedWeek) return;
       try {
-        await api.saveTimelineWorkspace(selectedWeek, pendingSave.payload);
+        // baseRevision : le serveur refuse (409) si un collègue a sauvegardé
+        // entre notre dernière lecture et cet envoi.
+        const response = await api.saveTimelineWorkspace(
+          selectedWeek,
+          { ...pendingSave.payload, baseRevision: timelineRevisionRef.current },
+          adminPasswordRef.current,
+        );
+        if (response?.workspace?.revision != null) timelineRevisionRef.current = response.workspace.revision;
         if (pendingTimelineSaveRef.current?.serialized === pendingSave.serialized) {
           lastSyncedTimelineRef.current = pendingSave.serialized;
           pendingTimelineSaveRef.current = null;
@@ -757,16 +800,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         }
       } catch (error) {
         console.error(error);
+        if (error?.status === 409 && error?.code === 'TIMELINE_CONFLICT' && error.body?.workspace) {
+          // Conflit : on abandonne notre envoi plutôt que d'écraser le travail
+          // de l'autre monteur, et on repart de sa version.
+          pendingTimelineSaveRef.current = null;
+          applyWorkspace(error.body.workspace);
+          setTimelineSyncState('saved');
+          addToast('Un autre monteur a modifié le montage. Votre vue a été actualisée.', 'error');
+          return;
+        }
         setTimelineSyncState('error');
         addToast('Le montage n’a pas pu être sauvegardé en ligne', 'error');
       }
     }, 600);
-  }, [timelineClips, timelineOverlays, branding, selectedWeek]);
+  }, [timelineClips, timelineOverlays, branding, selectedWeek, applyWorkspace, addToast]);
 
   useEffect(() => () => {
     window.clearTimeout(timelineSaveTimerRef.current);
     const pending = pendingTimelineSaveRef.current;
-    if (pending) api.saveTimelineWorkspace(pending.weekId, pending.payload).catch(console.error);
+    if (pending) api.saveTimelineWorkspace(pending.weekId, pending.payload, adminPasswordRef.current).catch(console.error);
   }, []);
 
   // Reprend le suivi d'un montage en cours après un refresh/onglet ou si un collègue
@@ -844,28 +896,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           try {
             const resp = await api.getTimelineWorkspace(selectedWeek);
             if (resp?.workspace) {
-              const safeClips = Array.isArray(resp.workspace.clips) ? resp.workspace.clips : [];
-              const mappedClips = safeClips.map((clip) => {
-                const filename = clip.filename || clip.name || '';
-                const isExternal = filename.startsWith('http') || filename.startsWith('blob:');
-                return {
-                  ...clip,
-                  url: isExternal ? filename : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`,
-                };
-              });
-              const nextOverlays = Array.isArray(resp.workspace.overlays) ? resp.workspace.overlays : [];
-              const nextBranding = resp.workspace.branding && typeof resp.workspace.branding === 'object'
-                ? { ...DEFAULT_BRANDING, ...resp.workspace.branding }
-                : DEFAULT_BRANDING;
-              const payload = {
-                clips: safeClips.map(({ url: _url, ...clip }) => clip),
-                overlays: nextOverlays,
-                branding: nextBranding,
-              };
-              lastSyncedTimelineRef.current = JSON.stringify(payload);
-              setTimelineClips(mappedClips);
-              setTimelineOverlays(nextOverlays);
-              setBranding(nextBranding);
+              applyWorkspace(resp.workspace);
               setTimelineSyncState('saved');
               addToast('⚡ Timeline synchronisée avec un collaborateur', 'info', 2500);
             }
@@ -878,7 +909,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
     socket.on('editor_job_update', (data) => {
       if (data.weekId === selectedWeek) {
-        if (data.status === 'processing' && !isGeneratingVideo) {
+        // Lu dans une ref : mettre isGeneratingVideo en dépendance de l'effet
+        // rouvrirait la socket à chaque changement d'état de rendu.
+        if (data.status === 'processing' && !isGeneratingVideoRef.current) {
           trackJob(data.jobId, { resume: true });
         } else if (data.status === 'done' && data.url) {
           setGeneratedVideoUrl(/^https?:\/\//.test(data.url) ? data.url : `${API_BASE}${data.url}`);
@@ -893,7 +926,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       socket.emit('leave_week', selectedWeek);
       socket.disconnect();
     };
-  }, [isAuthenticatedAdmin, selectedWeek, addToast]);
+  }, [isAuthenticatedAdmin, selectedWeek, addToast, applyWorkspace]);
 
   // Suit un job de montage (SSE temps réel + polling de secours). Réutilisé
   // pour démarrer un montage ET pour reprendre le suivi après refresh/onglet
@@ -999,7 +1032,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     generateLockRef.current = true;
 
     const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const token = localStorage.getItem('app-password') || '';
     const tracker = trackJob(jobId);
 
     // Habillage global → overlays appliqués à tout le master.
@@ -1056,49 +1088,41 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }));
 
     try {
-      const response = await fetch(`${API_BASE}/api/editor/concat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-App-Password': token },
-        credentials: 'include',
-        body: JSON.stringify({
-          jobId,
-          weekId: selectedWeek,
-          clips: timelineClips.map((clip, i) => ({
-            filename: clip.filename,
-            inPoint: clip.inPoint,
-            outPoint: clip.outPoint,
-            durationSec: durations[i],
-            overlays: clip.overlays || [],
-            transition: clip.transition,
-            kenBurns: clip.kenBurns,
-            subtitles: clip.subtitles,
-            subtitleStyle: clip.subtitleStyle,
-          })),
-          globalOverlays,
-          logo: branding.logo,
-          logoPosition: branding.logoPosition,
-          logoPosX: branding.logoPosX,
-          logoPosY: branding.logoPosY,
-          logoScale: branding.logoScale,
-          music,
-          voiceover,
-          imageOverlays,
-          atmosphere: branding.atmosphere,
-        })
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        // Affiche le champ précis quand le backend renvoie une erreur de
-        // validation (sinon "Invalid value" seul est inexploitable).
-        const first = data.errors?.[0];
-        const detail = first ? `${first.path} : ${first.msg}` : null;
-        throw new Error(data.message || detail || 'Erreur lors du montage vidéo');
-      }
+      // Passe par le client d'API plutôt que par un fetch à la main : il pose
+      // X-App-Password et X-Admin-Password (la route est réservée aux admins).
+      await api.editorConcat({
+        jobId,
+        weekId: selectedWeek,
+        clips: timelineClips.map((clip, i) => ({
+          filename: clip.filename,
+          inPoint: clip.inPoint,
+          outPoint: clip.outPoint,
+          durationSec: durations[i],
+          overlays: clip.overlays || [],
+          transition: clip.transition,
+          kenBurns: clip.kenBurns,
+          subtitles: clip.subtitles,
+          subtitleStyle: clip.subtitleStyle,
+        })),
+        globalOverlays,
+        logo: branding.logo,
+        logoPosition: branding.logoPosition,
+        logoPosX: branding.logoPosX,
+        logoPosY: branding.logoPosY,
+        logoScale: branding.logoScale,
+        music,
+        voiceover,
+        imageOverlays,
+        atmosphere: branding.atmosphere,
+      }, authenticatedAdminPassword);
       // Succès : le suivi (SSE + polling) met à jour l'UI jusqu'au résultat.
     } catch (err) {
       console.error(err);
-      tracker.fail(err.message);
+      // Affiche le champ précis quand le backend renvoie une erreur de
+      // validation (sinon « Invalid value » seul est inexploitable).
+      const first = err.body?.errors?.[0];
+      const detail = first ? `${first.path} : ${first.msg}` : null;
+      tracker.fail(err.body?.message || detail || err.message || 'Erreur lors du montage vidéo');
     } finally {
       // Libère le verrou — l'UI est désormais gérée par isGeneratingVideo
       // (set true dans trackJob). Si un autre clic tombait pile pendant
@@ -1230,7 +1254,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     });
 
     try {
-      await api.deleteDelivery(selectedWeek, fileId);
+      await api.deleteDelivery(selectedWeek, fileId, authenticatedAdminPassword);
       addToast(t.delivery.deleteSuccess(fileName), 'success');
     } catch (err) {
       setDeliveries(previousDeliveries);
@@ -1506,13 +1530,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <div className="absolute inset-0 flex items-center justify-center text-[color:var(--ink)]/10 z-0">
                 <Video size={48} />
               </div>
-              <video 
-                src={`${API_BASE}/uploads/${file.filename}#t=0.1`} 
+              <LazyVideoThumbnail
+                src={`${API_BASE}/uploads/${file.filename}#t=0.1`}
                 className="w-full h-full object-cover relative z-10 bg-transparent"
-                preload="metadata"
-                muted
-                playsInline
-                onError={(e) => { e.target.style.display = 'none'; }}
               />
             </>
           ) : isImage ? (
@@ -1997,7 +2017,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     timelineOverlays={timelineOverlays}
                     branding={branding} 
                     onClose={() => {}} 
-                    adminPassword={authenticatedAdminPassword}
                   />
                 </div>
 
@@ -2058,8 +2077,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           }
                           const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
                           const isExternal = trimmedClip.filename?.startsWith('http') || trimmedClip.filename?.startsWith('blob:');
-                          const authQuery = authenticatedAdminPassword ? `&adminPassword=${encodeURIComponent(authenticatedAdminPassword)}` : '';
-                          const url = isExternal ? trimmedClip.filename : `${API_BASE}/uploads/${trimmedClip.filename || trimmedClip.name}?cors=2${authQuery}`;
+                          const url = isExternal ? trimmedClip.filename : `${API_BASE}/uploads/${trimmedClip.filename || trimmedClip.name}?cors=2`;
                           const newClip = { ...trimmedClip, url, instanceId: trimmedClip.instanceId || generateId() };
                           return [...prev, newClip];
                         });

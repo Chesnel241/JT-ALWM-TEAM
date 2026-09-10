@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -24,7 +24,9 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const value = { toasts, addToast, removeToast };
+  // Sans mémorisation, chaque toast affiché crée un nouvel objet de contexte et
+  // re-rend TOUS les consommateurs, y compris le tableau de bord de montage.
+  const value = useMemo(() => ({ toasts, addToast, removeToast }), [toasts, addToast, removeToast]);
 
   return (
     <ToastContext.Provider value={value}>

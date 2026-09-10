@@ -24,10 +24,20 @@ async function request(url, options = {}) {
 
   if (!res.ok) {
     if (res.status === 502 || res.status === 503 || res.status === 504) {
-      throw new Error("La plateforme est en cours de mise à jour (redémarrage). Veuillez réessayer dans 30 secondes.");
+      const gatewayError = new Error("La plateforme est en cours de mise à jour (redémarrage). Veuillez réessayer dans 30 secondes.");
+      gatewayError.status = res.status;
+      throw gatewayError;
     }
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || err.error || tStatic().errors.serverError);
+    const body = await res.json().catch(() => ({ message: res.statusText }));
+    // Le statut et le corps sont attachés à l'erreur : certains échecs se
+    // rattrapent au lieu de s'afficher (409 TIMELINE_CONFLICT renvoie le
+    // workspace à recharger), et un message seul ne permet pas de les
+    // distinguer d'une panne réseau.
+    const error = new Error(body.message || body.error || tStatic().errors.serverError);
+    error.status = res.status;
+    error.code = body.code;
+    error.body = body;
+    throw error;
   }
   
   if (res.status === 204) return null;
@@ -172,10 +182,11 @@ export const api = {
   getTimelineWorkspace: (weekId) =>
     request(`/editor/timeline/${weekId}`),
 
-  saveTimelineWorkspace: (weekId, workspace) =>
+  saveTimelineWorkspace: (weekId, workspace, adminPassword) =>
     request(`/editor/timeline/${weekId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Client-Id': getClientId() },
+      adminPassword,
       body: JSON.stringify(workspace),
     }),
 
@@ -291,8 +302,8 @@ export const api = {
     }
   },
 
-  deleteDelivery: (weekId, fileId) =>
-    request(`/deliveries/${weekId}/${fileId}`, { method: 'DELETE' }),
+  deleteDelivery: (weekId, fileId, adminPassword) =>
+    request(`/deliveries/${weekId}/${fileId}`, { method: 'DELETE', adminPassword }),
 
   updateFileStatus: (weekId, fileId, status, feedback, adminPassword) =>
     request(`/uploads/${weekId}/files/${fileId}/status`, {
@@ -307,9 +318,10 @@ export const api = {
   getAnalytics: () => request('/analytics'),
 
   // === Editor / Studio de Montage ===
-  editorConcat: (payload) => request('/editor/concat', {
+  editorConcat: (payload, adminPassword) => request('/editor/concat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    adminPassword,
     body: JSON.stringify(payload),
   }),
   editorProgress: (jobId) => request(`/editor/progress/${jobId}`),

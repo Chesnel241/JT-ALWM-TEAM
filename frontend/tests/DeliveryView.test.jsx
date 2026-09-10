@@ -30,6 +30,7 @@ function renderDelivery(props = {}) {
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   localStorage.setItem('jt-alwm-lang', 'fr');
   // Les espions survivent d'un test à l'autre : on repart d'un compteur
   // d'appels vierge pour pouvoir affirmer qu'un appel n'a PAS eu lieu.
@@ -57,9 +58,18 @@ describe('DeliveryView', () => {
   });
 
   it('affiche le bloc de notification WhatsApp pour l\'équipe montage', async () => {
+    sessionStorage.setItem('jt-admin-pass', 'secret');
     renderDelivery();
     expect(await screen.findAllByText(/GA/)).not.toHaveLength(0);
-    expect(api.getSubscriptions).toHaveBeenCalled();
+    expect(api.getSubscriptions).toHaveBeenCalledWith('2026-W34', 'secret');
+  });
+
+  it('n\'interroge pas la liste des abonnés sans session admin', async () => {
+    renderDelivery();
+    await screen.findAllByText('JT_ALWM_2026_W34.mp4');
+    // Route réservée à l'admin : sans mot de passe en session, l'appel
+    // ne partirait que pour récolter un 403.
+    expect(api.getSubscriptions).not.toHaveBeenCalled();
   });
 
   it('masque le bloc de notification et les numéros côté journalistes', async () => {

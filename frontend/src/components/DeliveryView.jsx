@@ -19,6 +19,16 @@ const FILE_ICONS = {
   document: { Icon: FileText, color: 'text-[color:var(--ink)]', bg: 'bg-[var(--paper-2)]' },
 };
 
+// Mot de passe admin de la session en cours (posé par l'espace montage
+// après connexion). sessionStorage peut lever en navigation privée.
+function readAdminPassword() {
+  try {
+    return sessionStorage.getItem('jt-admin-pass') || '';
+  } catch {
+    return '';
+  }
+}
+
 // `audience` : le même écran sert les deux équipes. Côté montage il porte
 // l'outil de notification des correspondants ; côté journalistes ce bloc
 // disparaît — un correspondant n'a pas à voir les numéros WhatsApp de ses
@@ -48,11 +58,15 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
       })
       .finally(() => setLoading(false));
 
-    if (!showNotifyPanel) {
+    // La liste des abonnés expose des numéros WhatsApp : la route est
+    // réservée à l'admin. Sans session admin ouverte on n'appelle pas
+    // (sinon 403 systématique dans la console du monteur non connecté).
+    const adminPassword = readAdminPassword();
+    if (!showNotifyPanel || !adminPassword) {
       setSubscriptions([]);
       return;
     }
-    api.getSubscriptions(selectedWeek)
+    api.getSubscriptions(selectedWeek, adminPassword)
       .then((s) => setSubscriptions(Array.isArray(s) ? s : []))
       .catch(() => setSubscriptions([]));
   }, [selectedWeek, addToast, t.uploader.errorPrefix, showNotifyPanel]);
