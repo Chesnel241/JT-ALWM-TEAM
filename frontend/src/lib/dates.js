@@ -77,3 +77,23 @@ export function formatWeekDates(week, locale = 'fr') {
   const end = new Date(week.endDate).toLocaleDateString(loc, opts);
   return `${start} - ${end}`;
 }
+
+/**
+ * Jour d'effacement des rushes d'une semaine, en clair.
+ * Ex : « mer. 16 sept. » / « Wed, Sep 16 ».
+ *
+ * L'interface annonçait « 48 h », ce qui se lit comme une durée de vie de deux
+ * jours. La règle réelle est ancrée à la semaine de diffusion : un envoi du
+ * lundi vit neuf jours, un envoi du dimanche à l'échéance en vit deux. Une
+ * date levée du serveur (`week.expiresAt`) ne peut pas mentir.
+ */
+export function formatExpiry(week, locale = 'fr') {
+  if (!week?.expiresAt) return '';
+  const d = new Date(week.expiresAt);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}

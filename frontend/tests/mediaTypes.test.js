@@ -3,6 +3,8 @@ import {
   classifyFile,
   splitByMediaType,
   groupByReportage,
+  sectionNumber,
+  sectionsFromUploads,
   MEDIA_TYPES,
   MEDIA_ORDER,
 } from '../src/lib/mediaTypes.js';
@@ -74,5 +76,42 @@ describe('regroupement par reportage', () => {
     expect(new Set(tones).size).toBe(5);
     expect(reportageTone(5).fill).toBe(REPORTAGE_TONES[0].fill);
     expect(reportageTone(undefined).fill).toBe(REPORTAGE_TONES[0].fill);
+  });
+});
+
+describe('sections déduites des envois', () => {
+  it('retrouve le numéro d\'une section, en français comme en anglais', () => {
+    expect(sectionNumber('Reportage 2')).toBe(2);
+    expect(sectionNumber('Report 3')).toBe(3);
+    expect(sectionNumber('reportage 10')).toBe(10);
+    expect(sectionNumber('Annonces')).toBe(0);
+    expect(sectionNumber('')).toBe(0);
+    expect(sectionNumber(undefined)).toBe(0);
+  });
+
+  it('déduit combien de sections un correspondant avait ouvertes', () => {
+    // Régression : le compteur ne vivait qu'en mémoire du composant. Après un
+    // rechargement il retombait à 1 et les fichiers du reportage 3 n'étaient
+    // plus rattachés à aucune section affichée — invisibles pour leur auteur.
+    const uploads = [
+      { reportage: 'Reportage 1' },
+      { reportage: 'Reportage 3' },
+      { reportage: 'Annonces' },
+    ];
+    expect(sectionsFromUploads(uploads)).toBe(3);
+  });
+
+  it('ne déduit rien d\'une semaine vide', () => {
+    expect(sectionsFromUploads([])).toBe(0);
+    expect(sectionsFromUploads(undefined)).toBe(0);
+    expect(sectionsFromUploads([{ reportage: '' }, null])).toBe(0);
+  });
+
+  it('classe les sections anglaises par numéro, pas alphabétiquement', () => {
+    const groups = groupByReportage([
+      { name: 'c.mp4', reportage: 'Report 10' },
+      { name: 'a.mp4', reportage: 'Report 2' },
+    ]);
+    expect(groups.map((g) => g.label)).toEqual(['Report 2', 'Report 10']);
   });
 });

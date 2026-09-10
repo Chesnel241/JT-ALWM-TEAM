@@ -69,13 +69,44 @@ export function splitByMediaType(files) {
 // Sections hors reportages numérotés, à afficher après eux.
 const TRAILING_SECTIONS = ['annonces', 'séminaires', 'seminaires', 'titres', 'détails', 'details'];
 
+// Un reportage numéroté, dans les deux langues de l'interface. L'anglais
+// manquait : « Report 2 » retombait au rang générique et se retrouvait trié
+// alphabétiquement, donc « Report 10 » avant « Report 2 ».
+const NUMBERED_SECTION = /(?:reportage|report)\s*(\d+)/i;
+
+/**
+ * Indice d'une section numérotée, ou 0 si l'étiquette n'en est pas une.
+ * Sert aussi à retrouver combien de sections un correspondant avait ouvertes,
+ * à partir de ses seuls envois.
+ */
+export function sectionNumber(label) {
+  const found = String(label || '').match(NUMBERED_SECTION);
+  return found ? Number(found[1]) : 0;
+}
+
+/**
+ * Nombre de sections à afficher, déduit des envois déjà reçus.
+ *
+ * Le compteur de reportages ne vivait qu'en mémoire du composant : après un
+ * rechargement il retombait à 1, et les fichiers étiquetés « Reportage 2 »
+ * n'étaient plus rattachés à aucune section affichée. Ils existaient toujours,
+ * le monteur les voyait, mais leur auteur ne les voyait plus. Le déduire des
+ * données répare l'affichage tout seul, sans rien à migrer.
+ */
+export function sectionsFromUploads(files) {
+  return (files || []).reduce(
+    (max, file) => Math.max(max, sectionNumber(file?.reportage)),
+    0
+  );
+}
+
 function sectionRank(label, untitledLabel) {
   const value = String(label || '').toLowerCase();
   // Les envois sans section ferment la marche : ce sont des restes, pas une
   // rubrique du JT.
   if (label === untitledLabel) return [3, 0];
-  const numbered = value.match(/reportage\s*(\d+)/);
-  if (numbered) return [0, Number(numbered[1])];
+  const numbered = sectionNumber(label);
+  if (numbered) return [0, numbered];
   const trailing = TRAILING_SECTIONS.findIndex((s) => value.startsWith(s));
   if (trailing >= 0) return [2, trailing];
   return [1, 0];

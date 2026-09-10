@@ -126,14 +126,22 @@ function makeWeek(monday, status) {
   const sunday = endOfIsoWeek(monday);
   const year = isoWeekYear(monday);
   const num = isoWeekNumber(monday);
+  const id = `${year}-w${String(num).padStart(2, '0')}`;
+  const expiry = weekExpiryDate(id);
   return {
-    id: `${year}-w${String(num).padStart(2, '0')}`,
+    id,
     num,
     name: `Semaine ${num}`,
     dates: formatRange(monday, sunday),
     status,
     startDate: monday.toISOString(),
     endDate: sunday.toISOString(),
+    // Date réelle d'effacement des rushes. L'interface annonçait « 48 h »
+    // partout, ce qui est faux : la purge est ancrée à la semaine de
+    // diffusion, pas à l'envoi. Un fichier déposé le lundi vit neuf jours,
+    // un fichier déposé le dimanche à l'échéance en vit deux. Le calcul
+    // reste ici ; le frontend n'a pas de quoi le refaire.
+    expiresAt: expiry ? expiry.toISOString() : null,
   };
 }
 

@@ -11,6 +11,7 @@ import NotificationToggle from './NotificationToggle.jsx';
 import TextSizeToggle from './TextSizeToggle.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
+import { formatExpiry } from '../lib/dates.js';
 
 /**
  * Accueil de l'espace journalistes (URL /journalistes) : deux boutons, rien
@@ -256,6 +257,7 @@ function useCountryWeekStatus(countryId, weekId) {
 
 /** Bandeau d'état sous le raccourci pays : échéance, envois, corrections. */
 function ReporterWeekStatus({ status, week, r, onOpenReports }) {
+  const { t, lang } = useI18n();
   if (!status || status.error) return null;
 
   const hasRejected = status.rejected.length > 0;
@@ -263,6 +265,13 @@ function ReporterWeekStatus({ status, week, r, onOpenReports }) {
   return (
     <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-3">
       {week && <CountdownTimer week={week} compact />}
+
+      {week?.expiresAt && (
+        <p className="flex items-center gap-1.5 text-[11px] text-[color:var(--muted)]">
+          <Clock size={12} className="shrink-0" />
+          {t.home.retentionOn(formatExpiry(week, lang))}
+        </p>
+      )}
 
       {status.loading ? (
         <p className="flex items-center gap-2 text-sm text-[color:var(--muted)]">

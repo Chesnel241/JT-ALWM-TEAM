@@ -109,3 +109,25 @@ describe('weekExpiryDate — purge mercredi 00:00 de la semaine suivante', () =>
     expect(Math.round(diffDays)).toBe(9);
   });
 });
+
+describe('date d\'effacement exposée aux clients', () => {
+  it('accompagne chaque semaine d\'une date réelle, pas d\'un « 48 h »', () => {
+    // L'interface annonçait une durée fixe de 48 h. La règle est ancrée à la
+    // semaine de diffusion : la durée de vie d'un fichier va de deux jours
+    // (envoi du dimanche à l'échéance) à neuf (envoi du lundi).
+    for (const week of buildWeeks()) {
+      expect(week.expiresAt).toBeTruthy();
+      expect(week.expiresAt).toBe(weekExpiryDate(week.id).toISOString());
+      expect(new Date(week.expiresAt).getTime()).toBeGreaterThan(new Date(week.endDate).getTime());
+    }
+  });
+
+  it('place l\'effacement après la fin de la semaine, pas 48 h après l\'envoi', () => {
+    const expiry = weekExpiryDate('2026-w37');
+    const week = buildWeeks().find((w) => w.id === '2026-w37');
+    if (!week) return; // la semaine 37 n'est pas toujours dans la fenêtre courante
+    const apresFin = expiry.getTime() - new Date(week.endDate).getTime();
+    expect(apresFin).toBeGreaterThan(47 * 60 * 60 * 1000);
+    expect(apresFin).toBeLessThan(49 * 60 * 60 * 1000);
+  });
+});

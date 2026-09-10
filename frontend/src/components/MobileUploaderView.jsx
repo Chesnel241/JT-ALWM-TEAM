@@ -7,7 +7,7 @@ import {
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
+import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates, formatExpiry } from '../lib/dates.js';
 import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
@@ -200,6 +200,15 @@ export default function MobileUploaderView({
         {/* L'échéance n'existait que sur ordinateur : sur téléphone, le
             correspondant ne découvrait le retard qu'une fois clôturé. */}
         {currentWeek && <CountdownTimer week={currentWeek} compact />}
+
+        {/* Date réelle d'effacement, au lieu du « 48 h » affiché ailleurs :
+            la règle est ancrée à la semaine, pas à l'envoi. */}
+        {currentWeek?.expiresAt && (
+          <p className="flex items-center gap-1.5 text-[11px] text-[color:var(--muted)]">
+            <Clock size={12} className="shrink-0" />
+            {t.home.retentionOn(formatExpiry(currentWeek, lang))}
+          </p>
+        )}
       </div>
 
       {!isOnline && <OfflineBanner queuedCount={queuedCount} />}
@@ -354,7 +363,10 @@ export default function MobileUploaderView({
             <div className="pt-1">
               {reportageCount < 5 ? (
                 <button
-                  onClick={() => setReportageCount((prev) => Math.min(5, prev + 1))}
+                  // On part du nombre AFFICHÉ, pas du choix mémorisé : celui-ci peut être
+                  // plus bas quand des envois révèlent des sections déjà ouvertes,
+                  // et l'incrémenter n'aurait alors rien changé à l'écran.
+                  onClick={() => setReportageCount(Math.min(5, reportageCount + 1))}
                   type="button"
                   className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-[color:var(--action)]/45 bg-[var(--action)]/5 text-[color:var(--action-deep)] font-bold text-sm active:scale-[0.98] transition-transform"
                 >

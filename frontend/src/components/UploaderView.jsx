@@ -10,6 +10,7 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
+import { sectionsFromUploads } from '../lib/mediaTypes.js';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import PhoneInput from 'react-phone-number-input';
@@ -54,7 +55,14 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const offlineQueueRef = useRef([]);
   const isOnline = useOnlineStatus();
   const queuedCount = uploading.filter((f) => f.status === 'queued').length;
-  const [reportageCount, setReportageCount] = useState(1);
+  // Choix explicite de la personne pour cette session. Le nombre réellement
+  // affiché est le maximum entre ce choix et ce que les envois révèlent : voir
+  // `reportageCount` plus bas.
+  const [chosenReportageCount, setChosenReportageCount] = useState(1);
+  // Nombre de sections réellement affichées. Les envois font foi : un
+  // correspondant qui avait ouvert trois reportages les retrouve après un
+  // rechargement, sans avoir à toucher au sélecteur.
+  const reportageCount = Math.max(1, chosenReportageCount, sectionsFromUploads(uploads));
   const [scriptText, setScriptText] = useState({});
   const [dragActive, setDragActive] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -399,7 +407,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           setUploading={setUploading}
           isLoadingUploads={isLoadingUploads}
           reportageCount={reportageCount}
-          setReportageCount={setReportageCount}
+          setReportageCount={setChosenReportageCount}
           isLocked={isLocked}
           extensionStatus={extensionStatus}
           handleRequestDelay={handleRequestDelay}
@@ -592,7 +600,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.reportageCountTitle}</h3>
             <select
               value={reportageCount}
-              onChange={(e) => setReportageCount(Number(e.target.value))}
+              onChange={(e) => setChosenReportageCount(Number(e.target.value))}
               className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-4 py-2 font-medium"
             >
               {[1, 2, 3, 4, 5].map((n) => (

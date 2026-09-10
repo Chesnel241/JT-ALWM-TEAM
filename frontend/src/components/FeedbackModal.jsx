@@ -37,7 +37,7 @@ export default function FeedbackModal({
   useEffect(() => {
     if (file) {
       setStatus(file.status === 'approved' ? 'approved' : 'rejected');
-      setComment(file.feedback || file.adminFeedback || '');
+      setComment(file.feedback || '');
     }
   }, [file]);
 
@@ -90,11 +90,13 @@ export default function FeedbackModal({
   const saveStatusToBackend = async () => {
     const res = await api.updateFileStatus(weekId, file.id, status, comment.trim(), adminPassword);
     if (onStatusUpdated) {
+      // Un seul champ, celui que le serveur stocke. Le doublon
+      // `adminFeedback` n'existait que dans le navigateur : le commentaire
+      // s'affichait puis disparaissait au rafraîchissement suivant.
       onStatusUpdated({
         ...file,
         status,
         feedback: comment.trim(),
-        adminFeedback: comment.trim(),
       });
     }
     return res;

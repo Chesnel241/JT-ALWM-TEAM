@@ -74,7 +74,7 @@ function probeVideoDuration(url) {
 // chacune, ouvrir un pays déclenchait autant de requêtes vidéo d'un coup. On
 // ne demande les métadonnées que pour les vignettes réellement à l'écran ;
 // l'icône de fond reste visible tant que l'aperçu n'est pas chargé.
-function LazyVideoThumbnail({ src, className }) {
+function useInView() {
   const ref = useRef(null);
   const [inView, setInView] = useState(false);
 
@@ -96,12 +96,42 @@ function LazyVideoThumbnail({ src, className }) {
     return () => observer.disconnect();
   }, [inView]);
 
+  return [ref, inView];
+}
+
+function LazyVideoThumbnail({ src, className }) {
+  const [ref, inView] = useInView();
+
   return (
     <video
       ref={ref}
       src={inView ? src : undefined}
       className={className}
       preload={inView ? 'metadata' : 'none'}
+      muted
+      playsInline
+      onError={(e) => { e.target.style.display = 'none'; }}
+    />
+  );
+}
+
+// Même économie pour la grille de cartes, qui lit au survol : sans ce garde,
+// ouvrir un pays réclamait les métadonnées de toutes les vidéos d'un coup,
+// sur des masters de plusieurs gigaoctets.
+function HoverPreviewVideo({ src, className }) {
+  const [ref, inView] = useInView();
+
+  return (
+    <video
+      ref={ref}
+      src={inView ? src : undefined}
+      className={className}
+      preload={inView ? 'metadata' : 'none'}
+      onMouseEnter={(e) => { if (inView) e.currentTarget.play().catch(() => {}); }}
+      onMouseLeave={(e) => {
+        e.currentTarget.pause();
+        e.currentTarget.currentTime = 0.1;
+      }}
       muted
       playsInline
       onError={(e) => { e.target.style.display = 'none'; }}
@@ -335,9 +365,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackPhone, setFeedbackPhone] = useState(null);
   const [fileToFeedback, setFileToFeedback] = useState(null);
-  const [feedbackStatus, setFeedbackStatus] = useState('');
-  const [feedbackText, setFeedbackText] = useState('');
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [subscriptions, setSubscriptions] = useState([]);
   
   // Editor State
@@ -1366,9 +1393,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const openFeedbackDialog = (countryId, fileId, status) => {
     const file = dashboard[countryId]?.find(f => f.id === fileId);
     if (file) {
-      setFileToFeedback({ ...file, countryId, fileId, fileName: file.name });
-      setFeedbackStatus(status || file.status || 'rejected');
-      setFeedbackText(file.feedback || file.adminFeedback || '');
+      // Le modal lit tout depuis ce fichier : l'état souhaité par l'appelant
+      // voyage donc avec lui, au lieu de passer par un état de composant que
+      // plus personne ne consommait.
+      setFileToFeedback({
+        ...file,
+        status: status || file.status || 'rejected',
+        countryId,
+        fileId,
+        fileName: file.name,
+      });
       const directPhone = getCountryPhone(countryId);
       setFeedbackPhone(directPhone);
       setFeedbackDialogOpen(true);
@@ -1384,47 +1418,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           })
           .catch(() => {});
       }
-    }
-  };
-
-  const handleConfirmFeedback = async () => {
-    if (!fileToFeedback) return;
-    setIsSubmittingFeedback(true);
-
-    const targetFileId = fileToFeedback.fileId;
-    const targetCountryId = fileToFeedback.countryId;
-    const targetStatus = feedbackStatus;
-    const targetText = feedbackText;
-
-    let previousBinState = [];
-
-    setDashboard(prev => {
-      previousBinState = prev[targetCountryId] || [];
-      const updatedFiles = previousBinState.map(f => {
-        if (f.id === targetFileId) {
-          return { ...f, status: targetStatus, adminFeedback: targetText };
-        }
-        return f;
-      });
-      return { ...prev, [targetCountryId]: updatedFiles };
-    });
-    setFeedbackDialogOpen(false);
-    setFileToFeedback(null);
-    setFeedbackStatus('');
-    setFeedbackText('');
-
-    try {
-      await api.updateFileStatus(selectedWeek, targetFileId, targetStatus, targetText, authenticatedAdminPassword);
-      addToast('Statut mis à jour avec succès', 'success');
-    } catch (err) {
-      console.error(err);
-      setDashboard(prev => ({
-        ...prev,
-        [targetCountryId]: previousBinState
-      }));
-      addToast(`Erreur : ${err.message}`, 'error');
-    } finally {
-      setIsSubmittingFeedback(false);
     }
   };
 
@@ -1612,17 +1605,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           </div>
 
           {/* Motif de refus / commentaire si présent */}
-          {(file.feedback || file.adminFeedback) && (
+          {file.feedback && (
             <div
               onClick={(e) => {
                 e.stopPropagation();
                 openFeedbackDialog(selectedBin, file.id, file.status || 'rejected');
               }}
               className="mt-0.5 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-[11px] font-medium flex items-center gap-1.5 cursor-pointer border border-red-500/20 transition-colors"
-              title={`Motif : ${file.feedback || file.adminFeedback} (Cliquer pour modifier/notifier)`}
+              title={`Motif : ${file.feedback} (Cliquer pour modifier/notifier)`}
             >
               <MessageSquare size={12} className="shrink-0 text-red-500" />
-              <span className="truncate">{file.feedback || file.adminFeedback}</span>
+              <span className="truncate">{file.feedback}</span>
             </div>
           )}
 
@@ -1941,16 +1934,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               className="bg-[var(--paper)] rounded-2xl border border-[var(--border)] shadow-sm hover:shadow-md motion-tap overflow-hidden flex flex-col group"
                             >
                               <div className="aspect-video bg-black/90 relative flex items-center justify-center overflow-hidden">
-                                <video
+                                <HoverPreviewVideo
                                   src={`${API_BASE}/uploads/${file.filename}`}
                                   className="w-full h-full object-cover"
-                                  preload="metadata"
-                                  onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.pause();
-                                    e.currentTarget.currentTime = 0.1;
-                                  }}
-                                  muted
                                 />
                                 <div className="absolute top-2 left-2 flex flex-wrap gap-1">
                                   <span className="px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold backdrop-blur-xs">
