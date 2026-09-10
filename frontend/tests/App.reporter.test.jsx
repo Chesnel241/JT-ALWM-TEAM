@@ -36,16 +36,26 @@ afterEach(() => {
 });
 
 describe('App — URL /journalistes', () => {
-  it('ouvre l\'accueil à deux boutons, sans onglet de montage', async () => {
+  it('ouvre l\'accueil journalistes avec reportage, voix off et JT prêt, sans onglet de montage', async () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
     expect(await screen.findByText('Que souhaitez-vous faire ?')).toBeInTheDocument();
     expect(screen.getByText('Envoyer mes fichiers')).toBeInTheDocument();
+    expect(screen.getByText('Ouvrir le studio voix')).toBeInTheDocument();
     expect(screen.getByText('Ouvrir le JT prêt')).toBeInTheDocument();
     expect(screen.queryByText('Espace Montage')).not.toBeInTheDocument();
     expect(screen.queryByText('Stats & Délais')).not.toBeInTheDocument();
-    expect(screen.queryByText('Voix Off')).not.toBeInTheDocument();
+  });
+
+  it('mène au studio voix off depuis l\'accueil', async () => {
+    window.history.replaceState(null, '', '/journalistes');
+    render(<App />);
+
+    fireEvent.click(await screen.findByText('Ouvrir le studio voix'));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/journalistes/voix-off'));
+    expect(await screen.findByText('Studio Voix Off')).toBeInTheDocument();
   });
 
   it('mène à la liste des pays depuis « Espace reportage »', async () => {

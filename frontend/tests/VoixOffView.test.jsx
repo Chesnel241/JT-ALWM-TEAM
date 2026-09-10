@@ -47,4 +47,25 @@ describe('VoixOffView', () => {
     fireEvent.click(gabonBtn);
     expect(screen.getAllByPlaceholderText(/Élections présidentielles/i)[0]).toBeInTheDocument();
   });
+
+  it('pre-selects country when initialCountryId is passed with reporter flag', () => {
+    renderVoixOff({ initialCountryId: 'ga', isReporter: true });
+    expect(screen.getByText('Attribué')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Élections présidentielles/i)).toBeInTheDocument();
+  });
+
+  it('switches to file upload mode', () => {
+    renderVoixOff({ initialCountryId: 'ga', isReporter: true });
+    const uploadModeBtn = screen.getByText('Fichier audio');
+    fireEvent.click(uploadModeBtn);
+    expect(screen.getByText(/Glissez ou sélectionnez un fichier audio/i)).toBeInTheDocument();
+  });
+
+  it('allows switching between reportage subjects (1, 2, 3)', () => {
+    renderVoixOff({ initialCountryId: 'ga', isReporter: true });
+    const sujet2Btn = screen.getByRole('button', { name: 'Sujet 2' });
+    fireEvent.click(sujet2Btn);
+    const input = screen.getByPlaceholderText(/Élections présidentielles/i);
+    expect(input.value).toBe('Reportage 2');
+  });
 });

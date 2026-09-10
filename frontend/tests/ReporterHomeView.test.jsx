@@ -17,12 +17,13 @@ beforeEach(() => {
 });
 
 describe('ReporterHomeView', () => {
-  it('n\'affiche que les deux choix attendus', () => {
+  it('affiche les choix proposés aux journalistes (reportage, voix-off, JT prêt)', () => {
     renderHub();
     expect(screen.getByText('Espace reportage')).toBeInTheDocument();
+    expect(screen.getByText('Enregistrer une voix-off')).toBeInTheDocument();
     expect(screen.getByText('Télécharger le JT')).toBeInTheDocument();
-    // Les deux cartes sont les seuls choix de navigation proposés.
     expect(screen.getByText('Envoyer mes fichiers')).toBeInTheDocument();
+    expect(screen.getByText('Ouvrir le studio voix')).toBeInTheDocument();
     expect(screen.getByText('Ouvrir le JT prêt')).toBeInTheDocument();
     expect(screen.queryByText('Espace Montage')).not.toBeInTheDocument();
   });
@@ -32,6 +33,13 @@ describe('ReporterHomeView', () => {
     renderHub({ onOpenReports });
     fireEvent.click(screen.getByText('Espace reportage'));
     expect(onOpenReports).toHaveBeenCalled();
+  });
+
+  it('ouvre le studio voix-off', () => {
+    const onOpenVoixOff = vi.fn();
+    renderHub({ onOpenVoixOff });
+    fireEvent.click(screen.getByText('Enregistrer une voix-off'));
+    expect(onOpenVoixOff).toHaveBeenCalled();
   });
 
   it('ouvre le JT prêt', () => {
@@ -47,7 +55,6 @@ describe('ReporterHomeView', () => {
     expect(link).toHaveAttribute('href', expect.stringContaining('wa.me/33778669907'));
   });
 
-
   it("propose de s'abonner aux notifications depuis l'accueil", () => {
     renderHub();
     expect(screen.getByText('Être prévenu quand le JT est prêt')).toBeInTheDocument();
@@ -57,6 +64,7 @@ describe('ReporterHomeView', () => {
     localStorage.setItem('jt-alwm-lang', 'en');
     renderHub();
     expect(screen.getByText('Report space')).toBeInTheDocument();
+    expect(screen.getByText('Record a voice-over')).toBeInTheDocument();
     expect(screen.getByText('Download the show')).toBeInTheDocument();
   });
 });

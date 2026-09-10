@@ -56,8 +56,7 @@ export default function Nav({
   const iconSize = isReporter ? 24 : 20;
   const iconClass = isReporter ? 'sm:w-[22px] sm:h-[22px]' : 'sm:w-[18px] sm:h-[18px]';
 
-  // Espace journalistes : strictement deux destinations. Tout le reste
-  // (montage, voix off, stats, éditeur) n'existe pas dans cet espace.
+  // Espace journalistes : reportages, voix off et téléchargement du JT.
   const reporterNavItems = [
     {
       id: 'tour-country-list',
@@ -65,6 +64,13 @@ export default function Nav({
       icon: <Upload size={iconSize} className={iconClass} />,
       label: t.reporter.uploadTab,
       match: ['home', 'uploader'],
+    },
+    {
+      id: 'tour-nav-voixoff',
+      view: 'voixoff',
+      icon: <Mic size={iconSize} className={iconClass} />,
+      label: t.reporter.voixOffTab || t.nav.voixOff,
+      match: ['voixoff'],
     },
     {
       id: 'tour-nav-delivery',

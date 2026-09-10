@@ -73,13 +73,13 @@ describe('Nav — espace journalistes', () => {
     );
   }
 
-  it('n\'expose que les deux onglets journalistes', () => {
+  it('expose les onglets journalistes (reportage, voix off, télécharger le JT)', () => {
     renderReporter();
     expect(screen.getAllByText('Espace reportage')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Voix Off')[0]).toBeInTheDocument();
     expect(screen.getAllByText('Télécharger le JT')[0]).toBeInTheDocument();
     // Les onglets réservés à l'équipe montage doivent avoir disparu.
     expect(screen.queryByText('Espace Montage')).not.toBeInTheDocument();
-    expect(screen.queryByText('Voix Off')).not.toBeInTheDocument();
     expect(screen.queryByText('Stats & Délais')).not.toBeInTheDocument();
   });
 
@@ -90,9 +90,10 @@ describe('Nav — espace journalistes', () => {
     expect(setView).toHaveBeenCalledWith('delivery');
   });
 
-  it('masque les onglets sur l\'accueil à deux boutons', () => {
+  it('masque les onglets sur l\'accueil journalistes', () => {
     renderReporter({ currentView: 'hub' });
     expect(screen.queryByText('Espace reportage')).not.toBeInTheDocument();
+    expect(screen.queryByText('Voix Off')).not.toBeInTheDocument();
     expect(screen.queryByText('Télécharger le JT')).not.toBeInTheDocument();
   });
 

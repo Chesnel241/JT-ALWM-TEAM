@@ -75,9 +75,10 @@ describe('routing — écriture de l\'URL', () => {
 });
 
 describe('routing — périmètre des espaces', () => {
-  it('limite les journalistes au reportage et au JT prêt', () => {
-    expect(viewsForWorkspace(WORKSPACES.REPORTER)).toEqual(['hub', 'home', 'uploader', 'delivery']);
-    for (const view of ['dashboard', 'voixoff', 'stats', 'editor']) {
+  it('inclut reportage, voixoff et JT prêt pour les journalistes', () => {
+    expect(viewsForWorkspace(WORKSPACES.REPORTER)).toEqual(['hub', 'home', 'uploader', 'voixoff', 'delivery']);
+    expect(isViewAllowed(WORKSPACES.REPORTER, 'voixoff')).toBe(true);
+    for (const view of ['dashboard', 'stats', 'editor']) {
       expect(isViewAllowed(WORKSPACES.REPORTER, view)).toBe(false);
     }
   });

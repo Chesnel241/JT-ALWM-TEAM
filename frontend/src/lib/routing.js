@@ -49,6 +49,7 @@ const ROUTES = {
     ['hub', ''],
     ['home', 'reportage'],
     ['uploader', 'reportage/envoi'],
+    ['voixoff', 'voix-off'],
     ['delivery', 'telecharger-le-jt'],
   ],
   // L'équipe montage ouvre directement sur son studio : c'est là qu'elle

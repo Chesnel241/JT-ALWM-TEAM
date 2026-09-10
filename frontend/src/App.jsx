@@ -405,6 +405,7 @@ function AppShell() {
               <div className={currentView === 'hub' ? 'block' : 'hidden'}>
                 <ReporterHomeView
                   onOpenReports={() => navigate('home')}
+                  onOpenVoixOff={() => navigate('voixoff')}
                   onOpenDelivery={() => navigate('delivery')}
                   homeCountry={homeCountry}
                   homeCountryConfirmed={homeCountryConfirmed}
@@ -468,6 +469,8 @@ function AppShell() {
                   setSelectedWeek={setSelectedWeek}
                   countries={countries}
                   isActive={currentView === 'voixoff'}
+                  initialCountryId={homeCountry?.id || route.countryId || selectedCountry?.id}
+                  isReporter={isReporter}
                 />
               </div>
             )}

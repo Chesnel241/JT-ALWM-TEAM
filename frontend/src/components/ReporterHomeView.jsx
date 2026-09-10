@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Upload, Download, ChevronRight, MessageCircle, Bell,
+  Upload, Download, Mic, ChevronRight, MessageCircle, Bell,
   ArrowRight, RefreshCw, CheckCircle, AlertCircle, Clock,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -22,6 +22,7 @@ import { formatExpiry } from '../lib/dates.js';
  */
 export default function ReporterHomeView({
   onOpenReports,
+  onOpenVoixOff,
   onOpenDelivery,
   homeCountry = null,
   homeCountryConfirmed = false,
@@ -46,8 +47,6 @@ export default function ReporterHomeView({
       text: r.uploadText,
       cta: r.uploadCta,
       onClick: onOpenReports,
-      // Accent maison pour l'action principale (envoyer un reportage).
-      // Bleu pour l'identité de la carte, vert pour le bouton qui agit.
       tone: {
         card: 'border-[color:var(--accent)]/40 hover:border-[color:var(--accent)]',
         icon: 'bg-[var(--accent)] text-white',
@@ -56,16 +55,28 @@ export default function ReporterHomeView({
       },
     },
     {
-      key: 'delivery',
+      key: 'voixoff',
       step: 2,
+      Icon: Mic,
+      title: r.voixOffTitle,
+      text: r.voixOffText,
+      cta: r.voixOffCta,
+      onClick: onOpenVoixOff,
+      tone: {
+        card: 'border-purple-300 dark:border-purple-800/40 hover:border-purple-500',
+        icon: 'bg-purple-600 text-white',
+        cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
+        step: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+      },
+    },
+    {
+      key: 'delivery',
+      step: 3,
       Icon: Download,
       title: r.downloadTitle,
       text: r.downloadText,
       cta: r.downloadCta,
       onClick: onOpenDelivery,
-      // Bleu clair du logo pour la tuile d'icône : il n'accepte que du texte
-      // foncé (2,3:1 avec du blanc), d'où l'encre sur la pastille et le bleu
-      // profond conservé sur le bouton.
       tone: {
         card: 'border-[var(--border)] hover:border-[color:var(--accent-soft)]',
         icon: 'bg-[var(--accent-soft)] text-[#111827]',
@@ -130,7 +141,7 @@ export default function ReporterHomeView({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 motion-stagger">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 motion-stagger">
         {choices.map(({ key, step, Icon, title, text, cta, onClick, tone }, index) => (
           <button
             key={key}
