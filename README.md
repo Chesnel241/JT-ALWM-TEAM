@@ -28,6 +28,26 @@ l'équipe voit. Le découpage est défini dans `frontend/src/lib/routing.js`.
   l'accueil de l'espace : les vues montage ne sont jamais montées côté
   journalistes.
 
+### Le lien personnel d'un correspondant
+
+`https://<domaine>/journalistes/<pays>` — par exemple `/journalistes/ga` —
+ouvre directement l'écran d'envoi de ce pays, sans passer par la liste. C'est
+le lien à envoyer une fois par WhatsApp à chaque correspondant ; il vaut
+aussi favori et raccourci d'écran d'accueil. `?pays=ga` est accepté en entrée
+et disparaît de la barre d'adresse une fois lu.
+
+Il n'y a pas de compte : c'est le seul support d'identité durable. La mémoire
+du navigateur sert de raccourci de confort, mais elle disparaît en navigation
+privée, au changement de téléphone, et Safari efface le stockage des sites non
+installés après environ sept jours sans visite — soit exactement le rythme
+d'un JT hebdomadaire. Installer la plateforme sur l'écran d'accueil lève cette
+purge.
+
+Sur l'accueil journalistes, un pays déjà confirmé sur l'appareil est proposé
+en raccourci, avec une sortie « ce n'est pas mon pays » toujours visible : un
+poste partagé en rédaction ne doit pas enfermer le suivant dans le choix du
+précédent.
+
 ⚠️ C'est un filtre d'usage, pas une frontière de sécurité : l'API reste
 publique (voir *Avertissements* plus bas). Le but est de simplifier
 l'écran des journalistes, pas de protéger des données.
