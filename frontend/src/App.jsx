@@ -16,6 +16,14 @@ import {
   isViewAllowed,
   defaultViewFor,
 } from './lib/routing.js';
+import {
+  readLastCountryId,
+  saveLastCountryId,
+  readHomeCountryId,
+  saveHomeCountryId,
+  forgetHomeCountry,
+  resolveCountry,
+} from './lib/homeCountry.js';
 
 const HomeView = lazy(() => import('./components/HomeView.jsx'));
 const UploaderView = lazy(() => import('./components/UploaderView.jsx'));
@@ -39,13 +47,33 @@ function currentPathname() {
   return typeof window !== 'undefined' ? window.location.pathname : '/';
 }
 
+function currentSearch() {
+  return typeof window !== 'undefined' ? window.location.search : '';
+}
+
+// `?pays=ga` est accepté en entrée mais n'est pas la forme canonique : une
+// fois le pays lu, il est retiré de la barre d'adresse pour qu'il ne
+// contredise jamais le chemin.
+function stripCountryParam(search) {
+  const raw = String(search || '');
+  if (!raw.includes('pays=')) return raw;
+  try {
+    const params = new URLSearchParams(raw);
+    params.delete('pays');
+    const rest = params.toString();
+    return rest ? `?${rest}` : '';
+  } catch {
+    return raw;
+  }
+}
+
 function AppShell() {
   useVersionCheck(); // Hook silencieux qui forcera le reload si nouvelle version
   const { t } = useI18n();
 
   // L'URL est la source de vérité : elle porte l'espace de travail (montage
   // ou reportage) ET la vue courante. Voir lib/routing.js.
-  const [route, setRoute] = useState(() => parsePath(currentPathname()));
+  const [route, setRoute] = useState(() => parsePath(currentPathname(), currentSearch()));
   const { workspace, view: currentView } = route;
   const isReporter = workspace === WORKSPACES.REPORTER;
 
@@ -54,23 +82,33 @@ function AppShell() {
   const routeRef = useRef(route);
   routeRef.current = route;
 
-  const navigate = useCallback((nextView, { replace = false } = {}) => {
+  // `countryId` n'est utile que pour l'écran d'envoi côté journalistes, où il
+  // devient le chemin lui-même (`/journalistes/ga`).
+  const navigate = useCallback((nextView, { replace = false, countryId } = {}) => {
     const target = routeRef.current.workspace;
     // Garde-fou : une vue hors périmètre de l'espace retombe sur son accueil.
     // C'est ce qui empêche un lien /journalistes/montage d'exister.
     const view = isViewAllowed(target, nextView) ? nextView : defaultViewFor(target);
-    const path = buildPath(target, view);
+    const nextCountry = countryId !== undefined ? countryId : routeRef.current.countryId;
+    const path = buildPath(target, view, nextCountry);
     if (typeof window !== 'undefined' && window.location.pathname !== path) {
-      const url = `${path}${window.location.search}${window.location.hash}`;
+      // Le pays vit désormais dans le chemin : garder `?pays=` en plus
+      // dupliquerait l'information et vieillirait mal au premier changement.
+      const search = stripCountryParam(window.location.search);
+      const url = `${path}${search}${window.location.hash}`;
       if (replace) window.history.replaceState(null, '', url);
       else window.history.pushState(null, '', url);
     }
-    setRoute((prev) => (prev.view === view ? prev : { ...prev, view }));
+    setRoute((prev) => (
+      prev.view === view && prev.countryId === nextCountry
+        ? prev
+        : { ...prev, view, countryId: nextCountry }
+    ));
   }, []);
 
   // Boutons Précédent/Suivant du navigateur.
   useEffect(() => {
-    const onPopState = () => setRoute(parsePath(currentPathname()));
+    const onPopState = () => setRoute(parsePath(currentPathname(), currentSearch()));
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
@@ -79,15 +117,21 @@ function AppShell() {
   // `/journalistes`, une vue inconnue → l'accueil de l'espace. L'utilisateur
   // repart toujours avec une URL propre, partageable telle quelle.
   useEffect(() => {
-    const path = buildPath(route.workspace, route.view);
-    if (window.location.pathname !== path) {
-      window.history.replaceState(null, '', `${path}${window.location.search}${window.location.hash}`);
+    const path = buildPath(route.workspace, route.view, route.countryId);
+    const search = stripCountryParam(window.location.search);
+    if (window.location.pathname !== path || search !== window.location.search) {
+      window.history.replaceState(null, '', `${path}${search}${window.location.hash}`);
     }
     // Volontairement au montage uniquement : navigate() gère la suite.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [selectedCountry, setSelectedCountry] = useState(null);
+  // Pays confirmé sur CET appareil. localStorage est cloisonné par navigateur :
+  // le même lien partagé n'expose donc jamais le choix d'un correspondant à un
+  // autre. Repli sur le dernier pays ouvert quand rien n'a encore été confirmé.
+  const [homeCountryId, setHomeCountryId] = useState(() => readHomeCountryId());
+  const [lastCountryId, setLastCountryId] = useState(() => readLastCountryId());
   const [selectedWeek, setSelectedWeekState] = useState(() => {
     try {
       return localStorage.getItem('jt-selected-week') || '';
@@ -203,17 +247,63 @@ function AppShell() {
     }
   }, [currentView]);
 
-  // Lien direct vers l'envoi sans pays choisi (favori, lien partagé) : on
-  // renvoie sur la liste des pays plutôt que d'afficher un écran vide.
+  // Pays porté par l'URL (`/journalistes/ga`) : dès que la liste des pays est
+  // chargée, on le résout et on ouvre son écran d'envoi. C'est ce qui rend le
+  // lien personnel utilisable sans passer par la liste.
   useEffect(() => {
-    if (currentView === 'uploader' && !selectedCountry) {
-      navigate('home', { replace: true });
+    if (!countries.length) return;
+    const wanted = route.countryId;
+    if (!wanted) return;
+    if (selectedCountry && selectedCountry.id === wanted) return;
+    const match = resolveCountry(countries, wanted);
+    if (match) {
+      setSelectedCountry(match);
+      saveLastCountryId(match.id);
+      setLastCountryId(match.id);
+      // Un lien personnel reçu par WhatsApp vaut confirmation : c'est
+      // quelqu'un qui a été désigné pour ce pays.
+      if (isReporter) {
+        saveHomeCountryId(match.id);
+        setHomeCountryId(match.id);
+      }
     }
-  }, [currentView, selectedCountry, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countries, route.countryId]);
+
+  // Lien direct vers l'envoi sans pays choisi (favori, lien partagé) : on
+  // renvoie sur la liste des pays plutôt que d'afficher un écran vide. On
+  // laisse d'abord la résolution ci-dessus faire son travail.
+  useEffect(() => {
+    if (currentView !== 'uploader' || selectedCountry) return;
+    if (route.countryId && !countries.length) return; // résolution en attente
+    navigate('home', { replace: true });
+  }, [currentView, selectedCountry, navigate, route.countryId, countries.length]);
 
   const handleSelectCountry = (country) => {
     setSelectedCountry(country);
-    navigate('uploader');
+    saveLastCountryId(country.id);
+    setLastCountryId(country.id);
+    navigate('uploader', { countryId: country.id });
+  };
+
+  // Raccourci de l'accueil journalistes. Un pays seulement « déjà ouvert » est
+  // proposé, jamais imposé : sur un poste partagé en rédaction, le voisin doit
+  // pouvoir passer outre en un geste.
+  const homeCountry = isReporter
+    ? resolveCountry(countries, homeCountryId || lastCountryId)
+    : null;
+  const homeCountryConfirmed = Boolean(homeCountry) && homeCountry.id === homeCountryId;
+
+  const handleConfirmHomeCountry = (country) => {
+    saveHomeCountryId(country.id);
+    setHomeCountryId(country.id);
+    handleSelectCountry(country);
+  };
+
+  const handleForgetHomeCountry = () => {
+    forgetHomeCountry();
+    setHomeCountryId('');
+    navigate('home');
   };
 
   if (isAuthenticated === null) {
@@ -254,6 +344,12 @@ function AppShell() {
                 <ReporterHomeView
                   onOpenReports={() => navigate('home')}
                   onOpenDelivery={() => navigate('delivery')}
+                  homeCountry={homeCountry}
+                  homeCountryConfirmed={homeCountryConfirmed}
+                  onContinueWithCountry={handleConfirmHomeCountry}
+                  onChangeCountry={handleForgetHomeCountry}
+                  weeks={weeks}
+                  selectedWeek={selectedWeek}
                 />
               </div>
             )}

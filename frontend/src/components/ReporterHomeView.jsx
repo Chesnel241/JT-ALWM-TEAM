@@ -1,7 +1,15 @@
-import { Upload, Download, ChevronRight, MessageCircle, Bell } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  Upload, Download, ChevronRight, MessageCircle, Bell,
+  ArrowRight, RefreshCw, CheckCircle, AlertCircle, Clock,
+} from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { whatsappSupportLink } from '../lib/support.js';
+import { api } from '../api/index.js';
+import { splitByMediaType } from '../lib/mediaTypes.js';
 import NotificationToggle from './NotificationToggle.jsx';
+import CountryAvatar from './CountryAvatar.jsx';
+import CountdownTimer from './CountdownTimer.jsx';
 
 /**
  * Accueil de l'espace journalistes (URL /journalistes) : deux boutons, rien
@@ -10,9 +18,20 @@ import NotificationToggle from './NotificationToggle.jsx';
  * très larges (carte cliquable entière), un libellé par action et une
  * numérotation visuelle pour lever toute hésitation.
  */
-export default function ReporterHomeView({ onOpenReports, onOpenDelivery }) {
+export default function ReporterHomeView({
+  onOpenReports,
+  onOpenDelivery,
+  homeCountry = null,
+  homeCountryConfirmed = false,
+  onContinueWithCountry,
+  onChangeCountry,
+  weeks = [],
+  selectedWeek = '',
+}) {
   const { t } = useI18n();
   const r = t.reporter;
+  const week = weeks.find((w) => w.id === selectedWeek) || null;
+  const status = useCountryWeekStatus(homeCountry?.id, selectedWeek);
 
   const choices = [
     {
@@ -65,6 +84,47 @@ export default function ReporterHomeView({ onOpenReports, onOpenDelivery }) {
           {r.subtitle}
         </p>
       </div>
+
+      {homeCountry && (
+        <div className="mb-4 sm:mb-6 rounded-3xl border-2 border-[color:var(--accent)]/40 bg-[var(--paper)] p-5 sm:p-6 shadow-sm">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <CountryAvatar country={homeCountry} className="w-12 h-12 sm:w-14 sm:h-14 shrink-0" />
+            <div className="min-w-0 flex-1 text-left">
+              <p className="font-bold text-base sm:text-lg text-[color:var(--ink)] leading-snug">
+                {homeCountryConfirmed
+                  ? r.myCountryTitle(homeCountry.name)
+                  : r.myCountryQuestion(homeCountry.name)}
+              </p>
+              <p className="text-sm text-[color:var(--muted)] mt-0.5">{r.myCountryHint}</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onContinueWithCountry?.(homeCountry)}
+            className="mt-4 w-full inline-flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-[var(--action)]/25 active:scale-[0.98] transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--action)]/40"
+          >
+            <span>
+              {homeCountryConfirmed
+                ? r.myCountryContinue(homeCountry.name)
+                : r.myCountryYes}
+            </span>
+            <ArrowRight size={20} />
+          </button>
+
+          {/* Sortie de secours toujours visible : poste partagé en rédaction,
+              clic d'exploration, correspondant qui couvre deux pays. */}
+          <button
+            type="button"
+            onClick={() => onChangeCountry?.()}
+            className="mt-2 w-full px-4 py-3 rounded-2xl text-sm font-semibold text-[color:var(--accent-deep)] underline underline-offset-2 active:scale-[0.98]"
+          >
+            {r.myCountryChange}
+          </button>
+
+          <ReporterWeekStatus status={status} week={week} r={r} onOpenReports={onOpenReports} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {choices.map(({ key, step, Icon, title, text, cta, onClick, tone }) => (
@@ -134,6 +194,106 @@ export default function ReporterHomeView({ onOpenReports, onOpenDelivery }) {
           {r.helpCta}
         </a>
       </div>
+    </div>
+  );
+}
+
+/**
+ * État de la semaine pour un pays : ce qui est parti, ce qui est validé, ce
+ * qui est à corriger. Sans compte utilisateur, c'est la seule façon de dire
+ * au correspondant « votre reportage est bien arrivé » sans qu'il ait à
+ * fouiller l'application.
+ */
+function useCountryWeekStatus(countryId, weekId) {
+  const [state, setState] = useState({ loading: false, files: [], error: false });
+
+  useEffect(() => {
+    if (!countryId || !weekId) {
+      setState({ loading: false, files: [], error: false });
+      return undefined;
+    }
+    let alive = true;
+    setState((prev) => ({ ...prev, loading: true, error: false }));
+    api.getUploads(weekId, countryId)
+      .then((files) => {
+        if (!alive) return;
+        setState({ loading: false, files: Array.isArray(files) ? files : [], error: false });
+      })
+      .catch(() => {
+        if (!alive) return;
+        // L'accueil doit rester utilisable hors ligne : on montre les deux
+        // boutons sans état plutôt qu'un message d'erreur anxiogène.
+        setState({ loading: false, files: [], error: true });
+      });
+    return () => { alive = false; };
+  }, [countryId, weekId]);
+
+  const { files } = state;
+  const rejected = files.filter((f) => f && f.status === 'rejected');
+  const approved = files.filter((f) => f && f.status === 'approved');
+  const byType = splitByMediaType(files);
+
+  return {
+    ...state,
+    total: files.length,
+    rejected,
+    approved,
+    counts: {
+      video: (byType.video || []).length,
+      audio: (byType.audio || []).length,
+      image: (byType.image || []).length,
+      document: (byType.document || []).length,
+    },
+  };
+}
+
+/** Bandeau d'état sous le raccourci pays : échéance, envois, corrections. */
+function ReporterWeekStatus({ status, week, r, onOpenReports }) {
+  if (!status || status.error) return null;
+
+  const hasRejected = status.rejected.length > 0;
+
+  return (
+    <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-3">
+      {week && <CountdownTimer week={week} compact />}
+
+      {status.loading ? (
+        <p className="flex items-center gap-2 text-sm text-[color:var(--muted)]">
+          <RefreshCw size={15} className="animate-spin shrink-0" />
+          {r.statusLoading}
+        </p>
+      ) : status.total === 0 ? (
+        <p className="flex items-center gap-2 text-sm text-[color:var(--muted)]">
+          <Clock size={15} className="shrink-0" />
+          {r.statusNone}
+        </p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+          <span className="flex items-center gap-1.5 font-semibold text-[color:var(--ink)]">
+            <CheckCircle size={15} className="shrink-0 text-[color:var(--success)]" />
+            {r.statusSent(status.total)}
+          </span>
+          {status.approved.length > 0 && (
+            <span className="text-[color:var(--muted)]">{r.statusApproved(status.approved.length)}</span>
+          )}
+        </div>
+      )}
+
+      {hasRejected && (
+        <button
+          type="button"
+          onClick={onOpenReports}
+          className="w-full text-left rounded-2xl border border-[var(--signal)]/40 bg-[var(--signal)]/10 px-4 py-3 active:scale-[0.99] transition-transform"
+        >
+          <span className="flex items-center gap-2 font-bold text-sm text-[var(--signal)]">
+            <AlertCircle size={16} className="shrink-0" />
+            {r.statusRejected(status.rejected.length)}
+          </span>
+          <span className="mt-0.5 block text-xs font-semibold text-[color:var(--ink)] underline underline-offset-2">
+            {r.statusRejectedCta}
+          </span>
+        </button>
+      )}
     </div>
   );
 }

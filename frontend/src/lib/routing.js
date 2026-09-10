@@ -14,6 +14,15 @@
  * `/` reste l'entrée historique de l'équipe montage — les favoris existants
  * continuent de fonctionner — et est réécrite en `/monteurs` au chargement
  * pour que chaque équipe ait une URL nommée à partager.
+ *
+ * L'URL porte aussi le PAYS côté journalistes : `/journalistes/ga` ouvre
+ * directement l'écran d'envoi du Gabon. C'est le seul support d'identité
+ * durable dont on dispose (pas de compte, un mot de passe partagé), et le
+ * seul qui survive à un changement de téléphone, à un navigateur privé ou à
+ * la purge de stockage que Safari applique après ~7 jours d'inactivité —
+ * précisément le rythme d'un JT hebdomadaire. Le lien se transmet par
+ * WhatsApp, s'ajoute à l'écran d'accueil, et la mémoire locale ne sert plus
+ * que de raccourci de confort.
  */
 
 export const WORKSPACES = Object.freeze({
@@ -64,6 +73,29 @@ const LEGACY_SEGMENTS = {
   },
 };
 
+// Un identifiant de pays tel que l'API l'accepte : 2 à 12 caractères,
+// minuscules, chiffres et tirets. Voir routes/countries.js côté serveur.
+const COUNTRY_ID_PATTERN = /^[a-z0-9-]{2,12}$/;
+
+// Segments qui appartiennent au routeur : ils ne peuvent jamais être lus
+// comme un identifiant de pays, même s'ils en ont la forme. Les segments
+// hérités comptent aussi, sans quoi `/journalistes/montage` deviendrait un
+// pays nommé « montage » au lieu de retomber sur l'accueil.
+const RESERVED_SEGMENTS = new Set([
+  ...Object.values(ROUTES)
+    .flat()
+    .flatMap(([, segment]) => segment.split('/')),
+  ...Object.values(LEGACY_SEGMENTS).flatMap((map) => Object.keys(map)),
+].filter(Boolean));
+
+export function isCountrySegment(segment) {
+  return (
+    typeof segment === 'string' &&
+    COUNTRY_ID_PATTERN.test(segment) &&
+    !RESERVED_SEGMENTS.has(segment)
+  );
+}
+
 export const DEFAULT_VIEW = Object.freeze({
   [WORKSPACES.REPORTER]: 'hub',
   [WORKSPACES.EDITOR]: 'dashboard',
@@ -86,8 +118,12 @@ export function defaultViewFor(workspace) {
   return DEFAULT_VIEW[workspace] || DEFAULT_VIEW[WORKSPACES.EDITOR];
 }
 
-/** URL → { workspace, view }. Toute URL inconnue retombe sur l'espace montage. */
-export function parsePath(pathname) {
+/**
+ * URL → { workspace, view, countryId }. Toute URL inconnue retombe sur
+ * l'espace montage. `countryId` vaut '' quand l'URL n'en porte pas ; c'est à
+ * l'appelant de le confronter à la liste des pays réellement existants.
+ */
+export function parsePath(pathname, search = '') {
   const segments = String(pathname || '/')
     .split('/')
     .filter(Boolean)
@@ -97,21 +133,60 @@ export function parsePath(pathname) {
     ? BASE_ALIASES.find((entry) => entry.prefixes.includes(segments[0]))
     : null;
   const workspace = alias ? alias.workspace : WORKSPACES.EDITOR;
-  const rest = (alias ? segments.slice(1) : segments).join('/');
+  const tail = alias ? segments.slice(1) : segments;
+  const rest = tail.join('/');
+  const queryCountry = countryFromSearch(search);
+
   const route = routesFor(workspace).find(([, segment]) => segment === rest);
-  if (route) return { workspace, view: route[0] };
+  if (route) return { workspace, view: route[0], countryId: queryCountry };
 
   const legacy = (LEGACY_SEGMENTS[workspace] || {})[rest];
-  return { workspace, view: legacy || defaultViewFor(workspace) };
+  if (legacy) return { workspace, view: legacy, countryId: queryCountry };
+
+  // `/journalistes/ga` : le pays vaut itinéraire. C'est le lien personnel
+  // qu'un correspondant reçoit une fois par WhatsApp et garde ensuite.
+  if (tail.length === 1 && isCountrySegment(tail[0])) {
+    return { workspace, view: 'uploader', countryId: tail[0] };
+  }
+
+  return { workspace, view: defaultViewFor(workspace), countryId: queryCountry };
 }
 
-/** { workspace, view } → URL canonique. */
-export function buildPath(workspace, view) {
+// `?pays=ga` reste accepté : c'est la forme la plus facile à coller derrière
+// une URL existante quand on aide un correspondant au téléphone.
+function countryFromSearch(search) {
+  const raw = String(search || '');
+  if (!raw) return '';
+  try {
+    const value = new URLSearchParams(raw.startsWith('?') ? raw : `?${raw}`)
+      .get('pays');
+    const clean = String(value || '').trim().toLowerCase();
+    return isCountrySegment(clean) ? clean : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * { workspace, view } → URL canonique.
+ *
+ * Côté journalistes, l'écran d'envoi d'un pays connu s'écrit `/journalistes/ga`
+ * plutôt que `/journalistes/reportage/envoi` : la barre d'adresse devient le
+ * lien personnel du correspondant, donc utilisable tel quel en favori, en
+ * raccourci d'écran d'accueil ou recollé dans WhatsApp.
+ */
+export function buildPath(workspace, view, countryId = '') {
+  const base = WORKSPACE_BASE[workspace] || WORKSPACE_BASE[WORKSPACES.EDITOR];
+  const clean = String(countryId || '').trim().toLowerCase();
+
+  if (workspace === WORKSPACES.REPORTER && view === 'uploader' && isCountrySegment(clean)) {
+    return `${base}/${clean}`;
+  }
+
   const routes = routesFor(workspace);
   const route =
     routes.find(([candidate]) => candidate === view) ||
     routes.find(([candidate]) => candidate === defaultViewFor(workspace));
-  const base = WORKSPACE_BASE[workspace] || WORKSPACE_BASE[WORKSPACES.EDITOR];
   const segment = route ? route[1] : '';
   return segment ? `${base}/${segment}` : base;
 }

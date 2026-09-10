@@ -10,7 +10,7 @@ import {
 
 describe('routing — lecture de l\'URL', () => {
   it('envoie la racine sur le studio de montage (favoris historiques)', () => {
-    expect(parsePath('/')).toEqual({ workspace: WORKSPACES.EDITOR, view: 'dashboard' });
+    expect(parsePath('/')).toEqual({ workspace: WORKSPACES.EDITOR, view: 'dashboard', countryId: '' });
   });
 
   it('ouvre l\'équipe montage sur son studio, pas sur la liste des pays', () => {
@@ -23,7 +23,7 @@ describe('routing — lecture de l\'URL', () => {
   });
 
   it('ouvre l\'accueil journalistes sur /journalistes', () => {
-    expect(parsePath('/journalistes')).toEqual({ workspace: WORKSPACES.REPORTER, view: 'hub' });
+    expect(parsePath('/journalistes')).toEqual({ workspace: WORKSPACES.REPORTER, view: 'hub', countryId: '' });
   });
 
   it('accepte les alias de lien recopiés à la main', () => {
@@ -108,5 +108,41 @@ describe('indicatif téléphonique par défaut', () => {
     expect(phoneCountryFor('mj')).toBe('FR');
     expect(phoneCountryFor('')).toBe('FR');
     expect(phoneCountryFor(undefined)).toBe('FR');
+  });
+});
+
+describe('routing — le pays porté par l\'URL', () => {
+  it('ouvre l\'écran d\'envoi du pays sur /journalistes/ga', () => {
+    expect(parsePath('/journalistes/ga')).toEqual({
+      workspace: WORKSPACES.REPORTER,
+      view: 'uploader',
+      countryId: 'ga',
+    });
+  });
+
+  it('accepte aussi ?pays=ga, plus facile à dicter au téléphone', () => {
+    expect(parsePath('/journalistes', '?pays=ga').countryId).toBe('ga');
+    expect(parsePath('/journalistes/telecharger-le-jt', '?pays=ci').countryId).toBe('ci');
+  });
+
+  it('ne confond jamais un segment de route avec un pays', () => {
+    expect(parsePath('/journalistes/reportage').view).toBe('home');
+    expect(parsePath('/journalistes/reportage').countryId).toBe('');
+    expect(parsePath('/journalistes/telecharger-le-jt').view).toBe('delivery');
+  });
+
+  it('ignore un identifiant de pays mal formé', () => {
+    expect(parsePath('/journalistes/CE-N-EST-PAS-UN-PAYS').countryId).toBe('');
+    expect(parsePath('/journalistes', '?pays=../etc/passwd').countryId).toBe('');
+  });
+
+  it('écrit le lien personnel du correspondant', () => {
+    expect(buildPath(WORKSPACES.REPORTER, 'uploader', 'ga')).toBe('/journalistes/ga');
+    expect(buildPath(WORKSPACES.REPORTER, 'uploader')).toBe('/journalistes/reportage/envoi');
+    expect(buildPath(WORKSPACES.REPORTER, 'delivery', 'ga')).toBe('/journalistes/telecharger-le-jt');
+  });
+
+  it('laisse l\'espace montage inchangé', () => {
+    expect(buildPath(WORKSPACES.EDITOR, 'uploader', 'ga')).toBe('/monteurs/reportage/envoi');
   });
 });
