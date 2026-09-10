@@ -13,6 +13,7 @@ import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
+import SujetTitleSheet from './SujetTitleSheet.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 import OfflineBanner from './OfflineBanner.jsx';
 import EmptyState from './EmptyState.jsx';
@@ -22,6 +23,7 @@ import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
 import { UPLOAD_ACCEPT } from '../lib/mediaTypes.js';
 import { reportageTone } from '../lib/branding.js';
+import { buildSections, filesForSection } from '../lib/sujets.js';
 import 'react-phone-number-input/style.css';
 
 // Charte : bleus du logo et neutres. Le texte coloré sur aplat coloré de la
@@ -45,6 +47,9 @@ export default function MobileUploaderView({
   isLoadingUploads,
   reportageCount,
   setReportageCount,
+  sujets = [],
+  onCreateSujet,
+  onRenameSujet,
   isLocked,
   extensionStatus,
   handleRequestDelay,
@@ -78,48 +83,57 @@ export default function MobileUploaderView({
   const [activeTabId, setActiveTabId] = useState('reportage-0');
   const [scriptModalOpen, setScriptModalOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [sujetSheet, setSujetSheet] = useState({ open: false, mode: 'create', id: null, titre: '' });
   const [previewScriptFile, setPreviewScriptFile] = useState(null);
   const fileInputRef = useRef(null);
 
   // Chaque section porte une phrase qui dit ce qu'on y dépose : « Annonces »
   // ou « Séminaires » seuls ne parlaient qu'à l'équipe montage.
-  const sections = [
-    ...Array.from({ length: reportageCount }, (_, i) => ({
-      id: `reportage-${i}`,
-      name: t.uploader.reportageName(i + 1),
-      shortName: t.uploader.reportageName(i + 1),
-      badge: `${i + 1}`,
-      tone: reportageTone(i),
-      hint: t.uploader.sectionHintReportage,
-      isFirst: i === 0,
-    })),
-    {
-      id: 'annonces',
-      name: 'Annonces',
-      shortName: 'Annonces',
-      badge: 'A',
-      hint: t.uploader.sectionHintAnnonces,
-      isFirst: false,
-    },
-    {
-      id: 'seminaires',
-      name: 'Séminaires de la semaine',
-      shortName: 'Séminaires',
-      badge: 'S',
-      hint: t.uploader.sectionHintSeminaires,
-      isFirst: false,
-    },
-  ];
+  const sections = buildSections(sujets, uploads, {
+    reportageName: t.uploader.reportageName,
+    extras: [
+      {
+        id: 'annonces',
+        sujetId: null,
+        name: 'Annonces',
+        badge: 'A',
+        isFirst: false,
+      },
+      {
+        id: 'seminaires',
+        sujetId: null,
+        name: 'Séminaires de la semaine',
+        badge: 'S',
+        isFirst: false,
+      },
+    ],
+  }).map((section, i) => ({
+    ...section,
+    // Un titre de sujet peut être long : l'onglet en montre le début, la
+    // carte de section le donne en entier.
+    shortName: section.sujetId ? section.name : (section.id === 'seminaires' ? 'Séminaires' : section.name),
+    badge: section.sujetId ? `${i + 1}` : section.badge,
+    tone: section.sujetId ? reportageTone(i) : undefined,
+    hint: section.sujetId
+      ? t.uploader.sectionHintReportage
+      : section.id === 'annonces'
+        ? t.uploader.sectionHintAnnonces
+        : t.uploader.sectionHintSeminaires,
+  }));
+
+  const nbSujets = sections.filter((sec) => sec.sujetId).length;
 
   // Find active section
   const currentSection = sections.find((s) => s.id === activeTabId) || sections[0];
   const activeReportageName = currentSection.name;
 
   // Active section uploads & active section uploading items
-  const activeUploads = uploads.filter(
-    (u) => u.reportage === activeReportageName || (!u.reportage && currentSection.isFirst)
-  );
-  const activeUploading = uploading.filter((u) => u.reportage === activeReportageName);
+  const activeUploads = filesForSection(uploads, currentSection);
+  // Un envoi en cours porte son sujet ; on retombe sur le nom de section pour
+  // les rubriques fixes, qui n'en ont pas.
+  const activeUploading = uploading.filter((u) => (
+    currentSection.sujetId ? u.sujetId === currentSection.sujetId : u.reportage === activeReportageName
+  ));
 
   const handleTriggerFileInput = () => {
     if (isLocked) {
@@ -130,7 +144,7 @@ export default function MobileUploaderView({
   };
 
   const handleScriptModalSubmit = async () => {
-    await handleScriptSubmit(activeReportageName);
+    await handleScriptSubmit(activeReportageName, currentSection.sujetId);
     setScriptModalOpen(false);
   };
 
@@ -361,19 +375,19 @@ export default function MobileUploaderView({
                 puce au bout de la rangée, l'action passait inaperçue alors
                 que beaucoup de correspondants couvrent plusieurs sujets. */}
             <div className="pt-1">
-              {reportageCount < 5 ? (
+              {nbSujets < 5 ? (
                 <button
-                  // On part du nombre AFFICHÉ, pas du choix mémorisé : celui-ci peut être
-                  // plus bas quand des envois révèlent des sections déjà ouvertes,
-                  // et l'incrémenter n'aurait alors rien changé à l'écran.
-                  onClick={() => setReportageCount(Math.min(5, reportageCount + 1))}
+                  // Un sujet naît avec son titre. Le compteur anonyme
+                  // « Reportage 2 » ne disait rien à la rédaction, qui devait
+                  // rouvrir les fichiers pour savoir de quoi il s'agissait.
+                  onClick={() => setSujetSheet({ open: true, mode: 'create', id: null, titre: '' })}
                   type="button"
                   className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-[color:var(--action)]/45 bg-[var(--action)]/5 text-[color:var(--action-deep)] font-bold text-sm active:scale-[0.98] transition-transform"
                 >
                   <Plus size={18} className="shrink-0" />
                   <span className="truncate">{t.uploader.addReportage}</span>
                   <span className="shrink-0 rounded-full bg-[var(--action)]/12 px-2 py-0.5 text-[11px] font-bold">
-                    {reportageCount}
+                    {nbSujets}
                   </span>
                 </button>
               ) : (
@@ -432,7 +446,7 @@ export default function MobileUploaderView({
                 disabled={isLocked}
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
-                    handleFiles(e.target.files, activeReportageName);
+                    handleFiles(e.target.files, activeReportageName, currentSection.sujetId);
                     e.target.value = '';
                   }
                 }}
@@ -743,6 +757,23 @@ export default function MobileUploaderView({
 
       {/* 9. TUTORIAL 5W1H BOTTOM SHEET / MODAL */}
       <Tutorial5W1H isOpen={tutorialOpen} onClose={() => setTutorialOpen(false)} />
+
+      <SujetTitleSheet
+        isOpen={sujetSheet.open}
+        mode={sujetSheet.mode}
+        initialValue={sujetSheet.titre}
+        onClose={() => setSujetSheet((prev) => ({ ...prev, open: false }))}
+        onSubmit={async (titre) => {
+          if (sujetSheet.mode === 'rename' && sujetSheet.id) {
+            await onRenameSujet?.(sujetSheet.id, titre);
+            return;
+          }
+          const cree = await onCreateSujet?.(titre);
+          // On bascule sur le sujet qu'on vient d'ouvrir : c'est là qu'on
+          // va déposer, sinon il faut le chercher dans la rangée.
+          if (cree?.id) setActiveTabId(cree.id);
+        }}
+      />
     </div>
   );
 }

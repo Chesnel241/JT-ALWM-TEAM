@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   UploadCloud, Folder, FileText, Video,
   CheckCircle, Clock, ChevronRight, ChevronDown, Trash2, AlertCircle, RotateCcw,
@@ -11,6 +11,7 @@ import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import { sectionsFromUploads } from '../lib/mediaTypes.js';
+import { buildSections, filesForSection } from '../lib/sujets.js';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import PhoneInput from 'react-phone-number-input';
@@ -44,6 +45,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const defaultPhoneCountry = phoneCountryFor(country.id);
   const { addToast } = useToast();
   const [uploads, setUploads] = useState([]);
+  // Sujets de la semaine pour ce pays, servis par le serveur.
+  const [sujets, setSujets] = useState([]);
   const [uploading, setUploading] = useState([]);
   // Envois laissés en suspens par une session précédente (4G coupée, onglet
   // fermé, téléphone en veille). Le fichier n'est pas conservé — seul son
@@ -63,6 +66,17 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   // correspondant qui avait ouvert trois reportages les retrouve après un
   // rechargement, sans avoir à toucher au sélecteur.
   const reportageCount = Math.max(1, chosenReportageCount, sectionsFromUploads(uploads));
+
+  // Rubriques fixes du JT : elles n'appartiennent à personne et ne sont pas
+  // des sujets de correspondant.
+  const RUBRIQUES = [
+    { id: 'annonces', sujetId: null, name: 'Annonces', badge: 'A', isFirst: false },
+    { id: 'seminaires', sujetId: null, name: 'Séminaires de la semaine', badge: 'S', isFirst: false },
+  ];
+  const sections = buildSections(sujets, uploads, {
+    reportageName: t.uploader.reportageName,
+    extras: RUBRIQUES,
+  });
   const [scriptText, setScriptText] = useState({});
   const [dragActive, setDragActive] = useState({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -100,15 +114,51 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     setIsLoadingUploads(true);
     Promise.all([
       api.getUploads(selectedWeek, country.id),
-      api.getDelays(selectedWeek).catch(() => null)
+      api.getDelays(selectedWeek).catch(() => null),
+      api.getSujets(selectedWeek, country.id).catch(() => []),
     ])
-      .then(([ups, dls]) => {
+      .then(([ups, dls, suj]) => {
         setUploads(ups);
         if (dls) setDelaysData(dls);
+        setSujets(Array.isArray(suj) ? suj : []);
       })
       .catch(console.error)
       .finally(() => setIsLoadingUploads(false));
   }, [selectedWeek, country.id]);
+
+  const refreshSujets = useCallback(() => {
+    if (!selectedWeek) return Promise.resolve();
+    return api.getSujets(selectedWeek, country.id)
+      .then((suj) => setSujets(Array.isArray(suj) ? suj : []))
+      .catch(() => {});
+  }, [selectedWeek, country.id]);
+
+  /** Ouvre un sujet nommé. Le titre est ce que la rédaction verra. */
+  const handleCreateSujet = useCallback(async (titre) => {
+    const propre = String(titre || '').trim();
+    if (!propre) return null;
+    try {
+      const sujet = await api.createSujet(selectedWeek, country.id, propre);
+      setSujets((prev) => [...prev, sujet]);
+      return sujet;
+    } catch (err) {
+      addToast(err.message || t.uploader.errorPrefix, 'error', 4000);
+      return null;
+    }
+  }, [selectedWeek, country.id, addToast, t.uploader.errorPrefix]);
+
+  const handleRenameSujet = useCallback(async (sujetId, titre) => {
+    const propre = String(titre || '').trim();
+    if (!propre) return;
+    // Optimiste : renommer doit se voir tout de suite, c'est une frappe.
+    setSujets((prev) => prev.map((s) => (s.id === sujetId ? { ...s, titre: propre } : s)));
+    try {
+      await api.renameSujet(selectedWeek, country.id, sujetId, propre);
+    } catch (err) {
+      addToast(err.message || t.uploader.errorPrefix, 'error', 4000);
+      refreshSujets();
+    }
+  }, [selectedWeek, country.id, addToast, t.uploader.errorPrefix, refreshSujets]);
 
   useEffect(() => {
     setPendingUploads(listPendingUploads(selectedWeek, country.id));
@@ -122,7 +172,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     if (!queued.length) return;
     addToast(t.uploader.offlineResumed(queued.length), 'success', 3000);
     for (const item of queued) {
-      startUpload(item.file, item.reportage, item.tempId);
+      startUpload(item.file, item.reportage, item.tempId, item.sujetId);
     }
     // startUpload est stable en pratique (il ne dépend que de refs et de
     // setters) ; le relister rejouerait la file à chaque rendu.
@@ -173,19 +223,19 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   // envoyé : plusieurs minutes d'attente, de la batterie et de la chauffe sur
   // un appareil d'entrée de gamme, pour un résultat que le serveur sait
   // produire lui-même en arrière-plan une fois le fichier reçu.
-  const handleFiles = async (filesList, reportageName) => {
+  const handleFiles = async (filesList, reportageName, sujetId = null) => {
     for (const file of Array.from(filesList)) {
-      startUpload(file, reportageName);
+      startUpload(file, reportageName, undefined, sujetId);
     }
   };
 
   // Un envoi = un identifiant temporaire. Le fichier lui-même est gardé en
   // mémoire le temps de la session pour que « réessayer » ne renvoie pas la
   // personne dans le sélecteur de fichiers de son téléphone.
-  const startUpload = (file, reportageName, existingTempId) => {
+  const startUpload = (file, reportageName, existingTempId, sujetId = null) => {
     const tempId = existingTempId || Math.random().toString(36).slice(2);
     const isVideo = /\.(mp4|mov|webm)$/i.test(file.name) || file.type.startsWith('video/');
-    filesByUploadRef.current.set(tempId, { file, reportage: reportageName });
+    filesByUploadRef.current.set(tempId, { file, reportage: reportageName, sujetId });
     rememberUpload({ weekId: selectedWeek, countryId: country.id, reportage: reportageName, file });
     setPendingUploads(listPendingUploads(selectedWeek, country.id));
 
@@ -202,6 +252,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         phase: offline ? 'queued' : 'uploading',
         isVideo,
         reportage: reportageName,
+        sujetId,
       };
       return prev.some((f) => f.id === tempId)
         ? prev.map((f) => (f.id === tempId ? entry : f))
@@ -210,7 +261,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
     if (offline) {
       if (!offlineQueueRef.current.some((q) => q.tempId === tempId)) {
-        offlineQueueRef.current.push({ tempId, file, reportage: reportageName });
+        offlineQueueRef.current.push({ tempId, file, reportage: reportageName, sujetId });
       }
       return;
     }
@@ -220,6 +271,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       api
         .uploadFile(selectedWeek, country.id, uploadFile, {
           reportage: reportageName,
+          sujetId,
           onProgress: (pct) => {
             setUploading((prev) =>
               prev.map((f) =>
@@ -263,7 +315,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               )
             );
             if (!offlineQueueRef.current.some((q) => q.tempId === tempId)) {
-              offlineQueueRef.current.push({ tempId, file: uploadFile, reportage: reportageName });
+              offlineQueueRef.current.push({ tempId, file: uploadFile, reportage: reportageName, sujetId });
             }
             return;
           }
@@ -284,7 +336,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const handleRetryUpload = (tempId) => {
     const kept = filesByUploadRef.current.get(tempId);
     if (!kept) return;
-    startUpload(kept.file, kept.reportage, tempId);
+    startUpload(kept.file, kept.reportage, tempId, kept.sujetId);
   };
 
   /** Reprend un envoi laissé en suspens : la personne redésigne le fichier. */
@@ -307,11 +359,11 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     setDragActive((prev) => ({ ...prev, [reportageName]: e.type === 'dragenter' || e.type === 'dragover' }));
   };
 
-  const handleDrop = (e, reportageName) => {
+  const handleDrop = (e, reportageName, sujetId = null) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive((prev) => ({ ...prev, [reportageName]: false }));
-    if (e.dataTransfer.files?.[0]) handleFiles(e.dataTransfer.files, reportageName);
+    if (e.dataTransfer.files?.[0]) handleFiles(e.dataTransfer.files, reportageName, sujetId);
   };
 
   const handleRequestDelay = async () => {
@@ -331,12 +383,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     }
   };
 
-  const handleScriptSubmit = async (reportageName) => {
+  const handleScriptSubmit = async (reportageName, sujetId = null) => {
     const text = scriptText[reportageName] || '';
     if (!text.trim()) return;
     setSubmittingScripts(prev => ({ ...prev, [reportageName]: true }));
     try {
-      const result = await api.submitScript(selectedWeek, country.id, text, reportageName);
+      const result = await api.submitScript(selectedWeek, country.id, text, reportageName, sujetId);
       setUploads((prev) => [...prev, result]);
       setScriptText((prev) => ({ ...prev, [reportageName]: '' }));
       addToast(t.uploader.scriptSuccess, 'success', 3000);
@@ -408,6 +460,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           isLoadingUploads={isLoadingUploads}
           reportageCount={reportageCount}
           setReportageCount={setChosenReportageCount}
+          sujets={sujets}
+          onCreateSujet={handleCreateSujet}
+          onRenameSujet={handleRenameSujet}
           isLocked={isLocked}
           extensionStatus={extensionStatus}
           handleRequestDelay={handleRequestDelay}
@@ -609,29 +664,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             </select>
           </div>
 
-      {[
-        ...[...Array(reportageCount)].map((_, i) => ({
-          id: `reportage-${i}`,
-          name: t.uploader.reportageName(i + 1),
-          badge: i + 1,
-          isFirst: i === 0,
-        })),
-        {
-          id: 'annonces',
-          name: 'Annonces',
-          badge: 'A',
-          isFirst: false,
-        },
-        {
-          id: 'seminaires',
-          name: 'Séminaires de la semaine',
-          badge: 'S',
-          isFirst: false,
-        }
-      ].map((section, i) => {
+      {sections.map((section, i) => {
         const reportageName = section.name;
-        const repUploads = uploads.filter(u => u.reportage === reportageName || (!u.reportage && section.isFirst));
-        const repUploading = uploading.filter(u => u.reportage === reportageName);
+        const repUploads = filesForSection(uploads, section);
+        const repUploading = uploading.filter(u => (
+          section.sujetId ? u.sujetId === section.sujetId : u.reportage === reportageName
+        ));
         const isDragActive = dragActive[reportageName];
 
         return (
@@ -693,7 +731,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   onDragEnter={(e) => !isLocked && handleDrag(e, reportageName)}
                   onDragLeave={(e) => !isLocked && handleDrag(e, reportageName)}
                   onDragOver={(e) => !isLocked && handleDrag(e, reportageName)}
-                  onDrop={(e) => !isLocked && handleDrop(e, reportageName)}
+                  onDrop={(e) => !isLocked && handleDrop(e, reportageName, section.sujetId)}
                   aria-disabled={isLocked}
                 >
                   <UploadCloud className={`mx-auto h-14 w-14 mb-4 transition-transform duration-200 ${
@@ -713,7 +751,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                         className="hidden"
                         multiple
                         disabled={isLocked}
-                        onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName)}
+                        onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName, section.sujetId)}
                       />
                     </label>
                     <label className={`btn btn-primary w-full sm:w-auto text-center active:scale-[0.98] ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
@@ -725,7 +763,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                         webkitdirectory="true"
                         directory="true"
                         disabled={isLocked}
-                        onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName)}
+                        onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName, section.sujetId)}
                       />
                     </label>
                   </div>
@@ -807,7 +845,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   />
                   <div className="flex justify-end">
                     <button
-                      onClick={() => handleScriptSubmit(reportageName)}
+                      onClick={() => handleScriptSubmit(reportageName, section.sujetId)}
                       disabled={isLocked || !(scriptText[reportageName] || '').trim() || submittingScripts[reportageName]}
                       type="button"
                       className="btn btn-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"

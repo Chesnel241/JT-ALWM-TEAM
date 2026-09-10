@@ -9,9 +9,14 @@ const MOCK_WEEKS = [
   { id: '2026-W34', status: 'active', startDate: '2026-08-18' },
   { id: '2026-W33', status: 'archived', startDate: '2026-08-11' },
 ];
+const MOCK_SUJETS = [
+  { id: 's1', titre: 'Marché de Libreville', etat: 'recu', nbPieces: 2 },
+  { id: 's2', titre: 'Rentrée scolaire', etat: 'attendu', nbPieces: 0 },
+];
+
 const MOCK_UPLOADS = [
-  { id: 'file-1', name: 'interview_gabon.mp4', type: 'video', size: '12.4 MB', reportage: 'Reportage 1', status: 'approved' },
-  { id: 'file-2', name: 'script_gabon.txt', type: 'script', size: '1.2 KB', reportage: 'Reportage 1', status: 'pending', content: 'Texte du script' }
+  { id: 'file-1', name: 'interview_gabon.mp4', type: 'video', size: '12.4 MB', sujetId: 's1', status: 'approved' },
+  { id: 'file-2', name: 'script_gabon.txt', type: 'script', size: '1.2 KB', sujetId: 's1', status: 'pending', content: 'Texte du script' }
 ];
 
 function renderMobileUploader(props = {}) {
@@ -26,6 +31,9 @@ function renderMobileUploader(props = {}) {
     setUploading: vi.fn(),
     isLoadingUploads: false,
     reportageCount: 2,
+    sujets: MOCK_SUJETS,
+    onCreateSujet: vi.fn(),
+    onRenameSujet: vi.fn(),
     setReportageCount: vi.fn(),
     isLocked: false,
     extensionStatus: null,
@@ -79,8 +87,8 @@ describe('MobileUploaderView', () => {
 
   it('renders reportage tabs and allows switching active tab', () => {
     renderMobileUploader();
-    const tab1 = sectionTab('Reportage 1');
-    const tab2 = sectionTab('Reportage 2');
+    const tab1 = sectionTab('Marché de Libreville');
+    const tab2 = sectionTab('Rentrée scolaire');
     expect(tab1).toBeInTheDocument();
     expect(tab2).toBeInTheDocument();
 
@@ -103,7 +111,7 @@ describe('MobileUploaderView', () => {
     renderMobileUploader();
     const scriptBtn = screen.getByText('Écrire le script').closest('button');
     fireEvent.click(scriptBtn);
-    expect(screen.getByText(/Script : Reportage 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Script : Marché de Libreville/i)).toBeInTheDocument();
     expect(screen.getByText(/Enregistrer le script/i)).toBeInTheDocument();
   });
 
@@ -133,7 +141,7 @@ describe('MobileUploaderView — repères ajoutés', () => {
 
   it('n\'accuse pas réception pendant un envoi en cours', () => {
     renderMobileUploader({
-      uploading: [{ id: 'u1', name: 'a.mp4', progress: 40, phase: 'uploading', reportage: 'Reportage 1' }],
+      uploading: [{ id: 'u1', name: 'a.mp4', progress: 40, phase: 'uploading', sujetId: 's1' }],
     });
     expect(screen.queryByText('2 fichiers bien reçus')).not.toBeInTheDocument();
     expect(screen.getByText(/Gardez cette page ouverte/i)).toBeInTheDocument();
@@ -155,23 +163,36 @@ describe('MobileUploaderView — repères ajoutés', () => {
   });
 
   it('donne une teinte propre à chaque reportage', () => {
-    renderMobileUploader({ reportageCount: 3 });
-    const tabs = ['Reportage 1', 'Reportage 2', 'Reportage 3'].map(sectionTab);
+    renderMobileUploader({
+      sujets: [...MOCK_SUJETS, { id: 's3', titre: 'Le pont', etat: 'attendu', nbPieces: 0 }],
+    });
+    const tabs = ['Marché de Libreville', 'Rentrée scolaire', 'Le pont'].map(sectionTab);
     // La pastille de chaque onglet porte une couleur de fond distincte.
     const fills = tabs.map((tab) => tab.querySelector('span')?.getAttribute('style') || tab.getAttribute('style') || '');
     expect(new Set(fills).size).toBe(3);
   });
 
   it('annonce le nombre de reportages en cours', () => {
-    renderMobileUploader({ reportageCount: 2 });
+    renderMobileUploader();
     const addBtn = screen.getByText('Ajouter un reportage').closest('button');
     expect(addBtn).toHaveTextContent('2');
   });
 
-  it('laisse le journaliste ajouter un reportage', () => {
-    const setReportageCount = vi.fn();
-    renderMobileUploader({ setReportageCount });
+  it('demande un titre avant d\'ouvrir un nouveau sujet', () => {
+    // Le compteur anonyme « Reportage 2 » ne disait rien à la redaction :
+    // un sujet naît maintenant avec son titre.
+    renderMobileUploader();
     fireEvent.click(screen.getByText('Ajouter un reportage'));
-    expect(setReportageCount).toHaveBeenCalled();
+    expect(screen.getByText(/De quoi parle votre sujet/i)).toBeInTheDocument();
+  });
+
+  it('retombe sur les sections numérotées quand le serveur n\'a pas de sujets', () => {
+    // Première visite ou API injoignable : l'écran reste utilisable.
+    renderMobileUploader({
+      sujets: [],
+      uploads: [{ id: 'x', name: 'a.mp4', type: 'video', reportage: 'Reportage 2', status: 'pending' }],
+    });
+    expect(sectionTab('Reportage 1')).toBeTruthy();
+    expect(sectionTab('Reportage 2')).toBeTruthy();
   });
 });

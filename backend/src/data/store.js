@@ -1,4 +1,5 @@
 import { existsSync } from 'fs';
+import { randomUUID } from 'crypto';
 import { readFile, writeFile, unlink, readdir, rename, mkdir, stat } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -100,6 +101,88 @@ export async function initDb() {
       persistDb();
     }
   }
+
+  migrateSujets();
+}
+
+/**
+ * Crée un sujet par étiquette de reportage rencontrée, et rattache les
+ * fichiers existants.
+ *
+ * Sans perte : un fichier sans étiquette rejoint le premier sujet du pays,
+ * exactement comme l'affichage le faisait déjà en balayant les envois
+ * antérieurs au découpage vers la section 1. Idempotent — un fichier qui a
+ * déjà son `sujetId` n'est pas retouché — donc rejouable à chaque démarrage.
+ */
+function migrateSujets() {
+  let touched = 0;
+
+  for (const weekId of Object.keys(db)) {
+    if (META_KEYS.has(weekId)) continue;
+    const week = db[weekId];
+    if (!week || typeof week !== 'object') continue;
+
+    for (const countryId of Object.keys(week)) {
+      if (RESERVED_WEEK_KEYS.has(countryId) || countryId === '_subscriptions' || countryId === '_extensions') continue;
+      const files = week[countryId];
+      if (!Array.isArray(files) || files.length === 0) continue;
+      if (files.every((f) => f?.sujetId)) continue;
+
+      const store = sujetsOf(weekId);
+      // Un sujet par étiquette distincte, dans l'ordre où elles apparaissent.
+      const parLabel = new Map();
+      for (const [id, sujet] of Object.entries(store)) {
+        if (sujet.countryId === countryId && sujet.titre) parLabel.set(sujet.titre, id);
+      }
+
+      const ensure = (titre) => {
+        if (parLabel.has(titre)) return parLabel.get(titre);
+        const sujet = {
+          id: randomUUID(),
+          weekId,
+          countryId,
+          titre,
+          auteur: '',
+          etat: ETATS_SUJET.RECU,
+          creeLe: new Date().toISOString(),
+        };
+        store[sujet.id] = sujet;
+        parLabel.set(titre, sujet.id);
+        return sujet.id;
+      };
+
+      // Premier passage : les fichiers étiquetés fixent l'ordre des sujets.
+      for (const file of files) {
+        if (!file || file.sujetId) continue;
+        const label = String(file.reportage || '').trim();
+        if (label) file.sujetId = ensure(label);
+      }
+
+      // Second passage : les fichiers sans étiquette rejoignent le premier
+      // sujet du pays, celui qui les affichait déjà.
+      const premier = getSujets(weekId, countryId)[0];
+      const repli = premier ? premier.id : null;
+      for (const file of files) {
+        if (!file || file.sujetId) continue;
+        file.sujetId = repli || ensure('Reportage 1');
+      }
+
+      for (const file of files) {
+        if (file?.sujetId) touched++;
+      }
+
+      // L'état de chaque sujet découle des fichiers déjà reçus.
+      for (const sujet of Object.values(store)) {
+        if (sujet.countryId !== countryId) continue;
+        sujet.etat = etatDeduit(files.filter((f) => f?.sujetId === sujet.id));
+      }
+    }
+  }
+
+  if (touched) {
+    logger.info('Sujets créés depuis les étiquettes de reportage', { context: { fichiers: touched } });
+    persistDb();
+  }
 }
 
 // Écriture atomique : tmp file + rename. Évite la corruption du JSON
@@ -198,7 +281,117 @@ export async function flushStore() {
 // Clés réservées d'une entrée de semaine (`db[weekId][...]`) qui ne sont
 // pas des correspondants. `_delivery` = montage final ("JT Prêt"),
 // `_timeline` = projet de montage partagé entre les postes de travail.
-const RESERVED_WEEK_KEYS = new Set(['_delivery', '_timeline']);
+const RESERVED_WEEK_KEYS = new Set(['_delivery', '_timeline', '_sujets']);
+
+// --------------------------------------------------------------------------
+// SUJETS
+// --------------------------------------------------------------------------
+
+/**
+ * Un sujet est l'unité de travail éditoriale : un reportage avec un titre,
+ * un auteur et un état. Avant, « Reportage 2 » n'était qu'une étiquette texte
+ * posée sur chaque fichier, et le rattachement se faisait par égalité de
+ * chaîne — une faute de frappe ou un changement de langue suffisait à séparer
+ * en deux ce qui était un seul reportage. La rédaction recevait des noms de
+ * fichiers à réinterpréter plutôt qu'un objet qui a un sens.
+ *
+ * Les sujets vivent dans `db[weekId]._sujets`, à côté des pays, plutôt que
+ * dans la liste des fichiers : `getWeekUploads` écarte déjà les clés
+ * réservées, donc tout ce qui lit les envois aujourd'hui continue de
+ * fonctionner sans rien savoir des sujets.
+ */
+
+export const ETATS_SUJET = Object.freeze({
+  ATTENDU: 'attendu',
+  RECU: 'recu',
+  A_CORRIGER: 'a_corriger',
+  VALIDE: 'valide',
+  AU_CONDUCTEUR: 'au_conducteur',
+});
+
+const ETATS_VALIDES = new Set(Object.values(ETATS_SUJET));
+
+export function isEtatSujet(value) {
+  return ETATS_VALIDES.has(String(value || '').trim());
+}
+
+function sujetsOf(weekId) {
+  if (!db[weekId]) db[weekId] = {};
+  if (!db[weekId]._sujets || typeof db[weekId]._sujets !== 'object' || Array.isArray(db[weekId]._sujets)) {
+    db[weekId]._sujets = {};
+  }
+  return db[weekId]._sujets;
+}
+
+/** Sujets d'une semaine, éventuellement filtrés sur un pays. */
+export function getSujets(weekId, countryId) {
+  const all = Object.values(db[weekId]?._sujets || {});
+  const list = countryId ? all.filter((s) => s.countryId === countryId) : all;
+  // Ordre d'apparition : c'est celui dans lequel le correspondant les a créés,
+  // et celui que la rédaction lit ensuite.
+  return list
+    .slice()
+    .sort((a, b) => String(a.creeLe || '').localeCompare(String(b.creeLe || '')))
+    .map((s) => ({ ...s }));
+}
+
+export function getSujet(weekId, sujetId) {
+  const found = db[weekId]?._sujets?.[sujetId];
+  return found ? { ...found } : null;
+}
+
+export function createSujet(weekId, countryId, { titre = '', auteur = '' } = {}) {
+  const store = sujetsOf(weekId);
+  const sujet = {
+    id: randomUUID(),
+    weekId,
+    countryId,
+    titre: String(titre || '').trim(),
+    auteur: String(auteur || '').trim(),
+    etat: ETATS_SUJET.ATTENDU,
+    creeLe: new Date().toISOString(),
+  };
+  store[sujet.id] = sujet;
+  persistDb();
+  return { ...sujet };
+}
+
+/** Renomme un sujet. Le titre est ce que la rédaction voit. */
+export function renameSujet(weekId, sujetId, titre) {
+  const sujet = db[weekId]?._sujets?.[sujetId];
+  if (!sujet) return null;
+  sujet.titre = String(titre || '').trim();
+  persistDb();
+  return { ...sujet };
+}
+
+export function updateSujetEtat(weekId, sujetId, etat) {
+  const sujet = db[weekId]?._sujets?.[sujetId];
+  if (!sujet || !isEtatSujet(etat)) return null;
+  sujet.etat = etat;
+  persistDb();
+  return { ...sujet };
+}
+
+export function deleteSujet(weekId, sujetId) {
+  const store = db[weekId]?._sujets;
+  if (!store?.[sujetId]) return false;
+  delete store[sujetId];
+  persistDb();
+  return true;
+}
+
+/**
+ * État déduit des fichiers reçus, quand personne ne l'a fixé à la main.
+ * Un rush refusé prime : c'est la seule information qui appelle une action.
+ */
+export function etatDeduit(files) {
+  const list = Array.isArray(files) ? files : [];
+  if (list.length === 0) return ETATS_SUJET.ATTENDU;
+  if (list.some((f) => f?.status === 'rejected')) return ETATS_SUJET.A_CORRIGER;
+  if (list.every((f) => f?.status === 'approved')) return ETATS_SUJET.VALIDE;
+  return ETATS_SUJET.RECU;
+}
 
 export function getWeekUploads(weekId) {
   const week = db[weekId];

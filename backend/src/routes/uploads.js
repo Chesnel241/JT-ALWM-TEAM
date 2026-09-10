@@ -315,6 +315,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
 
 
     const reportage = req.query.reportage || null;
+    const sujetId = req.query.sujetId || null;
 
     let finalSize = file.size;
 
@@ -330,6 +331,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
       // (Avant: 'completed' → l'UI l'affichait à tort comme "Rejeté".)
       status: 'pending',
       reportage,
+      sujetId,
       uploadedAt: new Date().toISOString(),
     };
 
@@ -420,7 +422,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
 // POST /api/uploads/:weekId/:countryId/script — saisie manuelle de script
 router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
-  const { content, reportage } = req.body;
+  const { content, reportage, sujetId } = req.body;
 
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
     logger.warn('Script upload attempt with invalid week or country', {
@@ -472,6 +474,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
     content,
     filename,
     reportage: reportage || null,
+    sujetId: sujetId || null,
     uploadedAt: new Date().toISOString(),
   };
 

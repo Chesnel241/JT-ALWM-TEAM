@@ -173,6 +173,37 @@ export const api = {
     }),
   getWeeks: () => request('/weeks'),
 
+  // === Sujets ===
+  // Un sujet est l'unité de travail : un titre, un auteur, un état. Les
+  // fichiers s'y rattachent par `sujetId` au lieu d'une étiquette texte.
+  getSujets: (weekId, countryId) =>
+    request(countryId ? `/sujets/${weekId}/${countryId}` : `/sujets/${weekId}`),
+
+  createSujet: (weekId, countryId, titre) =>
+    request(`/sujets/${weekId}/${countryId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titre }),
+    }),
+
+  renameSujet: (weekId, countryId, sujetId, titre) =>
+    request(`/sujets/${weekId}/${countryId}/${sujetId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titre }),
+    }),
+
+  setSujetEtat: (weekId, countryId, sujetId, etat, adminPassword) =>
+    request(`/sujets/${weekId}/${countryId}/${sujetId}/etat`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ etat }),
+    }),
+
+  deleteSujet: (weekId, countryId, sujetId) =>
+    request(`/sujets/${weekId}/${countryId}/${sujetId}`, { method: 'DELETE' }),
+
   getUploads: (weekId, countryId) =>
     request(`/uploads/${weekId}/${countryId}`),
 
@@ -203,7 +234,7 @@ export const api = {
   getSubscriptions: (weekId, adminPassword) =>
     request(`/notifications/${weekId}`, { adminPassword }),
 
-  uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, adminPassword } = {}) => {
+  uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, sujetId, adminPassword } = {}) => {
     const { Upload } = await import('tus-js-client');
     const token = localStorage.getItem('app-password');
     
@@ -222,6 +253,7 @@ export const api = {
           weekId,
           countryId,
           reportage: reportage || '',
+          sujetId: sujetId || '',
           adminPassword: adminPassword || token || ''
         },
         onError: function (error) {
@@ -261,11 +293,11 @@ export const api = {
     });
   },
 
-  submitScript: (weekId, countryId, content, reportage) =>
+  submitScript: (weekId, countryId, content, reportage, sujetId) =>
     request(`/uploads/${weekId}/${countryId}/script`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, reportage }),
+      body: JSON.stringify({ content, reportage, sujetId }),
     }),
 
   deleteFile: (weekId, countryId, fileId, adminPassword) =>

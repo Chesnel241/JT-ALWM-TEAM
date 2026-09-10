@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import countriesRouter from './routes/countries.js';
 import weeksRouter from './routes/weeks.js';
+import sujetsRouter from './routes/sujets.js';
 import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
 import notificationsRouter from './routes/notifications.js';
@@ -314,6 +315,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api', requireAuth);
   app.use('/api/countries', countriesRouter);
   app.use('/api/weeks', weeksRouter);
+  app.use('/api/sujets', sujetsRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/themes', themesRouter);
