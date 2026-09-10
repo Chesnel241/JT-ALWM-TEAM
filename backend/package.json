@@ -34,5 +34,8 @@
   "devDependencies": {
     "supertest": "^7.0.0",
     "vitest": "^4.1.9"
+  },
+  "overrides": {
+    "qs": ">=6.16.0"
   }
 }

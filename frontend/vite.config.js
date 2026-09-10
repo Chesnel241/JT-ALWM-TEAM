@@ -71,9 +71,16 @@ export default defineConfig({
     })
   ],
   resolve: {
+    // Les compositions Remotion vivent dans /remotion, hors de la racine du
+    // frontend et sans node_modules à elles : leurs imports doivent être
+    // résolus explicitement contre les dépendances de l'application. React et
+    // react-dom ont rejoint la liste parce que le nouveau moteur de bundling
+    // (rolldown, depuis Vite 8) ne remonte plus l'arborescence pour eux.
     alias: {
       'remotion': path.resolve(__dirname, 'node_modules/remotion'),
       '@remotion/transitions': path.resolve(__dirname, 'node_modules/@remotion/transitions'),
+      'react': path.resolve(__dirname, 'node_modules/react'),
+      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
     }
   },
   server: {
