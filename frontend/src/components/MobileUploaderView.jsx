@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import {
   UploadCloud, FileText, Video, Mic, CheckCircle,
   Clock, ChevronRight, Trash2, AlertCircle, Plus,
-  HelpCircle, X, ArrowLeft, Send, MessageCircle, Image as ImageIcon
+  HelpCircle, X, ArrowLeft, Send, MessageCircle, Image as ImageIcon, RotateCcw
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -12,6 +12,7 @@ import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import Tutorial5W1H from './Tutorial5W1H.jsx';
+import PendingUploadsCard from './PendingUploadsCard.jsx';
 import PhoneInput from 'react-phone-number-input';
 import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
@@ -58,7 +59,11 @@ export default function MobileUploaderView({
   isSubscribing,
   onBack,
   scriptText,
-  setScriptText
+  setScriptText,
+  pendingUploads = [],
+  onResumeUpload,
+  onDismissPending,
+  onRetryUpload,
 }) {
   const { t, lang } = useI18n();
   const { addToast } = useToast();
@@ -190,6 +195,14 @@ export default function MobileUploaderView({
             correspondant ne découvrait le retard qu'une fois clôturé. */}
         {currentWeek && <CountdownTimer week={currentWeek} compact />}
       </div>
+
+      {/* Reprise d'un envoi coupé : placé haut, c'est la première chose à
+          régler en revenant sur l'application. */}
+      <PendingUploadsCard
+        entries={pendingUploads}
+        onResume={onResumeUpload}
+        onDismiss={onDismissPending}
+      />
 
       {/* 3. LATE / LOCK NOTIFICATION */}
       {isLocked && (
@@ -457,10 +470,22 @@ export default function MobileUploaderView({
                       </div>
                       <div className="w-full bg-[var(--paper-2)] rounded-full h-1.5 overflow-hidden">
                         <div
-                          className="h-1.5 bg-[var(--action)] rounded-full transition-all duration-300"
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            f.status === 'error' ? 'bg-[var(--signal)]' : 'bg-[var(--action)]'
+                          }`}
                           style={{ width: `${Math.max(5, f.progress)}%` }}
                         />
                       </div>
+                      {f.status === 'error' && (
+                        <button
+                          type="button"
+                          onClick={() => onRetryUpload?.(f.id)}
+                          className="mt-1 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[var(--action)] text-white font-bold text-xs active:scale-[0.98] transition-transform"
+                        >
+                          <RotateCcw size={14} />
+                          {t.uploader.retryCta}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

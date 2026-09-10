@@ -212,6 +212,9 @@ export const api = {
         endpoint: `${API_BASE}/api/tus/`,
         retryDelays: [0, 3000, 5000, 10000, 20000],
         chunkSize: 5 * 1024 * 1024, // 5 MB per request to prevent timeouts
+        // L'empreinte d'un envoi réussi ne sert plus à rien : la garder
+        // encombrait le stockage du téléphone semaine après semaine.
+        removeFingerprintOnSuccess: true,
         metadata: {
           filename: file.name,
           name: file.name,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   UploadCloud, Folder, FileText, Video,
-  CheckCircle, Clock, ChevronRight, ChevronDown, Trash2, AlertCircle,
+  CheckCircle, Clock, ChevronRight, ChevronDown, Trash2, AlertCircle, RotateCcw,
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -15,6 +15,13 @@ import PhoneInput from 'react-phone-number-input';
 import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
 import { readCountryPhone, saveCountryPhone, forgetCountryPhone, isUsablePhone } from '../lib/countryPhone.js';
+import {
+  rememberUpload,
+  forgetUpload,
+  listPendingUploads,
+  matchesEntry,
+  fileKey,
+} from '../lib/pendingUploads.js';
 import 'react-phone-number-input/style.css';
 
 const FILE_ICONS = {
@@ -24,6 +31,7 @@ const FILE_ICONS = {
 
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import MobileUploaderView from './MobileUploaderView.jsx';
+import PendingUploadsCard from './PendingUploadsCard.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
   const { t, lang } = useI18n();
@@ -31,6 +39,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const { addToast } = useToast();
   const [uploads, setUploads] = useState([]);
   const [uploading, setUploading] = useState([]);
+  // Envois laissés en suspens par une session précédente (4G coupée, onglet
+  // fermé, téléphone en veille). Le fichier n'est pas conservé — seul son
+  // signalement l'est — donc la reprise passe par une re-sélection.
+  const [pendingUploads, setPendingUploads] = useState([]);
+  // Fichiers gardés le temps de la session pour un « réessayer » immédiat.
+  const filesByUploadRef = useRef(new Map());
   const [reportageCount, setReportageCount] = useState(1);
   const [scriptText, setScriptText] = useState({});
   const [dragActive, setDragActive] = useState({});
@@ -79,6 +93,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       .finally(() => setIsLoadingUploads(false));
   }, [selectedWeek, country.id]);
 
+  useEffect(() => {
+    setPendingUploads(listPendingUploads(selectedWeek, country.id));
+  }, [selectedWeek, country.id]);
+
   // Cutoff dimanche 17h30
   const currentWeek = weeks.find(w => w.id === selectedWeek);
   
@@ -125,15 +143,36 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   // produire lui-même en arrière-plan une fois le fichier reçu.
   const handleFiles = async (filesList, reportageName) => {
     for (const file of Array.from(filesList)) {
-      const tempId = Math.random().toString(36).slice(2);
-      const isVideo = /\.(mp4|mov|webm)$/i.test(file.name) || file.type.startsWith('video/');
+      startUpload(file, reportageName);
+    }
+  };
 
-      setUploading((prev) => [
-        ...prev,
-        { id: tempId, name: file.name, progress: 0, status: 'uploading', phase: 'uploading', isVideo, reportage: reportageName },
-      ]);
+  // Un envoi = un identifiant temporaire. Le fichier lui-même est gardé en
+  // mémoire le temps de la session pour que « réessayer » ne renvoie pas la
+  // personne dans le sélecteur de fichiers de son téléphone.
+  const startUpload = (file, reportageName, existingTempId) => {
+    const tempId = existingTempId || Math.random().toString(36).slice(2);
+    const isVideo = /\.(mp4|mov|webm)$/i.test(file.name) || file.type.startsWith('video/');
+    filesByUploadRef.current.set(tempId, { file, reportage: reportageName });
+    rememberUpload({ weekId: selectedWeek, countryId: country.id, reportage: reportageName, file });
+    setPendingUploads(listPendingUploads(selectedWeek, country.id));
 
-      const uploadFile = file;
+    setUploading((prev) => {
+      const entry = {
+        id: tempId,
+        name: file.name,
+        progress: 0,
+        status: 'uploading',
+        phase: 'uploading',
+        isVideo,
+        reportage: reportageName,
+      };
+      return prev.some((f) => f.id === tempId)
+        ? prev.map((f) => (f.id === tempId ? entry : f))
+        : [...prev, entry];
+    });
+
+    const uploadFile = file;
 
       api
         .uploadFile(selectedWeek, country.id, uploadFile, {
@@ -161,6 +200,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               f.id === tempId ? { ...f, progress: 100, status: 'completed', phase: 'done' } : f
             )
           );
+          forgetUpload(fileKey(uploadFile));
+          setPendingUploads(listPendingUploads(selectedWeek, country.id));
+          filesByUploadRef.current.delete(tempId);
           // In case the API returns the result (our TUS wrapper returns {success, message})
           // we fetch the updated files via the effect or manual fetch if needed.
           // Since the server sends socket events, the list should refresh.
@@ -168,6 +210,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           addToast(t.uploader.uploadSuccess(result.name || uploadFile.name), 'success', 3000);
         })
         .catch((err) => {
+          // L'entrée reste mémorisée : c'est précisément le cas où il faudra
+          // pouvoir reprendre, y compris après avoir fermé l'application.
           setUploading((prev) =>
             prev.map((f) =>
               f.id === tempId
@@ -177,7 +221,27 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           );
           addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
         });
+  };
+
+  /** Relance un envoi échoué avec le fichier encore en mémoire. */
+  const handleRetryUpload = (tempId) => {
+    const kept = filesByUploadRef.current.get(tempId);
+    if (!kept) return;
+    startUpload(kept.file, kept.reportage, tempId);
+  };
+
+  /** Reprend un envoi laissé en suspens : la personne redésigne le fichier. */
+  const handleResumeUpload = (entry, file) => {
+    if (!matchesEntry(entry, file)) {
+      addToast(t.uploader.resumeMismatch, 'error', 4000);
+      return;
     }
+    startUpload(file, entry.reportage || '');
+  };
+
+  const handleDismissPending = (entry) => {
+    forgetUpload(entry.key);
+    setPendingUploads(listPendingUploads(selectedWeek, country.id));
   };
 
   const handleDrag = (e, reportageName) => {
@@ -304,6 +368,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           onBack={onBack}
           scriptText={scriptText}
           setScriptText={setScriptText}
+          pendingUploads={pendingUploads}
+          onResumeUpload={handleResumeUpload}
+          onDismissPending={handleDismissPending}
+          onRetryUpload={handleRetryUpload}
         />
       </div>
 
@@ -321,6 +389,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </div>
 
       {country.id !== 'tj' && country.id !== 'mj' && <Tutorial5W1H />}
+
+      <PendingUploadsCard
+        entries={pendingUploads}
+        onResume={handleResumeUpload}
+        onDismiss={handleDismissPending}
+      />
 
       <div className="panel p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
@@ -631,6 +705,18 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                               style={{ width: `${f.progress}%` }}
                             />
                           </div>
+                          {f.status === 'error' && (
+                            // Le fichier est encore en mémoire : un clic
+                            // suffit, sans repasser par le sélecteur.
+                            <button
+                              type="button"
+                              onClick={() => handleRetryUpload(f.id)}
+                              className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--action)] text-white font-bold text-sm active:scale-[0.98] transition-transform"
+                            >
+                              <RotateCcw size={15} />
+                              {t.uploader.retryCta}
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
