@@ -161,7 +161,7 @@ export default function Nav({
   return (
     <>
       {/* HEADER TOP */}
-      <nav className="shrink-0 border-b border-[var(--border)] bg-[var(--paper)] sticky top-0 z-40 shadow-sm">
+      <nav className="app-chrome-top shrink-0 border-b border-[var(--border)] bg-[var(--paper)] sticky top-0 z-40 shadow-sm">
         <div className={isEditorWorkspace
           ? 'mx-auto flex h-16 w-full max-w-[1920px] flex-nowrap items-center gap-3 px-4 xl:px-5'
           : 'max-w-6xl mx-auto px-4 sm:px-6 py-2.5 sm:py-4 flex flex-wrap items-center justify-between gap-4'
@@ -238,7 +238,7 @@ export default function Nav({
 
       {/* MOBILE BOTTOM NAVIGATION */}
       {showTabs && (
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-[var(--paper)] border-t border-[var(--border)] z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-1">
+        <div className="app-chrome-bottom sm:hidden fixed bottom-0 left-0 right-0 bg-[var(--paper)] border-t border-[var(--border)] z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-1">
           <div className={`flex justify-around items-center p-2 pt-3 ${isReporter ? 'gap-2' : ''}`}>
             {visibleNavItems.map((item) => renderTab(item, 'mobile', isMobile))}
           </div>

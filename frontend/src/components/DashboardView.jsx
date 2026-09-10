@@ -2392,14 +2392,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           </div>
                           <div className="w-full bg-[var(--paper-2)] rounded-full h-2">
                             <div
-                              className={`h-2 rounded-full motion-enter ${
+                              className={`h-2 w-full rounded-full motion-gauge ${
                                 f.status === 'completed'
                                   ? 'bg-[var(--action)]'
                                   : f.status === 'error'
                                   ? 'bg-[var(--signal)]'
                                   : 'bg-[color:var(--accent)]'
                               }`}
-                              style={{ width: `${f.progress}%` }}
+                              style={{ transform: `scaleX(${f.progress / 100})` }}
                             />
                           </div>
                         </div>
@@ -2651,8 +2651,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
                 <div className="w-full bg-[var(--paper-2)] border border-[var(--border)] rounded-full h-4 overflow-hidden shadow-inner">
                   <div
-                    className="h-full rounded-full bg-[color:var(--accent)] motion-enter relative overflow-hidden"
-                    style={{ width: `${Math.max(3, exportProgress)}%` }}
+                    className="h-full w-full rounded-full bg-[color:var(--accent)] motion-gauge relative overflow-hidden"
+                    style={{ transform: `scaleX(${Math.max(3, exportProgress) / 100})` }}
                   >
                     <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
                   </div>

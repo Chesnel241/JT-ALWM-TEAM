@@ -18,6 +18,7 @@ import {
 } from './lib/routing.js';
 import { readTextSize, saveTextSize, applyTextSize, TEXT_SIZES } from './lib/textSize.js';
 import { readLastWorkspace, saveLastWorkspace } from './lib/lastWorkspace.js';
+import { withViewTransition } from './lib/viewTransition.js';
 import {
   readLastCountryId,
   saveLastCountryId,
@@ -117,11 +118,17 @@ function AppShell() {
       if (replace) window.history.replaceState(null, '', url);
       else window.history.pushState(null, '', url);
     }
-    setRoute((prev) => (
+    // Une navigation `replace` corrige une URL (canonicalisation, repli sur
+    // la liste des pays) : la personne n'a rien demandé, il n'y a donc rien à
+    // animer. Seul un geste volontaire mérite une transition.
+    const apply = () => setRoute((prev) => (
       prev.view === view && prev.countryId === nextCountry
         ? prev
         : { ...prev, view, countryId: nextCountry }
     ));
+
+    if (replace) apply();
+    else withViewTransition(apply, 'forward');
   }, []);
 
   useEffect(() => {
@@ -130,7 +137,10 @@ function AppShell() {
 
   // Boutons Précédent/Suivant du navigateur.
   useEffect(() => {
-    const onPopState = () => setRoute(parsePath(currentPathname(), currentSearch()));
+    const onPopState = () => withViewTransition(
+      () => setRoute(parsePath(currentPathname(), currentSearch())),
+      'back'
+    );
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);

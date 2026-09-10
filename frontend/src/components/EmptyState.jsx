@@ -20,7 +20,7 @@ export default function EmptyState({
       className={`flex flex-col items-center text-center ${compact ? 'py-6' : 'py-10'} px-4 ${className}`}
     >
       {illustration && (
-        <div className={compact ? 'mb-3' : 'mb-4'} aria-hidden="true">
+        <div className={`motion-rise ${compact ? 'mb-3' : 'mb-4'}`} aria-hidden="true">
           {illustration}
         </div>
       )}

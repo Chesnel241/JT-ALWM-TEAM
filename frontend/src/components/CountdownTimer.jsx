@@ -69,8 +69,8 @@ export default function CountdownTimer({ week, compact = false }) {
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
           <div
-            className={`h-full rounded-full motion-tap duration-1000 ${isLate ? 'bg-[var(--signal)]' : 'bg-[var(--accent)]'}`}
-            style={{ width: `${Math.max(2, percentage)}%` }}
+            className={`h-full w-full rounded-full motion-gauge ${isLate ? 'bg-[var(--signal)]' : 'bg-[var(--accent)]'}`}
+            style={{ transform: `scaleX(${Math.max(2, percentage) / 100})` }}
           />
         </div>
       </div>
@@ -103,7 +103,7 @@ export default function CountdownTimer({ week, compact = false }) {
             fill="transparent"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className={`motion-tap duration-1000 ease-[var(--ease-out)] ${isLate ? 'text-[var(--signal)]' : 'text-[color:var(--accent)]'}`}
+            className={`motion-ring ${isLate ? 'text-[var(--signal)]' : 'text-[color:var(--accent)]'}`}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">

@@ -129,11 +129,12 @@ export default function ReporterHomeView({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {choices.map(({ key, step, Icon, title, text, cta, onClick, tone }) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 motion-stagger">
+        {choices.map(({ key, step, Icon, title, text, cta, onClick, tone }, index) => (
           <button
             key={key}
             type="button"
+            style={{ '--i': index }}
             onClick={onClick}
             className={`group w-full text-left bg-[var(--paper)] border-2 ${tone.card} rounded-3xl p-6 sm:p-8 shadow-sm motion-tap active:scale-[0.98] sm:hover:shadow-[var(--shadow-soft)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40 flex flex-col gap-4 min-h-[220px] sm:min-h-[280px]`}
           >

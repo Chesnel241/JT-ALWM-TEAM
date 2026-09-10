@@ -43,7 +43,7 @@ export default function PendingUploadsCard({ entries = [], onResume, onDismiss }
       {entries.map((entry) => (
         <div
           key={entry.key}
-          className="rounded-2xl border border-[var(--signal)]/40 bg-[var(--signal)]/10 p-4"
+          className="motion-rise rounded-2xl border border-[var(--signal)]/40 bg-[var(--signal)]/10 p-4"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

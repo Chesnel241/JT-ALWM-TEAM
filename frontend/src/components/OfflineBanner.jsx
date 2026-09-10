@@ -12,7 +12,7 @@ export default function OfflineBanner({ queuedCount = 0 }) {
   const { t } = useI18n();
 
   return (
-    <div className="mb-4 rounded-2xl border border-[var(--signal)]/40 bg-[var(--signal)]/10 p-4">
+    <div className="motion-rise mb-4 rounded-2xl border border-[var(--signal)]/40 bg-[var(--signal)]/10 p-4">
       <p className="flex items-center gap-2 font-bold text-sm text-[color:var(--ink)]">
         <WifiOff size={17} className="shrink-0 text-[var(--signal)]" />
         {t.uploader.offlineTitle}

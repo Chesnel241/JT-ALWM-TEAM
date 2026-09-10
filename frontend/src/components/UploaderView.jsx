@@ -732,8 +732,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                           <div className="flex justify-between text-sm mb-2 gap-2">
                             <span className="font-medium text-[color:var(--ink)] truncate pr-4">{f.name}</span>
                             {f.status === 'completed' && (
-                              <span className="text-[var(--accent)] flex items-center gap-1 shrink-0">
-                                <CheckCircle size={14} /> {t.uploader.phaseDone}
+                              <span className="motion-rise text-[var(--accent)] flex items-center gap-1 shrink-0">
+                                <CheckCircle size={14} className="motion-check" /> {t.uploader.phaseDone}
                               </span>
                             )}
                             {f.status === 'error' && (
@@ -756,14 +756,14 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                           </div>
                           <div className="w-full bg-[var(--paper-2)] rounded-full h-2">
                             <div
-                              className={`h-2 rounded-full motion-enter ${
+                              className={`h-2 w-full rounded-full motion-gauge ${
                                 f.status === 'completed'
                                   ? 'bg-[var(--action)]'
                                   : f.status === 'error'
                                   ? 'bg-[var(--signal)]'
                                   : 'bg-[color:var(--accent)]'
                               } ${f.status === 'uploading' && f.phase === 'processing' ? 'animate-pulse' : ''}`}
-                              style={{ width: `${f.progress}%` }}
+                              style={{ transform: `scaleX(${f.progress / 100})` }}
                             />
                           </div>
                           {f.status === 'error' && (

@@ -480,14 +480,14 @@ export default function MobileUploaderView({
                       </div>
                       <div className="w-full bg-[var(--paper-2)] rounded-full h-1.5 overflow-hidden">
                         <div
-                          className={`h-1.5 rounded-full motion-enter ${
+                          className={`h-1.5 w-full rounded-full motion-gauge ${
                             f.status === 'error'
                               ? 'bg-[var(--signal)]'
                               : f.status === 'queued'
                               ? 'bg-[var(--border)]'
                               : 'bg-[var(--action)]'
                           }`}
-                          style={{ width: `${Math.max(5, f.progress)}%` }}
+                          style={{ transform: `scaleX(${Math.max(5, f.progress) / 100})` }}
                         />
                       </div>
                       {f.status === 'error' && (
@@ -512,8 +512,8 @@ export default function MobileUploaderView({
             {/* Accusé de réception explicite : la liste de fichiers seule ne
                 disait pas au correspondant que son envoi était terminé. */}
             {activeUploads.length > 0 && activeUploading.length === 0 && (
-              <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-[var(--success)]/10 border border-[var(--success)]/30">
-                <CheckCircle size={20} className="shrink-0 text-[color:var(--success-deep)]" />
+              <div className="motion-rise flex items-start gap-2.5 p-3.5 rounded-2xl bg-[var(--success)]/10 border border-[var(--success)]/30">
+                <CheckCircle size={20} className="motion-check shrink-0 text-[color:var(--success-deep)]" />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-[color:var(--success-deep)]">
                     {t.uploader.sectionDone(activeUploads.length)}

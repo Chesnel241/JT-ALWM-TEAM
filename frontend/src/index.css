@@ -104,6 +104,73 @@
 	}
 }
 
+/* Transitions d'écran.
+
+   Le navigateur photographie l'ancien et le nouvel écran, puis les
+   superpose. On glisse l'entrant depuis le bord et on efface le sortant :
+   `forward` va vers la droite, `back` revient vers la gauche, ce qui donne
+   au bouton Retour du téléphone le sens qu'on attend de lui.
+
+   Le déplacement est volontairement court, 12 px. Sur un écran de
+   téléphone, un grand glissement se lit comme un temps d'attente ; un petit
+   suffit à dire « c'est un autre écran ».
+
+   Les navigateurs qui ignorent l'API n'appliquent rien de tout ceci : le
+   changement d'écran reste instantané, comme avant. */
+@keyframes screen-in-right {
+	from { opacity: 0; transform: translate3d(12px, 0, 0); }
+	to { opacity: 1; transform: none; }
+}
+
+@keyframes screen-in-left {
+	from { opacity: 0; transform: translate3d(-12px, 0, 0); }
+	to { opacity: 1; transform: none; }
+}
+
+@keyframes screen-out {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+	/* On décrit nous-mêmes les deux moitiés : l'entrecroisement par défaut
+	   fait clignoter les grands aplats de couleur. */
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+	animation: screen-out var(--motion-enter) var(--ease-out) forwards;
+}
+
+::view-transition-new(root) {
+	animation: screen-in-right var(--motion-screen) var(--ease-emphasis) forwards;
+}
+
+:root[data-transition='back']::view-transition-new(root) {
+	animation-name: screen-in-left;
+}
+
+/* L'en-tête et la barre d'onglets du bas restent en place pendant le
+   changement : ce sont les repères fixes de l'application, les voir glisser
+   donnerait l'impression que tout bouge. Deux noms distincts, l'API exigeant
+   qu'un nom ne désigne qu'un seul élément à la fois. */
+.app-chrome-top {
+	view-transition-name: app-chrome-top;
+}
+
+.app-chrome-bottom {
+	view-transition-name: app-chrome-bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-old(root),
+	::view-transition-new(root) {
+		animation: none !important;
+	}
+}
+
 /* Confort de lecture.
    Une partie des correspondants sont des personnes âgées qui lisent sur un
    téléphone, souvent dehors. Le réglage agit sur la taille de base du
@@ -261,6 +328,54 @@ body {
 		transition-timing-function: var(--ease-emphasis);
 	}
 
+	/* Entrée d'un élément : il monte de quelques pixels en apparaissant.
+	   Uniquement sur `transform` et `opacity`, donc entièrement pris en
+	   charge par le fil de composition. */
+	.motion-rise {
+		animation: rise var(--motion-enter) var(--ease-emphasis) both;
+	}
+
+	/* Entrée d'une liste : chaque carte part un cran après la précédente.
+	   Le décalage est appliqué par --i, posé en style inline. Il est plafonné
+	   à huit crans : au-delà, l'attente cumulée se remarque plus que l'effet.
+	   L'animation ne joue qu'une fois, au premier affichage. */
+	.motion-stagger > * {
+		animation: rise var(--motion-enter) var(--ease-emphasis) both;
+		animation-delay: calc(min(var(--i, 0), 8) * 35ms);
+	}
+
+	/* Jauge de progression.
+
+	   Ces barres animaient leur largeur : le navigateur recalculait la mise
+	   en page à chaque image, pendant tout un envoi, sur un téléphone déjà
+	   occupé à téléverser. Elles sont désormais dessinées à pleine largeur et
+	   mises à l'échelle horizontalement, ce qui reste sur le fil de
+	   composition. Le remplissage étant un aplat, la mise à l'échelle ne
+	   déforme rien. */
+	.motion-gauge {
+		transform-origin: left center;
+		transition-property: transform, background-color;
+		transition-duration: var(--motion-screen);
+		transition-timing-function: var(--ease-out);
+	}
+
+	/* Anneau du compte à rebours : seule la longueur du trait bouge. */
+	.motion-ring {
+		transition-property: stroke-dashoffset, color;
+		transition-duration: 1s;
+		transition-timing-function: var(--ease-out);
+	}
+
+	/* Coche d'achèvement : le trait se dessine au lieu d'apparaître. C'est le
+	   moment qui compte pour un correspondant, celui où son envoi est
+	   confirmé. */
+	.motion-check path,
+	.motion-check polyline {
+		stroke-dasharray: 32;
+		stroke-dashoffset: 32;
+		animation: draw 420ms var(--ease-emphasis) forwards;
+	}
+
 	.sr-only {
 		position: absolute;
 		width: 1px;
@@ -286,6 +401,23 @@ body {
 
 	.animate-fadeIn {
 		animation: fadeIn 200ms var(--ease-out) forwards;
+	}
+
+	@keyframes rise {
+		from {
+			opacity: 0;
+			transform: translate3d(0, 8px, 0);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	@keyframes draw {
+		to {
+			stroke-dashoffset: 0;
+		}
 	}
 
 	@keyframes spin {
@@ -334,6 +466,21 @@ body {
 		.animate-pulse,
 		.animate-pulse-border {
 			animation: none;
+		}
+
+		/* Les entrées gardent leur état final : sans cela, `both` figerait
+		   les éléments à leur première image, donc invisibles. */
+		.motion-rise,
+		.motion-stagger > * {
+			animation: none;
+			opacity: 1;
+			transform: none;
+		}
+
+		.motion-check path,
+		.motion-check polyline {
+			animation: none;
+			stroke-dashoffset: 0;
 		}
 	}
 

@@ -143,10 +143,14 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
         </div>
 
         {/* Country Grid (Mobile tactile cards) */}
-        <div className="grid grid-cols-1 gap-2.5">
-          {filteredCountries.map((country) => (
+        {/* Entrée décalée : la liste se pose au lieu d'apparaître d'un bloc.
+            Le décalage est plafonné dans la feuille de style, un pays en
+            vingtième position n'attendant pas vingt crans. */}
+        <div className="grid grid-cols-1 gap-2.5 motion-stagger">
+          {filteredCountries.map((country, index) => (
             <button
               key={`mobile-${country.id}`}
+              style={{ '--i': index }}
               onClick={() => handleSelectCountry(country)}
               type="button"
               aria-label={t.home.enterAria(country.name)}
