@@ -34,6 +34,8 @@ import Tutorial5W1H from './Tutorial5W1H.jsx';
 import MobileUploaderView from './MobileUploaderView.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
 import OfflineBanner from './OfflineBanner.jsx';
+import EmptyState from './EmptyState.jsx';
+import EmptyInbox from './illustrations/EmptyInbox.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
@@ -826,10 +828,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 {isLoadingUploads ? (
                   <SkeletonCard count={2} />
                 ) : repUploads.length === 0 ? (
-                  <div className="text-center text-[color:var(--muted)] py-8 flex flex-col items-center">
-                    <Clock size={32} className="text-[color:var(--muted)] mb-2" />
-                    <p className="text-sm">{t.uploader.noFiles}</p>
-                  </div>
+                  <EmptyState
+                    illustration={<EmptyInbox size={124} />}
+                    title={t.uploader.emptySectionTitle}
+                    hint={t.uploader.noFiles}
+                    compact
+                  />
                 ) : (
                   <ul className="space-y-3">
                     {repUploads.map((file) => {

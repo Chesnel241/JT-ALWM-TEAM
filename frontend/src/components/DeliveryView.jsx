@@ -9,6 +9,8 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
+import EmptyState from './EmptyState.jsx';
+import WaitingBroadcast from './illustrations/WaitingBroadcast.jsx';
 
 // Charte : bleus du logo et neutres, avec un texte à fort contraste sur
 // chaque aplat (le bleu 500 sur bleu 100 précédent était illisible).
@@ -169,10 +171,12 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
           {loading ? (
             <SkeletonCard count={2} />
           ) : deliveries.length === 0 ? (
-            <div className="p-8 bg-[var(--paper)] rounded-3xl border border-[var(--border)] text-center space-y-2">
-              <Sparkles size={32} className="mx-auto text-[color:var(--muted)] opacity-50" />
-              <p className="font-bold text-sm text-[color:var(--ink)]">{t.delivery.empty}</p>
-              <p className="text-xs text-[color:var(--muted)]">{emptyHint}</p>
+            <div className="bg-[var(--paper)] rounded-3xl border border-[var(--border)]">
+              <EmptyState
+                illustration={<WaitingBroadcast size={140} />}
+                title={t.delivery.empty}
+                hint={emptyHint}
+              />
             </div>
           ) : (
             deliveries.map((file) => {
@@ -316,11 +320,12 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
             {loading ? (
               <SkeletonCard count={2} />
             ) : deliveries.length === 0 ? (
-              <div className="text-center text-[color:var(--muted)] py-8 flex flex-col items-center">
-                <Sparkles size={32} className="text-[color:var(--muted)] mb-3" />
-                <p className="text-sm font-medium text-[color:var(--ink)]">{t.delivery.empty}</p>
-                <p className="text-xs mt-2 max-w-xs">{emptyHint}</p>
-              </div>
+              <EmptyState
+                illustration={<WaitingBroadcast size={120} />}
+                title={t.delivery.empty}
+                hint={emptyHint}
+                compact
+              />
             ) : (
               <ul className="space-y-3">
                 {deliveries.map((file) => {

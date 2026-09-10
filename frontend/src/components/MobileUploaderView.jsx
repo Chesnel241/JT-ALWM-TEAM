@@ -15,6 +15,8 @@ import Tutorial5W1H from './Tutorial5W1H.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 import OfflineBanner from './OfflineBanner.jsx';
+import EmptyState from './EmptyState.jsx';
+import EmptyInbox from './illustrations/EmptyInbox.jsx';
 import PhoneInput from 'react-phone-number-input';
 import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
@@ -537,12 +539,13 @@ export default function MobileUploaderView({
               {isLoadingUploads ? (
                 <SkeletonCard count={2} />
               ) : activeUploads.length === 0 ? (
-                <div className="p-6 text-center rounded-2xl bg-[var(--paper-2)] border border-dashed border-[var(--border)] text-[color:var(--muted)] space-y-2">
-                  <UploadCloud size={24} className="mx-auto text-[color:var(--muted)] opacity-60" />
-                  <p className="text-sm font-medium">Aucun fichier pour l'instant.</p>
-                  <p className="text-xs opacity-75">
-                    Touchez « {t.uploader.addMedia} » ou « {t.uploader.addScript} » ci-dessus.
-                  </p>
+                <div className="rounded-2xl bg-[var(--paper-2)] border border-dashed border-[var(--border)]">
+                  <EmptyState
+                    illustration={<EmptyInbox size={124} />}
+                    title={t.uploader.emptySectionTitle}
+                    hint={t.uploader.emptySectionHint(t.uploader.addMedia, t.uploader.addScript)}
+                    compact
+                  />
                 </div>
               ) : (
                 <div className="space-y-2">

@@ -87,9 +87,10 @@ describe('MobileUploaderView', () => {
     // Default active tab is Reportage 1, files should be visible
     expect(screen.getByText('interview_gabon.mp4')).toBeInTheDocument();
 
-    // Switch to Reportage 2
+    // Switch to Reportage 2 : section vide, illustration + consigne.
     fireEvent.click(tab2);
-    expect(screen.getByText("Aucun fichier pour l'instant.")).toBeInTheDocument();
+    expect(screen.getByText(/Aucun fichier pour l.instant/)).toBeInTheDocument();
+    expect(screen.getByText(/pour envoyer votre premier fichier/)).toBeInTheDocument();
   });
 
   it('renders 2 quick action buttons (Video / Media and Script)', () => {

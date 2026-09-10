@@ -104,3 +104,52 @@ describe('App — URL /journalistes', () => {
     expect(await screen.findByText('Que souhaitez-vous faire ?')).toBeInTheDocument();
   });
 });
+
+describe('App — le lien personnel d\'un correspondant', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'getUploads').mockResolvedValue([]);
+    vi.spyOn(api, 'getDelays').mockResolvedValue(null);
+  });
+
+  it('ouvre directement l\'écran d\'envoi du pays', async () => {
+    // Régression : les deux effets d'un même rendu voyaient `selectedCountry`
+    // encore à null, si bien que le lien personnel repartait aussitôt vers la
+    // liste des pays.
+    window.history.replaceState(null, '', '/journalistes/sn');
+    render(<App />);
+
+    expect(await screen.findAllByText('Sénégal')).not.toHaveLength(0);
+    expect(window.location.pathname).toBe('/journalistes/sn');
+  });
+
+  it('accepte aussi la forme ?pays=', async () => {
+    window.history.replaceState(null, '', '/journalistes/reportage/envoi?pays=sn');
+    render(<App />);
+
+    expect(await screen.findAllByText('Sénégal')).not.toHaveLength(0);
+    // L'URL est normalisée : le pays vit dans le chemin, pas en double.
+    await waitFor(() => expect(window.location.pathname).toBe('/journalistes/sn'));
+    expect(window.location.search).toBe('');
+  });
+
+  it('retombe sur la liste quand le pays du lien n\'existe pas', async () => {
+    window.history.replaceState(null, '', '/journalistes/zz');
+    render(<App />);
+
+    // Un pays supprimé ou un lien mal recopié ne doit pas donner un écran vide.
+    await waitFor(() => expect(window.location.pathname).toBe('/journalistes/reportage'));
+  });
+
+  it('propose ensuite ce pays en raccourci sur l\'accueil', async () => {
+    window.history.replaceState(null, '', '/journalistes/sn');
+    const { unmount } = render(<App />);
+    await screen.findAllByText('Sénégal');
+    unmount();
+
+    // Nouvelle visite sur l'accueil : l'appareil se souvient du pays.
+    window.history.replaceState(null, '', '/journalistes');
+    render(<App />);
+    expect(await screen.findAllByText(/Continuer pour Sénégal/)).not.toHaveLength(0);
+    expect(screen.getAllByText(/Ce n’est pas mon pays/)).not.toHaveLength(0);
+  });
+});

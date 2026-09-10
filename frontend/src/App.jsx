@@ -307,13 +307,18 @@ function AppShell() {
   }, [countries, route.countryId]);
 
   // Lien direct vers l'envoi sans pays choisi (favori, lien partagé) : on
-  // renvoie sur la liste des pays plutôt que d'afficher un écran vide. On
-  // laisse d'abord la résolution ci-dessus faire son travail.
+  // renvoie sur la liste des pays plutôt que d'afficher un écran vide.
+  //
+  // L'effet ci-dessus résout le pays porté par l'URL, mais son `setState` ne
+  // devient visible qu'au rendu suivant : les deux effets d'un même rendu
+  // voient le même `selectedCountry` à null. Se fier à lui renverrait donc
+  // systématiquement le lien personnel vers la liste des pays. On interroge
+  // la liste directement, qui est déjà à jour.
   useEffect(() => {
     if (currentView !== 'uploader' || selectedCountry) return;
-    if (route.countryId && !countries.length) return; // résolution en attente
+    if (route.countryId && (!countries.length || resolveCountry(countries, route.countryId))) return;
     navigate('home', { replace: true });
-  }, [currentView, selectedCountry, navigate, route.countryId, countries.length]);
+  }, [currentView, selectedCountry, navigate, route.countryId, countries]);
 
   const handleSelectCountry = (country) => {
     setSelectedCountry(country);
