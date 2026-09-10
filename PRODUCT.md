@@ -20,7 +20,10 @@ product
 
 ## Non-goals
 - No social or public sharing.
-- No complex account management or roles yet.
+- No sign-up, no passwords, no role hierarchy. Correspondents are identified
+  by a personal signed link the desk issues once and sends over WhatsApp; it
+  attributes a submission to someone, it does not gate access. The API stays
+  open by design, and the platform works unchanged without a link.
 
 ## Constraints
 - Must stay light and fast on modest laptops.

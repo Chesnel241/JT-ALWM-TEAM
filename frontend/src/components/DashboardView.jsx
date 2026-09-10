@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone, Image as ImageIcon } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone, Link2, Image as ImageIcon } from 'lucide-react';
 import { api, API_BASE, getClientId } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -31,6 +31,7 @@ import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
 import ActionSheet from './ActionSheet.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
+import ReporterLinkDialog from './ReporterLinkDialog.jsx';
 
 // Clés localStorage : la timeline et le job de montage en cours survivent au
 // refresh/changement d'onglet (le rendu continue côté serveur).
@@ -345,6 +346,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // Sujets de la semaine, toutes équipes confondues : ce sont eux qui portent
   // le titre et l'état, là où le fichier ne porte qu'une étiquette.
   const [sujets, setSujets] = useState([]);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [manualBins, setManualBins] = useState([]);
   const [selectedBin, setSelectedBin] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -2555,6 +2557,20 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     )}
                   </div>
 
+                  {/* Lien personnel : c'est ce qui permet de savoir qui a
+                      envoyé quoi, et à qui écrire. */}
+                  {selectedBin && !SPECIAL_BINS.includes(selectedBin) && (
+                    <button
+                      type="button"
+                      onClick={() => setLinkDialogOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[color:var(--accent-deep)] font-semibold text-xs border border-[color:var(--accent)]/25 motion-tap active:scale-95"
+                      title="Émettre le lien personnel de ce correspondant"
+                    >
+                      <Link2 size={13} />
+                      <span>Lien du correspondant</span>
+                    </button>
+                  )}
+
                   {/* Mobile WhatsApp Correspondent Contact */}
                   {selectedBin && selectedBin !== 'delivery' && selectedBin !== 'tj' && selectedBin !== 'mj' && selectedBin !== 'studio' && (
                     <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
@@ -2835,6 +2851,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       />
 
       {/* Feedback & WhatsApp Rejection Modal */}
+      <ReporterLinkDialog
+        isOpen={linkDialogOpen}
+        onClose={() => setLinkDialogOpen(false)}
+        countryId={selectedBin}
+        countryName={countries.find((c) => c.id === selectedBin)?.name}
+        adminPassword={authenticatedAdminPassword}
+      />
+
       <FeedbackModal
         isOpen={feedbackDialogOpen}
         onClose={() => {

@@ -10,6 +10,7 @@ import compression from 'compression';
 import countriesRouter from './routes/countries.js';
 import weeksRouter from './routes/weeks.js';
 import sujetsRouter from './routes/sujets.js';
+import liensRouter from './routes/liens.js';
 import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
 import notificationsRouter from './routes/notifications.js';
@@ -20,7 +21,7 @@ import editorRouter from './routes/editor.js';
 import delaysRouter from './routes/delays.js';
 import webpushRouter from './routes/webpush.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
-import { requireAuth, requireAdmin, safeEqual } from './middleware/auth.js';
+import { readReporter, requireAuth, requireAdmin, safeEqual } from './middleware/auth.js';
 import logger from './logger/index.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
@@ -313,9 +314,13 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   });
 
   app.use('/api', requireAuth);
+  // Attribue un envoi à son auteur quand le lien personnel est présent. Ne
+  // bloque jamais : l'accès reste ouvert (voir readReporter).
+  app.use('/api', readReporter);
   app.use('/api/countries', countriesRouter);
   app.use('/api/weeks', weeksRouter);
   app.use('/api/sujets', sujetsRouter);
+  app.use('/api/liens', liensRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/themes', themesRouter);

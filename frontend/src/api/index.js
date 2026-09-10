@@ -1,5 +1,6 @@
 import { tStatic } from '../i18n/runtime.js';
 import axios from 'axios';
+import { readReporterToken } from '../lib/reporterIdentity.js';
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const BASE = `${API_BASE}/api`;
@@ -13,6 +14,12 @@ async function request(url, options = {}) {
   }
   if (options.adminPassword) {
     headers['X-Admin-Password'] = options.adminPassword;
+  }
+  // Lien personnel du correspondant : il attribue un envoi à quelqu'un, il
+  // n'ouvre aucune porte. Absent, tout continue de fonctionner.
+  const reporterToken = readReporterToken();
+  if (reporterToken) {
+    headers['X-Reporter-Token'] = reporterToken;
   }
 
   let res;
@@ -173,6 +180,16 @@ export const api = {
     }),
   getWeeks: () => request('/weeks'),
 
+  // Émet le lien personnel d'un correspondant. Réservé à la rédaction : le
+  // lien identifie son porteur.
+  createReporterLink: (pays, nom, adminPassword) =>
+    request('/liens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ pays, nom }),
+    }),
+
   // === Sujets ===
   // Un sujet est l'unité de travail : un titre, un auteur, un état. Les
   // fichiers s'y rattachent par `sujetId` au lieu d'une étiquette texte.
@@ -241,6 +258,7 @@ export const api = {
     return new Promise((resolve, reject) => {
       const upload = new Upload(file, {
         endpoint: `${API_BASE}/api/tus/`,
+        headers: readReporterToken() ? { 'X-Reporter-Token': readReporterToken() } : {},
         retryDelays: [0, 3000, 5000, 10000, 20000],
         chunkSize: 5 * 1024 * 1024, // 5 MB per request to prevent timeouts
         // L'empreinte d'un envoi réussi ne sert plus à rien : la garder

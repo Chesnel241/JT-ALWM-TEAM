@@ -1,6 +1,7 @@
 import { createErrors } from './errorHandler.js';
 import logger from '../logger/index.js';
 import { timingSafeEqual, createHash } from 'crypto';
+import { readReporterToken } from '../lib/reporterToken.js';
 
 const IS_TEST = process.env.NODE_ENV === 'test';
 
@@ -65,4 +66,22 @@ export function requireAdmin(req, res, next) {
     context: { path: req.path, ip: req.ip },
   });
   return next(createErrors.forbidden('Mot de passe administrateur incorrect ou manquant'));
+}
+
+/**
+ * Lit le lien personnel s'il y en a un, et pose `req.correspondant`.
+ *
+ * Délibérément non bloquant : l'API reste ouverte, par décision produit. Ce
+ * middleware ATTRIBUE un envoi à quelqu'un quand c'est possible ; il n'en
+ * refuse aucun. Un jeton absent, expiré d'usage ou falsifié laisse simplement
+ * `req.correspondant` à null, et tout continue comme avant.
+ *
+ * Le nom `requireReporter` a été écarté exprès : il aurait laissé croire à
+ * une garde. C'est `readReporter`.
+ */
+export function readReporter(req, _res, next) {
+  const brut = req.header('x-reporter-token') || req.query?.k || '';
+  const correspondant = readReporterToken(brut);
+  req.correspondant = correspondant;
+  return next();
 }

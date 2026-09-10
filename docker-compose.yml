@@ -46,6 +46,10 @@ services:
       - PUBLIC_API_URL=http://backend:3010
       - GLOBAL_PASSWORD=${GLOBAL_PASSWORD}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      # Signature des liens personnels de correspondants. Facultatif : sans
+      # lui, aucun envoi n'est attribué et la plateforme fonctionne comme
+      # avant. Le changer révoque tous les liens distribués.
+      - REPORTER_TOKEN_SECRET=${REPORTER_TOKEN_SECRET}
       - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
       - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
     volumes:

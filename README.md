@@ -48,6 +48,32 @@ en raccourci, avec une sortie « ce n'est pas mon pays » toujours visible : un
 poste partagé en rédaction ne doit pas enfermer le suivant dans le choix du
 précédent.
 
+### Le lien personnel signé
+
+`https://<domaine>/journalistes/<pays>?k=<jeton>` ajoute l'identité au lien de
+pays. Le jeton est émis depuis l'espace montage, bouton « Lien du
+correspondant » sur le chutier d'un pays, et transmis une fois par WhatsApp. À
+l'arrivée il est rangé sur l'appareil puis retiré de la barre d'adresse : c'est
+un secret porteur, il n'a rien à faire dans une adresse qu'on recopie.
+
+Ce qu'il fait : attribuer un envoi à quelqu'un — qui a envoyé quoi, à qui
+écrire, qui relancer. Ce qu'il ne fait pas : contrôler l'accès. L'API reste
+ouverte par décision produit ; un lien absent ou falsifié n'empêche personne
+d'envoyer, il laisse simplement l'auteur vide.
+
+Le secret vit dans `REPORTER_TOKEN_SECRET`. Sans lui, l'émission est refusée et
+rien n'est attribué : la plateforme fonctionne comme avant. Le changer invalide
+tous les liens distribués, ce qui est la façon de tout révoquer d'un coup.
+
+### Le sujet, unité de travail
+
+Un correspondant n'envoie plus des fichiers dans « Reportage 2 » mais ouvre un
+sujet avec un titre. Les fichiers s'y rattachent par identifiant, et la
+rédaction lit ce titre plus l'état du sujet — attendu, reçu, à corriger,
+validé, au conducteur — au lieu de rouvrir les fichiers pour deviner. Les
+étiquettes existantes ont été migrées en sujets au premier démarrage, sans
+perte.
+
 ⚠️ C'est un filtre d'usage, pas une frontière de sécurité : l'API reste
 publique (voir *Avertissements* plus bas). Le but est de simplifier
 l'écran des journalistes, pas de protéger des données.

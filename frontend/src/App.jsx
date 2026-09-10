@@ -18,6 +18,7 @@ import {
 } from './lib/routing.js';
 import { readTextSize, saveTextSize, applyTextSize, TEXT_SIZES } from './lib/textSize.js';
 import { readLastWorkspace, saveLastWorkspace } from './lib/lastWorkspace.js';
+import { adoptTokenFromSearch } from './lib/reporterIdentity.js';
 import { withViewTransition } from './lib/viewTransition.js';
 import {
   readLastCountryId,
@@ -63,6 +64,9 @@ function currentSearch() {
  */
 function initialRoute() {
   const pathname = currentPathname();
+  // Avant tout appel : le jeton reçu dans le lien devient l'identité de cet
+  // appareil, et la canonicalisation le retirera de la barre d'adresse.
+  adoptTokenFromSearch(currentSearch());
   const parsed = parsePath(pathname, currentSearch());
   if (pathname !== '/') return parsed;
   const remembered = readLastWorkspace();
@@ -73,12 +77,17 @@ function initialRoute() {
 // `?pays=ga` est accepté en entrée mais n'est pas la forme canonique : une
 // fois le pays lu, il est retiré de la barre d'adresse pour qu'il ne
 // contredise jamais le chemin.
+//
+// `?k=…` est le lien personnel du correspondant. Il est retiré pour la raison
+// inverse et plus forte : c'est un secret porteur, il n'a rien à faire dans
+// une adresse qu'on recopie, qu'on partage ou qui finit dans un historique.
 function stripCountryParam(search) {
   const raw = String(search || '');
-  if (!raw.includes('pays=')) return raw;
+  if (!raw.includes('pays=') && !raw.includes('k=')) return raw;
   try {
     const params = new URLSearchParams(raw);
     params.delete('pays');
+    params.delete('k');
     const rest = params.toString();
     return rest ? `?${rest}` : '';
   } catch {
