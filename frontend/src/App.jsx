@@ -17,6 +17,7 @@ import {
   defaultViewFor,
 } from './lib/routing.js';
 import { readTextSize, saveTextSize, applyTextSize, TEXT_SIZES } from './lib/textSize.js';
+import { readLastWorkspace, saveLastWorkspace } from './lib/lastWorkspace.js';
 import {
   readLastCountryId,
   saveLastCountryId,
@@ -52,6 +53,22 @@ function currentSearch() {
   return typeof window !== 'undefined' ? window.location.search : '';
 }
 
+/**
+ * Route de départ. `/` est l'entrée historique de l'équipe montage et le
+ * point de lancement de l'application installée : on y applique le souvenir
+ * de l'espace fréquenté sur cet appareil, sans quoi un correspondant qui a
+ * ajouté la plateforme à son écran d'accueil rouvre le studio à chaque fois.
+ * Toute autre adresse est prise telle quelle.
+ */
+function initialRoute() {
+  const pathname = currentPathname();
+  const parsed = parsePath(pathname, currentSearch());
+  if (pathname !== '/') return parsed;
+  const remembered = readLastWorkspace();
+  if (!remembered || remembered === parsed.workspace) return parsed;
+  return { workspace: remembered, view: defaultViewFor(remembered), countryId: '' };
+}
+
 // `?pays=ga` est accepté en entrée mais n'est pas la forme canonique : une
 // fois le pays lu, il est retiré de la barre d'adresse pour qu'il ne
 // contredise jamais le chemin.
@@ -74,7 +91,7 @@ function AppShell() {
 
   // L'URL est la source de vérité : elle porte l'espace de travail (montage
   // ou reportage) ET la vue courante. Voir lib/routing.js.
-  const [route, setRoute] = useState(() => parsePath(currentPathname(), currentSearch()));
+  const [route, setRoute] = useState(() => initialRoute());
   const { workspace, view: currentView } = route;
   const isReporter = workspace === WORKSPACES.REPORTER;
 
@@ -106,6 +123,10 @@ function AppShell() {
         : { ...prev, view, countryId: nextCountry }
     ));
   }, []);
+
+  useEffect(() => {
+    saveLastWorkspace(route.workspace);
+  }, [route.workspace]);
 
   // Boutons Précédent/Suivant du navigateur.
   useEffect(() => {

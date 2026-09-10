@@ -50,21 +50,44 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'logo-lwm.png'],
       manifest: {
+        id: '/',
         name: 'JT ALWM Team',
         short_name: 'ALWM',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        description: 'Collecte hebdomadaire des reportages ALWM : envoi des rushes par pays et téléchargement du JT.',
+        lang: 'fr',
+        dir: 'ltr',
+        // Bleu profond du logo, au lieu du bleu ardoise générique : c'est la
+        // couleur de la barre système et de l'écran de lancement, donc la
+        // première chose que voit un correspondant qui ouvre l'application.
+        theme_color: '#0d4d8b',
+        background_color: '#0d4d8b',
         display: 'standalone',
+        // `/` renvoie l'espace utilisé en dernier sur cet appareil (cf.
+        // lib/lastWorkspace.js). Un manifeste ne peut pas s'adapter à la
+        // personne ; c'est l'application qui s'en charge à l'ouverture.
+        start_url: '/',
+        scope: '/',
         icons: [
           {
             src: '/icons/icon-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: '/icons/icon-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            // Android recadre l'icône (cercle, goutte, carré arrondi). Sans
+            // variante masquable, le logo était rogné sur les bords et posé
+            // sur une pastille blanche ajoutée par le système.
+            src: '/icons/icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }
