@@ -15,6 +15,10 @@ export const translations = {
     // Espace journalistes (URL /journalistes) : deux actions, rien d'autre.
     // Textes volontairement explicites — beaucoup de correspondants sont peu
     // familiers du web et lisent sur un petit écran.
+    textSize: {
+      largeCta: 'Gros caractères',
+      normalCta: 'Taille normale',
+    },
     reporter: {
       badge: 'Espace journalistes',
       badgeShort: 'Journalistes',
@@ -107,6 +111,10 @@ export const translations = {
       resumeDismiss: 'Abandonner',
       resumeMismatch: 'Ce n’est pas le même fichier. Choisissez celui dont l’envoi a été interrompu.',
       retryCta: 'Réessayer',
+      checklistTitle: 'Ce reportage contient',
+      checklistItems: { video: 'Vidéo', audio: 'Son', image: 'Photo', document: 'Texte' },
+      checklistCount: (n) => (n > 1 ? `${n} fichiers` : '1 fichier'),
+      checklistMissing: 'Rien pour l’instant',
       keepOpen: 'Gardez cette page ouverte jusqu\'à la fin de l\'envoi.',
       weekTitle: 'Semaine de diffusion',
       weekSubtitle: 'Vérifiez le bon dossier avant de déposer.',
@@ -344,6 +352,10 @@ export const translations = {
       stats: 'Stats & Delays',
       statsShort: 'Stats',
     },
+    textSize: {
+      largeCta: 'Larger text',
+      normalCta: 'Normal text',
+    },
     reporter: {
       badge: 'Reporters space',
       badgeShort: 'Reporters',
@@ -435,6 +447,10 @@ export const translations = {
       resumeDismiss: 'Give up',
       resumeMismatch: 'That is a different file. Choose the one whose upload was interrupted.',
       retryCta: 'Try again',
+      checklistTitle: 'This report contains',
+      checklistItems: { video: 'Video', audio: 'Audio', image: 'Photo', document: 'Text' },
+      checklistCount: (n) => (n > 1 ? `${n} files` : '1 file'),
+      checklistMissing: 'Nothing yet',
       keepOpen: 'Keep this page open until the upload finishes.',
       weekTitle: 'Broadcast week',
       weekSubtitle: 'Check the right folder before dropping.',

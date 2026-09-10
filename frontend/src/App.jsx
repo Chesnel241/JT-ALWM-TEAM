@@ -16,6 +16,7 @@ import {
   isViewAllowed,
   defaultViewFor,
 } from './lib/routing.js';
+import { readTextSize, saveTextSize, applyTextSize, TEXT_SIZES } from './lib/textSize.js';
 import {
   readLastCountryId,
   saveLastCountryId,
@@ -130,6 +131,7 @@ function AppShell() {
   // Pays confirmé sur CET appareil. localStorage est cloisonné par navigateur :
   // le même lien partagé n'expose donc jamais le choix d'un correspondant à un
   // autre. Repli sur le dernier pays ouvert quand rien n'a encore été confirmé.
+  const [textSize, setTextSizeState] = useState(() => readTextSize());
   const [homeCountryId, setHomeCountryId] = useState(() => readHomeCountryId());
   const [lastCountryId, setLastCountryId] = useState(() => readLastCountryId());
   const [selectedWeek, setSelectedWeekState] = useState(() => {
@@ -160,6 +162,19 @@ function AppShell() {
   useEffect(() => {
     api.checkAuth().then(setIsAuthenticated).catch(() => setIsAuthenticated(false));
   }, []);
+
+  // Le studio de montage est une interface dense sur grand écran : le
+  // grossissement n'y a pas de sens et casserait la timeline.
+  const isEditorStudio = !isReporter && currentView === 'dashboard' && isDesktopEditorAvailable;
+
+  useEffect(() => {
+    applyTextSize(isEditorStudio ? TEXT_SIZES.NORMAL : textSize);
+  }, [textSize, isEditorStudio]);
+
+  const handleTextSize = (next) => {
+    setTextSizeState(next);
+    saveTextSize(next);
+  };
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1180px)');
@@ -313,7 +328,7 @@ function AppShell() {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
   }
 
-  const isEditorWorkspace = !isReporter && currentView === 'dashboard' && isDesktopEditorAvailable;
+  const isEditorWorkspace = isEditorStudio;
   // L'accueil journalistes doit rester un écran à deux boutons : les bulles
   // flottantes (aide WhatsApp, assistant) recouvraient les cartes sur mobile
   // et dupliquaient le bloc d'aide déjà présent dans la page.
@@ -332,6 +347,8 @@ function AppShell() {
         newUploadsCount={newUploadsCount}
         isDesktopEditorAvailable={isDesktopEditorAvailable}
         workspace={workspace}
+        textSize={textSize}
+        onTextSize={handleTextSize}
       />
 
       <main className={`flex-1 ${isEditorWorkspace ? 'min-h-0 overflow-hidden pb-0' : 'pb-12'}`}>
@@ -350,6 +367,8 @@ function AppShell() {
                   onChangeCountry={handleForgetHomeCountry}
                   weeks={weeks}
                   selectedWeek={selectedWeek}
+                  textSize={textSize}
+                  onTextSize={handleTextSize}
                 />
               </div>
             )}

@@ -32,6 +32,7 @@ const FILE_ICONS = {
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import MobileUploaderView from './MobileUploaderView.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
+import ReportageChecklist from './ReportageChecklist.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
   const { t, lang } = useI18n();
@@ -614,6 +615,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 >
                   <div className="space-y-4 sm:space-y-6">
                 
+                {/* Pense-bête : ce que ce reportage contient déjà. */}
+                <ReportageChecklist files={repUploads} />
+
                 {/* Le bloc "Demander un délai" a été déplacé en haut, dans la
                     bannière du timer verrouillé (directement visible sans
                     ouvrir le reportage). */}

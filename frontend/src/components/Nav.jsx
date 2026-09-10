@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { useState, useEffect } from 'react';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import NotificationToggle from './NotificationToggle.jsx';
+import TextSizeToggle from './TextSizeToggle.jsx';
 import { WORKSPACES } from '../lib/routing.js';
 
 export default function Nav({
@@ -11,6 +12,8 @@ export default function Nav({
   newUploadsCount,
   isDesktopEditorAvailable = true,
   workspace = WORKSPACES.EDITOR,
+  textSize,
+  onTextSize,
 }) {
   const { t } = useI18n();
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
@@ -201,6 +204,11 @@ export default function Nav({
               compact={compactActions}
               audience={isReporter ? 'reporter' : 'editor'}
             />
+            {/* Confort de lecture : proposé aux deux équipes, sauf dans le
+                studio où l'interface est dense par nature. */}
+            {!isEditorWorkspace && (
+              <TextSizeToggle size={textSize} onChange={onTextSize} compact={compactActions} />
+            )}
             <LanguageSwitcher compact={compactActions} />
           </div>
 

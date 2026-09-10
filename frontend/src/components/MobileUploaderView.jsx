@@ -13,6 +13,7 @@ import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
+import ReportageChecklist from './ReportageChecklist.jsx';
 import PhoneInput from 'react-phone-number-input';
 import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
@@ -491,6 +492,9 @@ export default function MobileUploaderView({
                 </div>
               </div>
             )}
+
+            {/* Pense-bête : ce que ce reportage contient déjà. */}
+            <ReportageChecklist files={activeUploads} />
 
             {/* Accusé de réception explicite : la liste de fichiers seule ne
                 disait pas au correspondant que son envoi était terminé. */}

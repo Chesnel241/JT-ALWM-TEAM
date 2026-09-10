@@ -63,6 +63,21 @@
 	--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
+/* Confort de lecture.
+   Une partie des correspondants sont des personnes âgées qui lisent sur un
+   téléphone, souvent dehors. Le réglage agit sur la taille de base du
+   document : les espacements et les hauteurs de Tailwind étant exprimés en
+   rem, boutons et zones tactiles grandissent avec le texte au lieu de le
+   laisser déborder de cadres figés. Le studio de montage est exclu : c'est
+   une interface dense, réservée aux monteurs sur ordinateur. */
+html {
+	font-size: 100%;
+}
+
+html[data-text-size='large'] {
+	font-size: 118.75%; /* 19px pour une base de 16px */
+}
+
 body {
 	font-family: 'Sora', ui-sans-serif, system-ui;
 	background: radial-gradient(1200px 600px at 10% -10%, rgb(81 181 231 / 0.16), transparent),

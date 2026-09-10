@@ -8,6 +8,7 @@ import { whatsappSupportLink } from '../lib/support.js';
 import { api } from '../api/index.js';
 import { splitByMediaType } from '../lib/mediaTypes.js';
 import NotificationToggle from './NotificationToggle.jsx';
+import TextSizeToggle from './TextSizeToggle.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 
@@ -27,6 +28,8 @@ export default function ReporterHomeView({
   onChangeCountry,
   weeks = [],
   selectedWeek = '',
+  textSize,
+  onTextSize,
 }) {
   const { t } = useI18n();
   const r = t.reporter;
@@ -174,8 +177,11 @@ export default function ReporterHomeView({
             <p className="text-sm text-[color:var(--muted)] mt-0.5">{r.notifyText}</p>
           </div>
         </div>
-        <div className="shrink-0 sm:self-center">
+        <div className="shrink-0 sm:self-center flex items-center gap-2">
           <NotificationToggle audience="reporter" countryId={homeCountry?.id || ''} />
+          {/* Le même réglage existe dans l'en-tête, réduit à une icône sur
+              téléphone : ici il est nommé, là où on prend le temps de lire. */}
+          <TextSizeToggle size={textSize} onChange={onTextSize} />
         </div>
       </div>
 
