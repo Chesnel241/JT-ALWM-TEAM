@@ -18,6 +18,7 @@ const app = createApp({ uploadsDir, corsOrigins });
 startAlertMonitoring(uploadsDir);
 
 import { initWebPushDb } from './data/webpushSubscriptions.js';
+import { startDeadlineReminders } from './services/deadlineReminders.js';
 
 // Ensure DB is loaded (from Redis or local) before cleanup + listen
 await initDb();
@@ -42,6 +43,10 @@ async function runCleanup() {
 
 runCleanup();
 setInterval(runCleanup, 60 * 60 * 1000);
+
+// Relance automatique des pays qui n'ont rien envoyé, la veille de la
+// clôture. Se faisait jusqu'ici à la main, pays par pays.
+startDeadlineReminders();
 
 const server = app.listen(PORT, () => {
   logger.info(`✅ Backend JT ALWM démarré`, {

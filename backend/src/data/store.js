@@ -421,8 +421,23 @@ export function findUploadCountry(weekId, fileId) {
   return '';
 }
 
+/**
+ * Rappels d'échéance déjà envoyés, pour ne jamais prévenir deux fois le même
+ * pays pour la même semaine — y compris après un redémarrage du serveur.
+ * La clé est `weekId:countryId`.
+ */
+export function wasReminderSent(weekId, countryId) {
+  return Boolean(db._reminders && db._reminders[`${weekId}:${countryId}`]);
+}
+
+export function markReminderSent(weekId, countryId) {
+  if (!db._reminders) db._reminders = {};
+  db._reminders[`${weekId}:${countryId}`] = new Date().toISOString();
+  persistDb();
+}
+
 // Clés réservées du store (méta-données qui ne sont pas des semaines).
-const META_KEYS = new Set(['_countries', '_themes']);
+const META_KEYS = new Set(['_countries', '_themes', '_reminders']);
 
 export function getFileMetadata(filename) {
   for (const weekId of Object.keys(db)) {
