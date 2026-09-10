@@ -116,47 +116,24 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     return { isLocked: locked, extendedUntil: extUntil, extensionStatus: extStatus };
   })();
 
+  // L'envoi part immédiatement, sans passe de compression locale.
+  //
+  // Le navigateur téléchargeait auparavant un moteur d'encodage depuis un CDN
+  // externe, puis réencodait la vidéo sur le téléphone AVANT le premier octet
+  // envoyé : plusieurs minutes d'attente, de la batterie et de la chauffe sur
+  // un appareil d'entrée de gamme, pour un résultat que le serveur sait
+  // produire lui-même en arrière-plan une fois le fichier reçu.
   const handleFiles = async (filesList, reportageName) => {
-    // Process files sequentially to avoid freezing the browser or OOM during FFmpeg compression
     for (const file of Array.from(filesList)) {
       const tempId = Math.random().toString(36).slice(2);
       const isVideo = /\.(mp4|mov|webm)$/i.test(file.name) || file.type.startsWith('video/');
-      
+
       setUploading((prev) => [
         ...prev,
         { id: tempId, name: file.name, progress: 0, status: 'uploading', phase: 'uploading', isVideo, reportage: reportageName },
       ]);
 
-      let uploadFile = file;
-
-      // Compress video if it's > 50MB
-      if (isVideo && file.size > 50 * 1024 * 1024) {
-        setUploading((prev) =>
-          prev.map((f) =>
-            f.id === tempId ? { ...f, phase: 'compressing', progress: 0 } : f
-          )
-        );
-
-        try {
-          const { compressVideo } = await import('../api/ffmpeg.js');
-          uploadFile = await compressVideo(file, (pct) => {
-            setUploading((prev) =>
-              prev.map((f) =>
-                f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f
-              )
-            );
-          });
-        } catch (err) {
-          console.error("Compression failed, falling back to original file", err);
-          addToast("Échec de la compression, envoi du fichier original...", 'warning', 3000);
-        }
-      }
-
-      setUploading((prev) =>
-        prev.map((f) =>
-          f.id === tempId ? { ...f, phase: 'uploading', progress: 0, name: uploadFile.name } : f
-        )
-      );
+      const uploadFile = file;
 
       api
         .uploadFile(selectedWeek, country.id, uploadFile, {

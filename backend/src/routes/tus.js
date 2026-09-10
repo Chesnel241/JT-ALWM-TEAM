@@ -4,8 +4,9 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { existsSync, unlinkSync } from 'fs';
 import logger from '../logger/index.js';
-import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS } from '../lib/upload.js';
-import { addUpload, getCustomCountries, getExtensions } from '../data/store.js';
+import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyUpload } from '../lib/upload.js';
+import { addUpload, getCustomCountries, getExtensions, updateUploadSize } from '../data/store.js';
+import { queueCompression } from '../services/videoCompress.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { broadcastNotification, AUDIENCES } from './webpush.js';
@@ -137,15 +138,14 @@ export const tusServer = new Server({
     const fileType = meta.filetype || 'application/octet-stream';
     const fileSize = upload.size;
 
-    const isScript = fileType.startsWith('text/') || fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    const isImage = fileType.startsWith('image/');
-    const isAudio = fileType.startsWith('audio/');
-
+    // Classement par extension d'abord, type MIME ensuite : un téléphone qui
+    // annonce application/octet-stream pour un .wav rangeait son audio dans
+    // les rushes vidéo.
     const fileData = {
       id: uuidv4(),
       name: originalName,
       filename: filename,
-      type: isScript ? 'script' : isImage ? 'image' : isAudio ? 'audio' : 'video',
+      type: classifyUpload(originalName, fileType),
       size: `${(fileSize / (1024 * 1024)).toFixed(1)} MB`,
       status: 'pending',
       reportage,
@@ -176,6 +176,23 @@ export const tusServer = new Server({
         .catch(err => logger.error('Push notification failed', { error: err.message }));
 
       io?.emit('upload_update', { weekId, countryId });
+
+      // Compression 720p côté serveur, en arrière-plan et une à la fois.
+      // Elle se faisait auparavant dans le navigateur du correspondant :
+      // téléchargement d'un moteur d'encodage puis réencodage sur le
+      // téléphone, avant même de commencer l'envoi. Ici l'envoi est déjà
+      // terminé et confirmé quand l'encodage démarre.
+      if (fileData.type === 'video') {
+        const ext = path.extname(originalName).toLowerCase();
+        const absolutePath = path.join(uploadsDir, filename);
+        queueCompression(absolutePath, ext, ({ compressed, newSize }) => {
+          if (!compressed) return;
+          const label = `${(newSize / (1024 * 1024)).toFixed(1)} MB`;
+          if (updateUploadSize(weekId, countryId, fileData.id, label)) {
+            io?.emit('upload_update', { weekId, countryId });
+          }
+        });
+      }
 
     } catch (storeErr) {
       logger.uploadFailed(weekId, countryId, originalName, storeErr);

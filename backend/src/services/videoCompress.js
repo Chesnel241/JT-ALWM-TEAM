@@ -66,3 +66,51 @@ export async function compressTo720(filePath, ext) {
     return { compressed: false, newSize: fs.statSync(filePath).size };
   }
 }
+
+/**
+ * File d'attente sérielle des compressions.
+ *
+ * ffmpeg sature un cœur par encodage. Vingt correspondants qui envoient leur
+ * rush le dimanche soir lanceraient autant d'encodages simultanés et le VPS
+ * ne répondrait plus. Les compressions s'exécutent donc une par une, en
+ * arrière-plan : le correspondant a déjà reçu sa confirmation, et le monteur
+ * voit le fichier apparaître immédiatement.
+ */
+let queue = Promise.resolve();
+let pending = 0;
+
+/**
+ * Enchaîne une tâche derrière les précédentes. Exporté pour être testable
+ * sans invoquer ffmpeg : c'est la sérialisation qui compte ici, pas
+ * l'encodage.
+ */
+export function runSerially(task) {
+  pending += 1;
+  queue = queue
+    .then(() => task())
+    .catch((err) => {
+      // Une compression ratée ne doit jamais bloquer les suivantes : le
+      // fichier original est conservé, c'est le comportement voulu.
+      logger.warn(`Compression ignorée: ${err.message}`);
+    })
+    .finally(() => { pending -= 1; });
+  return queue;
+}
+
+export function queueCompression(filePath, ext, onDone) {
+  return runSerially(async () => {
+    const result = await compressTo720(filePath, ext);
+    if (typeof onDone === 'function') {
+      try {
+        await onDone(result);
+      } catch (err) {
+        logger.warn(`Suivi de compression échoué: ${err.message}`);
+      }
+    }
+  });
+}
+
+/** Nombre de compressions en attente ou en cours (diagnostic). */
+export function pendingCompressions() {
+  return pending;
+}

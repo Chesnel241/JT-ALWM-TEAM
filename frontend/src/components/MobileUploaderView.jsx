@@ -450,9 +450,7 @@ export default function MobileUploaderView({
                       <div className="flex items-center justify-between text-xs gap-2">
                         <span className="font-semibold text-[color:var(--ink)] truncate">{f.name}</span>
                         <span className="text-[10px] font-bold text-[color:var(--action-deep)] shrink-0">
-                          {f.phase === 'compressing'
-                            ? `${t.uploader.compressing} ${Math.round(f.progress)}%`
-                            : f.phase === 'processing'
+                          {f.phase === 'processing'
                             ? 'Finalisation...'
                             : `${Math.round(f.progress)}%`}
                         </span>

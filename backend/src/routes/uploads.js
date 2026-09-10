@@ -7,7 +7,8 @@ import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { getCustomCountries } from '../data/store.js';
-import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry } from '../data/store.js';
+import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry, updateUploadSize } from '../data/store.js';
+import { queueCompression } from '../services/videoCompress.js';
 import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
@@ -370,7 +371,19 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
         .catch(err => logger.error('Push notification failed', { error: err.message }));
       
       io?.emit('upload_update', { weekId, countryId });
-      
+
+      // Compression 720p en arrière-plan, une à la fois (cf. tus.js).
+      if (fileData.type === 'video') {
+        const ext = path.extname(file.originalname).toLowerCase();
+        queueCompression(file.path, ext, ({ compressed, newSize }) => {
+          if (!compressed) return;
+          const label = `${(newSize / (1024 * 1024)).toFixed(1)} MB`;
+          if (updateUploadSize(weekId, countryId, fileData.id, label)) {
+            io?.emit('upload_update', { weekId, countryId });
+          }
+        });
+      }
+
       return res.status(201).json(result);
     } catch (storeErr) {
       const uploadDurationMs = Date.now() - uploadStartTime;

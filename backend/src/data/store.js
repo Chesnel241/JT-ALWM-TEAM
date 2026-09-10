@@ -390,6 +390,21 @@ export function updateFileStatus(weekId, fileId, status, feedback) {
 }
 
 /**
+ * Met à jour la taille affichée d'un fichier après compression serveur.
+ * Retourne le fichier mis à jour, ou null s'il a disparu entre-temps
+ * (suppression par un monteur pendant l'encodage).
+ */
+export function updateUploadSize(weekId, countryId, fileId, sizeLabel) {
+  const list = db[weekId]?.[countryId];
+  if (!Array.isArray(list)) return null;
+  const file = list.find((f) => f && f.id === fileId);
+  if (!file) return null;
+  file.size = sizeLabel;
+  persistDb();
+  return file;
+}
+
+/**
  * Pays propriétaire d'un fichier, ou '' s'il est introuvable ou s'il s'agit
  * d'un JT publié. Sert à ne prévenir que le correspondant concerné quand un
  * rush est refusé, plutôt que d'annoncer à tous les pays qu'un rush a été
