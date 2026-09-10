@@ -85,7 +85,7 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
               
               <button 
                 onClick={handleDismiss}
-                className="hidden md:flex shrink-0 items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30 transition-all hover:scale-105 active:scale-95"
+                className="hidden md:flex shrink-0 items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30 motion-tap hover:scale-105 active:scale-95"
               >
                 <CheckCircle size={20} />
                 <span>J'ai compris</span>
@@ -103,7 +103,7 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
               {items.map(({ id, color, bg, border }) => {
                 const Icon = icons[id];
                 return (
-                  <div key={id} className={`p-3.5 sm:p-4 rounded-2xl border transition-all hover:shadow-md bg-[var(--paper)] ${border} group`}>
+                  <div key={id} className={`p-3.5 sm:p-4 rounded-2xl border motion-tap hover:shadow-md bg-[var(--paper)] ${border} group`}>
                     <div className="flex flex-col h-full">
                       <div className="flex items-center gap-2.5 mb-2">
                         <div className={`p-2 rounded-xl ${bg} ${color} transition-transform group-hover:scale-110`}>
@@ -128,7 +128,7 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
             <div className="mt-6 flex justify-center md:hidden pb-2">
               <button 
                 onClick={handleDismiss}
-                className="w-full flex justify-center items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30 transition-all active:scale-95 text-sm"
+                className="w-full flex justify-center items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30 motion-tap active:scale-95 text-sm"
               >
                 <CheckCircle size={18} />
                 <span>J'ai compris</span>

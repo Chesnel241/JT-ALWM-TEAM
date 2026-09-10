@@ -105,7 +105,7 @@ export default function ReporterHomeView({
           <button
             type="button"
             onClick={() => onContinueWithCountry?.(homeCountry)}
-            className="mt-4 w-full inline-flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-[var(--action)]/25 active:scale-[0.98] transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--action)]/40"
+            className="mt-4 w-full inline-flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-[var(--action)]/25 active:scale-[0.98] motion-tap focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--action)]/40"
           >
             <span>
               {homeCountryConfirmed
@@ -135,7 +135,7 @@ export default function ReporterHomeView({
             key={key}
             type="button"
             onClick={onClick}
-            className={`group w-full text-left bg-[var(--paper)] border-2 ${tone.card} rounded-3xl p-6 sm:p-8 shadow-sm transition-all active:scale-[0.98] sm:hover:shadow-[var(--shadow-soft)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40 flex flex-col gap-4 min-h-[220px] sm:min-h-[280px]`}
+            className={`group w-full text-left bg-[var(--paper)] border-2 ${tone.card} rounded-3xl p-6 sm:p-8 shadow-sm motion-tap active:scale-[0.98] sm:hover:shadow-[var(--shadow-soft)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40 flex flex-col gap-4 min-h-[220px] sm:min-h-[280px]`}
           >
             <div className="flex items-center justify-between gap-3">
               <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-2xl flex items-center justify-center ${tone.icon}`}>
@@ -194,7 +194,7 @@ export default function ReporterHomeView({
           href={whatsappSupportLink(r.helpMessage)}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-sm shadow-sm active:scale-95 transition-all"
+          className="shrink-0 inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-sm shadow-sm active:scale-95 motion-tap"
         >
           <MessageCircle size={18} />
           {r.helpCta}

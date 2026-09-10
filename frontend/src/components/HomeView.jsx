@@ -103,7 +103,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
               <button
                 onClick={() => handleSelectCountry(lastCountry)}
                 type="button"
-                className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-bold shadow-md shadow-[var(--accent)]/20 active:scale-95 transition-all flex items-center gap-1"
+                className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-bold shadow-md shadow-[var(--accent)]/20 active:scale-95 motion-tap flex items-center gap-1"
               >
                 <span>Ouvrir</span>
                 <ChevronRight size={14} />
@@ -150,7 +150,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
               onClick={() => handleSelectCountry(country)}
               type="button"
               aria-label={t.home.enterAria(country.name)}
-              className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all active:scale-[0.98] ${
+              className={`w-full flex items-center justify-between p-3.5 rounded-2xl border motion-tap active:scale-[0.98] ${
                 country.id === 'tj' || country.id === 'mj'
                   ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-900/50 shadow-sm'
                   : 'bg-[var(--paper)] border-[var(--border)] shadow-sm'
@@ -222,7 +222,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
                 onClick={() => handleSelectCountry(country)}
                 type="button"
                 aria-label={t.home.enterAria(country.name)}
-                className={`w-full flex items-center justify-between px-4 py-3 sm:py-4 rounded-2xl border transition-all active:scale-[0.98] active:opacity-80 sm:hover:shadow-[var(--shadow-soft)] ${
+                className={`w-full flex items-center justify-between px-4 py-3 sm:py-4 rounded-2xl border motion-tap active:scale-[0.98] active:opacity-80 sm:hover:shadow-[var(--shadow-soft)] ${
                   country.id === 'tj' || country.id === 'mj'
                     ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 sm:hover:border-amber-400'
                     : `border-[var(--border)] sm:hover:border-[color:var(--accent)] ${index % 2 === 0 ? 'bg-[var(--paper)]' : 'bg-[var(--paper-2)]'}`
@@ -244,7 +244,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
               onClick={() => setAddOpen(true)}
               type="button"
               aria-label={t.home.addCountryAria}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 sm:py-4 rounded-2xl border-2 border-dashed border-[var(--border)] text-[color:var(--muted)] transition-all font-medium active:scale-[0.98] active:opacity-80 sm:hover:border-[color:var(--accent)] sm:hover:text-[color:var(--accent-deep)] sm:hover:bg-[var(--accent)]/5"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 sm:py-4 rounded-2xl border-2 border-dashed border-[var(--border)] text-[color:var(--muted)] motion-tap font-medium active:scale-[0.98] active:opacity-80 sm:hover:border-[color:var(--accent)] sm:hover:text-[color:var(--accent-deep)] sm:hover:bg-[var(--accent)]/5"
             >
               <Plus size={18} />
               {t.home.addCountry}

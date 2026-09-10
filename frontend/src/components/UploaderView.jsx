@@ -627,7 +627,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         const isDragActive = dragActive[reportageName];
 
         return (
-          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="mb-3 sm:mb-4 md:mb-12 bg-[var(--paper)] md:bg-black/5 md:dark:bg-white/5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] md:p-8 overflow-hidden md:overflow-visible shadow-sm md:shadow-none transition-all duration-300">
+          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="mb-3 sm:mb-4 md:mb-12 bg-[var(--paper)] md:bg-black/5 md:dark:bg-white/5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] md:p-8 overflow-hidden md:overflow-visible shadow-sm md:shadow-none motion-enter">
             {/* Accordion Header (Mobile) / Normal Header (Desktop) */}
             <div
               onClick={() => {
@@ -655,7 +655,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             
             {/* Content Container (Collapsible on Mobile, Always Open on Desktop) */}
             <div
-              className={`grid transition-all duration-500 ease-in-out md:!grid-rows-[1fr] md:!opacity-100 md:!overflow-visible ${
+              className={`grid motion-collapse md:!grid-rows-[1fr] md:!opacity-100 md:!overflow-visible ${
                 expandedSection === section.id ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 overflow-hidden'
               }`}
             >
@@ -675,7 +675,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                     ouvrir le reportage). */}
                 <div
                   id={i === 0 ? 'tour-dropzone' : undefined}
-                  className={`relative border-2 border-dashed rounded-[1.5rem] p-6 sm:p-10 text-center transition-all ${
+                  className={`relative border-2 border-dashed rounded-[1.5rem] p-6 sm:p-10 text-center motion-tap ${
                     isLocked
                       ? 'border-[var(--border)] bg-[var(--paper-2)] opacity-50 cursor-not-allowed'
                       : isDragActive
@@ -756,7 +756,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                           </div>
                           <div className="w-full bg-[var(--paper-2)] rounded-full h-2">
                             <div
-                              className={`h-2 rounded-full transition-all duration-300 ${
+                              className={`h-2 rounded-full motion-enter ${
                                 f.status === 'completed'
                                   ? 'bg-[var(--action)]'
                                   : f.status === 'error'

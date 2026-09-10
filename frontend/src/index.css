@@ -61,6 +61,47 @@
 	--shadow-soft: 0 12px 32px -24px oklch(0.25 0.05 250 / 0.35);
 	--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 	--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+	/* Mouvement : une échelle, trois durées, deux courbes.
+	   Cinq durées circulaient dans le code sans logique commune. Une
+	   interface paraît soignée quand des gestes de même nature durent le
+	   même temps, pas quand chaque composant choisit la sienne.
+
+	   --motion-tap    retour tactile immédiat : appui, survol, couleur.
+	   --motion-enter  un élément qui apparaît ou disparaît sur place.
+	   --motion-screen changement d'écran, panneau qui s'ouvre.
+
+	   --ease-out sort vite puis freine : c'est la courbe de ce qui arrive.
+	   --ease-emphasis freine plus franchement, pour un achèvement. */
+	--motion-tap: 120ms;
+	--motion-enter: 200ms;
+	--motion-screen: 320ms;
+	--ease-emphasis: cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+/* Réduction des mouvements.
+   Le réglage système ne neutralisait que trois animations nommées : tous les
+   `transition-*` de Tailwind et tous les effets d'appui continuaient de
+   bouger pour quelqu'un qui a demandé le contraire. Ici on ramène toute
+   durée à un battement imperceptible plutôt que de la mettre à zéro : une
+   transition supprimée d'un coup casse certains composants qui attendent la
+   fin de l'animation pour se démonter. Les fondus d'opacité restent, ce sont
+   les déplacements qui gênent. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 1ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 1ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	:root {
+		--motion-tap: 1ms;
+		--motion-enter: 1ms;
+		--motion-screen: 1ms;
+	}
 }
 
 /* Confort de lecture.
@@ -183,6 +224,43 @@ body {
 }
 
 @layer utilities {
+	/* Trois classes de mouvement, à la place de `transition-all`.
+
+	   `transition-all` fait surveiller au navigateur TOUTES les propriétés,
+	   y compris celles qui obligent à recalculer la mise en page. C'était la
+	   première source de saccades sur un téléphone d'entrée de gamme. Ces
+	   classes nomment les propriétés réellement concernées et empruntent la
+	   durée à l'échelle commune. */
+	.motion-tap {
+		transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+		transition-duration: var(--motion-tap);
+		transition-timing-function: var(--ease-out);
+	}
+
+	.motion-enter {
+		transition-property: transform, opacity, box-shadow, border-color, background-color;
+		transition-duration: var(--motion-enter);
+		transition-timing-function: var(--ease-out);
+	}
+
+	.motion-screen {
+		transition-property: transform, opacity;
+		transition-duration: var(--motion-screen);
+		transition-timing-function: var(--ease-emphasis);
+	}
+
+	/* Repli d'une section. Animer la hauteur d'une piste de grille oblige le
+	   navigateur à recalculer la mise en page à chaque image : c'est le seul
+	   endroit où on l'accepte, parce qu'il n'y a pas d'équivalent en
+	   transform pour un contenu de hauteur inconnue, et que cela ne concerne
+	   qu'un élément, sur appui, pendant un tiers de seconde. La propriété est
+	   nommée explicitement pour que ce compromis reste visible. */
+	.motion-collapse {
+		transition-property: grid-template-rows, opacity;
+		transition-duration: var(--motion-screen);
+		transition-timing-function: var(--ease-emphasis);
+	}
+
 	.sr-only {
 		position: absolute;
 		width: 1px;

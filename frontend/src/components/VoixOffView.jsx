@@ -308,7 +308,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
                   key={`mob-voix-${c.id}`}
                   onClick={() => setSelectedCountry(c)}
                   type="button"
-                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-2xl font-bold text-xs transition-all active:scale-95 ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-2xl font-bold text-xs motion-tap active:scale-95 ${
                     isSelected
                       ? 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/30 scale-105'
                       : 'bg-[var(--paper)] text-[color:var(--ink)] border border-[var(--border)]'
@@ -448,7 +448,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
                 <button
                   onClick={startRecording}
                   disabled={isStarting || !selectedCountry}
-                  className="w-full max-w-xs py-3.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(220,38,38,0.5)] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none"
+                  className="w-full max-w-xs py-3.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(220,38,38,0.5)] active:scale-95 motion-tap disabled:opacity-50 disabled:shadow-none"
                 >
                   <Mic size={20} />
                   <span>{isStarting ? 'Démarrage...' : 'Enregistrer la Voix Off'}</span>
@@ -456,7 +456,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
               ) : (
                 <button
                   onClick={stopRecording}
-                  className="w-full max-w-xs py-3.5 rounded-2xl bg-gray-800 text-white font-black text-sm flex items-center justify-center gap-2 border border-gray-700 active:scale-95 transition-all"
+                  className="w-full max-w-xs py-3.5 rounded-2xl bg-gray-800 text-white font-black text-sm flex items-center justify-center gap-2 border border-gray-700 active:scale-95 motion-tap"
                 >
                   <Square size={18} className="fill-white" />
                   <span>Arrêter l'enregistrement</span>
@@ -506,7 +506,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
               <button
                 key={c.id}
                 onClick={() => setSelectedCountry(c)}
-                className={`snap-start shrink-0 flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${
+                className={`snap-start shrink-0 flex items-center gap-2 px-4 py-2 rounded-full border motion-tap ${
                   selectedCountry?.id === c.id 
                     ? 'border-[color:var(--accent)] bg-[var(--accent)]/10 text-[color:var(--accent-deep)] ring-2 ring-[color:var(--accent)]/30' 
                     : 'border-[var(--border)] bg-[var(--paper)] text-[color:var(--ink)] hover:border-[color:var(--accent)]'
@@ -612,7 +612,7 @@ export default function VoixOffView({ countries, selectedWeek, weeks, setSelecte
                     <button
                       onClick={handleUpload}
                       disabled={isUploading}
-                      className="bg-[var(--accent)] hover:opacity-90 text-[var(--paper)] px-6 py-2 rounded-full font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-[var(--accent)] hover:opacity-90 text-[var(--paper)] px-6 py-2 rounded-full font-bold flex items-center gap-2 motion-tap disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isUploading ? 'Traitement...' : <><Upload size={18} /> Traiter et Envoyer</>}
                     </button>

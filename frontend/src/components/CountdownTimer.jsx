@@ -69,7 +69,7 @@ export default function CountdownTimer({ week, compact = false }) {
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
           <div
-            className={`h-full rounded-full transition-all duration-1000 ${isLate ? 'bg-[var(--signal)]' : 'bg-[var(--accent)]'}`}
+            className={`h-full rounded-full motion-tap duration-1000 ${isLate ? 'bg-[var(--signal)]' : 'bg-[var(--accent)]'}`}
             style={{ width: `${Math.max(2, percentage)}%` }}
           />
         </div>
@@ -82,7 +82,7 @@ export default function CountdownTimer({ week, compact = false }) {
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div id="tour-countdown" className={`panel p-6 sm:p-8 mb-8 flex flex-col md:flex-row items-center gap-6 sm:gap-10 transition-all ${isLate ? '!border-2 !border-[var(--signal)]/50 !bg-[var(--signal)]/10' : 'bg-gradient-to-br from-[var(--paper)] to-[var(--paper-2)]'}`}>
+    <div id="tour-countdown" className={`panel p-6 sm:p-8 mb-8 flex flex-col md:flex-row items-center gap-6 sm:gap-10 motion-tap ${isLate ? '!border-2 !border-[var(--signal)]/50 !bg-[var(--signal)]/10' : 'bg-gradient-to-br from-[var(--paper)] to-[var(--paper-2)]'}`}>
       <div className="relative flex items-center justify-center flex-shrink-0">
         <svg className="transform -rotate-90 w-36 h-36">
           <circle
@@ -103,7 +103,7 @@ export default function CountdownTimer({ week, compact = false }) {
             fill="transparent"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className={`transition-all duration-1000 ease-[var(--ease-out)] ${isLate ? 'text-[var(--signal)]' : 'text-[color:var(--accent)]'}`}
+            className={`motion-tap duration-1000 ease-[var(--ease-out)] ${isLate ? 'text-[var(--signal)]' : 'text-[color:var(--accent)]'}`}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">

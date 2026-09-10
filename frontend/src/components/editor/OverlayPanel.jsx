@@ -41,7 +41,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
                 fields: { ...(overlay.fields || {}), [field.key]: e.target.value },
               })
             }
-            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
           />
         </div>
       ))}
@@ -93,7 +93,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           <select
             value={overlay.font || ''}
             onChange={(e) => onChange({ ...overlay, font: e.target.value || undefined })}
-            className="w-full px-3 py-2 bg-[var(--paper)] border border-[var(--border)] rounded-lg text-sm font-medium text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            className="w-full px-3 py-2 bg-[var(--paper)] border border-[var(--border)] rounded-lg text-sm font-medium text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
           >
             <option value="">Par défaut (Système)</option>
             {FONT_FAMILIES.map((f) => (
@@ -151,7 +151,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
               key={theme.id}
               type="button"
               onClick={() => onChange({ ...overlay, colors: { ...(overlay.colors || {}), ...theme.colors } })}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-[var(--accent)]/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 transition-all"
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-[var(--accent)]/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 motion-tap"
             >
               {theme.label}
             </button>
@@ -238,7 +238,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
             step="0.5"
             value={overlay.startTime ?? 0}
             onChange={(e) => onChange({ ...overlay, startTime: parseFloat(e.target.value) || 0 })}
-            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -253,7 +253,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
               const v = e.target.value;
               onChange({ ...overlay, duration: v === '' ? null : parseFloat(v) });
             }}
-            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all"
+            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
           />
         </div>
       </div>
@@ -349,7 +349,7 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
                 <button
                   key={t.id}
                   onClick={() => addOverlay(t.id)}
-                  className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all text-left"
+                  className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 motion-tap text-left"
                 >
                   <span className="text-2xl">{t.emoji}</span>
                   <div>

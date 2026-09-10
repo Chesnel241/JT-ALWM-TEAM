@@ -73,7 +73,7 @@ export default function LoginView({ onLogin }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t.login?.passwordPlaceholder || 'Mot de passe'}
-              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] focus:ring-1 focus:ring-[color:var(--accent)] transition-all"
+              className="w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] focus:ring-1 focus:ring-[color:var(--accent)] motion-tap"
               autoFocus
             />
           </div>

@@ -198,7 +198,7 @@ export default function StatsView({ weeks, selectedWeek }) {
                     </div>
                     <div className="w-full bg-[var(--paper-2)] rounded-full h-3">
                       <div
-                        className="bg-amber-500 h-3 rounded-full transition-all duration-500"
+                        className="bg-amber-500 h-3 rounded-full motion-screen"
                         style={{ width: `${(count / maxExt) * 100}%` }}
                       ></div>
                     </div>
@@ -222,7 +222,7 @@ export default function StatsView({ weeks, selectedWeek }) {
                     </div>
                     <div className="w-full bg-[var(--paper-2)] rounded-full h-3">
                       <div
-                        className="bg-[var(--signal)] h-3 rounded-full transition-all duration-500"
+                        className="bg-[var(--signal)] h-3 rounded-full motion-screen"
                         style={{ width: `${(count / maxLate) * 100}%` }}
                       ></div>
                     </div>

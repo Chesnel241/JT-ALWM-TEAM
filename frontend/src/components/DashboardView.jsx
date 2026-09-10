@@ -1633,7 +1633,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               event.stopPropagation();
               openFeedbackDialog(selectedBin, file.id, file.status || 'rejected');
             }}
-            className={`mt-1.5 w-full text-xs font-semibold py-1.5 px-2 rounded-lg border transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm ${
+            className={`mt-1.5 w-full text-xs font-semibold py-1.5 px-2 rounded-lg border motion-tap flex items-center justify-center gap-1.5 active:scale-95 shadow-sm ${
               file.status === 'rejected'
                 ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20'
                 : file.status === 'approved'
@@ -1805,7 +1805,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <button 
                       key={countryId}
                       onClick={() => setSelectedBin(countryId)}
-                      className={`shrink-0 md:w-full flex items-center justify-between px-3 md:px-3 py-2 md:py-2.5 rounded-xl transition-all active:scale-[0.98] snap-start border md:border-transparent ${
+                      className={`shrink-0 md:w-full flex items-center justify-between px-3 md:px-3 py-2 md:py-2.5 rounded-xl motion-tap active:scale-[0.98] snap-start border md:border-transparent ${
                         isActive 
                           ? 'bg-[var(--accent)] text-white font-semibold border-transparent shadow-md' 
                           : 'bg-[var(--paper)] border-[var(--border)] text-[color:var(--muted)] sm:hover:bg-[var(--paper)] sm:hover:text-[color:var(--ink)]'
@@ -1887,7 +1887,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
                         <button
                           onClick={() => setRushesCountryFilter('all')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold motion-tap ${
                             rushesCountryFilter === 'all'
                               ? 'bg-[var(--accent)] text-white shadow-sm'
                               : 'bg-[var(--paper-2)] text-[color:var(--ink)] border border-[var(--border)] hover:bg-[var(--border)]'
@@ -1903,7 +1903,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             <button
                               key={cId}
                               onClick={() => setRushesCountryFilter(cId)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 motion-tap ${
                                 rushesCountryFilter === cId
                                   ? 'bg-[var(--accent)] text-white shadow-sm'
                                   : 'bg-[var(--paper-2)] text-[color:var(--ink)] border border-[var(--border)] hover:bg-[var(--border)]'
@@ -1938,7 +1938,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           return (
                             <div
                               key={file.id}
-                              className="bg-[var(--paper)] rounded-2xl border border-[var(--border)] shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group"
+                              className="bg-[var(--paper)] rounded-2xl border border-[var(--border)] shadow-sm hover:shadow-md motion-tap overflow-hidden flex flex-col group"
                             >
                               <div className="aspect-video bg-black/90 relative flex items-center justify-center overflow-hidden">
                                 <video
@@ -1984,7 +1984,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                   </button>
                                   <button
                                     onClick={() => addClipDirectlyToTimeline(file)}
-                                    className="py-1.5 px-2 rounded-xl bg-[var(--action)] hover:bg-[var(--action-deep)] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
+                                    className="py-1.5 px-2 rounded-xl bg-[var(--action)] hover:bg-[var(--action-deep)] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm motion-tap active:scale-95"
                                   >
                                     <Plus size={13} /> Ajouter
                                   </button>
@@ -2195,7 +2195,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               href={`https://wa.me/${getCountryPhone(selectedBin).replace(/[^\d+]/g, '').replace(/^\+/, '')}?text=${encodeURIComponent(`Bonjour ${countries.find(c => c.id === selectedBin)?.name || selectedBin}, ici l'équipe de montage ALWM (Semaine ${selectedWeek}).`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#128C7E] dark:text-[#25D366] font-semibold text-xs border border-[#25D366]/30 transition-all shadow-sm active:scale-95"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#128C7E] dark:text-[#25D366] font-semibold text-xs border border-[#25D366]/30 motion-tap shadow-sm active:scale-95"
                               title={`Contacter le correspondant (${getCountryPhone(selectedBin)}) sur WhatsApp`}
                             >
                               <MessageSquare size={13} className="text-[#25D366]" />
@@ -2208,7 +2208,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                 setFileToFeedback({ id: 'general', name: `Contact ${countries.find(c => c.id === selectedBin)?.name || selectedBin}`, countryId: selectedBin });
                                 setFeedbackDialogOpen(true);
                               }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[var(--signal)]/15 text-[color:var(--ink)] text-xs font-semibold border border-[var(--signal)]/40 hover:bg-[var(--signal)]/25 transition-all"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[var(--signal)]/15 text-[color:var(--ink)] text-xs font-semibold border border-[var(--signal)]/40 hover:bg-[var(--signal)]/25 motion-tap"
                               title="Ajouter un contact WhatsApp pour ce pays"
                             >
                               <span>📱 Aucun WhatsApp (+ Ajouter)</span>
@@ -2392,7 +2392,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           </div>
                           <div className="w-full bg-[var(--paper-2)] rounded-full h-2">
                             <div
-                              className={`h-2 rounded-full transition-all duration-300 ${
+                              className={`h-2 rounded-full motion-enter ${
                                 f.status === 'completed'
                                   ? 'bg-[var(--action)]'
                                   : f.status === 'error'
@@ -2412,7 +2412,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <h3 className="font-semibold text-[color:var(--ink)] mb-4">Fichiers uploadés</h3>
                     <ul className="space-y-3">
                       {deliveries.map((file) => (
-                        <li key={file.id} className="group bg-[var(--paper-2)] border border-[var(--border)] hover:border-[var(--accent)] rounded-xl p-3 sm:p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all">
+                        <li key={file.id} className="group bg-[var(--paper-2)] border border-[var(--border)] hover:border-[var(--accent)] rounded-xl p-3 sm:p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 motion-tap">
                           <div className="flex items-center gap-3 w-full md:w-auto">
                             <div className={`p-2 rounded-lg bg-blue-100 text-blue-500 shrink-0`}>
                               <Video size={20} />
@@ -2501,7 +2501,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         <button
                           key={f.id}
                           onClick={() => setMobileRushFilter(f.id)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition-all ${
+                          className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 motion-tap ${
                             mobileRushFilter === f.id
                               ? 'bg-[color:var(--ink)] text-[var(--paper)]'
                               : 'bg-[var(--paper-2)] text-[color:var(--muted)] border border-[var(--border)]'
@@ -2651,7 +2651,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
                 <div className="w-full bg-[var(--paper-2)] border border-[var(--border)] rounded-full h-4 overflow-hidden shadow-inner">
                   <div
-                    className="h-full rounded-full bg-[color:var(--accent)] transition-all duration-300 relative overflow-hidden"
+                    className="h-full rounded-full bg-[color:var(--accent)] motion-enter relative overflow-hidden"
                     style={{ width: `${Math.max(3, exportProgress)}%` }}
                   >
                     <div className="absolute inset-0 bg-white/20 animate-pulse"></div>

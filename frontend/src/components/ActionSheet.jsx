@@ -52,7 +52,7 @@ export default function ActionSheet({
       {/* Sheet */}
       <div 
         ref={sheetRef}
-        className={`relative w-full max-w-md bg-[var(--paper)] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[var(--border)] overflow-hidden flex flex-col transition-all duration-300 transform ${
+        className={`relative w-full max-w-md bg-[var(--paper)] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[var(--border)] overflow-hidden flex flex-col motion-enter transform ${
           show ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full sm:translate-y-0 sm:scale-95 opacity-0'
         }`}
       >

@@ -313,7 +313,7 @@ export default function MobileUploaderView({
                     onClick={() => setActiveTabId(sec.id)}
                     type="button"
                     style={isActive && sec.tone ? { backgroundColor: sec.tone.fill, color: sec.tone.onFill } : undefined}
-                    className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs transition-all active:scale-95 ${
+                    className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs motion-tap active:scale-95 ${
                       isActive
                         ? (sec.tone ? 'shadow-md scale-[1.02]' : 'bg-[var(--accent)] text-white shadow-md scale-[1.02]')
                         : 'bg-[var(--paper)] text-[color:var(--ink)] border border-[var(--border)]'
@@ -399,7 +399,7 @@ export default function MobileUploaderView({
                 onClick={handleTriggerFileInput}
                 disabled={isLocked}
                 type="button"
-                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-[var(--action)]/25 active:scale-[0.98] transition-all text-left disabled:opacity-50"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-[var(--action)]/25 active:scale-[0.98] motion-tap text-left disabled:opacity-50"
               >
                 <span className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
                   <Video size={24} />
@@ -431,7 +431,7 @@ export default function MobileUploaderView({
                 onClick={() => setScriptModalOpen(true)}
                 disabled={isLocked}
                 type="button"
-                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--paper-2)] border-2 border-[var(--border)] text-[color:var(--ink)] font-bold text-base active:scale-[0.98] transition-all text-left disabled:opacity-50"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--paper-2)] border-2 border-[var(--border)] text-[color:var(--ink)] font-bold text-base active:scale-[0.98] motion-tap text-left disabled:opacity-50"
               >
                 <span className="w-12 h-12 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center shrink-0">
                   <FileText size={24} />
@@ -480,7 +480,7 @@ export default function MobileUploaderView({
                       </div>
                       <div className="w-full bg-[var(--paper-2)] rounded-full h-1.5 overflow-hidden">
                         <div
-                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                          className={`h-1.5 rounded-full motion-enter ${
                             f.status === 'error'
                               ? 'bg-[var(--signal)]'
                               : f.status === 'queued'
@@ -556,7 +556,7 @@ export default function MobileUploaderView({
                     return (
                       <div
                         key={file.id}
-                        className="p-3 rounded-2xl bg-[var(--paper-2)] border border-[var(--border)] flex items-center justify-between gap-2.5 transition-all shadow-sm"
+                        className="p-3 rounded-2xl bg-[var(--paper-2)] border border-[var(--border)] flex items-center justify-between gap-2.5 motion-tap shadow-sm"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className={`p-2.5 rounded-xl shrink-0 ${iconConfig.bg} ${iconConfig.color}`}>
@@ -788,7 +788,7 @@ function MobileSpecialUploader({ country, selectedWeek, uploads, setUploads, ope
       <div className="grid grid-cols-2 gap-2 bg-[var(--paper)] p-1.5 rounded-2xl border border-[var(--border)]">
         <button
           onClick={() => setTab('text')}
-          className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
+          className={`py-2.5 rounded-xl font-bold text-xs motion-tap ${
             tab === 'text'
               ? 'bg-[var(--accent)] text-white shadow-sm'
               : 'text-[color:var(--muted)] hover:text-[color:var(--ink)]'
@@ -798,7 +798,7 @@ function MobileSpecialUploader({ country, selectedWeek, uploads, setUploads, ope
         </button>
         <button
           onClick={() => setTab('media')}
-          className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
+          className={`py-2.5 rounded-xl font-bold text-xs motion-tap ${
             tab === 'media'
               ? 'bg-[var(--accent)] text-white shadow-sm'
               : 'text-[color:var(--muted)] hover:text-[color:var(--ink)]'

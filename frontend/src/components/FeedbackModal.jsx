@@ -196,7 +196,7 @@ export default function FeedbackModal({
               <button
                 type="button"
                 onClick={() => setStatus('approved')}
-                className={`py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                className={`py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 motion-tap ${
                   status === 'approved'
                     ? 'bg-green-500/15 border-green-500 text-green-600 dark:text-green-400 shadow-sm ring-1 ring-green-500/30'
                     : 'bg-[var(--paper-2)] border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)]'
@@ -209,7 +209,7 @@ export default function FeedbackModal({
               <button
                 type="button"
                 onClick={() => setStatus('rejected')}
-                className={`py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                className={`py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 motion-tap ${
                   status === 'rejected'
                     ? 'bg-red-500/15 border-red-500 text-red-600 dark:text-red-400 shadow-sm ring-1 ring-red-500/30'
                     : 'bg-[var(--paper-2)] border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)]'
@@ -313,7 +313,7 @@ export default function FeedbackModal({
               type="button"
               onClick={handleSendWhatsApp}
               disabled={isSaving || !phone || phone.length < 5}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-[#25D366] hover:bg-[#128C7E] text-white flex items-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-[#25D366] hover:bg-[#128C7E] text-white flex items-center gap-2 shadow-md motion-tap active:scale-95 disabled:opacity-50"
               title="Enregistrer le statut et ouvrir WhatsApp"
             >
               <Send size={14} />
