@@ -175,7 +175,7 @@ export default function ReporterHomeView({
           </div>
         </div>
         <div className="shrink-0 sm:self-center">
-          <NotificationToggle />
+          <NotificationToggle audience="reporter" countryId={homeCountry?.id || ''} />
         </div>
       </div>
 

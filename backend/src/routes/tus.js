@@ -8,7 +8,7 @@ import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS } from '../lib/upload.js'
 import { addUpload, getCustomCountries, getExtensions } from '../data/store.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { recordUpload } from '../monitoring/metrics.js';
-import { broadcastNotification } from './webpush.js';
+import { broadcastNotification, AUDIENCES } from './webpush.js';
 import { io } from '../app.js';
 import { safeEqual, normalizeToken } from '../middleware/auth.js';
 
@@ -171,8 +171,9 @@ export const tusServer = new Server({
       broadcastNotification({
         title: 'Nouveau fichier reçu',
         body: `Un fichier a été envoyé via l'envoi sécurisé par ${countryId} pour la semaine ${weekId}.`,
-        url: `/?week=${weekId}`
-      }).catch(err => logger.error('Push notification failed', { error: err.message }));
+        url: '/monteurs'
+      }, { audiences: [AUDIENCES.EDITOR] })
+        .catch(err => logger.error('Push notification failed', { error: err.message }));
 
       io?.emit('upload_update', { weekId, countryId });
 

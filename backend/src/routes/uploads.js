@@ -7,7 +7,7 @@ import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { getCustomCountries } from '../data/store.js';
-import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions } from '../data/store.js';
+import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry } from '../data/store.js';
 import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
@@ -21,7 +21,7 @@ import { getFileMetadata } from '../data/store.js';
 
 import { Readable } from 'stream';
 import { processVoiceover } from '../services/audioProcessor.js';
-import { broadcastNotification } from './webpush.js';
+import { broadcastNotification, AUDIENCES } from './webpush.js';
 import { io } from '../app.js';
 
 
@@ -360,11 +360,14 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
       });
       
       // Trigger push notification in background
+      // Un dépôt ne concerne que l'équipe montage. Diffusé à tous, il
+      // réveillait chaque correspondant à chaque envoi d'un autre pays.
       broadcastNotification({
         title: 'Nouveau fichier reçu',
         body: `Un fichier a été envoyé par ${countryId} pour la semaine ${weekId}.`,
-        url: `/?week=${weekId}`
-      }).catch(err => logger.error('Push notification failed', { error: err.message }));
+        url: '/monteurs'
+      }, { audiences: [AUDIENCES.EDITOR] })
+        .catch(err => logger.error('Push notification failed', { error: err.message }));
       
       io?.emit('upload_update', { weekId, countryId });
       
@@ -612,12 +615,28 @@ router.patch('/:weekId/files/:fileId/status', requireAdmin, [
     return next(createErrors.badRequest('fileId doit être un UUID valide'));
   }
 
+  const countryId = findUploadCountry(weekId, fileId);
   const updatedFile = updateFileStatus(weekId, fileId, status, feedback);
   if (!updatedFile) {
     return next(createErrors.notFound('Fichier'));
   }
 
-  io?.emit('upload_update', { weekId, countryId: undefined });
+  // Un rush refusé n'est utile qu'au correspondant qui l'a envoyé. Sans cette
+  // alerte, le commentaire du monteur n'existe que dans l'application et le
+  // correspondant ne le découvre qu'en y retournant de lui-même.
+  if (status === 'rejected' && countryId) {
+    const detail = typeof feedback === 'string' && feedback.trim()
+      ? ` : ${feedback.trim().slice(0, 120)}`
+      : '.';
+    broadcastNotification({
+      title: 'Un fichier est à corriger',
+      body: `« ${updatedFile.name || 'Votre fichier'} » doit être repris${detail}`,
+      url: `/journalistes/${countryId}`,
+    }, { audiences: [AUDIENCES.REPORTER], countryId })
+      .catch(err => logger.error('Push notification failed', { error: err.message }));
+  }
+
+  io?.emit('upload_update', { weekId, countryId: countryId || undefined });
 
   return res.json(updatedFile);
 }));
@@ -752,8 +771,9 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
       broadcastNotification({
         title: 'Nouvelle Voix Off Studio',
         body: `Une voix off "${reportageTitle}" a été générée pour la semaine ${weekId}.`,
-        url: `/?week=${weekId}`
-      }).catch(err => logger.error('Push notification failed', { error: err.message }));
+        url: '/monteurs/voix-off'
+      }, { audiences: [AUDIENCES.EDITOR] })
+        .catch(err => logger.error('Push notification failed', { error: err.message }));
 
     res.status(201).json({
       message: 'Voix traitée et enregistrée avec succès',

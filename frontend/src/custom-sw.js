@@ -62,25 +62,51 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Handle click on notification
+// Clic sur une notification.
+//
+// Le lien porte désormais l'espace de destination (`/journalistes/...` ou
+// `/monteurs/...`). Un onglet déjà ouvert sur une AUTRE page de l'application
+// est repris et navigué : ouvrir une seconde fenêtre laissait le correspondant
+// avec deux copies de l'app sur son téléphone, et l'ancienne comparaison par
+// sous-chaîne ne reconnaissait de toute façon que la page exacte.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const urlToOpen = event.notification.data.url || '/';
+  const targetUrl = new URL(urlToOpen, self.location.origin);
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window/tab open with the target URL
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        if (client.url.includes(urlToOpen) && 'focus' in client) {
-          return client.focus();
+      const sameOrigin = windowClients.filter((client) => {
+        try {
+          return new URL(client.url).origin === targetUrl.origin;
+        } catch {
+          return false;
         }
+      });
+
+      const exact = sameOrigin.find((client) => {
+        try {
+          return new URL(client.url).pathname === targetUrl.pathname;
+        } catch {
+          return false;
+        }
+      });
+      if (exact && 'focus' in exact) return exact.focus();
+
+      const reusable = sameOrigin[0];
+      if (reusable) {
+        const focused = 'focus' in reusable ? reusable.focus() : Promise.resolve(reusable);
+        return Promise.resolve(focused).then((client) => {
+          const target = client || reusable;
+          return target && 'navigate' in target ? target.navigate(targetUrl.href) : target;
+        });
       }
-      // If not, open a new window
+
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(targetUrl.href);
       }
+      return undefined;
     })
   );
 });

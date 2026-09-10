@@ -12,7 +12,7 @@ import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { audit } from '../logger/audit.js';
 import { deliveryUpload, uploadsDir, DELIVERY_MAX_FILE_SIZE } from '../lib/upload.js';
-import { broadcastNotification } from './webpush.js';
+import { broadcastNotification, AUDIENCES } from './webpush.js';
 
 const router = Router();
 
@@ -99,11 +99,18 @@ router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
         logger.info('Delivery uploaded', {
           context: { weekId, fileId: fileData.id, filename: file.originalname, durationMs },
         });
-        broadcastNotification({
-          title: '🚨 NOUVEAU JT PRÊT !',
-          body: `Le JT de la semaine ${weekId} est prêt et disponible au téléchargement.`,
-          url: `/?week=${weekId}`
-        }).catch(err => logger.error('Push notification failed', { error: err.message }));
+        // Deux envois : chaque équipe doit atterrir sur SA page. Le lien
+        // unique vers la racine ouvrait le studio de montage pour tout le
+        // monde, y compris pour les correspondants qui n'y ont rien à faire.
+        const announce = `Le JT de la semaine ${weekId} est prêt et disponible au téléchargement.`;
+        broadcastNotification(
+          { title: '🚨 NOUVEAU JT PRÊT !', body: announce, url: '/journalistes/telecharger-le-jt' },
+          { audiences: [AUDIENCES.REPORTER, AUDIENCES.UNKNOWN] }
+        ).catch(err => logger.error('Push notification failed', { error: err.message }));
+        broadcastNotification(
+          { title: '🚨 NOUVEAU JT PRÊT !', body: announce, url: '/monteurs/jt-pret' },
+          { audiences: [AUDIENCES.EDITOR] }
+        ).catch(err => logger.error('Push notification failed', { error: err.message }));
 
         return res.status(201).json(result);
       } catch (storeErr) {

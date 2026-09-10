@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import webpush from 'web-push';
 import logger from '../logger/index.js';
-import { getSubscriptions, addSubscription, removeSubscription } from '../data/webpushSubscriptions.js';
+import { getSubscriptions, addSubscription, removeSubscription, AUDIENCES } from '../data/webpushSubscriptions.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -26,18 +26,26 @@ router.get('/vapidPublicKey', (req, res) => {
   res.json({ publicKey: vapidPublicKey });
 });
 
+// Le corps accepte deux formes : l'abonnement nu (anciens clients encore en
+// cache) ou { subscription, audience, countryId } qui dit à quelle équipe et
+// à quel pays appartient l'appareil. C'est ce contexte qui permet ensuite de
+// ne pas réveiller tout le monde à chaque événement.
 router.post('/subscribe', asyncHandler(async (req, res, next) => {
   if (!pushEnabled) return res.status(503).json({ error: 'Push non configuré' });
-  const subscription = req.body;
+  const body = req.body || {};
+  const subscription = body.subscription && body.subscription.endpoint ? body.subscription : body;
   if (!subscription || !subscription.endpoint || typeof subscription.endpoint !== 'string'
       || !subscription.keys || typeof subscription.keys !== 'object'
       || typeof subscription.keys.auth !== 'string' || typeof subscription.keys.p256dh !== 'string') {
     return next(createErrors.badRequest('Invalid subscription object'));
   }
-  
-  await addSubscription(subscription);
-  logger.info('New push subscription added', { endpoint: subscription.endpoint });
-  
+
+  await addSubscription(subscription, { audience: body.audience, countryId: body.countryId });
+  logger.info('New push subscription added', {
+    endpoint: subscription.endpoint,
+    audience: body.audience || 'unknown',
+  });
+
   res.status(201).json({ success: true });
 }));
 
@@ -53,14 +61,22 @@ router.post('/unsubscribe', asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true });
 }));
 
-export const broadcastNotification = async (payload) => {
+/**
+ * Envoie une notification aux appareils visés.
+ *
+ * @param {{title: string, body: string, url: string}} payload
+ * @param {{audiences?: string[], countryId?: string}} [filter]
+ *   Sans filtre, la notification part à tout le monde : à réserver aux
+ *   annonces qui concernent réellement les deux équipes (le JT est prêt).
+ */
+export const broadcastNotification = async (payload, filter = {}) => {
   if (!pushEnabled) return; // push désactivé faute de clés VAPID
-  const subscriptions = getSubscriptions();
-  if (subscriptions.length === 0) return;
-  
+  const entries = getSubscriptions(filter);
+  if (entries.length === 0) return;
+
   const payloadString = JSON.stringify(payload);
-  
-  const promises = subscriptions.map(async (subscription) => {
+
+  const promises = entries.map(async ({ subscription }) => {
     try {
       await webpush.sendNotification(subscription, payloadString);
     } catch (err) {
@@ -75,5 +91,7 @@ export const broadcastNotification = async (payload) => {
 
   await Promise.all(promises);
 };
+
+export { AUDIENCES };
 
 export default router;

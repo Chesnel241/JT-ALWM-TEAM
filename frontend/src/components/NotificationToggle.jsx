@@ -18,7 +18,12 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-export default function NotificationToggle({ compact = false }) {
+/**
+ * `audience` et `countryId` disent au serveur qui est cet appareil. Sans eux,
+ * la seule diffusion possible est « tout le monde reçoit tout » : un
+ * correspondant était réveillé à chaque dépôt de fichier d'un autre pays.
+ */
+export default function NotificationToggle({ compact = false, audience = '', countryId = '' }) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,7 +54,7 @@ export default function NotificationToggle({ compact = false }) {
 
       await fetch('/api/webpush/subscribe', {
         method: 'POST',
-        body: JSON.stringify(subscription),
+        body: JSON.stringify({ subscription, audience, countryId }),
         headers: {
           'Content-Type': 'application/json'
         }

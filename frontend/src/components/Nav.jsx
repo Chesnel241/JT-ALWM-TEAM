@@ -197,7 +197,10 @@ export default function Nav({
             )}
             {/* Cloche push : utile aux deux équipes (les journalistes veulent
                 être prévenus dès que le JT est prêt). */}
-            <NotificationToggle compact={compactActions} />
+            <NotificationToggle
+              compact={compactActions}
+              audience={isReporter ? 'reporter' : 'editor'}
+            />
             <LanguageSwitcher compact={compactActions} />
           </div>
 

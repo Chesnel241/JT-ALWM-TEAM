@@ -389,6 +389,23 @@ export function updateFileStatus(weekId, fileId, status, feedback) {
   return false;
 }
 
+/**
+ * Pays propriétaire d'un fichier, ou '' s'il est introuvable ou s'il s'agit
+ * d'un JT publié. Sert à ne prévenir que le correspondant concerné quand un
+ * rush est refusé, plutôt que d'annoncer à tous les pays qu'un rush a été
+ * refusé quelque part.
+ */
+export function findUploadCountry(weekId, fileId) {
+  const week = db[weekId];
+  if (!week) return '';
+  for (const key of Object.keys(week)) {
+    if (key === '_delivery' || key === '_subscriptions') continue;
+    const list = week[key];
+    if (Array.isArray(list) && list.some((f) => f && f.id === fileId)) return key;
+  }
+  return '';
+}
+
 // Clés réservées du store (méta-données qui ne sont pas des semaines).
 const META_KEYS = new Set(['_countries', '_themes']);
 
