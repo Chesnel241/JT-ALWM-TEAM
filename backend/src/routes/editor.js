@@ -6,6 +6,7 @@ import { TEXT_ANIMATIONS_IDS, OVERLAY_TEMPLATES } from '../data/overlayTemplates
 import { buildWeeks } from '../data/constants.js';
 import { getTimelineWorkspace, saveTimelineWorkspace } from '../data/store.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { porteeRedaction } from '../middleware/portee.js';
 import { io } from '../app.js';
 
 // Allowlist des templateId valides (source unique = registre des modèles).
@@ -17,7 +18,7 @@ const isValidWeek = (weekId) => buildWeeks().some((week) => week.id === weekId);
 
 // Projet de montage partagé par semaine. La source de vérité est le store
 // serveur (disque persistant et Redis si configuré), pas le navigateur.
-router.get('/timeline/:weekId', (req, res) => {
+router.get('/timeline/:weekId', porteeRedaction(), (req, res) => {
   const { weekId } = req.params;
   if (!isValidWeek(weekId)) {
     return res.status(404).json({ code: 'INVALID_WEEK', message: 'Semaine introuvable' });
@@ -25,7 +26,7 @@ router.get('/timeline/:weekId', (req, res) => {
   return res.json({ workspace: getTimelineWorkspace(weekId) });
 });
 
-router.get('/job/:weekId', (req, res) => {
+router.get('/job/:weekId', porteeRedaction(), (req, res) => {
   const { weekId } = req.params;
   if (!isValidWeek(weekId)) {
     return res.status(404).json({ code: 'INVALID_WEEK', message: 'Semaine introuvable' });

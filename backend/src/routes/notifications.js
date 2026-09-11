@@ -9,6 +9,7 @@ import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { sanitizeParams } from '../middleware/sanitizer.js';
 import { globalLimiter } from '../middleware/rateLimiter.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { porteeCountry } from '../middleware/portee.js';
 import { audit } from '../logger/audit.js';
 
 // Masque un numéro pour audit/affichage : +33•••••42.
@@ -20,7 +21,7 @@ function maskPhone(p) {
 const router = Router();
 
 // POST /api/notifications/:weekId/:countryId/subscribe
-router.post('/:weekId/:countryId/subscribe', globalLimiter, asyncHandler(async (req, res, next) => {
+router.post('/:weekId/:countryId/subscribe', porteeCountry(), globalLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   const rawBody = sanitizeParams(req.body);
   const { phone } = rawBody;

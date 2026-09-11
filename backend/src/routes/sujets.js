@@ -15,6 +15,7 @@ import { getCustomCountries } from '../data/store.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { globalLimiter } from '../middleware/rateLimiter.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { porteeCountry, porteeRedaction } from '../middleware/portee.js';
 import { io } from '../app.js';
 
 const router = Router();
@@ -48,7 +49,7 @@ function decorate(sujet, files) {
 }
 
 // GET /api/sujets/:weekId — toute la semaine (rédaction)
-router.get('/:weekId', globalLimiter, asyncHandler(async (req, res, next) => {
+router.get('/:weekId', porteeRedaction(), globalLimiter, asyncHandler(async (req, res, next) => {
   const { weekId } = req.params;
   if (!isValidWeek(weekId)) return next(createErrors.badRequest('Semaine invalide.'));
 
@@ -59,7 +60,7 @@ router.get('/:weekId', globalLimiter, asyncHandler(async (req, res, next) => {
 }));
 
 // GET /api/sujets/:weekId/:countryId — les sujets d'un pays
-router.get('/:weekId/:countryId', globalLimiter, asyncHandler(async (req, res, next) => {
+router.get('/:weekId/:countryId', porteeCountry(), globalLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
     return next(createErrors.badRequest('Semaine ou pays invalide.'));
@@ -69,7 +70,7 @@ router.get('/:weekId/:countryId', globalLimiter, asyncHandler(async (req, res, n
 }));
 
 // POST /api/sujets/:weekId/:countryId — le correspondant ouvre un sujet
-router.post('/:weekId/:countryId', globalLimiter, asyncHandler(async (req, res, next) => {
+router.post('/:weekId/:countryId', porteeCountry(), globalLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
     return next(createErrors.badRequest('Semaine ou pays invalide.'));
@@ -96,7 +97,7 @@ router.post('/:weekId/:countryId', globalLimiter, asyncHandler(async (req, res, 
 }));
 
 // PATCH /api/sujets/:weekId/:countryId/:sujetId — renommer
-router.patch('/:weekId/:countryId/:sujetId', globalLimiter, asyncHandler(async (req, res, next) => {
+router.patch('/:weekId/:countryId/:sujetId', porteeCountry(), globalLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId, sujetId } = req.params;
   const existant = getSujet(weekId, sujetId);
   if (!existant || existant.countryId !== countryId) return next(createErrors.notFound('Sujet'));
@@ -124,7 +125,7 @@ router.patch('/:weekId/:countryId/:sujetId/etat', requireAdmin, globalLimiter, a
 }));
 
 // DELETE /api/sujets/:weekId/:countryId/:sujetId — seulement s'il est vide
-router.delete('/:weekId/:countryId/:sujetId', globalLimiter, asyncHandler(async (req, res, next) => {
+router.delete('/:weekId/:countryId/:sujetId', porteeCountry(), globalLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId, sujetId } = req.params;
   const existant = getSujet(weekId, sujetId);
   if (!existant || existant.countryId !== countryId) return next(createErrors.notFound('Sujet'));

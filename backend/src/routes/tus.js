@@ -12,6 +12,8 @@ import { recordUpload } from '../monitoring/metrics.js';
 import { broadcastNotification, AUDIENCES } from './webpush.js';
 import { io } from '../app.js';
 import { safeEqual, normalizeToken } from '../middleware/auth.js';
+import { readReporterToken } from '../lib/reporterToken.js';
+import { evaluerPortee } from '../middleware/portee.js';
 
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 // Délègue à la source de vérité partagée (inclut COUNTRIES + custom +
@@ -63,12 +65,25 @@ function checkUploadCutoff(weekId, countryId) {
  * `isAdmin` à partir d'ADMIN_PASSWORD — cette protection-là reste active et
  * distincte (bypass du cutoff hebdo, rubrique `mj`), hors périmètre du
  * retrait du mot de passe global.
+ *
+ * `correspondant` vient du lien personnel, que le client passe en métadonnée
+ * TUS faute de pouvoir compter sur `readReporter` : celui-ci est monté sur
+ * /api (app.js) alors que TUS est branché AVANT. Sans cette relecture, le
+ * chemin d'envoi le plus utilisé — celui des vidéos depuis un téléphone —
+ * échapperait entièrement à la portée.
  */
-export function authorizeTusUpload(meta = {}) {
+export function authorizeTusUpload(meta = {}, req = null) {
   const ADMIN = process.env.ADMIN_PASSWORD;
   const token = normalizeToken(String(meta.adminPassword || meta.appPassword || ''));
   const isAdmin = !!(ADMIN && token && safeEqual(token, normalizeToken(String(ADMIN))));
-  return { ok: true, isAdmin };
+
+  // En-tête d'abord : il voyage hors des métadonnées, donc hors du sidecar
+  // écrit sur disque. La métadonnée reste acceptée en repli, car un proxy
+  // peut retirer un en-tête inconnu — et un envoi refusé pour cette raison
+  // serait incompréhensible pour le correspondant.
+  const brut = req?.headers?.['x-reporter-token'] || meta.reporterToken || '';
+  const correspondant = readReporterToken(brut);
+  return { ok: true, isAdmin, correspondant };
 }
 
 /** Allowlist d'extensions — même règle que le chemin multer (lib/upload.js). */
@@ -102,13 +117,25 @@ export const tusServer = new Server({
     const weekId = meta.weekId;
     const countryId = meta.countryId;
 
-    const { ok, isAdmin } = authorizeTusUpload(meta);
+    const { ok, isAdmin, correspondant } = authorizeTusUpload(meta, req);
     if (!ok) {
       throw { status_code: 401, body: 'Session requise : mot de passe invalide ou manquant.' };
     }
 
     if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
       throw { status_code: 404, body: 'Week ou Country invalide' };
+    }
+
+    // Même règle exactement que sur les routes HTTP : c'est `evaluerPortee`
+    // qui tranche, ici comme là-bas.
+    const portee = evaluerPortee({
+      redaction: isAdmin,
+      correspondant,
+      pays: countryId,
+      chemin: '/api/tus',
+    });
+    if (!portee.autorise) {
+      throw { status_code: 403, body: portee.erreur?.publicMessage || 'Envoi hors de votre pays.' };
     }
 
     if (!validateTusExtension(meta.name || meta.filename)) {
@@ -120,12 +147,13 @@ export const tusServer = new Server({
       if (cutoffErr) throw cutoffErr;
     }
 
-    // On NE persiste PAS le mot de passe dans le .json sidecar du FileStore.
-    // upload.metadata est sérialisé sur disque par @tus/file-store ; si on
-    // y laisse adminPassword/appPassword, le secret reste lisible à toute
-    // personne ayant accès au volume d'uploads. On le filtre ici avant
-    // retour (l'auth a déjà été vérifiée juste au-dessus).
-    const { adminPassword: _ap, appPassword: _gp, ...safeMeta } = upload.metadata || {};
+    // On NE persiste PAS les secrets dans le .json sidecar du FileStore.
+    // upload.metadata est sérialisé sur disque par @tus/file-store ; si on y
+    // laisse adminPassword/appPassword/reporterToken, ils restent lisibles à
+    // toute personne ayant accès au volume d'uploads. Le lien personnel est
+    // un secret porteur au même titre que le mot de passe : il part avec eux.
+    // On filtre ici avant retour (l'auth a déjà été vérifiée juste au-dessus).
+    const { adminPassword: _ap, appPassword: _gp, reporterToken: _rt, ...safeMeta } = upload.metadata || {};
     return { metadata: safeMeta };
   },
   onUploadFinish: async (req, upload) => {

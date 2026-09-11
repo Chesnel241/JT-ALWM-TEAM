@@ -13,8 +13,9 @@ import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
-import { requireAdmin, safeEqual, normalizeToken } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
+import { porteeCountry, porteeRedaction, estRedaction } from '../middleware/portee.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir, classifyUpload } from '../lib/upload.js';
 import { generateDownloadToken } from '../lib/downloadTokens.js';
@@ -28,7 +29,6 @@ import { io } from '../app.js';
 
 const router = Router();
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // La validation se fait contre la liste recalculée à chaque appel —
 // indispensable car la fenêtre visible glisse chaque jour à minuit.
@@ -91,8 +91,9 @@ router.post('/download-token', requireAdmin, asyncHandler(async (req, res, next)
   return res.json({ token, expiresInSeconds: 3600 });
 }));
 
-// GET /api/uploads/:weekId — tous les pays d'une semaine
-router.get('/:weekId', (req, res) => {
+// GET /api/uploads/:weekId — tous les pays d'une semaine. Transversal par
+// nature : aucun correspondant n'a de raison de lire les rushes des autres.
+router.get('/:weekId', porteeRedaction(), (req, res) => {
   if (!isValidWeek(req.params.weekId)) {
     return res.status(404).json({ 
       code: 'INVALID_WEEK',
@@ -104,7 +105,7 @@ router.get('/:weekId', (req, res) => {
 });
 
 // GET /api/uploads/:weekId/:countryId — fichiers d'un pays
-router.get('/:weekId/:countryId', (req, res) => {
+router.get('/:weekId/:countryId', porteeCountry(), (req, res) => {
   const { weekId, countryId } = req.params;
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
     return res.status(404).json({ 
@@ -117,7 +118,7 @@ router.get('/:weekId/:countryId', (req, res) => {
 });
 
 // GET /api/uploads/:weekId/:countryId/archive — zip des fichiers d'un pays
-router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (req, res, next) => {
+router.get('/:weekId/:countryId/archive', porteeCountry(), archiveLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
@@ -216,8 +217,7 @@ const uploadMiddleware = (req, res, next) => {
   // Header uniquement (pas de query : le mot de passe admin en query fuit dans
   // les access logs Caddy + errorHandler req.originalUrl). Normalisation
   // alignée sur requireAdmin.
-  const providedToken = req.header('x-admin-password');
-  const isAdmin = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
+  const isAdmin = estRedaction(req);
 
   if (!isAdmin) {
     const cutoffErr = checkUploadCutoff(weekId, countryId);
@@ -231,7 +231,7 @@ const uploadMiddleware = (req, res, next) => {
 };
 
 // POST /api/uploads/:weekId/:countryId — upload fichier
-router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, res, next) => {
+router.post('/:weekId/:countryId', porteeCountry(), uploadMiddleware, asyncHandler(async (req, res, next) => {
   const uploadStartTime = Date.now();
   const { weekId, countryId } = req.params;
   
@@ -243,9 +243,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
     return next(createErrors.notFound('Week ou Country'));
   }
 
-  // Header uniquement (pas de query : fuite dans les logs).
-  const providedToken = req.header('x-admin-password');
-  const isAdmin = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
+  const isAdmin = estRedaction(req);
 
   return upload.single('file')(req, res, async (err) => {
     try {
@@ -420,7 +418,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
 
 
 // POST /api/uploads/:weekId/:countryId/script — saisie manuelle de script
-router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) => {
+router.post('/:weekId/:countryId/script', porteeCountry(), asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   const { content, reportage, sujetId } = req.body;
 
@@ -516,7 +514,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
 }));
 
 // DELETE /api/uploads/:weekId/:countryId/:fileId
-router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next) => {
+router.delete('/:weekId/:countryId/:fileId', porteeCountry(), asyncHandler(async (req, res, next) => {
   const { weekId, countryId, fileId } = req.params;
   
   // Valider les paramètres
@@ -534,15 +532,10 @@ router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next)
     return next(createErrors.badRequest('fileId doit être un UUID valide'));
   }
 
-  // Auth admin : header uniquement (pas de query, sinon le secret se
-  // retrouverait loggé en clair par errorHandlerMiddleware / proxy /
-  // historique navigateur — cf. d7ae411 sur /uploads/*).
-  // Normalisation identique au comparateur de référence (auth.js:83) :
-  // sinon un NBSP/BOM en bord de ADMIN_PASSWORD bloquerait l'admin.
-  const adminEnv = process.env.ADMIN_PASSWORD;
-  const providedToken = req.header('x-admin-password');
-  const isAdmin = !!(adminEnv && providedToken
-    && safeEqual(normalizeToken(providedToken), normalizeToken(adminEnv)));
+  // Qui supprime a déjà été vérifié par porteeCountry : soit la rédaction,
+  // soit le correspondant du pays. Ce second calcul ne sert qu'à savoir si
+  // la date limite s'applique — la rédaction, elle, passe outre.
+  const isAdmin = estRedaction(req);
 
   if (!isAdmin) {
     const cutoffErr = checkUploadCutoff(weekId, countryId);
@@ -662,7 +655,7 @@ router.patch('/:weekId/files/:fileId/status', requireAdmin, [
 // Upload raw voiceover, process via FFmpeg (EQ/Compressor), save audio + script.
 import { mkdirSync } from 'fs';
 
-router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandler(async (req, res, next) => {
+router.post('/voiceover/:weekId/:countryId', porteeCountry(), upload.single('audio'), asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   const { reportageTitle, script } = req.body;
 
@@ -671,11 +664,8 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
   }
   // Chutier `mj` (Mot du JT) réservé à l'équipe montage : admin requis,
   // même via la route voix-off (sinon n'importe quel pays peut polluer).
-  if (countryId === 'mj') {
-    const provided = req.header('x-admin-password');
-    if (!ADMIN_PASSWORD || !safeEqual(provided, ADMIN_PASSWORD)) {
-      return next(createErrors.forbidden('Accès admin requis pour la rubrique Mot du JT.'));
-    }
+  if (countryId === 'mj' && !estRedaction(req)) {
+    return next(createErrors.forbidden('Accès admin requis pour la rubrique Mot du JT.'));
   }
 
   // Source de vérité unique (constants.js). `_subscriptions` reste accepté
@@ -684,8 +674,7 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     return next(createErrors.badRequest('ID de pays/chutier invalide.'));
   }
 
-  const providedToken = req.header('x-admin-password');
-  const ignoreCutoff = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
+  const ignoreCutoff = estRedaction(req);
   
   if (!ignoreCutoff) {
     const cutoffErr = checkUploadCutoff(weekId, countryId);

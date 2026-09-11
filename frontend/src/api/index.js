@@ -272,7 +272,12 @@ export const api = {
           countryId,
           reportage: reportage || '',
           sujetId: sujetId || '',
-          adminPassword: adminPassword || token || ''
+          adminPassword: adminPassword || token || '',
+          // Repli si un proxy retire l'en-tête X-Reporter-Token posé plus
+          // haut : sans identité, un envoi est refusé dès que la portée est
+          // en `strict`. Le serveur retire ce champ avant d'écrire les
+          // métadonnées sur disque (routes/tus.js).
+          reporterToken: readReporterToken() || ''
         },
         onError: function (error) {
           if (upload._aborted) {
