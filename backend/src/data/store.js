@@ -660,8 +660,61 @@ export function markReminderSent(weekId, countryId) {
   persistDb();
 }
 
+/**
+ * Registre des liens personnels émis — `{ [id]: { id, pays, nom, emisLe,
+ * revoqueLe } }`.
+ *
+ * Tant que le lien ne faisait qu'attribuer un envoi, ne rien retenir était
+ * défendable. Dès lors qu'il ouvre une porte, il faut pouvoir la refermer :
+ * un lien circule par WhatsApp, il se transfère et il part avec un téléphone
+ * perdu. Sans ce registre, le seul recours serait de changer
+ * REPORTER_TOKEN_SECRET — ce qui coupe tout le monde d'un coup.
+ *
+ * On n'y stocke jamais le jeton lui-même, seulement son identifiant : le
+ * lien reste un secret que le serveur ne sait pas relire.
+ */
+export function enregistrerLien({ id, pays, nom = '' }) {
+  if (!id) return null;
+  if (!db._liens) db._liens = {};
+  const entree = {
+    id,
+    pays: String(pays || '').trim().toLowerCase(),
+    nom: String(nom || '').trim().slice(0, 60),
+    emisLe: new Date().toISOString(),
+    revoqueLe: null,
+  };
+  db._liens[id] = entree;
+  persistDb();
+  return { ...entree };
+}
+
+export function revoquerLien(id) {
+  if (!id || !db._liens || !db._liens[id]) return null;
+  if (db._liens[id].revoqueLe) return { ...db._liens[id] };
+  db._liens[id].revoqueLe = new Date().toISOString();
+  persistDb();
+  return { ...db._liens[id] };
+}
+
+export function listerLiens() {
+  if (!db._liens) return [];
+  return Object.values(db._liens).map((l) => ({ ...l }));
+}
+
+/**
+ * Un identifiant inconnu n'est PAS révoqué : les liens émis avant ce
+ * registre n'ont jamais été enregistrés, et doivent continuer de marcher.
+ * Révoquer est un geste explicite, jamais un effet de bord.
+ */
+export function estLienRevoque(id) {
+  if (!id || !db._liens) return false;
+  return Boolean(db._liens[id]?.revoqueLe);
+}
+
 // Clés réservées du store (méta-données qui ne sont pas des semaines).
-const META_KEYS = new Set(['_countries', '_themes', '_reminders']);
+// `_liens` en fait partie : sans ça, les balayages de purge liraient le
+// registre des liens comme s'il s'agissait d'une semaine de reportages.
+const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens']);
 
 export function getFileMetadata(filename) {
   for (const weekId of Object.keys(db)) {

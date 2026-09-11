@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual, randomUUID } from 'crypto';
 import logger from '../logger/index.js';
+import { estLienRevoque } from '../data/store.js';
 
 /**
  * Lien personnel d'un correspondant.
@@ -13,10 +14,15 @@ import logger from '../logger/index.js';
  * { v, id, pays, nom, emisLe }. Court, collable dans WhatsApp, lisible dans
  * une barre d'adresse.
  *
- * Ce que ce jeton n'est PAS : un contrôle d'accès. L'API reste ouverte, par
- * décision produit, et un lien absent ou faux n'empêche personne d'envoyer.
- * Il sert à ATTRIBUER un envoi, pas à l'autoriser. Refermer l'accès serait un
- * autre chantier, à décider une fois les liens distribués.
+ * Ce jeton a d'abord servi à ATTRIBUER un envoi, sans rien autoriser. Il est
+ * désormais aussi ce qui délimite la portée d'un correspondant — voir
+ * middleware/portee.js, et son cran REPORTER_ACCESS qui décide si la règle
+ * est seulement observée ou réellement appliquée.
+ *
+ * Il reste un secret porteur : qui détient le lien détient le pays. C'est le
+ * prix d'une plateforme sans compte, assumé, et c'est pourquoi la révocation
+ * par identifiant existe désormais (registre `_liens` du store) : perdre un
+ * téléphone ne doit plus obliger à changer le secret de tout le monde.
  */
 
 const VERSION = 1;
@@ -93,6 +99,14 @@ export function readReporterToken(token) {
     const payload = JSON.parse(unb64url(body).toString('utf-8'));
     if (payload?.v !== VERSION) return null;
     if (!payload.pays || !/^[a-z0-9-]{2,12}$/.test(payload.pays)) return null;
+    // Révocation en dernier : on ne consulte le registre que pour un jeton
+    // déjà authentique. Un identifiant inconnu reste valide — les liens émis
+    // avant l'existence du registre n'y figurent pas, et ne doivent pas
+    // cesser de fonctionner du jour au lendemain.
+    if (payload.id && estLienRevoque(payload.id)) {
+      logger.info('Lien correspondant révoqué présenté', { context: { pays: payload.pays } });
+      return null;
+    }
     return { id: payload.id || '', pays: payload.pays, nom: payload.nom || '', emisLe: payload.emisLe || '' };
   } catch (err) {
     logger.debug('Jeton correspondant illisible', { error: err.message });
