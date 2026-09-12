@@ -10,7 +10,7 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
-import { sectionsFromUploads } from '../lib/mediaTypes.js';
+import { sectionsFromUploads, classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
 import { buildSections, filesForSection } from '../lib/sujets.js';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
@@ -253,7 +253,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   // personne dans le sélecteur de fichiers de son téléphone.
   const startUpload = (file, reportageName, existingTempId, sujetId = null, tailleMorceau = undefined) => {
     const tempId = existingTempId || Math.random().toString(36).slice(2);
-    const isVideo = /\.(mp4|mov|webm)$/i.test(file.name) || file.type.startsWith('video/');
+    // Trois extensions seulement, et un type MIME que les sélecteurs Android
+    // laissent souvent vide : un .3gp ou un .mkv s'affichait alors comme un
+    // document pendant tout son envoi. `classifyFile` connaît la vraie liste.
+    const isVideo = classifyFile(file) === MEDIA_TYPES.VIDEO;
     filesByUploadRef.current.set(tempId, { file, reportage: reportageName, sujetId });
     rememberUpload({ weekId: selectedWeek, countryId: country.id, reportage: reportageName, file });
     setPendingUploads(listPendingUploads(selectedWeek, country.id));
