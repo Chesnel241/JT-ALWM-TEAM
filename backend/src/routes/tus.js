@@ -74,6 +74,22 @@ function checkUploadCutoff(weekId, countryId) {
  * chemin d'envoi le plus utilisé — celui des vidéos depuis un téléphone —
  * échapperait entièrement à la portée.
  */
+/**
+ * Lit un en-tête quelle que soit la forme de la requête.
+ *
+ * @tus/server v2 passe aux crochets un `Request` de l'API fetch, dont
+ * `headers` est un objet `Headers` : l'indexer comme un dictionnaire renvoie
+ * toujours `undefined`. C'est ce qui faisait passer pour anonyme un
+ * correspondant qui présentait pourtant son lien — et la portée refusait
+ * alors tous ses envois.
+ */
+function enTete(req, nom) {
+  const entetes = req?.headers;
+  if (!entetes) return '';
+  if (typeof entetes.get === 'function') return entetes.get(nom) || '';
+  return entetes[nom] || entetes[nom.toLowerCase()] || '';
+}
+
 export function authorizeTusUpload(meta = {}, req = null) {
   const ADMIN = process.env.ADMIN_PASSWORD;
   const token = normalizeToken(String(meta.adminPassword || meta.appPassword || ''));
@@ -83,7 +99,7 @@ export function authorizeTusUpload(meta = {}, req = null) {
   // écrit sur disque. La métadonnée reste acceptée en repli, car un proxy
   // peut retirer un en-tête inconnu — et un envoi refusé pour cette raison
   // serait incompréhensible pour le correspondant.
-  const brut = req?.headers?.['x-reporter-token'] || meta.reporterToken || '';
+  const brut = enTete(req, 'x-reporter-token') || meta.reporterToken || '';
   const correspondant = readReporterToken(brut);
   return { ok: true, isAdmin, correspondant };
 }

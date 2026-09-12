@@ -212,6 +212,78 @@ describe('révocation d’un lien', () => {
   });
 });
 
+describe('le chemin TUS applique la même portée', () => {
+  // TUS est monté avant les middlewares — les analyseurs de corps
+  // casseraient le protocole — donc `readReporter` ne s'y exécute pas : il
+  // relit le jeton lui-même. C'est le chemin d'envoi le plus utilisé, celui
+  // des vidéos depuis un téléphone ; s'il échappait à la portée, tout le
+  // reste ne servirait à rien.
+  //
+  // Ce bloc existe parce qu'un essai sur serveur réel a montré ce que les
+  // tests ne voyaient pas : @tus/server v2 passe aux crochets un `Request`
+  // de l'API fetch, dont `headers` est un objet `Headers`. L'indexer comme
+  // un dictionnaire renvoyait toujours `undefined`, et tout correspondant
+  // muni de son lien était traité en inconnu — donc refusé.
+  const b64 = (v) => Buffer.from(String(v), 'utf-8').toString('base64');
+  const metadonnees = (pays) => [
+    `filename ${b64('rush.mp4')}`,
+    `name ${b64('rush.mp4')}`,
+    `filetype ${b64('video/mp4')}`,
+    `weekId ${b64(SEMAINE)}`,
+    `countryId ${b64(pays)}`,
+  ].join(',');
+
+  const ouvrirEnvoi = (pays, entetes = {}) => {
+    const appel = request(app)
+      .post('/api/tus/')
+      .set('Tus-Resumable', '1.0.0')
+      .set('Upload-Length', '2048')
+      .set('Upload-Metadata', metadonnees(pays));
+    for (const [cle, valeur] of Object.entries(entetes)) appel.set(cle, valeur);
+    return appel;
+  };
+
+  it('accepte l’envoi du correspondant dans SON pays, jeton en en-tête', async () => {
+    process.env.REPORTER_ACCESS = 'strict';
+    const res = await ouvrirEnvoi(GABON, { 'X-Reporter-Token': lienPour(GABON) });
+    expect(res.status).toBe(201);
+  });
+
+  it('refuse l’envoi au nom d’un autre pays', async () => {
+    process.env.REPORTER_ACCESS = 'strict';
+    const res = await ouvrirEnvoi(AUTRE, { 'X-Reporter-Token': lienPour(GABON) });
+    expect(res.status).toBe(403);
+  });
+
+  it('refuse l’envoi de qui ne présente rien', async () => {
+    process.env.REPORTER_ACCESS = 'strict';
+    const res = await ouvrirEnvoi(GABON);
+    expect(res.status).toBe(403);
+  });
+
+  it('accepte le jeton porté en métadonnée, si un proxy a retiré l’en-tête', async () => {
+    process.env.REPORTER_ACCESS = 'strict';
+    const avecJetonDansMeta = [metadonnees(GABON), `reporterToken ${b64(lienPour(GABON))}`].join(',');
+    const res = await request(app)
+      .post('/api/tus/')
+      .set('Tus-Resumable', '1.0.0')
+      .set('Upload-Length', '2048')
+      .set('Upload-Metadata', avecJetonDansMeta);
+    expect(res.status).toBe(201);
+  });
+
+  it('laisse passer la rédaction, y compris sur ses propres chutiers', async () => {
+    process.env.REPORTER_ACCESS = 'strict';
+    const avecMotDePasse = [metadonnees('tj'), `adminPassword ${b64(ADMIN)}`].join(',');
+    const res = await request(app)
+      .post('/api/tus/')
+      .set('Tus-Resumable', '1.0.0')
+      .set('Upload-Length', '2048')
+      .set('Upload-Metadata', avecMotDePasse);
+    expect(res.status).toBe(201);
+  });
+});
+
 describe('l’archive de la rédaction survit à la portée', () => {
   it('se télécharge par jeton signé, sans en-tête — un <a href> n’en porte aucun', async () => {
     process.env.REPORTER_ACCESS = 'strict';
