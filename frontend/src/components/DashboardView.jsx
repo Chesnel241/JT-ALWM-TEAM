@@ -6,6 +6,7 @@ import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import RelancePanel from './RelancePanel.jsx';
+import { formaterDuree, formaterTotal } from '../lib/duree.js';
 import { MEDIA_ORDER, MEDIA_TYPES, groupByReportage, classifyFile } from '../lib/mediaTypes.js';
 import { reportageTone } from '../lib/branding.js';
 
@@ -1541,6 +1542,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       className="text-[10px] text-[color:var(--muted)] mt-0.5 block"
       title={formatAbsolute(file.uploadedAt, lang)}
     >
+      {/* La durée avant le poids : c'est le premier chiffre que cherche un
+          monteur, et il n'était affiché nulle part alors que le serveur la
+          mesure déjà pour fabriquer le master. */}
+      {formaterDuree(file.duree) && <>{formaterDuree(file.duree)} · </>}
       {file.size}
       {file.uploadedAt && (
         <> · {t.dashboard.uploadedAt} {formatRelative(file.uploadedAt, lang)}</>
@@ -1625,9 +1630,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             )}
           </div>
 
-          {/* Size Badge */}
+          {/* La pastille de la vignette : la durée quand on la connaît, le
+              poids sinon. Sur une vignette, on n'a la place que d'un chiffre,
+              et c'est la durée qui sert au montage. */}
           <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-medium backdrop-blur-md z-20">
-            {file.size}
+            {formaterDuree(file.duree) || file.size}
           </div>
 
           {/* Hover Play Button for Video */}
@@ -2036,7 +2043,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                   <p className="font-bold text-xs text-[color:var(--ink)] line-clamp-1" title={file.name || file.filename}>
                                     {file.name || file.filename}
                                   </p>
-                                  <p className="text-[10px] text-[color:var(--muted)] mt-0.5">{file.size}</p>
+                                  <p className="text-[10px] text-[color:var(--muted)] mt-0.5">
+                                    {formaterDuree(file.duree) ? `${formaterDuree(file.duree)} · ${file.size}` : file.size}
+                                  </p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                   <button
@@ -2694,6 +2703,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                 : 'rgb(255 255 255 / 0.55)',
                             }}
                           >
+                            {/* La durée totale du reportage à côté du nombre
+                                de pièces : c'est elle qui dit si le sujet
+                                tient dans sa place au conducteur. */}
+                            {formaterTotal(group.files) && <>{formaterTotal(group.files)} · </>}
                             {group.files.length} {group.files.length > 1 ? 'fichiers' : 'fichier'}
                           </span>
                         </header>

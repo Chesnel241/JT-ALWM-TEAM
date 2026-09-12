@@ -161,36 +161,10 @@ export const getClientId = () => {
 export const api = {
   ...delaysApi,
   // === Auth ===
-  login: async (password) => {
-    const res = await request('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
-    if (res && res.token) {
-      localStorage.setItem('app-password', res.token);
-    }
-    return res;
-  },
-  logout: async () => {
-    localStorage.removeItem('app-password');
-    return request('/auth/logout', { method: 'POST' });
-  },
-  checkAuth: () => {
-    // Render free cold start peut prendre 30-50 s. Sans timeout, l'UI reste
-    // bloquée sur le skeleton (écran blanc perçu). Avec timeout 12 s on bascule
-    // vers la page login (l'utilisateur peut retenter, et le backend chauffe
-    // entre-temps).
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12000);
-    return fetch(`${BASE}/auth/check`, {
-      headers: { 'X-App-Password': localStorage.getItem('app-password') || '' },
-      signal: ctrl.signal,
-    })
-      .then((r) => r.ok)
-      .catch(() => false)
-      .finally(() => clearTimeout(timer));
-  },
+  // Le mot de passe global a été retiré : `login`, `logout` et `checkAuth`
+  // ont disparu avec l'écran de connexion, qui ne pouvait plus s'afficher.
+  // Seule la protection de l'espace montage subsiste, et c'est la seule qui
+  // protégeait réellement quelque chose.
   checkAdminPassword: async (adminPassword) => {
     try {
       await request('/auth/check-admin', { headers: { 'X-Admin-Password': adminPassword } });

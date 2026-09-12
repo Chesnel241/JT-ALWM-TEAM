@@ -56,12 +56,19 @@ describe("App — ouverture de la plateforme", () => {
   });
 
   it("ne vérifie plus d'authentification au démarrage", async () => {
-    const checkAuth = vi.spyOn(api, 'checkAuth').mockResolvedValue(true);
+    // La vérification n'est plus seulement inutilisée : les trois méthodes de
+    // connexion ont été retirées avec l'écran qui les appelait. Le premier
+    // écran ne dépend donc plus d'un aller-retour réseau, ce qui compte sur
+    // une 4G lente.
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
     await screen.findByText('Que souhaitez-vous faire ?');
-    expect(checkAuth).not.toHaveBeenCalled();
+    expect(api.checkAuth).toBeUndefined();
+    expect(api.login).toBeUndefined();
+    expect(api.logout).toBeUndefined();
+    // Celle qui protège réellement l'espace montage, elle, reste.
+    expect(typeof api.checkAdminPassword).toBe('function');
   });
 
   it('demande pays et semaines dès le montage', () => {

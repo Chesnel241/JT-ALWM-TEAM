@@ -88,15 +88,25 @@ describe('Nav — espace journalistes', () => {
     // du bas affichait « Repo… Voice… Cond… Mot … Dow… » : aucun libellé
     // entier, sur le repère le plus utilisé des correspondants. Le conducteur
     // et le Mot du JT s'ouvrent depuis l'accueil, pas depuis la barre.
+    // La barre du bas n'existe que sur téléphone : c'est à cette largeur que
+    // le défaut se produisait, donc c'est à cette largeur qu'on mesure.
+    const largeurReelle = window.innerWidth;
+    window.innerWidth = 390;
     const { container } = renderReporter();
+    window.innerWidth = largeurReelle;
+
     const barre = container.querySelector('.app-chrome-bottom');
     const onglets = barre.querySelectorAll('button');
     expect(onglets.length).toBeLessThanOrEqual(3);
 
-    // Et aucun libellé ne doit être une abréviation coupée.
+    // Et aucun libellé ne doit être une abréviation coupée, ni assez long
+    // pour que le navigateur le tronque : à 390 px, trois onglets ne laissent
+    // qu'environ 120 px chacun.
     for (const onglet of onglets) {
-      expect(onglet.textContent.trim()).not.toMatch(/…|\.\.\.$/);
-      expect(onglet.textContent.trim().length).toBeGreaterThan(0);
+      const texte = onglet.textContent.trim();
+      expect(texte).not.toMatch(/…|\.\.\.$/);
+      expect(texte.length).toBeGreaterThan(0);
+      expect(texte.length, texte).toBeLessThanOrEqual(12);
     }
   });
 

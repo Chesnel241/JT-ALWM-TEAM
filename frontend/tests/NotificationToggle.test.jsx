@@ -97,7 +97,10 @@ describe('clé publique du serveur', () => {
 
     poser();
     await waitFor(() => expect(screen.queryByRole('button')).toBeNull());
-    expect(screen.getByText(/pas activées sur le serveur/i)).toBeInTheDocument();
+    // Le libellé court est visible ; la raison complète est au survol, pour
+    // ne pas décaler la barre de navigation qui accueille ce bloc.
+    expect(screen.getByText('Notifications indisponibles')).toBeInTheDocument();
+    expect(screen.getByTitle(/pas activées sur le serveur/i)).toBeInTheDocument();
   });
 });
 
@@ -174,6 +177,6 @@ describe('navigateur sans push', () => {
     delete window.PushManager;
     poser();
     await waitFor(() => expect(screen.queryByRole('button')).toBeNull());
-    expect(screen.getByText(/ne sait pas recevoir/i)).toBeInTheDocument();
+    expect(screen.getByTitle(/ne sait pas recevoir/i)).toBeInTheDocument();
   });
 });

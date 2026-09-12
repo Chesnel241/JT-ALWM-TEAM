@@ -183,13 +183,16 @@ export default function NotificationToggle({ compact = false, audience = '', cou
         </div>
       );
     }
+    // Une seule ligne, pas un pavé : ce bloc se pose souvent dans une barre
+    // de navigation, où deux lignes de texte décalent tout le reste. Le détail
+    // reste accessible au survol.
     return (
       <p
-        className="text-xs text-[color:var(--muted)] px-3 py-2 border border-[var(--border)] rounded-lg max-w-xs"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[color:var(--muted)]"
         title={indisponible}
       >
-        <span className="font-semibold block">{court}</span>
-        {indisponible}
+        <BellOff size={14} aria-hidden="true" className="shrink-0" />
+        <span className="truncate max-w-[12rem]">{court}</span>
       </p>
     );
   }

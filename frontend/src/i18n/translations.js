@@ -28,6 +28,12 @@ export const translations = {
       title: 'Que souhaitez-vous faire ?',
       subtitle: 'Choisissez l’une des options ci-dessous. Vous pourrez revenir ici à tout moment.',
       uploadTab: 'Espace reportage',
+      // Libellés courts pour la barre du bas : à 390 px, trois onglets ne
+      // laissent qu'environ 120 px chacun, et un mot coupé par des points de
+      // suspension ne se lit pas.
+      uploadTabShort: 'Reportage',
+      voixOffTabShort: 'Voix off',
+      downloadTabShort: 'Le JT',
       uploadTitle: 'Espace reportage',
       uploadText: 'Envoyer les vidéos, audios et scripts de votre reportage.',
       uploadCta: 'Envoyer mes fichiers',
@@ -505,6 +511,9 @@ export const translations = {
       title: 'What would you like to do?',
       subtitle: 'Pick one of the options below. You can always come back to this page.',
       uploadTab: 'Report space',
+      uploadTabShort: 'Report',
+      voixOffTabShort: 'Voice',
+      downloadTabShort: 'The show',
       uploadTitle: 'Report space',
       uploadText: 'Send the videos, audio and scripts of your report.',
       uploadCta: 'Send my files',
