@@ -54,6 +54,8 @@ services:
       - REPORTER_TOKEN_SECRET=${REPORTER_TOKEN_SECRET}
       - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
       - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
     volumes:
       - uploads_volume:/app/uploads
     networks:
