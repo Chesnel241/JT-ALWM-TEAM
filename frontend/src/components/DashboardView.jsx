@@ -5,6 +5,7 @@ import { api, API_BASE, getClientId } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
+import RelancePanel from './RelancePanel.jsx';
 import { MEDIA_ORDER, MEDIA_TYPES, groupByReportage, classifyFile } from '../lib/mediaTypes.js';
 import { reportageTone } from '../lib/branding.js';
 
@@ -1829,6 +1830,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             <UploadCloud size={18} /> Livraison JT
           </button>
         </div>}
+
+        {/* La relance du samedi et les demandes de délai, là où l'équipe
+            travaille. Le panneau ne s'affiche que s'il a quelque chose à
+            dire : un bandeau permanent finit par ne plus être lu. */}
+        {!isStudioActive && (
+          <RelancePanel
+            selectedWeek={selectedWeek}
+            adminPassword={authenticatedAdminPassword}
+            week={(weeks || []).find((w) => w.id === selectedWeek)}
+          />
+        )}
 
         <div className={isDesktopEditorAvailable
           ? 'flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row'

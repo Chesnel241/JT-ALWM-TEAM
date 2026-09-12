@@ -19,6 +19,7 @@ startAlertMonitoring(uploadsDir);
 
 import { initWebPushDb } from './data/webpushSubscriptions.js';
 import { startDeadlineReminders } from './services/deadlineReminders.js';
+import { startRecapCloture } from './services/recapCloture.js';
 
 // Ensure DB is loaded (from Redis or local) before cleanup + listen
 await initDb();
@@ -44,9 +45,13 @@ async function runCleanup() {
 runCleanup();
 setInterval(runCleanup, 60 * 60 * 1000);
 
-// Relance automatique des pays qui n'ont rien envoyé, la veille de la
-// clôture. Se faisait jusqu'ici à la main, pays par pays.
+// Relance automatique des pays dont il manque encore la vidéo, la veille de
+// la clôture. Se faisait jusqu'ici à la main, pays par pays.
 startDeadlineReminders();
+
+// Et le bilan à l'instant de la clôture, vers l'équipe montage : l'échéance
+// devient un rendez-vous au lieu d'une chose à aller vérifier.
+startRecapCloture();
 
 const server = app.listen(PORT, () => {
   logger.info(`✅ Backend JT ALWM démarré`, {

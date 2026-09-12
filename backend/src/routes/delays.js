@@ -9,7 +9,7 @@ import {
   getStats,
   getCustomCountries,
 } from '../data/store.js';
-import { buildWeeks, isCountryAccepted } from '../data/constants.js';
+import { buildWeeks, isCountryAccepted, COUNTRIES } from '../data/constants.js';
 
 const router = express.Router();
 
@@ -38,6 +38,36 @@ router.get('/:weekId', requireAuth, (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+/**
+ * Les demandes de délai en attente, pour l'équipe montage.
+ *
+ * Une demande était enregistrée puis n'allait nulle part : elle n'apparaissait
+ * que dans l'onglet Statistiques, que personne n'ouvre le dimanche matin. Le
+ * correspondant croyait avoir engagé quelque chose et attendait une réponse
+ * qui ne venait pas, pendant que l'échéance passait.
+ */
+router.get('/:weekId/demandes', requireAuth, requireAdmin, (req, res) => {
+  const { weekId } = req.params;
+  if (!isValidWeek(weekId)) return res.status(404).json({ error: 'Semaine invalide' });
+
+  const { requests = {} } = getExtensions(weekId);
+  const pays = new Map([...COUNTRIES, ...(getCustomCountries() || [])]
+    .filter(Boolean).map((c) => [c.id, c.name]));
+
+  const enAttente = Object.entries(requests)
+    .filter(([, d]) => d?.status === 'pending')
+    .map(([countryId, d]) => ({
+      countryId,
+      nom: pays.get(countryId) || countryId.toUpperCase(),
+      demandeLe: d.requestedAt || null,
+    }))
+    // La plus ancienne d'abord : c'est celle qui attend depuis le plus
+    // longtemps, et celle dont l'échéance est la plus proche.
+    .sort((a, b) => String(a.demandeLe).localeCompare(String(b.demandeLe)));
+
+  return res.json(enAttente);
 });
 
 // POST /api/delays/request - Require APP or ADMIN

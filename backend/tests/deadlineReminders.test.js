@@ -63,11 +63,46 @@ describe('rappel d\'échéance', () => {
     }
   });
 
-  it('laisse tranquille un pays qui a déjà envoyé', async () => {
+  it('laisse tranquille un pays qui a envoyé sa vidéo', async () => {
     const { week, when } = dayBefore();
-    uploadsByWeek[week.id] = { cm: [{ id: 'f1' }] };
+    uploadsByWeek[week.id] = { cm: [{ id: 'f1', type: 'video' }] };
     const notified = await runReminderPass(when);
     expect(notified).not.toContain('cm');
+  });
+
+  it('relance quand même un pays qui a envoyé sans aucune vidéo', async () => {
+    // Le rappel ne visait que les chutiers COMPLÈTEMENT vides. Un pays ayant
+    // déposé une photo ou un script sans vidéo passait pour servi et n'était
+    // jamais relancé — alors qu'aucun de ces envois ne se monte.
+    const { week, when } = dayBefore();
+    uploadsByWeek[week.id] = {
+      cm: [{ id: 'f1', type: 'image' }, { id: 'f2', type: 'script' }],
+    };
+    const notified = await runReminderPass(when);
+    expect(notified).toContain('cm');
+  });
+
+  it('dit ce qui manque vraiment, plutôt qu’un message unique', async () => {
+    // « Rien reçu » et « reçu mais pas de vidéo » n'appellent pas le même
+    // geste du correspondant.
+    const { week, when } = dayBefore();
+    uploadsByWeek[week.id] = { cm: [{ id: 'f1', type: 'image' }] };
+    await runReminderPass(when);
+
+    const cameroun = sent.find((e) => e.filter.countryId === 'cm');
+    expect(cameroun.payload.body).toMatch(/aucune vidéo/i);
+
+    const autre = sent.find((e) => e.filter.countryId === 'sn');
+    expect(autre.payload.body).not.toMatch(/aucune vidéo/i);
+    expect(autre.payload.body).toMatch(/moins de 24 h/i);
+  });
+
+  it('annonce toujours l’heure de clôture en vigueur', async () => {
+    // Le message portait l'heure en dur : elle a déjà été fausse une fois,
+    // après le passage de 17h30 à 10h30.
+    const { when } = dayBefore();
+    await runReminderPass(when);
+    expect(sent[0].payload.body).toContain('dimanche 10h30 (GMT+2)');
   });
 
   it('n\'inclut jamais les rubriques de montage', async () => {
