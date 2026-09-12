@@ -365,6 +365,13 @@ export const translations = {
       deleted: (name) => `${name} supprimé`,
       published: 'Disponible au téléchargement',
       notifyAll: (count) => `Notifier ${count} journaliste(s) sur WhatsApp`,
+      // Le bloc restait vide en disant toujours la même chose, quelle que
+      // soit la raison : mot de passe manquant, JT pas encore publié, ou
+      // aucun numéro. Trois causes, trois messages, trois gestes différents.
+      notifyLocked: 'Déverrouillez l’espace montage pour voir les numéros.',
+      notifyNoDelivery: 'Publiez d’abord le JT de la semaine.',
+      notifyNoContact: 'Aucun numéro enregistré pour l’instant.',
+      notifyCarried: 'numéro des semaines précédentes',
       whatsappMessage: 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme. / The ALWM broadcast is ready! You can download it from the platform.',
     },
     countdown: {
@@ -828,6 +835,10 @@ export const translations = {
       deleted: (name) => `${name} deleted`,
       published: 'Available for download',
       notifyAll: (count) => `Notify ${count} journalist(s) on WhatsApp`,
+      notifyLocked: 'Unlock the editing space to see the numbers.',
+      notifyNoDelivery: 'Publish this week’s newscast first.',
+      notifyNoContact: 'No number recorded yet.',
+      notifyCarried: 'number from previous weeks',
       whatsappMessage: 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme. / The ALWM broadcast is ready! You can download it from the platform.',
     },
     countdown: {
