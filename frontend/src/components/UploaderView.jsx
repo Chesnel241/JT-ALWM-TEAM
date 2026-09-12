@@ -198,14 +198,15 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     return () => clearInterval(minuteur);
   }, [viderLaFile]);
 
-  // Cutoff dimanche 17h30
   const currentWeek = weeks.find(w => w.id === selectedWeek);
-  
+
   const { isLocked, extendedUntil, extensionStatus } = (() => {
-    if (!currentWeek?.startDate) return { isLocked: false };
-    const cutoff = new Date(currentWeek.startDate);
-    cutoff.setDate(cutoff.getDate() + 6);
-    cutoff.setHours(17, 30, 0, 0);
+    // L'heure de clôture vient du serveur (`cutoffAt`), elle n'est plus
+    // refaite ici. Ce calcul local se faisait dans le fuseau du navigateur :
+    // un correspondant en GMT+1 se voyait verrouillé une heure avant que le
+    // serveur ne ferme, et un autre en GMT-1 une heure après.
+    if (!currentWeek?.cutoffAt) return { isLocked: false };
+    const cutoff = new Date(currentWeek.cutoffAt);
     
     let locked = new Date() > cutoff;
     let extUntil = null;

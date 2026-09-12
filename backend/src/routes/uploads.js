@@ -40,7 +40,7 @@ const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 const isValidCountry = (countryId) => isCountryAccepted(countryId, getCustomCountries());
 
 // Renvoie une erreur 423 (Locked) si la date limite d'envoi (dimanche
-// 17h30) est dépassée pour cette semaine.
+// 10h30 GMT+2) est dépassée pour cette semaine.
 function checkUploadCutoff(weekId, countryId) {
   const cutoff = weekUploadCutoff(weekId);
   if (!cutoff) return null;
@@ -64,10 +64,10 @@ function checkUploadCutoff(weekId, countryId) {
       return null;
     }
 
-    const err = new Error('Date limite d\'envoi dépassée (dimanche 17h30)');
+    const err = new Error('Date limite d\'envoi dépassée (dimanche 10h30 GMT+2)');
     err.statusCode = 423;
     err.code = 'UPLOAD_DEADLINE_PASSED';
-    err.publicMessage = 'Délai dépassé : les uploads pour cette semaine sont clôturés depuis dimanche 17h30.';
+    err.publicMessage = 'Délai dépassé : les envois de cette semaine sont clôturés depuis dimanche 10h30 (GMT+2).';
     return err;
   }
   return null;

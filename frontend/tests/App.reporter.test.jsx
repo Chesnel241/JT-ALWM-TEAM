@@ -4,7 +4,7 @@ import App from '../src/App.jsx';
 import { api } from '../src/api/index.js';
 
 const COUNTRIES = [{ id: 'sn', name: 'Sénégal', code: 'SN' }];
-const WEEKS = [{ id: '2026-W34', status: 'active', startDate: '2026-08-18' }];
+const WEEKS = [{ id: '2026-W34', status: 'active', startDate: '2026-08-18', cutoffAt: '2026-08-23T08:30:00.000Z' }];
 
 function stubMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query) => ({

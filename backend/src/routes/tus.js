@@ -52,7 +52,7 @@ function checkUploadCutoff(weekId, countryId) {
 
     const err = new Error('Date limite d\'envoi dépassée');
     err.status_code = 423;
-    err.body = 'Délai dépassé : les uploads pour cette semaine sont clôturés depuis dimanche 17h30.';
+    err.body = 'Délai dépassé : les envois de cette semaine sont clôturés depuis dimanche 10h30 (GMT+2).';
     return err;
   }
   return null;

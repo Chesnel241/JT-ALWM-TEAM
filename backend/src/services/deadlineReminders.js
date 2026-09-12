@@ -71,7 +71,7 @@ export async function runReminderPass(now = new Date()) {
     try {
       await broadcastNotification({
         title: 'Votre reportage est attendu',
-        body: `Il reste moins de 24 h pour envoyer le reportage ${country.name}. Dernier délai : dimanche 17h30.`,
+        body: `Il reste moins de 24 h pour envoyer le reportage ${country.name}. Dernier délai : dimanche 10h30 (GMT+2).`,
         url: `/journalistes/${country.id}`,
       }, { audiences: [AUDIENCES.REPORTER], countryId: country.id });
       markReminderSent(week.id, country.id);

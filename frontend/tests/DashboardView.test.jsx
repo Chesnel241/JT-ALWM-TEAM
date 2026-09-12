@@ -25,7 +25,7 @@ vi.mock('../src/api/index.js', () => ({
 }));
 
 const mockWeeks = [
-  { id: '2026-w34', name: 'Semaine 34', status: 'active', startDate: '2026-08-17', endDate: '2026-08-23' },
+  { id: '2026-w34', name: 'Semaine 34', status: 'active', startDate: '2026-08-17', endDate: '2026-08-23', cutoffAt: '2026-08-23T08:30:00.000Z' },
 ];
 
 const mockCountries = [

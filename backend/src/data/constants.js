@@ -60,6 +60,54 @@ export const COUNTRIES = loadCountries();
 export const SPECIAL_BUCKETS = new Set(['mj']);
 
 /**
+ * Heure de clôture des envois : **dimanche 10h30 en GMT+2**.
+ *
+ * Le fuseau est déclaré, et non hérité de la machine. Avant, la règle
+ * s'écrivait `setHours(17, 30)` dans le fuseau du serveur — lequel tourne en
+ * UTC : la clôture annoncée « 17h30 » tombait en réalité à 19h30 pour une
+ * rédaction en GMT+2, et aurait changé d'heure toute seule si le serveur
+ * avait déménagé. Une règle métier ne doit pas dépendre de l'endroit où le
+ * code s'exécute.
+ *
+ * `offsetUTC` est fixe et ne suit pas l'heure d'été : la collecte va de Dakar
+ * à Libreville, où l'heure ne change pas, et une clôture qui se décale deux
+ * fois par an serait une source d'erreur pour tout le monde.
+ */
+export const CLOTURE = Object.freeze({
+  heureLocale: 10,
+  minuteLocale: 30,
+  offsetUTC: 2,
+  /** Pour l'affichage : « dimanche 10h30 (GMT+2) ». */
+  libelle: 'dimanche 10h30 (GMT+2)',
+  libelleEN: 'Sunday 10:30 (GMT+2)',
+});
+
+/**
+ * Lundi 00:00 UTC de la semaine ISO demandée.
+ *
+ * ISO 8601 : la semaine 1 est celle qui contient le 4 janvier. Ce calcul
+ * était recopié à l'identique dans les deux fonctions ci-dessous, en heure
+ * locale — donc dépendant du fuseau de la machine. Il vit ici, en UTC.
+ */
+function lundiIsoUTC(year, week) {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jourJan4 = jan4.getUTCDay() || 7;
+  const lundiSemaine1 = new Date(jan4);
+  lundiSemaine1.setUTCDate(jan4.getUTCDate() - jourJan4 + 1);
+  lundiSemaine1.setUTCHours(0, 0, 0, 0);
+
+  const lundi = new Date(lundiSemaine1);
+  lundi.setUTCDate(lundiSemaine1.getUTCDate() + (week - 1) * 7);
+  return lundi;
+}
+
+/** Décompose un identifiant `YYYY-wWW`, ou renvoie null. */
+function litIdSemaine(weekId) {
+  const m = /^(\d{4})-w(\d{1,2})$/.exec(String(weekId || ''));
+  return m ? { annee: parseInt(m[1], 10), semaine: parseInt(m[2], 10) } : null;
+}
+
+/**
  * Source de vérité unique pour la validation d'un countryId reçu sur les
  * routes d'upload, TUS, notifications, delete, archive, etc. Avant ce
  * helper, chaque route avait sa propre version divergente : la plus
@@ -128,6 +176,7 @@ function makeWeek(monday, status) {
   const num = isoWeekNumber(monday);
   const id = `${year}-w${String(num).padStart(2, '0')}`;
   const expiry = weekExpiryDate(id);
+  const cutoff = weekUploadCutoff(id);
   return {
     id,
     num,
@@ -142,6 +191,11 @@ function makeWeek(monday, status) {
     // un fichier déposé le dimanche à l'échéance en vit deux. Le calcul
     // reste ici ; le frontend n'a pas de quoi le refaire.
     expiresAt: expiry ? expiry.toISOString() : null,
+    // Instant exact de clôture des envois. Le frontend l'AFFICHE au lieu de
+    // le recalculer : il le refaisait dans le fuseau du navigateur, si bien
+    // qu'un correspondant en GMT+1 voyait son compte à rebours atteindre
+    // zéro une heure avant que le serveur ne ferme réellement.
+    cutoffAt: cutoff ? cutoff.toISOString() : null,
   };
 }
 
@@ -154,33 +208,27 @@ export function weekIdFor(date) {
 
 /**
  * Date limite d'envoi des rushes pour une semaine donnée.
- * Règle métier : **dimanche 17h30 (fuseau serveur) de la semaine**.
- * Après ce moment, les correspondants ne peuvent plus uploader.
- * L'équipe montage (deliveries) reste libre d'uploader le JT final
- * jusqu'à la purge mercredi 00:00 W+1.
+ *
+ * Règle métier : **dimanche 10h30 GMT+2** (voir CLOTURE). Au-delà, les
+ * correspondants ne peuvent plus envoyer. L'équipe montage reste libre de
+ * déposer le JT final jusqu'à la purge, mercredi 00:00 de W+1.
+ *
+ * Le résultat est le même instant quel que soit le fuseau de la machine :
+ * c'est ce qui permet au frontend de simplement l'afficher, au lieu de
+ * refaire le calcul dans le fuseau du navigateur — ce qu'il faisait, avec
+ * une heure d'écart pour un correspondant en GMT+1.
  *
  * @param {string} weekId - ex: "2026-w21"
  * @returns {Date|null}
  */
 export function weekUploadCutoff(weekId) {
-  const m = /^(\d{4})-w(\d{1,2})$/.exec(weekId);
-  if (!m) return null;
-  const year = parseInt(m[1], 10);
-  const week = parseInt(m[2], 10);
+  const parts = litIdSemaine(weekId);
+  if (!parts) return null;
 
-  const jan4 = new Date(year, 0, 4);
-  const jan4Day = jan4.getDay() || 7;
-  const mondayWeek1 = new Date(jan4);
-  mondayWeek1.setDate(jan4.getDate() - jan4Day + 1);
-  mondayWeek1.setHours(0, 0, 0, 0);
-
-  const monday = new Date(mondayWeek1);
-  monday.setDate(mondayWeek1.getDate() + (week - 1) * 7);
-  // Dimanche = lundi + 6 jours, 17h30
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(17, 30, 0, 0);
-  return sunday;
+  const dimanche = lundiIsoUTC(parts.annee, parts.semaine);
+  dimanche.setUTCDate(dimanche.getUTCDate() + 6);
+  dimanche.setUTCHours(CLOTURE.heureLocale - CLOTURE.offsetUTC, CLOTURE.minuteLocale, 0, 0);
+  return dimanche;
 }
 
 /**
@@ -192,26 +240,17 @@ export function weekUploadCutoff(weekId) {
  * Retourne `null` si l'ID n'est pas au format `YYYY-wWW`.
  */
 export function weekExpiryDate(weekId) {
-  const m = /^(\d{4})-w(\d{1,2})$/.exec(weekId);
-  if (!m) return null;
-  const year = parseInt(m[1], 10);
-  const week = parseInt(m[2], 10);
+  const parts = litIdSemaine(weekId);
+  if (!parts) return null;
 
-  // ISO 8601 : la semaine 1 est celle qui contient le 4 janvier.
-  // On part du 4 janvier de cette année-là, on remonte à son lundi, puis
-  // on avance de (week - 1) semaines.
-  const jan4 = new Date(year, 0, 4);
-  const jan4Day = jan4.getDay() || 7;
-  const mondayWeek1 = new Date(jan4);
-  mondayWeek1.setDate(jan4.getDate() - jan4Day + 1);
-  mondayWeek1.setHours(0, 0, 0, 0);
-
-  const monday = new Date(mondayWeek1);
-  monday.setDate(mondayWeek1.getDate() + (week - 1) * 7);
-  const sunday = endOfIsoWeek(monday);
-
-  // Mercredi 00:00 de la semaine suivante = 48 h après dimanche 23:59:59
-  return new Date(sunday.getTime() + 48 * 60 * 60 * 1000 + 1);
+  // Mercredi 00:00 UTC de la semaine suivante = lundi + 9 jours. Écrit en
+  // UTC comme la clôture : sur le serveur actuel, qui tourne en UTC, la
+  // valeur est exactement celle d'avant — mais elle ne bougera plus si la
+  // machine change de fuseau.
+  const mercredi = lundiIsoUTC(parts.annee, parts.semaine);
+  mercredi.setUTCDate(mercredi.getUTCDate() + 9);
+  mercredi.setUTCHours(0, 0, 0, 0);
+  return mercredi;
 }
 
 /**
