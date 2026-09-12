@@ -153,13 +153,17 @@ describe('cran `strict` — la portée s’applique', () => {
     }
   });
 
-  it('refuse ces mêmes rubriques à qui ne présente aucun lien', async () => {
+  it('ouvre le Mot du JT à n\'importe qui, même anonyme et sans lien', async () => {
     strict();
-    for (const rubrique of ['tj', 'mj']) {
-      const res = await request(app).get(`/api/uploads/${SEMAINE}/${rubrique}`);
-      expect(res.status, rubrique).toBe(403);
-      expect(res.body.message).toMatch(/lien personnel/i);
-    }
+    const res = await request(app).get(`/api/uploads/${SEMAINE}/mj`);
+    expect(res.status).toBe(200);
+  });
+
+  it('refuse le conducteur à qui ne présente aucun lien', async () => {
+    strict();
+    const res = await request(app).get(`/api/uploads/${SEMAINE}/tj`);
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/lien personnel/i);
   });
 
   it('ignore un jeton falsifié plutôt que de lui faire confiance', async () => {

@@ -161,6 +161,11 @@ router.get('/:weekId/:countryId/archive', jetonArchive, porteeCountry(), archive
     return next(createErrors.notFound('Week ou Country'));
   }
 
+  // Téléchargement du zip Mot du JT réservé à la rédaction (admin requis).
+  if (countryId === 'mj' && !estRedaction(req) && req.accesRedaction !== true) {
+    return next(createErrors.forbidden('Accès protégé : authentification requise pour télécharger l\'archive du Mot du JT.'));
+  }
+
   // Sécurisation retirée à la demande de l'utilisateur : le téléchargement est public
 
   const uploads = getCountryUploads(weekId, countryId);
@@ -717,11 +722,6 @@ router.post('/voiceover/:weekId/:countryId', porteeCountry(), upload.single('aud
 
   if (!isValidWeek(weekId)) {
     return next(createErrors.notFound('Week'));
-  }
-  // Chutier `mj` (Mot du JT) réservé à l'équipe montage : admin requis,
-  // même via la route voix-off (sinon n'importe quel pays peut polluer).
-  if (countryId === 'mj' && !estRedaction(req)) {
-    return next(createErrors.forbidden('Accès admin requis pour la rubrique Mot du JT.'));
   }
 
   // Source de vérité unique (constants.js). `_subscriptions` reste accepté

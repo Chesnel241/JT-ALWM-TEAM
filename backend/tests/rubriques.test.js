@@ -133,7 +133,7 @@ describe('qui peut les remplir', () => {
     process.env.REPORTER_ACCESS = 'ouvert';
   });
 
-  it('mais personne sans lien, une fois la portée appliquée', async () => {
+  it('mais personne sans lien pour le conducteur, une fois la portée appliquée', async () => {
     process.env.REPORTER_ACCESS = 'strict';
     const res = await request(app)
       .put(`/api/rubriques/${SEMAINE}/conducteur`)
@@ -141,6 +141,16 @@ describe('qui peut les remplir', () => {
     expect(res.status).toBe(403);
     // Le refus explique que n'importe quel lien conviendrait.
     expect(res.body.message).toMatch(/n'appartient à aucun pays/i);
+    process.env.REPORTER_ACCESS = 'ouvert';
+  });
+
+  it('le Mot du JT est ouvert à tous, sans authentification ni lien même en strict', async () => {
+    process.env.REPORTER_ACCESS = 'strict';
+    const res = await request(app)
+      .put(`/api/rubriques/${SEMAINE}/motDuJt`)
+      .send({ orateur: 'Journaliste Anonyme', theme: 'Actualité locale' });
+    expect(res.status).toBe(200);
+    expect(res.body.orateur).toBe('Journaliste Anonyme');
     process.env.REPORTER_ACCESS = 'ouvert';
   });
 });

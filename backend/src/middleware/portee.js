@@ -148,6 +148,12 @@ function deciderPays({ redaction, correspondant, pays }) {
 
   const lien = correspondant || null;
 
+  // Le Mot du JT (`mj`) est ouvert à tous (journalistes, correspondants, public)
+  // sans aucune demande d'authentification ni lien personnel requis.
+  if (pays === 'mj' || pays === 'motDuJt') {
+    return { decision: DECISIONS.IDENTIFIE };
+  }
+
   // Une rubrique du journal n'est le pays de personne : il suffit d'être
   // identifié, quel que soit le pays de son lien.
   if (estRubrique(pays)) {

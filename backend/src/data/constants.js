@@ -51,7 +51,7 @@ export const COUNTRIES = loadCountries();
 /**
  * "Buckets" non géographiques utilisés par l'espace montage pour stocker
  * des fichiers hors du chutier d'un pays donné :
- *   - `mj` : Mot du JT / reportage assemblé (admin uniquement)
+ *   - `mj` : Mot du JT (ouvert à tous, journalistes et montage)
  * Les autres bins du frontend (`tj` → déjà dans COUNTRIES via loadCountries,
  * `delivery` → route /api/deliveries séparée, `studio` → vue read-only) ne
  * sont jamais envoyés comme countryId au backend.

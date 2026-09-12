@@ -218,31 +218,32 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     try {
       const filename = req.params[0];
       const metadata = (await import('./data/store.js')).getFileMetadata(filename);
-      if (metadata && metadata.countryId === 'mj') {
-        const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
-        let providedToken = req.header('x-admin-password');
-        let dlToken = req.query.dl_token;
-
-        let isValidToken = false;
-        if (ADMIN_PASSWORD) {
-          if (typeof providedToken === 'string' && safeEqual(providedToken.trim(), ADMIN_PASSWORD)) {
-            isValidToken = true;
-          } else if (typeof dlToken === 'string') {
-            const { verifyDownloadToken } = await import('./lib/downloadTokens.js');
-            if (verifyDownloadToken(dlToken, filename)) {
-              isValidToken = true;
-            }
-          }
-        } else {
-          isValidToken = true;
-        }
-
-        if (!isValidToken && ADMIN_PASSWORD) {
-          return res.status(403).send('Accès protégé : authentification requise pour cette rubrique.');
-        }
-      }
 
       if (req.query.dl === '1') {
+        if (metadata && metadata.countryId === 'mj') {
+          const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
+          let providedToken = req.header('x-admin-password');
+          let dlToken = req.query.dl_token;
+
+          let isValidToken = false;
+          if (ADMIN_PASSWORD) {
+            if (typeof providedToken === 'string' && safeEqual(providedToken.trim(), ADMIN_PASSWORD)) {
+              isValidToken = true;
+            } else if (typeof dlToken === 'string') {
+              const { verifyDownloadToken } = await import('./lib/downloadTokens.js');
+              if (verifyDownloadToken(dlToken, filename)) {
+                isValidToken = true;
+              }
+            }
+          } else {
+            isValidToken = true;
+          }
+
+          if (!isValidToken && ADMIN_PASSWORD) {
+            return res.status(403).send('Accès protégé : authentification requise pour cette rubrique.');
+          }
+        }
+
         const safePath = normalize(filename).replace(/^(\.\.(\/|\\|$))+/, '');
         const fullPath = join(dir, safePath);
         if (fullPath.startsWith(resolve(dir))) {
