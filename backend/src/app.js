@@ -11,6 +11,7 @@ import countriesRouter from './routes/countries.js';
 import weeksRouter from './routes/weeks.js';
 import sujetsRouter from './routes/sujets.js';
 import liensRouter from './routes/liens.js';
+import planningRouter from './routes/planning.js';
 import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
 import notificationsRouter from './routes/notifications.js';
@@ -170,7 +171,12 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     origin: corsOrigins, 
     credentials: true,
     exposedHeaders: ['Tus-Resumable', 'Upload-Length', 'Upload-Metadata', 'Location', 'Upload-Offset', 'Upload-Concat', 'Content-Type', 'Upload-Defer-Length'],
-    allowedHeaders: ['Tus-Resumable', 'Upload-Length', 'Upload-Metadata', 'Location', 'Upload-Offset', 'Content-Type', 'Upload-Concat', 'Authorization', 'x-admin-password', 'x-worker-key']
+    // `x-reporter-token` et `x-app-password` manquaient : le navigateur les
+    // retirait donc dès que l'API n'était pas servie sur la même origine que
+    // l'interface. Invisible en production, où un seul proxy sert les deux,
+    // mais un correspondant aurait perdu son lien personnel sur toute autre
+    // topologie — sans le moindre message.
+    allowedHeaders: ['Tus-Resumable', 'Upload-Length', 'Upload-Metadata', 'Location', 'Upload-Offset', 'Content-Type', 'Upload-Concat', 'Authorization', 'x-admin-password', 'x-worker-key', 'x-reporter-token', 'x-app-password', 'x-client-id']
   }));
   // globalLimiter (500 req/min/IP) NE doit PAS compter les PATCH TUS : un
   // upload de 20 Go en chunks de 5 Mo = ~4096 PATCH ; sur lien rapide ou
@@ -321,6 +327,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/weeks', weeksRouter);
   app.use('/api/sujets', sujetsRouter);
   app.use('/api/liens', liensRouter);
+  app.use('/api/planning', planningRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/themes', themesRouter);

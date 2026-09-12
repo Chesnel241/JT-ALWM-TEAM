@@ -1,4 +1,4 @@
-import { LayoutDashboard, Sparkles, Mic, MapPin, BarChart2, Upload, Download, Home } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Mic, MapPin, BarChart2, Upload, Download, Home, CalendarDays } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { useState, useEffect } from 'react';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
@@ -110,6 +110,13 @@ export default function Nav({
       icon: <Sparkles size={iconSize} className={iconClass} />,
       label: t.nav.delivery,
       match: ['delivery']
+    },
+    {
+      id: 'tour-nav-planning',
+      view: 'planning',
+      icon: <CalendarDays size={iconSize} className={iconClass} />,
+      label: isMobile ? 'Planning' : 'Programmation',
+      match: ['planning']
     },
     {
       id: 'tour-nav-stats',

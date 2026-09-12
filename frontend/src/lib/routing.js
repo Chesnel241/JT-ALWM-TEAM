@@ -61,6 +61,7 @@ const ROUTES = {
     ['uploader', 'reportage/envoi'],
     ['voixoff', 'voix-off'],
     ['delivery', 'jt-pret'],
+    ['planning', 'planning'],
     ['stats', 'stats'],
     ['editor', 'editeur'],
   ],

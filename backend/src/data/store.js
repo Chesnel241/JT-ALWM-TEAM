@@ -32,6 +32,16 @@ const seed = {};
 let db = {};
 
 export async function initDb() {
+  await chargerDb();
+  // Les migrations tournent sur TOUS les chemins de chargement. Elles étaient
+  // au bout de la lecture disque, après deux `return` anticipés : un store
+  // chargé depuis Redis, ou tout nouveau, n'en voyait aucune — et c'est
+  // justement un store neuf qui a besoin d'être amorcé.
+  migrateSujets();
+  amorcerPlanning();
+}
+
+async function chargerDb() {
   if (redis) {
     try {
       logger.info('Attempting to load DB from Upstash Redis...');
@@ -52,6 +62,7 @@ export async function initDb() {
     db = JSON.parse(JSON.stringify(seed));
     return;
   }
+
 
   try {
     const raw = await readFile(DB_PATH, 'utf-8');
@@ -102,7 +113,62 @@ export async function initDb() {
     }
   }
 
-  migrateSujets();
+}
+
+/**
+ * Programmation de départ, telle que la rédaction l'a fournie pour la saison
+ * septembre-octobre 2026.
+ *
+ * Les libellés sont ceux de la rédaction (« Sem. 18 ») et ne coïncident PAS
+ * avec la semaine ISO : leur Sem. 18 est notre `2026-w37`. C'est pour cela
+ * que la clé est l'identifiant ISO et le libellé un simple affichage.
+ */
+const PLANNING_INITIAL = [
+  { weekId: '2026-w37', libelle: 'Sem. 18', assemblage: 'Godsway', habillage: 'David' },
+  { weekId: '2026-w38', libelle: 'Sem. 19', assemblage: 'Rodolphe', habillage: 'Chesnel' },
+  { weekId: '2026-w39', libelle: 'Sem. 20', assemblage: 'Godsway', habillage: 'Chadimi' },
+  { weekId: '2026-w40', libelle: 'Sem. 21', assemblage: 'David', habillage: 'Chesnel' },
+  { weekId: '2026-w41', libelle: 'Sem. 22', assemblage: 'Chadimi', habillage: 'Rodolphe' },
+  { weekId: '2026-w42', libelle: 'Sem. 23', assemblage: 'Chesnel', habillage: 'Godsway' },
+  { weekId: '2026-w43', libelle: 'Sem. 24', assemblage: 'David', habillage: 'Rodolphe' },
+  { weekId: '2026-w44', libelle: 'Sem. 25', assemblage: 'Chesnel', habillage: 'Chadimi' },
+];
+
+/**
+ * Inscrit la programmation de départ au premier démarrage.
+ *
+ * Idempotent, et surtout NON DESTRUCTIF : une semaine déjà présente au
+ * planning n'est jamais retouchée. Sans quoi chaque redémarrage écraserait
+ * les décalages saisis par la rédaction — le planning est fait pour bouger.
+ */
+function amorcerPlanning() {
+  const p = planningStore();
+  let ajoutees = 0;
+
+  for (const ligne of PLANNING_INITIAL) {
+    if (p.semaines[ligne.weekId]) continue;
+
+    const idDe = (nom) => {
+      const existant = p.monteurs.find((m) => m.nom.toLowerCase() === nom.toLowerCase());
+      if (existant) return existant.id;
+      const monteur = { id: randomUUID(), nom };
+      p.monteurs.push(monteur);
+      return monteur.id;
+    };
+
+    p.semaines[ligne.weekId] = {
+      libelle: ligne.libelle,
+      [ROLES_MONTAGE.ASSEMBLAGE]: { monteurId: idDe(ligne.assemblage), etat: ETATS_MONTAGE.A_FAIRE, majLe: null },
+      [ROLES_MONTAGE.HABILLAGE]: { monteurId: idDe(ligne.habillage), etat: ETATS_MONTAGE.A_FAIRE, majLe: null },
+      sujetsMontes: [],
+    };
+    ajoutees += 1;
+  }
+
+  if (ajoutees > 0) {
+    logger.info(`Planning amorcé : ${ajoutees} semaine(s), ${p.monteurs.length} monteur(s)`);
+    persistDb();
+  }
 }
 
 /**
@@ -711,10 +777,135 @@ export function estLienRevoque(id) {
   return Boolean(db._liens[id]?.revoqueLe);
 }
 
+/**
+ * Planning des monteurs.
+ *
+ * Deux personnes par semaine : une à l'assemblage, une à l'habillage, chacune
+ * avec son propre avancement. Le planning est saisi dans l'application — la
+ * rédaction décale quelqu'un sans attendre un déploiement.
+ *
+ * Il porte sa PROPRE liste de semaines, et non celle de `buildWeeks` : celle-ci
+ * n'expose qu'une fenêtre glissante de deux à trois semaines, alors qu'un
+ * planning se regarde deux mois à l'avance.
+ *
+ * `libelle` est le numéro d'édition de la rédaction (« Sem. 18 »), qui ne
+ * coïncide pas avec la semaine ISO : leur « Sem. 18 » est notre `2026-w37`.
+ * On range par identifiant ISO, on affiche leur numéro.
+ */
+export const ROLES_MONTAGE = Object.freeze({
+  ASSEMBLAGE: 'assemblage',
+  HABILLAGE: 'habillage',
+});
+
+export const ETATS_MONTAGE = Object.freeze({
+  A_FAIRE: 'a_faire',
+  EN_COURS: 'en_cours',
+  TERMINE: 'termine',
+});
+
+export const isRoleMontage = (v) => Object.values(ROLES_MONTAGE).includes(v);
+export const isEtatMontage = (v) => Object.values(ETATS_MONTAGE).includes(v);
+
+function planningStore() {
+  if (!db._planning) db._planning = { monteurs: [], semaines: {} };
+  if (!Array.isArray(db._planning.monteurs)) db._planning.monteurs = [];
+  if (!db._planning.semaines || typeof db._planning.semaines !== 'object') db._planning.semaines = {};
+  return db._planning;
+}
+
+function semaineVide() {
+  return {
+    libelle: '',
+    [ROLES_MONTAGE.ASSEMBLAGE]: { monteurId: null, etat: ETATS_MONTAGE.A_FAIRE, majLe: null },
+    [ROLES_MONTAGE.HABILLAGE]: { monteurId: null, etat: ETATS_MONTAGE.A_FAIRE, majLe: null },
+    sujetsMontes: [],
+  };
+}
+
+export function getPlanning() {
+  const p = planningStore();
+  return {
+    monteurs: p.monteurs.map((m) => ({ ...m })),
+    semaines: Object.fromEntries(
+      Object.entries(p.semaines).map(([id, s]) => [id, JSON.parse(JSON.stringify(s))]),
+    ),
+  };
+}
+
+export function ajouterMonteur(nom) {
+  const propre = String(nom || '').trim().slice(0, 60);
+  if (!propre) return null;
+  const p = planningStore();
+  const existant = p.monteurs.find((m) => m.nom.toLowerCase() === propre.toLowerCase());
+  if (existant) return { ...existant };
+  const monteur = { id: randomUUID(), nom: propre };
+  p.monteurs.push(monteur);
+  persistDb();
+  return { ...monteur };
+}
+
+/**
+ * Retire un monteur de la liste. Ses affectations passées restent en place :
+ * effacer l'historique parce que quelqu'un quitte l'équipe ferait mentir le
+ * planning des semaines déjà faites.
+ */
+export function retirerMonteur(monteurId) {
+  const p = planningStore();
+  const avant = p.monteurs.length;
+  p.monteurs = p.monteurs.filter((m) => m.id !== monteurId);
+  if (p.monteurs.length === avant) return false;
+  persistDb();
+  return true;
+}
+
+/** Affecte les deux rôles d'une semaine, et son libellé de saison. */
+export function affecterSemaine(weekId, { libelle, assemblage, habillage } = {}) {
+  const p = planningStore();
+  const semaine = p.semaines[weekId] || semaineVide();
+
+  if (libelle !== undefined) semaine.libelle = String(libelle || '').trim().slice(0, 30);
+  for (const [role, valeur] of [[ROLES_MONTAGE.ASSEMBLAGE, assemblage], [ROLES_MONTAGE.HABILLAGE, habillage]]) {
+    if (valeur === undefined) continue;
+    // `null` retire l'affectation sans effacer l'avancement déjà saisi.
+    semaine[role] = { ...semaine[role], monteurId: valeur === null ? null : String(valeur) };
+  }
+
+  p.semaines[weekId] = semaine;
+  persistDb();
+  return JSON.parse(JSON.stringify(semaine));
+}
+
+export function majEtatMontage(weekId, role, etat) {
+  if (!isRoleMontage(role) || !isEtatMontage(etat)) return null;
+  const p = planningStore();
+  const semaine = p.semaines[weekId] || semaineVide();
+  semaine[role] = { ...semaine[role], etat, majLe: new Date().toISOString() };
+  p.semaines[weekId] = semaine;
+  persistDb();
+  return JSON.parse(JSON.stringify(semaine));
+}
+
+/**
+ * Coche ou décoche un reportage monté.
+ *
+ * C'est un axe distinct de l'état éditorial du sujet : un sujet validé par la
+ * rédaction n'est pas pour autant monté, et l'inverse se produit aussi.
+ */
+export function marquerSujetMonte(weekId, sujetId, monte) {
+  const p = planningStore();
+  const semaine = p.semaines[weekId] || semaineVide();
+  const dejaLa = semaine.sujetsMontes.includes(sujetId);
+  if (monte && !dejaLa) semaine.sujetsMontes.push(sujetId);
+  if (!monte && dejaLa) semaine.sujetsMontes = semaine.sujetsMontes.filter((id) => id !== sujetId);
+  p.semaines[weekId] = semaine;
+  persistDb();
+  return JSON.parse(JSON.stringify(semaine));
+}
+
 // Clés réservées du store (méta-données qui ne sont pas des semaines).
 // `_liens` en fait partie : sans ça, les balayages de purge liraient le
 // registre des liens comme s'il s'agissait d'une semaine de reportages.
-const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens']);
+const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens', '_planning']);
 
 export function getFileMetadata(filename) {
   for (const weekId of Object.keys(db)) {

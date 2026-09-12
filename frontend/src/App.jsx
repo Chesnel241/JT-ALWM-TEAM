@@ -36,6 +36,7 @@ const DeliveryView = lazy(() => import('./components/DeliveryView.jsx'));
 const VoixOffView = lazy(() => import('./components/VoixOffView.jsx'));
 const EditorView = lazy(() => import('./components/EditorView.jsx'));
 const StatsView = lazy(() => import('./components/StatsView.jsx'));
+const PlanningView = lazy(() => import('./components/PlanningView.jsx'));
 const ReporterHomeView = lazy(() => import('./components/ReporterHomeView.jsx'));
 import LoginView from './components/LoginView.jsx';
 
@@ -471,6 +472,14 @@ function AppShell() {
                   isActive={currentView === 'voixoff'}
                   initialCountryId={homeCountry?.id || route.countryId || selectedCountry?.id}
                   isReporter={isReporter}
+                />
+              </div>
+            )}
+            {canRender('planning') && (
+              <div className={currentView === 'planning' ? 'block' : 'hidden'}>
+                <PlanningView
+                  selectedWeek={selectedWeek}
+                  isActive={currentView === 'planning'}
                 />
               </div>
             )}

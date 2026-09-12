@@ -239,6 +239,47 @@ export const api = {
       body: JSON.stringify({ pays, nom }),
     }),
 
+  // === Planning des monteurs ===
+  getPlanning: (adminPassword) => request('/planning', { adminPassword }),
+
+  getPlanningSujets: (weekId, adminPassword) =>
+    request(`/planning/${weekId}/sujets`, { adminPassword }),
+
+  ajouterMonteur: (nom, adminPassword) =>
+    request('/planning/monteurs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ nom }),
+    }),
+
+  retirerMonteur: (monteurId, adminPassword) =>
+    request(`/planning/monteurs/${monteurId}`, { method: 'DELETE', adminPassword }),
+
+  affecterSemaine: (weekId, affectation, adminPassword) =>
+    request(`/planning/${weekId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify(affectation),
+    }),
+
+  majEtatMontage: (weekId, role, etat, adminPassword) =>
+    request(`/planning/${weekId}/${role}/etat`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ etat }),
+    }),
+
+  marquerSujetMonte: (weekId, sujetId, monte, adminPassword) =>
+    request(`/planning/${weekId}/sujets/${sujetId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ monte }),
+    }),
+
   // === Sujets ===
   // Un sujet est l'unité de travail : un titre, un auteur, un état. Les
   // fichiers s'y rattachent par `sujetId` au lieu d'une étiquette texte.
