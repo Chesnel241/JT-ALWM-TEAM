@@ -83,6 +83,31 @@ describe('Nav — espace journalistes', () => {
     expect(screen.queryByText('Stats & Délais')).not.toBeInTheDocument();
   });
 
+  it('ne dépasse jamais trois onglets côté correspondants', () => {
+    // Garde-fou. À cinq onglets, mesuré dans un navigateur à 390 px, la barre
+    // du bas affichait « Repo… Voice… Cond… Mot … Dow… » : aucun libellé
+    // entier, sur le repère le plus utilisé des correspondants. Le conducteur
+    // et le Mot du JT s'ouvrent depuis l'accueil, pas depuis la barre.
+    const { container } = renderReporter();
+    const barre = container.querySelector('.app-chrome-bottom');
+    const onglets = barre.querySelectorAll('button');
+    expect(onglets.length).toBeLessThanOrEqual(3);
+
+    // Et aucun libellé ne doit être une abréviation coupée.
+    for (const onglet of onglets) {
+      expect(onglet.textContent.trim()).not.toMatch(/…|\.\.\.$/);
+      expect(onglet.textContent.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('n\'allume aucun onglet quand on est sur une rubrique du journal', () => {
+    // Le conducteur et le Mot du JT ne sont plus dans la barre : aucun des
+    // trois onglets ne doit paraître actif à leur place.
+    const { container } = renderReporter({ currentView: 'conducteur' });
+    const actifs = container.querySelectorAll('[aria-current="page"]');
+    expect(actifs.length).toBe(0);
+  });
+
   it('ouvre le JT prêt depuis l\'onglet de téléchargement', () => {
     const setView = vi.fn();
     renderReporter({ setCurrentView: setView });

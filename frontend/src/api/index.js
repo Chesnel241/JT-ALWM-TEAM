@@ -256,16 +256,25 @@ export const api = {
    * Omise, l'écriture passe toujours — un client plus ancien continue donc
    * de fonctionner comme avant.
    */
-  setRubrique: (weekId, cle, champs, baseRevision) =>
-    request(`/rubriques/${weekId}/${cle}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(
-        baseRevision === undefined || baseRevision === null
-          ? champs
-          : { ...champs, baseRevision }
-      ),
-    }),
+  setRubrique: async (weekId, cle, champs, baseRevision) => {
+    try {
+      return await request(`/rubriques/${weekId}/${cle}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          baseRevision === undefined || baseRevision === null
+            ? champs
+            : { ...champs, baseRevision }
+        ),
+      });
+    } catch (err) {
+      // Un conflit n'est pas une panne : la demande était bonne, c'est l'état
+      // du serveur qui a bougé. On rend l'état à jour, que l'écran sait
+      // présenter, au lieu d'une erreur que l'appelant devrait deviner.
+      if (err?.status === 409 && err.body?.conflit) return err.body;
+      throw err;
+    }
+  },
 
   // === Planning des monteurs ===
   getPlanning: (adminPassword) => request('/planning', { adminPassword }),
