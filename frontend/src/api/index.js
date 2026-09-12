@@ -57,6 +57,55 @@ async function request(url, options = {}) {
   }
 }
 
+/**
+ * Patience réseau : une dizaine de minutes, par paliers croissants.
+ * L'envoi reprend à l'octet près, donc réessayer ne recommence rien.
+ */
+export const RECHARGES_RESEAU = [
+  0, 1000, 2000, 5000, 10000, 20000, 30000, 60000,
+  60000, 60000, 60000, 60000, 60000, 60000, 60000, 60000,
+];
+
+/**
+ * Codes sur lesquels il est inutile d'insister : la réponse ne changera pas
+ * en réessayant, et c'est là — et seulement là — qu'un message se justifie.
+ * Tout le reste (coupure, 429 d'un limiteur, panne passagère) est réessayé
+ * en silence. tus-js-client, par défaut, abandonnait sur TOUT code 4xx : un
+ * 429 suffisait donc à perdre un envoi.
+ */
+export const REFUS_DEFINITIFS = new Set([
+  400, // requête malformée
+  403, // hors de votre pays
+  413, // trop volumineux
+  415, // format interdit
+  423, // date limite dépassée
+]);
+
+export function reessayerSi(err) {
+  const statut = err?.originalResponse?.getStatus?.();
+  // Pas de réponse du tout : c'est le réseau, donc on réessaie.
+  if (!statut) return true;
+  return !REFUS_DEFINITIFS.has(statut);
+}
+
+/**
+ * Taille des morceaux, choisie d'après le lien annoncé par le navigateur.
+ * Un morceau perdu est un morceau à refaire : sur une 2G, 5 Mo redemandés
+ * après chaque coupure, c'est plusieurs minutes de travail jetées à chaque
+ * fois.
+ */
+export function tailleMorceauParDefaut() {
+  const Mo = 1024 * 1024;
+  try {
+    const lien = globalThis.navigator?.connection?.effectiveType;
+    if (lien === 'slow-2g' || lien === '2g') return 1 * Mo;
+    if (lien === '3g') return 2 * Mo;
+  } catch {
+    // API absente (Safari, Firefox) : on garde la valeur nominale.
+  }
+  return 5 * Mo;
+}
+
 // --------------------------------------------------------------------------
 // DELAYS & STATS
 // --------------------------------------------------------------------------
@@ -284,16 +333,22 @@ export const api = {
       adminPassword,
     }),
 
-  uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, sujetId, adminPassword } = {}) => {
+  uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, sujetId, adminPassword, tailleMorceau } = {}) => {
     const { Upload } = await import('tus-js-client');
     const token = localStorage.getItem('app-password');
-    
+
     return new Promise((resolve, reject) => {
       const upload = new Upload(file, {
         endpoint: `${API_BASE}/api/tus/`,
         headers: readReporterToken() ? { 'X-Reporter-Token': readReporterToken() } : {},
-        retryDelays: [0, 3000, 5000, 10000, 20000],
-        chunkSize: 5 * 1024 * 1024, // 5 MB per request to prevent timeouts
+        // Cinq tentatives réparties sur 38 secondes, c'était la patience d'un
+        // bureau câblé. Un correspondant bascule d'un relais à l'autre, perd
+        // le réseau dans un tunnel, ou attend que la 3G revienne : on tient
+        // maintenant une dizaine de minutes avant de renoncer. Rien ne
+        // s'affiche pendant ce temps, et l'envoi reprend à l'octet près.
+        retryDelays: RECHARGES_RESEAU,
+        onShouldRetry: reessayerSi,
+        chunkSize: tailleMorceau || tailleMorceauParDefaut(),
         // L'empreinte d'un envoi réussi ne sert plus à rien : la garder
         // encombrait le stockage du téléphone semaine après semaine.
         removeFingerprintOnSuccess: true,
@@ -315,9 +370,19 @@ export const api = {
         onError: function (error) {
           if (upload._aborted) {
             reject(new Error(tStatic().errors.uploadCancelled || 'Upload annulé'));
-          } else {
-            reject(new Error(error.message || tStatic().errors.networkError));
+            return;
           }
+          // Le statut voyage avec l'erreur : c'est lui, et non
+          // `navigator.onLine`, qui dit si l'envoi est perdu pour de bon ou
+          // s'il suffit d'attendre. `definitif` à faux signifie « le réseau
+          // a lâché » — on remet en file, sans rien afficher de rouge.
+          const statut = error?.originalResponse?.getStatus?.() || 0;
+          const echec = new Error(
+            statut && error.message ? error.message : (error.message || tStatic().errors.networkError),
+          );
+          echec.statut = statut;
+          echec.definitif = Boolean(statut) && REFUS_DEFINITIFS.has(statut);
+          reject(echec);
         },
         onProgress: function (bytesUploaded, bytesTotal) {
           const percentage = (bytesUploaded / bytesTotal) * 100;

@@ -164,20 +164,39 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     setPendingUploads(listPendingUploads(selectedWeek, country.id));
   }, [selectedWeek, country.id]);
 
-  // Retour de la connexion : la file part toute seule, sans que le
-  // correspondant ait quoi que ce soit à relancer.
-  useEffect(() => {
-    if (!isOnline) return;
+  // La file part toute seule, sans que le correspondant ait quoi que ce soit
+  // à relancer.
+  // `startUpload` est reconstruit à chaque rendu et capture la semaine et le
+  // pays courants. La file, elle, est vidée bien plus tard : passer par une
+  // référence évite qu'une reprise parte vers la semaine d'il y a une heure.
+  const startUploadRef = useRef(null);
+
+  const viderLaFile = useCallback(() => {
     const queued = offlineQueueRef.current.splice(0);
-    if (!queued.length) return;
+    if (!queued.length || !startUploadRef.current) return;
     addToast(t.uploader.offlineResumed(queued.length), 'success', 3000);
     for (const item of queued) {
-      startUpload(item.file, item.reportage, item.tempId, item.sujetId);
+      // Morceaux réduits à la reprise : si le lien a lâché une fois, il
+      // lâchera sans doute encore, et un petit morceau perdu se refait vite.
+      startUploadRef.current(item.file, item.reportage, item.tempId, item.sujetId, 1024 * 1024);
     }
-    // startUpload est stable en pratique (il ne dépend que de refs et de
-    // setters) ; le relister rejouerait la file à chaque rendu.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline]);
+  }, [addToast, t.uploader]);
+
+  // Au retour annoncé de la connexion…
+  useEffect(() => {
+    if (isOnline) viderLaFile();
+  }, [isOnline, viderLaFile]);
+
+  // …et sans attendre cette annonce. L'événement `online` peut ne jamais
+  // arriver là où la connectivité oscille sans que l'interface réseau
+  // change d'état — un correspondant en bord de couverture, typiquement.
+  // Une tentative périodique coûte une requête et évite une file qui dort.
+  useEffect(() => {
+    const minuteur = setInterval(() => {
+      if (offlineQueueRef.current.length) viderLaFile();
+    }, 45000);
+    return () => clearInterval(minuteur);
+  }, [viderLaFile]);
 
   // Cutoff dimanche 17h30
   const currentWeek = weeks.find(w => w.id === selectedWeek);
@@ -232,7 +251,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   // Un envoi = un identifiant temporaire. Le fichier lui-même est gardé en
   // mémoire le temps de la session pour que « réessayer » ne renvoie pas la
   // personne dans le sélecteur de fichiers de son téléphone.
-  const startUpload = (file, reportageName, existingTempId, sujetId = null) => {
+  const startUpload = (file, reportageName, existingTempId, sujetId = null, tailleMorceau = undefined) => {
     const tempId = existingTempId || Math.random().toString(36).slice(2);
     const isVideo = /\.(mp4|mov|webm)$/i.test(file.name) || file.type.startsWith('video/');
     filesByUploadRef.current.set(tempId, { file, reportage: reportageName, sujetId });
@@ -241,6 +260,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
     // Hors ligne : on n'attaque pas le réseau pour rien. Le fichier est mis
     // en file d'attente et part de lui-même au retour de la connexion.
+    // Ce drapeau n'est fiable que dans ce sens-là : quand il dit « non », il
+    // n'y a effectivement pas de réseau. L'inverse ne prouve rien, et c'est
+    // pourquoi il ne sert plus à qualifier un échec (voir le .catch).
     const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
     setUploading((prev) => {
@@ -272,6 +294,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         .uploadFile(selectedWeek, country.id, uploadFile, {
           reportage: reportageName,
           sujetId,
+          tailleMorceau,
           onProgress: (pct) => {
             setUploading((prev) =>
               prev.map((f) =>
@@ -308,7 +331,15 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           // Coupure en cours d'envoi : l'échec n'est pas la faute du
           // correspondant, on remet la pièce en file plutôt que de lui
           // afficher une erreur rouge à traiter lui-même.
-          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          //
+          // Ce que ce test ne fait PLUS : consulter `navigator.onLine`. Sur
+          // Android ce drapeau vaut `true` dès qu'une interface réseau
+          // existe, même sans connectivité — donc le cas le plus fréquent,
+          // le réseau qui tombe en plein envoi, prenait la branche « erreur »
+          // et affichait un bandeau rouge à quelqu'un qui n'y pouvait rien.
+          // Seul un refus explicite du serveur est définitif ; tout le reste
+          // se reprend.
+          if (!err?.definitif) {
             setUploading((prev) =>
               prev.map((f) =>
                 f.id === tempId ? { ...f, progress: 0, status: 'queued', phase: 'queued' } : f
@@ -331,6 +362,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
         });
   };
+
+  startUploadRef.current = startUpload;
 
   /** Relance un envoi échoué avec le fichier encore en mémoire. */
   const handleRetryUpload = (tempId) => {

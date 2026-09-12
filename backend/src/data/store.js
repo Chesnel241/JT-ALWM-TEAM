@@ -839,6 +839,10 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
       const nowMs = Date.now();
       for (const file of physicalFiles) {
         if (entries.find((d) => d.name === file)?.isDirectory()) continue;
+        // Les `.json` sont les fiches compagnes que @tus/file-store écrit à
+        // côté de chaque envoi. On ne les balaie pas directement — elles
+        // partent avec leur binaire, plus bas — sinon un envoi en cours
+        // perdrait le décompte de ce qu'il a déjà reçu.
         if (file.endsWith('.json') || file.endsWith('.tmp')) continue;
 
         // Skip les fichiers récents (upload potentiellement en cours).
@@ -866,6 +870,14 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
         }
 
         if (!found) {
+          // Un envoi interrompu plus de 24 h voyait son binaire supprimé et
+          // sa fiche compagne survivre : à la reprise, le serveur annonçait
+          // un décalage qui ne correspondait plus à rien, et le transfert
+          // repartait corrompu. Mieux vaut repartir de zéro proprement.
+          const compagnon = join(uploadsDir, `${file}.json`);
+          if (existsSync(compagnon)) {
+            try { await unlink(compagnon); } catch { /* déjà parti */ }
+          }
           const filePath = join(uploadsDir, file);
           try {
             if (existsSync(filePath)) {

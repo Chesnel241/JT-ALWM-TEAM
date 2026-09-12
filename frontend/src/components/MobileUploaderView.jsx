@@ -799,7 +799,9 @@ function MobileSpecialUploader({ country, selectedWeek, uploads, setUploads, ope
       setUploads(ups);
     } catch (err) {
       console.error(err);
-      addToast('Erreur lors de la sauvegarde', 'error');
+      // Le message du serveur dit pourquoi — format, date limite, portée.
+      // « Erreur lors de la sauvegarde » ne laissait aucune prise.
+      addToast(err?.message || 'Erreur lors de la sauvegarde', 'error', 5000);
     } finally {
       setIsUploading(false);
     }
@@ -818,7 +820,7 @@ function MobileSpecialUploader({ country, selectedWeek, uploads, setUploads, ope
       setUploads(ups);
     } catch (err) {
       console.error(err);
-      addToast("Erreur lors de l'upload", 'error');
+      addToast(err?.message || "Erreur lors de l'upload", 'error', 5000);
     } finally {
       setIsUploading(false);
       e.target.value = '';
