@@ -1,5 +1,6 @@
 import express from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { porteeCountry } from '../middleware/portee.js';
 import {
   getExtensions,
   requestExtension,
@@ -40,7 +41,7 @@ router.get('/:weekId', requireAuth, (req, res) => {
 });
 
 // POST /api/delays/request - Require APP or ADMIN
-router.post('/request', requireAuth, (req, res) => {
+router.post('/request', requireAuth, porteeCountry((req) => req.body?.countryId), (req, res) => {
   try {
     const { weekId, countryId } = req.body;
     if (!weekId || !countryId) return res.status(400).json({ error: 'Missing parameters' });

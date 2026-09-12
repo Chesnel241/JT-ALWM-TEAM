@@ -63,12 +63,25 @@ describe('POST /api/uploads/:weekId/:countryId', () => {
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
-  it('rejects a file whose magic number does not match the extension', async () => {
-    const fakeMp4 = Buffer.from('this is not a real mp4 content');
+  it('accepte un contenu non reconnu plutôt que de perdre un reportage', async () => {
+    // Une signature absente ou inconnue n'est pas une preuve de malveillance :
+    // c'est le cas courant d'un format que la table ne connaît pas encore.
+    const inconnu = Buffer.from('this is not a real mp4 content');
     const res = await request(app)
       .post(`/api/uploads/${WEEK}/sn`)
-      .attach('file', fakeMp4, {
+      .attach('file', inconnu, {
         filename: 'fake.mp4',
+        contentType: 'video/mp4',
+      });
+    expect(res.status).toBe(201);
+  });
+
+  it('refuse en revanche du balisage déguisé en vidéo', async () => {
+    const piege = Buffer.from('<!DOCTYPE html><html><script>alert(1)</script></html>');
+    const res = await request(app)
+      .post(`/api/uploads/${WEEK}/sn`)
+      .attach('file', piege, {
+        filename: 'piege.mp4',
         contentType: 'video/mp4',
       });
     expect(res.status).toBe(415);

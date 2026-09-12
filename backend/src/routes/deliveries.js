@@ -7,6 +7,8 @@ import { recordUpload } from '../monitoring/metrics.js';
 import { buildWeeks } from '../data/constants.js';
 import { getDelivery, addDelivery, deleteDelivery } from '../data/store.js';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
+import { classifyUpload } from '../lib/upload.js';
+import { nomLisible } from '../middleware/sanitizer.js';
 import { isValidUUID } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
@@ -72,15 +74,16 @@ router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
         return next(createErrors.fileTypeError());
       }
 
-      const ext = path.extname(file.originalname).toLowerCase();
-      const isVideo = ['.mp4', '.mov'].includes(ext);
-      const isAudio = ['.mp3', '.wav'].includes(ext);
+      // Le JT livré peut arriver en mkv, webm ou tout autre conteneur : la
+      // liste fermée `.mp4`/`.mov` rangeait tout le reste en « document », et
+      // l'écran de livraison n'offrait alors pas de lecteur.
+      const famille = classifyUpload(file.originalname, file.mimetype);
 
       const fileData = {
         id: uuidv4(),
-        name: file.originalname,
+        name: nomLisible(file.originalname),
         filename: file.filename,
-        type: isVideo ? 'video' : isAudio ? 'audio' : 'document',
+        type: famille === 'script' ? 'document' : famille,
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
         status: 'completed',
         uploadedAt: new Date().toISOString(),

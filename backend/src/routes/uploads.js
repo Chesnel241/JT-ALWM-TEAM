@@ -11,13 +11,14 @@ import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileS
 import { queueCompression } from '../services/videoCompress.js';
 import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
-import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
+import { sanitizeFilename, nomLisible, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
-import { requireAdmin, safeEqual, normalizeToken } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
+import { porteeCountry, porteeRedaction, estRedaction } from '../middleware/portee.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir, classifyUpload } from '../lib/upload.js';
-import { generateDownloadToken } from '../lib/downloadTokens.js';
+import { generateDownloadToken, verifyDownloadToken } from '../lib/downloadTokens.js';
 import { getFileMetadata } from '../data/store.js';
 
 import { Readable } from 'stream';
@@ -28,7 +29,6 @@ import { io } from '../app.js';
 
 const router = Router();
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // La validation se fait contre la liste recalculée à chaque appel —
 // indispensable car la fenêtre visible glisse chaque jour à minuit.
@@ -40,7 +40,7 @@ const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 const isValidCountry = (countryId) => isCountryAccepted(countryId, getCustomCountries());
 
 // Renvoie une erreur 423 (Locked) si la date limite d'envoi (dimanche
-// 17h30) est dépassée pour cette semaine.
+// 10h30 GMT+2) est dépassée pour cette semaine.
 function checkUploadCutoff(weekId, countryId) {
   const cutoff = weekUploadCutoff(weekId);
   if (!cutoff) return null;
@@ -64,10 +64,10 @@ function checkUploadCutoff(weekId, countryId) {
       return null;
     }
 
-    const err = new Error('Date limite d\'envoi dépassée (dimanche 17h30)');
+    const err = new Error('Date limite d\'envoi dépassée (dimanche 10h30 GMT+2)');
     err.statusCode = 423;
     err.code = 'UPLOAD_DEADLINE_PASSED';
-    err.publicMessage = 'Délai dépassé : les uploads pour cette semaine sont clôturés depuis dimanche 17h30.';
+    err.publicMessage = 'Délai dépassé : les envois de cette semaine sont clôturés depuis dimanche 10h30 (GMT+2).';
     return err;
   }
   return null;
@@ -91,8 +91,42 @@ router.post('/download-token', requireAdmin, asyncHandler(async (req, res, next)
   return res.json({ token, expiresInSeconds: 3600 });
 }));
 
-// GET /api/uploads/:weekId — tous les pays d'une semaine
-router.get('/:weekId', (req, res) => {
+/**
+ * Clé signée d'un chutier complet. Le nom contient des `/` mais jamais de
+ * `:`, ce qui préserve le découpage du jeton (`payload:expiration:signature`).
+ */
+const cleArchive = (weekId, countryId) => `archive/${weekId}/${countryId}`;
+
+// POST /api/uploads/archive-token — même principe que le jeton de fichier
+// au-dessus, pour le zip d'un chutier. Il existe parce que la rédaction ouvre
+// l'archive par une simple navigation (<a href>) : un navigateur ne peut y
+// joindre aucun en-tête, donc ni mot de passe montage ni lien personnel. Le
+// jeton signé est le seul moyen de prouver le droit dans une URL sans y
+// écrire de secret durable.
+router.post('/archive-token', requireAdmin, asyncHandler(async (req, res, next) => {
+  const weekId = String(req.body?.weekId || '').trim();
+  const countryId = String(req.body?.countryId || '').trim().toLowerCase();
+  if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
+    return next(createErrors.notFound('Week ou Country'));
+  }
+  return res.json({ token: generateDownloadToken(cleArchive(weekId, countryId)), expiresInSeconds: 3600 });
+}));
+
+/** Reconnaît un jeton d'archive valide et établit le droit avant la portée. */
+function jetonArchive(req, _res, next) {
+  const jeton = req.query?.dl_token;
+  if (typeof jeton === 'string' && jeton) {
+    const { weekId, countryId } = req.params;
+    if (verifyDownloadToken(jeton, cleArchive(weekId, String(countryId || '').toLowerCase()))) {
+      req.accesRedaction = true;
+    }
+  }
+  return next();
+}
+
+// GET /api/uploads/:weekId — tous les pays d'une semaine. Transversal par
+// nature : aucun correspondant n'a de raison de lire les rushes des autres.
+router.get('/:weekId', porteeRedaction(), (req, res) => {
   if (!isValidWeek(req.params.weekId)) {
     return res.status(404).json({ 
       code: 'INVALID_WEEK',
@@ -104,7 +138,7 @@ router.get('/:weekId', (req, res) => {
 });
 
 // GET /api/uploads/:weekId/:countryId — fichiers d'un pays
-router.get('/:weekId/:countryId', (req, res) => {
+router.get('/:weekId/:countryId', porteeCountry(), (req, res) => {
   const { weekId, countryId } = req.params;
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
     return res.status(404).json({ 
@@ -117,7 +151,7 @@ router.get('/:weekId/:countryId', (req, res) => {
 });
 
 // GET /api/uploads/:weekId/:countryId/archive — zip des fichiers d'un pays
-router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (req, res, next) => {
+router.get('/:weekId/:countryId/archive', jetonArchive, porteeCountry(), archiveLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
@@ -130,10 +164,13 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
   // Sécurisation retirée à la demande de l'utilisateur : le téléchargement est public
 
   const uploads = getCountryUploads(weekId, countryId);
-  // On assume que le fichier existe dans le volume local.
-  // Sinon, on vérifie l'existence locale.
+  // Un fichier référencé au store mais absent du disque — purge passée,
+  // envoi interrompu — était silencieusement écarté : la rédaction recevait
+  // un zip incomplet sans jamais l'apprendre, et cherchait un rush qui
+  // n'arriverait pas. On les compte, et on le dit dans l'archive.
   const files = uploads.filter((u) => u.filename && existsSync(path.join(uploadsDir, u.filename)));
-  
+  const manquants = uploads.filter((u) => !u.filename || !existsSync(path.join(uploadsDir, u.filename)));
+
   if (files.length === 0) {
     logger.warn('Archive request with no files', {
       context: { weekId, countryId, totalUploads: uploads.length, ip: req.ip },
@@ -191,7 +228,27 @@ router.get('/:weekId/:countryId/archive', archiveLimiter, asyncHandler(async (re
   });
 
   archive.pipe(res);
-  
+
+  if (manquants.length) {
+    logger.warn('Archive incomplète : des fichiers ne sont plus sur le disque', {
+      context: { weekId, countryId, manquants: manquants.length, presents: files.length },
+    });
+    const lignes = [
+      `Archive du chutier ${countryId}, semaine ${weekId}.`,
+      '',
+      `${manquants.length} fichier(s) référencé(s) ne sont plus sur le serveur`,
+      'et ne figurent donc pas dans ce zip :',
+      '',
+      ...manquants.map((u) => `  - ${u.name || u.filename || '(sans nom)'}`),
+      '',
+      'Cause la plus probable : la purge de fin de cycle est passée, ou',
+      "l'envoi a été interrompu avant d'aboutir. Redemandez la pièce au",
+      'correspondant concerné.',
+      '',
+    ].join('\n');
+    archive.append(Buffer.from(lignes, 'utf-8'), { name: 'FICHIERS-MANQUANTS.txt' });
+  }
+
   // Append streams lazily without eagerly opening S3 connections
   for (const file of files) {
     // Protection contre le Zip Slip (Path Traversal)
@@ -216,8 +273,7 @@ const uploadMiddleware = (req, res, next) => {
   // Header uniquement (pas de query : le mot de passe admin en query fuit dans
   // les access logs Caddy + errorHandler req.originalUrl). Normalisation
   // alignée sur requireAdmin.
-  const providedToken = req.header('x-admin-password');
-  const isAdmin = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
+  const isAdmin = estRedaction(req);
 
   if (!isAdmin) {
     const cutoffErr = checkUploadCutoff(weekId, countryId);
@@ -231,7 +287,7 @@ const uploadMiddleware = (req, res, next) => {
 };
 
 // POST /api/uploads/:weekId/:countryId — upload fichier
-router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, res, next) => {
+router.post('/:weekId/:countryId', porteeCountry(), uploadMiddleware, asyncHandler(async (req, res, next) => {
   const uploadStartTime = Date.now();
   const { weekId, countryId } = req.params;
   
@@ -243,9 +299,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
     return next(createErrors.notFound('Week ou Country'));
   }
 
-  // Header uniquement (pas de query : fuite dans les logs).
-  const providedToken = req.header('x-admin-password');
-  const isAdmin = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
+  const isAdmin = estRedaction(req);
 
   return upload.single('file')(req, res, async (err) => {
     try {
@@ -321,7 +375,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
 
     const fileData = {
       id: uuidv4(),
-      name: file.originalname,
+      name: nomLisible(file.originalname),
       filename: file.filename,
       // Classement par extension d'abord : le MIME envoyé par les téléphones
       // est trop souvent générique (cf. classifyUpload).
@@ -420,7 +474,7 @@ router.post('/:weekId/:countryId', uploadMiddleware, asyncHandler(async (req, re
 
 
 // POST /api/uploads/:weekId/:countryId/script — saisie manuelle de script
-router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) => {
+router.post('/:weekId/:countryId/script', porteeCountry(), asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   const { content, reportage, sujetId } = req.body;
 
@@ -516,7 +570,7 @@ router.post('/:weekId/:countryId/script', asyncHandler(async (req, res, next) =>
 }));
 
 // DELETE /api/uploads/:weekId/:countryId/:fileId
-router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next) => {
+router.delete('/:weekId/:countryId/:fileId', porteeCountry(), asyncHandler(async (req, res, next) => {
   const { weekId, countryId, fileId } = req.params;
   
   // Valider les paramètres
@@ -534,15 +588,10 @@ router.delete('/:weekId/:countryId/:fileId', asyncHandler(async (req, res, next)
     return next(createErrors.badRequest('fileId doit être un UUID valide'));
   }
 
-  // Auth admin : header uniquement (pas de query, sinon le secret se
-  // retrouverait loggé en clair par errorHandlerMiddleware / proxy /
-  // historique navigateur — cf. d7ae411 sur /uploads/*).
-  // Normalisation identique au comparateur de référence (auth.js:83) :
-  // sinon un NBSP/BOM en bord de ADMIN_PASSWORD bloquerait l'admin.
-  const adminEnv = process.env.ADMIN_PASSWORD;
-  const providedToken = req.header('x-admin-password');
-  const isAdmin = !!(adminEnv && providedToken
-    && safeEqual(normalizeToken(providedToken), normalizeToken(adminEnv)));
+  // Qui supprime a déjà été vérifié par porteeCountry : soit la rédaction,
+  // soit le correspondant du pays. Ce second calcul ne sert qu'à savoir si
+  // la date limite s'applique — la rédaction, elle, passe outre.
+  const isAdmin = estRedaction(req);
 
   if (!isAdmin) {
     const cutoffErr = checkUploadCutoff(weekId, countryId);
@@ -662,7 +711,7 @@ router.patch('/:weekId/files/:fileId/status', requireAdmin, [
 // Upload raw voiceover, process via FFmpeg (EQ/Compressor), save audio + script.
 import { mkdirSync } from 'fs';
 
-router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandler(async (req, res, next) => {
+router.post('/voiceover/:weekId/:countryId', porteeCountry(), upload.single('audio'), asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   const { reportageTitle, script } = req.body;
 
@@ -671,11 +720,8 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
   }
   // Chutier `mj` (Mot du JT) réservé à l'équipe montage : admin requis,
   // même via la route voix-off (sinon n'importe quel pays peut polluer).
-  if (countryId === 'mj') {
-    const provided = req.header('x-admin-password');
-    if (!ADMIN_PASSWORD || !safeEqual(provided, ADMIN_PASSWORD)) {
-      return next(createErrors.forbidden('Accès admin requis pour la rubrique Mot du JT.'));
-    }
+  if (countryId === 'mj' && !estRedaction(req)) {
+    return next(createErrors.forbidden('Accès admin requis pour la rubrique Mot du JT.'));
   }
 
   // Source de vérité unique (constants.js). `_subscriptions` reste accepté
@@ -684,8 +730,7 @@ router.post('/voiceover/:weekId/:countryId', upload.single('audio'), asyncHandle
     return next(createErrors.badRequest('ID de pays/chutier invalide.'));
   }
 
-  const providedToken = req.header('x-admin-password');
-  const ignoreCutoff = !!(ADMIN_PASSWORD && providedToken && safeEqual(normalizeToken(providedToken), normalizeToken(ADMIN_PASSWORD)));
+  const ignoreCutoff = estRedaction(req);
   
   if (!ignoreCutoff) {
     const cutoffErr = checkUploadCutoff(weekId, countryId);

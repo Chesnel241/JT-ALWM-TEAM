@@ -11,6 +11,7 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import EmptyState from './EmptyState.jsx';
 import WaitingBroadcast from './illustrations/WaitingBroadcast.jsx';
+import { readAdminPassword } from '../lib/adminSession.js';
 
 // Charte : bleus du logo et neutres, avec un texte à fort contraste sur
 // chaque aplat (le bleu 500 sur bleu 100 précédent était illisible).
@@ -20,16 +21,6 @@ const FILE_ICONS = {
   audio: { Icon: Music, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
   document: { Icon: FileText, color: 'text-[color:var(--ink)]', bg: 'bg-[var(--paper-2)]' },
 };
-
-// Mot de passe admin de la session en cours (posé par l'espace montage
-// après connexion). sessionStorage peut lever en navigation privée.
-function readAdminPassword() {
-  try {
-    return sessionStorage.getItem('jt-admin-pass') || '';
-  } catch {
-    return '';
-  }
-}
 
 // `audience` : le même écran sert les deux équipes. Côté montage il porte
 // l'outil de notification des correspondants ; côté journalistes ce bloc

@@ -4,6 +4,7 @@ import { getMetrics } from '../monitoring/metrics.js';
 import { getAlertState } from '../monitoring/alerts.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { uploadsDir as resolveUploadsDir } from '../lib/paths.js';
+import { etatFileCompression } from '../services/videoCompress.js';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.get('/', asyncHandler(async (req, res) => {
     const responseTime = Date.now() - startTime;
     const metrics = getMetrics(uploadsDir);
     const memUsage = process.memoryUsage();
+    const fileCompression = etatFileCompression();
 
     const healthData = {
       success: true,
@@ -49,6 +51,11 @@ router.get('/', asyncHandler(async (req, res) => {
           heapTotalMB: (memUsage.heapTotal / 1024 / 1024).toFixed(2),
           heapUsagePercent: (memUsage.heapUsed / memUsage.heapTotal * 100).toFixed(2) + '%',
         },
+        // Les copies légères se fabriquent une par une, en arrière-plan. Une
+        // file qui grossit, ou une tâche dont l'âge approche le délai
+        // maximum, annonce un fichier qu'ffmpeg n'arrive pas à lire — et le
+        // studio qui devient lourd pour tout le monde.
+        compression: fileCompression,
       },
     };
 

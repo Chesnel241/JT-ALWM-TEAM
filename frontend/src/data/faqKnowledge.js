@@ -27,7 +27,7 @@ const faqKnowledge = {
     },
     {
       keywords: ['heure', 'limite', 'deadline', 'clôture', 'fin', 'tard', 'dimanche'],
-      answer: "La date limite stricte pour envoyer vos reportages est le **Dimanche à 17h30**. Passé ce délai, l'upload est bloqué par sécurité pour que l'équipe de montage puisse finaliser le JT. Le compteur en bas à gauche de la page d'accueil vous indique le temps restant."
+      answer: "La date limite stricte pour envoyer vos reportages est le **dimanche à 10h30 (GMT+2)**. Passé ce délai, l'upload est bloqué par sécurité pour que l'équipe de montage puisse finaliser le JT. Le compteur en bas à gauche de la page d'accueil vous indique le temps restant."
     },
     {
       keywords: ['montage', 'télécharger', 'récupérer', 'jt prêt', 'final', 'voir le jt', 'visionner'],

@@ -17,9 +17,11 @@ export default function CountdownTimer({ week, compact = false }) {
   if (!week || !week.startDate) return null;
 
   const start = new Date(week.startDate);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6); // Dimanche
-  end.setHours(17, 30, 0, 0); // 17h30
+  // `cutoffAt` est l'instant exact décidé par le serveur. Le recalculer ici
+  // le plaçait dans le fuseau du navigateur, donc à une heure différente
+  // selon l'endroit d'où regarde le correspondant.
+  if (!week.cutoffAt) return null;
+  const end = new Date(week.cutoffAt);
 
   const totalDuration = end.getTime() - start.getTime();
   const remaining = end.getTime() - now.getTime();

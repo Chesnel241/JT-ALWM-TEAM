@@ -6,8 +6,10 @@ import { ToastProvider } from '../src/hooks/useToast.jsx';
 
 const MOCK_COUNTRY = { id: 'ga', name: 'Gabon', code: 'GA' };
 const MOCK_WEEKS = [
-  { id: '2026-W34', status: 'active', startDate: '2026-08-18' },
-  { id: '2026-W33', status: 'archived', startDate: '2026-08-11' },
+  // `cutoffAt` : l'instant de clôture décidé par le serveur (dimanche
+  // 10h30 GMT+2). Le compte à rebours l'affiche au lieu de le recalculer.
+  { id: '2026-W34', status: 'active', startDate: '2026-08-18', cutoffAt: '2026-08-23T08:30:00.000Z' },
+  { id: '2026-W33', status: 'archived', startDate: '2026-08-11', cutoffAt: '2026-08-16T08:30:00.000Z' },
 ];
 const MOCK_SUJETS = [
   { id: 's1', titre: 'Marché de Libreville', etat: 'recu', nbPieces: 2 },

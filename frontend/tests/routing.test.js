@@ -6,6 +6,7 @@ import {
   isViewAllowed,
   viewsForWorkspace,
   defaultViewFor,
+  isCountrySegment,
 } from '../src/lib/routing.js';
 
 describe('routing — lecture de l\'URL', () => {
@@ -75,16 +76,27 @@ describe('routing — écriture de l\'URL', () => {
 });
 
 describe('routing — périmètre des espaces', () => {
-  it('inclut reportage, voixoff et JT prêt pour les journalistes', () => {
-    expect(viewsForWorkspace(WORKSPACES.REPORTER)).toEqual(['hub', 'home', 'uploader', 'voixoff', 'delivery']);
+  it('inclut reportage, voixoff, les deux rubriques et le JT prêt', () => {
+    // Le conducteur et le Mot du JT ont leur propre adresse : ce ne sont pas
+    // des pays, donc pas un segment de pays.
+    expect(viewsForWorkspace(WORKSPACES.REPORTER))
+      .toEqual(['hub', 'home', 'uploader', 'voixoff', 'conducteur', 'motDuJt', 'delivery']);
     expect(isViewAllowed(WORKSPACES.REPORTER, 'voixoff')).toBe(true);
-    for (const view of ['dashboard', 'stats', 'editor']) {
+    for (const view of ['dashboard', 'stats', 'editor', 'planning']) {
       expect(isViewAllowed(WORKSPACES.REPORTER, view)).toBe(false);
     }
   });
 
+  it('ne lit jamais « conducteur » ni « mot-du-jt » comme un pays', () => {
+    // Sans cela, /journalistes/conducteur ouvrirait l'écran d'envoi d'un
+    // pays fantôme nommé « conducteur ».
+    for (const segment of ['conducteur', 'mot-du-jt', 'planning']) {
+      expect(isCountrySegment(segment), segment).toBe(false);
+    }
+  });
+
   it('laisse l\'équipe montage sur tous les onglets', () => {
-    for (const view of ['home', 'uploader', 'dashboard', 'voixoff', 'delivery', 'stats', 'editor']) {
+    for (const view of ['home', 'uploader', 'dashboard', 'voixoff', 'delivery', 'stats', 'editor', 'planning']) {
       expect(isViewAllowed(WORKSPACES.EDITOR, view)).toBe(true);
     }
   });

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getStore } from '../data/store.js';
+import { porteeRedaction } from '../middleware/portee.js';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ function parseSize(sizeStr) {
   return 0;
 }
 
-router.get('/', (req, res) => {
+router.get('/', porteeRedaction(), (req, res) => {
   const db = getStore();
   let totalFiles = 0;
   let totalSizeBytes = 0;

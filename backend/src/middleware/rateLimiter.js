@@ -4,6 +4,30 @@
  */
 
 import rateLimit from 'express-rate-limit';
+import logger from '../logger/index.js';
+
+/**
+ * Combien de requêtes chaque limiteur a refusées depuis le démarrage.
+ *
+ * Un 429 est indiscernable d'une panne pour le correspondant qui le reçoit,
+ * et invisible côté rédaction. Or les opérateurs mobiles africains partagent
+ * massivement une même adresse publique : tous les correspondants d'un même
+ * opérateur puisent dans le même seau. Relever les plafonds à l'aveugle
+ * serait une mauvaise réponse ; les compter permet de savoir s'il y a même
+ * une question.
+ */
+const refus = new Map();
+
+export function lireRefus() {
+  return Object.fromEntries(refus);
+}
+
+function noteRefus(nom, req) {
+  refus.set(nom, (refus.get(nom) || 0) + 1);
+  logger.warn('Requête refusée par un limiteur', {
+    context: { limiteur: nom, chemin: req.path, methode: req.method, ip: req.ip },
+  });
+}
 
 /**
  * Rate limiter pour les uploads
@@ -21,6 +45,7 @@ export const uploadLimiter = rateLimit({
     return req.method !== 'POST' && req.method !== 'PUT';
   },
   handler: (req, res, options) => {
+    noteRefus('uploads', req);
     res.status(options.statusCode || 429).json({
       code: 'RATE_LIMIT_EXCEEDED',
       message: options.message,
@@ -46,6 +71,7 @@ export const globalLimiter = rateLimit({
     return req.method === 'GET' && req.path.startsWith('/uploads');
   },
   handler: (req, res, options) => {
+    noteRefus('global', req);
     res.status(options.statusCode || 429).json({
       code: 'GLOBAL_RATE_LIMIT_EXCEEDED',
       message: options.message,
@@ -69,6 +95,7 @@ export const createLimiter = rateLimit({
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, default: false },
   handler: (req, res, options) => {
+    noteRefus('creations', req);
     res.status(options.statusCode || 429).json({
       code: 'CREATE_RATE_LIMIT_EXCEEDED',
       message: options.message,
@@ -85,6 +112,7 @@ export const archiveLimiter = rateLimit({
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, default: false },
   handler: (req, res, options) => {
+    noteRefus('archives', req);
     res.status(options.statusCode || 429).json({
       code: 'ARCHIVE_RATE_LIMIT_EXCEEDED',
       message: options.message,

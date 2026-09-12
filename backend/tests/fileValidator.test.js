@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { validateFile, validateMagicNumber } from '../src/middleware/fileValidator.js';
+import { nomLisible } from '../src/middleware/sanitizer.js';
 
 const TMP = join(tmpdir(), `jt-alwm-validator-${Date.now()}`);
 
@@ -30,13 +31,21 @@ describe('validateFile', () => {
     expect(res.error).toMatch(/Extension/);
   });
 
-  it('rejects a filename with control chars', () => {
-    const res = validateFile({
-      originalname: 'bad\x00name.mp4',
-      size: 1024,
-      mimetype: 'video/mp4',
-    });
-    expect(res.valid).toBe(false);
+  it('accepte un nom exotique — c’est l’étiquette qu’on nettoie, pas l’envoi qu’on refuse', () => {
+    // Le fichier est écrit sous un UUID : le nom d'origine n'est qu'une
+    // étiquette. Refuser l'envoi pour un deux-points ou un caractère de
+    // contrôle coûtait un reportage, alors que nomLisible() suffit.
+    for (const nom of ['bad\x00name.mp4', 'Enregistrement 2026-09-11 à 14:32:05.m4a', 'quoi?.mp4']) {
+      const res = validateFile({ originalname: nom, size: 1024, mimetype: 'video/mp4' });
+      expect(res.valid, nom).toBe(true);
+    }
+  });
+
+  it('nettoie l’étiquette de ce qui pourrait nuire, sans la défigurer', () => {
+    expect(nomLisible('bad\x00name.mp4')).toBe('badname.mp4');
+    expect(nomLisible('../../etc/passwd')).not.toContain('/');
+    // Accents, espaces et deux-points restent : le monteur doit pouvoir lire.
+    expect(nomLisible('Enregistrement à 14:32.m4a')).toBe('Enregistrement à 14:32.m4a');
   });
 
   it('rejects a file too large', () => {
@@ -60,11 +69,26 @@ describe('validateFile', () => {
 });
 
 describe('validateMagicNumber', () => {
-  it('detects mismatched MP4 content', () => {
+  it('laisse passer un contenu qu’il ne reconnaît pas, sans prétendre savoir', () => {
+    // Ni signature connue, ni balisage : aucun avis, donc aucun refus. Un
+    // « je ne sais pas » ne doit jamais coûter un reportage.
     const path = join(TMP, 'fake.mp4');
     writeFileSync(path, 'plain text not a video');
     const res = validateMagicNumber(path, '.mp4');
-    expect(res.valid).toBe(false);
+    expect(res.valid).toBe(true);
+    expect(res.extensionReelle).toBe('');
+  });
+
+  it('refuse du balisage déguisé en média — le seul désaccord qui reste bloquant', () => {
+    for (const [nom, contenu] of [
+      ['piege.mp4', '<!DOCTYPE html><html><script>alert(1)</script></html>'],
+      ['piege.jpg', '<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>'],
+    ]) {
+      const path = join(TMP, nom);
+      writeFileSync(path, contenu);
+      const res = validateMagicNumber(path, nom.slice(nom.lastIndexOf('.')));
+      expect(res.valid, nom).toBe(false);
+    }
   });
 
   it('accepts a valid MP4 header', () => {
@@ -97,13 +121,17 @@ describe('validateMagicNumber', () => {
     expect(res.valid).toBe(true);
   });
 
-  it('rejette un RIFF sans fourCC WAVE (anti-polyglot)', () => {
+  it('distingue toujours un RIFF/WEBP d’un RIFF/WAVE, et dit lequel c’est', () => {
     const path = join(TMP, 'fake.wav');
-    // RIFF mais 'WEBP' à l'offset 8 → ne doit PAS passer pour du wav.
+    // RIFF mais 'WEBP' à l'offset 8. On ne le refuse plus — le serveur fixe
+    // le type d'après l'extension et pose nosniff, donc le navigateur ne
+    // réinterprétera jamais ces octets — mais on le RECONNAÎT, et c'est le
+    // contenu réel qui est rapporté à l'appelant.
     writeFileSync(path, Buffer.from([
       0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0, 0, 0, 0,
     ]));
     const res = validateMagicNumber(path, '.wav');
-    expect(res.valid).toBe(false);
+    expect(res.valid).toBe(true);
+    expect(res.extensionReelle).toBe('.webp');
   });
 });

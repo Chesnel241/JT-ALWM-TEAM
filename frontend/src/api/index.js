@@ -57,6 +57,55 @@ async function request(url, options = {}) {
   }
 }
 
+/**
+ * Patience réseau : une dizaine de minutes, par paliers croissants.
+ * L'envoi reprend à l'octet près, donc réessayer ne recommence rien.
+ */
+export const RECHARGES_RESEAU = [
+  0, 1000, 2000, 5000, 10000, 20000, 30000, 60000,
+  60000, 60000, 60000, 60000, 60000, 60000, 60000, 60000,
+];
+
+/**
+ * Codes sur lesquels il est inutile d'insister : la réponse ne changera pas
+ * en réessayant, et c'est là — et seulement là — qu'un message se justifie.
+ * Tout le reste (coupure, 429 d'un limiteur, panne passagère) est réessayé
+ * en silence. tus-js-client, par défaut, abandonnait sur TOUT code 4xx : un
+ * 429 suffisait donc à perdre un envoi.
+ */
+export const REFUS_DEFINITIFS = new Set([
+  400, // requête malformée
+  403, // hors de votre pays
+  413, // trop volumineux
+  415, // format interdit
+  423, // date limite dépassée
+]);
+
+export function reessayerSi(err) {
+  const statut = err?.originalResponse?.getStatus?.();
+  // Pas de réponse du tout : c'est le réseau, donc on réessaie.
+  if (!statut) return true;
+  return !REFUS_DEFINITIFS.has(statut);
+}
+
+/**
+ * Taille des morceaux, choisie d'après le lien annoncé par le navigateur.
+ * Un morceau perdu est un morceau à refaire : sur une 2G, 5 Mo redemandés
+ * après chaque coupure, c'est plusieurs minutes de travail jetées à chaque
+ * fois.
+ */
+export function tailleMorceauParDefaut() {
+  const Mo = 1024 * 1024;
+  try {
+    const lien = globalThis.navigator?.connection?.effectiveType;
+    if (lien === 'slow-2g' || lien === '2g') return 1 * Mo;
+    if (lien === '3g') return 2 * Mo;
+  } catch {
+    // API absente (Safari, Firefox) : on garde la valeur nominale.
+  }
+  return 5 * Mo;
+}
+
 // --------------------------------------------------------------------------
 // DELAYS & STATS
 // --------------------------------------------------------------------------
@@ -190,11 +239,69 @@ export const api = {
       body: JSON.stringify({ pays, nom }),
     }),
 
+  // === Rubriques du journal (conducteur, Mot du JT) ===
+  // Ce ne sont pas des pays : elles ont leurs propres champs, décrits par le
+  // serveur, et tout correspondant identifié peut les remplir.
+  getRubriques: (weekId) => request(`/rubriques/${weekId}`),
+
+  getRubrique: (weekId, cle) => request(`/rubriques/${weekId}/${cle}`),
+
+  setRubrique: (weekId, cle, champs) =>
+    request(`/rubriques/${weekId}/${cle}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(champs),
+    }),
+
+  // === Planning des monteurs ===
+  getPlanning: (adminPassword) => request('/planning', { adminPassword }),
+
+  getPlanningSujets: (weekId, adminPassword) =>
+    request(`/planning/${weekId}/sujets`, { adminPassword }),
+
+  ajouterMonteur: (nom, adminPassword) =>
+    request('/planning/monteurs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ nom }),
+    }),
+
+  retirerMonteur: (monteurId, adminPassword) =>
+    request(`/planning/monteurs/${monteurId}`, { method: 'DELETE', adminPassword }),
+
+  affecterSemaine: (weekId, affectation, adminPassword) =>
+    request(`/planning/${weekId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify(affectation),
+    }),
+
+  majEtatMontage: (weekId, role, etat, adminPassword) =>
+    request(`/planning/${weekId}/${role}/etat`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ etat }),
+    }),
+
+  marquerSujetMonte: (weekId, sujetId, monte, adminPassword) =>
+    request(`/planning/${weekId}/sujets/${sujetId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ monte }),
+    }),
+
   // === Sujets ===
   // Un sujet est l'unité de travail : un titre, un auteur, un état. Les
   // fichiers s'y rattachent par `sujetId` au lieu d'une étiquette texte.
-  getSujets: (weekId, countryId) =>
-    request(countryId ? `/sujets/${weekId}/${countryId}` : `/sujets/${weekId}`),
+  // Sans `countryId`, c'est la semaine entiere : une vue transversale que
+  // seule la redaction peut lire (middleware/portee.js cote serveur), d'ou
+  // le mot de passe montage.
+  getSujets: (weekId, countryId, adminPassword) =>
+    request(countryId ? `/sujets/${weekId}/${countryId}` : `/sujets/${weekId}`, { adminPassword }),
 
   createSujet: (weekId, countryId, titre) =>
     request(`/sujets/${weekId}/${countryId}`, {
@@ -218,17 +325,17 @@ export const api = {
       body: JSON.stringify({ etat }),
     }),
 
-  deleteSujet: (weekId, countryId, sujetId) =>
-    request(`/sujets/${weekId}/${countryId}/${sujetId}`, { method: 'DELETE' }),
+  deleteSujet: (weekId, countryId, sujetId, adminPassword) =>
+    request(`/sujets/${weekId}/${countryId}/${sujetId}`, { method: 'DELETE', adminPassword }),
 
   getUploads: (weekId, countryId) =>
     request(`/uploads/${weekId}/${countryId}`),
 
-  getDashboard: (weekId) =>
-    request(`/uploads/${weekId}`),
+  getDashboard: (weekId, adminPassword) =>
+    request(`/uploads/${weekId}`, { adminPassword }),
 
-  getTimelineWorkspace: (weekId) =>
-    request(`/editor/timeline/${weekId}`),
+  getTimelineWorkspace: (weekId, adminPassword) =>
+    request(`/editor/timeline/${weekId}`, { adminPassword }),
 
   saveTimelineWorkspace: (weekId, workspace, adminPassword) =>
     request(`/editor/timeline/${weekId}`, {
@@ -251,16 +358,52 @@ export const api = {
   getSubscriptions: (weekId, adminPassword) =>
     request(`/notifications/${weekId}`, { adminPassword }),
 
-  uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, sujetId, adminPassword } = {}) => {
+  // Jetons de téléchargement : le navigateur ouvre l'URL lui-même et ne peut
+  // y joindre aucun en-tête. Le jeton signé (1 h, lié à la ressource) est ce
+  // qui prouve le droit sans écrire de secret durable dans l'URL.
+  createDownloadToken: (filename, adminPassword) =>
+    request('/uploads/download-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ filename }),
+    }),
+
+  createArchiveToken: (weekId, countryId, adminPassword) =>
+    request('/uploads/archive-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ weekId, countryId }),
+    }),
+
+  // La voix off passait jusqu'ici par un fetch a la main, qui envoyait le
+  // jeton de session dans l'en-tete du mot de passe admin — donc un en-tete
+  // toujours faux, et aucun lien personnel. `request` assemble les deux
+  // correctement, et c'est ce qui la fait passer la portee.
+  uploadVoiceover: (weekId, countryId, formData, adminPassword) =>
+    request(`/uploads/voiceover/${weekId}/${countryId}`, {
+      method: 'POST',
+      body: formData,
+      adminPassword,
+    }),
+
+  uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, sujetId, adminPassword, tailleMorceau } = {}) => {
     const { Upload } = await import('tus-js-client');
     const token = localStorage.getItem('app-password');
-    
+
     return new Promise((resolve, reject) => {
       const upload = new Upload(file, {
         endpoint: `${API_BASE}/api/tus/`,
         headers: readReporterToken() ? { 'X-Reporter-Token': readReporterToken() } : {},
-        retryDelays: [0, 3000, 5000, 10000, 20000],
-        chunkSize: 5 * 1024 * 1024, // 5 MB per request to prevent timeouts
+        // Cinq tentatives réparties sur 38 secondes, c'était la patience d'un
+        // bureau câblé. Un correspondant bascule d'un relais à l'autre, perd
+        // le réseau dans un tunnel, ou attend que la 3G revienne : on tient
+        // maintenant une dizaine de minutes avant de renoncer. Rien ne
+        // s'affiche pendant ce temps, et l'envoi reprend à l'octet près.
+        retryDelays: RECHARGES_RESEAU,
+        onShouldRetry: reessayerSi,
+        chunkSize: tailleMorceau || tailleMorceauParDefaut(),
         // L'empreinte d'un envoi réussi ne sert plus à rien : la garder
         // encombrait le stockage du téléphone semaine après semaine.
         removeFingerprintOnSuccess: true,
@@ -272,14 +415,29 @@ export const api = {
           countryId,
           reportage: reportage || '',
           sujetId: sujetId || '',
-          adminPassword: adminPassword || token || ''
+          adminPassword: adminPassword || token || '',
+          // Repli si un proxy retire l'en-tête X-Reporter-Token posé plus
+          // haut : sans identité, un envoi est refusé dès que la portée est
+          // en `strict`. Le serveur retire ce champ avant d'écrire les
+          // métadonnées sur disque (routes/tus.js).
+          reporterToken: readReporterToken() || ''
         },
         onError: function (error) {
           if (upload._aborted) {
             reject(new Error(tStatic().errors.uploadCancelled || 'Upload annulé'));
-          } else {
-            reject(new Error(error.message || tStatic().errors.networkError));
+            return;
           }
+          // Le statut voyage avec l'erreur : c'est lui, et non
+          // `navigator.onLine`, qui dit si l'envoi est perdu pour de bon ou
+          // s'il suffit d'attendre. `definitif` à faux signifie « le réseau
+          // a lâché » — on remet en file, sans rien afficher de rouge.
+          const statut = error?.originalResponse?.getStatus?.() || 0;
+          const echec = new Error(
+            statut && error.message ? error.message : (error.message || tStatic().errors.networkError),
+          );
+          echec.statut = statut;
+          echec.definitif = Boolean(statut) && REFUS_DEFINITIFS.has(statut);
+          reject(echec);
         },
         onProgress: function (bytesUploaded, bytesTotal) {
           const percentage = (bytesUploaded / bytesTotal) * 100;
@@ -368,7 +526,7 @@ export const api = {
       body: JSON.stringify({ status, feedback })
     }),
 
-  getAnalytics: () => request('/analytics'),
+  getAnalytics: (adminPassword) => request('/analytics', { adminPassword }),
 
   // === Editor / Studio de Montage ===
   editorConcat: (payload, adminPassword) => request('/editor/concat', {

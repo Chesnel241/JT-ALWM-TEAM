@@ -13,6 +13,27 @@ const WHITESPACE_NORMALIZER = /\s+/g;
  * @param {string} filename - Nom de fichier original
  * @returns {string} - Nom sanitisé
  */
+/**
+ * Nom d'origine rendu sûr à STOCKER ET À AFFICHER, sans le défigurer.
+ *
+ * À ne pas confondre avec sanitizeFilename, qui fabrique un nom de fichier
+ * sur disque et remplace tout par des underscores. Ici on garde les espaces,
+ * les accents et la ponctuation : c'est l'étiquette que le monteur lit dans
+ * son chutier. « Enregistrement 2026-09-11 à 14:32:05.m4a » doit rester
+ * lisible, et refuser l'envoi pour un deux-points coûtait un reportage — le
+ * fichier, lui, est de toute façon écrit sous un UUID.
+ *
+ * On retire seulement ce qui pourrait nuire : caractères de contrôle et
+ * séparateurs de chemin.
+ */
+export function nomLisible(nom) {
+  const brut = String(nom ?? '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[/\\]/g, '-')
+    .trim();
+  return brut.slice(0, 180) || `envoi_${Date.now()}`;
+}
+
 export function sanitizeFilename(filename) {
   if (!filename || typeof filename !== 'string') {
     return `upload_${Date.now()}`;

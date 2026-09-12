@@ -8,7 +8,10 @@ import {
   MAX_FILE_SIZE as UPLOAD_MAX_FILE_SIZE,
   ALLOWED_EXTENSIONS as UPLOAD_ALLOWED_EXTENSIONS,
   IMAGE_EXTENSIONS,
+  extensionEffective,
 } from '../lib/upload.js';
+import { extensionDepuisOctets, extensionCoherente, contenuEstBalisage, TAILLE_ENTETE } from '../lib/signatures.js';
+import logger from '../logger/index.js';
 
 // Même liste que multer et TUS : une seule source de vérité, sinon un fichier
 // accepté à l'écriture se faisait refuser juste après par le validateur.
@@ -18,86 +21,16 @@ const ALLOWED_EXTENSIONS = [...UPLOAD_ALLOWED_EXTENSIONS];
 // acceptait jusqu'à 2 Go puis le validateur rejetait avec un message
 // trompeur, et on avait déjà écrit le fichier sur disque.
 const MAX_FILE_SIZE = UPLOAD_MAX_FILE_SIZE;
-const SUSPICIOUS_PATTERNS = /[<>:"|?*\x00-\x1f/\\]/;
 
-// Signatures (magic numbers) des formats acceptés. `.txt` et `.docx` ne
-// sont pas vérifiés ici : le txt n'a pas de signature, le docx est un
-// ZIP générique (signature PK) déjà couverte par les autres outils.
-const MAGIC_SIGNATURES = {
-  '.mp4': [
-    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // 'ftyp' à l'offset 4
-  ],
-  '.mov': [
-    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // mov = QuickTime, même boîte ftyp
-    { offset: 4, bytes: [0x6d, 0x6f, 0x6f, 0x76] }, // 'moov'
-  ],
-  '.mp3': [
-    { offset: 0, bytes: [0x49, 0x44, 0x33] },       // 'ID3'
-    { offset: 0, bytes: [0xff, 0xfb] },             // frame MPEG
-    { offset: 0, bytes: [0xff, 0xf3] },
-    { offset: 0, bytes: [0xff, 0xf2] },
-  ],
-  '.wav': [
-    // RIFF à 0 ET WAVE à 8 (les deux requis, cf. `all`) : le fourCC évite
-    // qu'un RIFF/WEBP polyglot passe pour du wav.
-    { all: [
-      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // 'RIFF'
-      { offset: 8, bytes: [0x57, 0x41, 0x56, 0x45] }, // 'WAVE'
-    ] },
-  ],
-  '.docx': [
-    { offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }, // ZIP local header
-    { offset: 0, bytes: [0x50, 0x4b, 0x05, 0x06] }, // empty archive
-  ],
-  '.zip': [
-    { offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }, // ZIP local header
-    { offset: 0, bytes: [0x50, 0x4b, 0x05, 0x06] }, // empty archive
-  ],
-  '.jpg': [
-    { offset: 0, bytes: [0xff, 0xd8, 0xff] }, // JPEG image
-  ],
-  '.jpeg': [
-    { offset: 0, bytes: [0xff, 0xd8, 0xff] }, // JPEG image
-  ],
-  '.png': [
-    { offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }, // PNG image
-  ],
-  '.gif': [
-    { offset: 0, bytes: [0x47, 0x49, 0x46, 0x38] }, // GIF8
-  ],
-  '.webp': [
-    // RIFF à 0 ET WEBP à 8 (les deux requis) : sans le fourCC, un wav
-    // (RIFF/WAVE) ou tout conteneur RIFF passerait pour du webp.
-    { all: [
-      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
-      { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }, // 'WEBP'
-    ] },
-  ],
-  '.bmp': [
-    { offset: 0, bytes: [0x42, 0x4d] }, // BM
-  ],
-  '.heic': [
-    { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }, // ftyp
-  ],
-  '.webm': [
-    { offset: 0, bytes: [0x1a, 0x45, 0xdf, 0xa3] }, // Matroska / WebM
-  ],
-  '.ogg': [
-    { offset: 0, bytes: [0x4f, 0x67, 0x67, 0x53] }, // OggS
-  ],
-  '.aac': [
-    { offset: 0, bytes: [0xff, 0xf1] }, // ADTS
-    { offset: 0, bytes: [0xff, 0xf9] },
-  ],
-};
-
-function matchesSignature(buf, signature) {
-  // Signature composée : tous les fragments {offset,bytes} doivent matcher (AND).
-  if (signature.all) {
-    return signature.all.every((s) => matchesSignature(buf, s));
-  }
-  return signature.bytes.every((b, i) => buf[signature.offset + i] === b);
-}
+/**
+ * Les signatures binaires vivent dans lib/signatures.js, partagées avec le
+ * chemin TUS. La table locale qui existait ici était trop étroite : `.mov`
+ * n'y admettait que `ftyp` et `moov` alors que de vrais fichiers de
+ * caméscope commencent par `wide` ou `mdat`, et `.aac` n'y admettait que
+ * deux des quatre en-têtes ADTS — pendant que Safari, lui, livre un
+ * conteneur MP4 sous ce nom. Chacun de ces écarts refusait un
+ * enregistrement parfaitement lisible.
+ */
 
 export function validateMagicNumber(filePath, ext) {
   if (ext.toLowerCase() === '.txt') {
@@ -120,21 +53,32 @@ export function validateMagicNumber(filePath, ext) {
     }
   }
 
-  const signatures = MAGIC_SIGNATURES[ext.toLowerCase()];
-  if (!signatures) return { valid: true }; // ex: .docx — pas de check pour l'instant
   let fd;
   try {
     fd = openSync(filePath, 'r');
-    const buf = Buffer.alloc(16);
-    readSync(fd, buf, 0, 16, 0);
-    const ok = signatures.some((sig) => matchesSignature(buf, sig));
-    if (!ok) {
-      return {
-        valid: false,
-        error: `Contenu du fichier ne correspond pas à l'extension ${ext}`,
-      };
+    const buf = Buffer.alloc(TAILLE_ENTETE);
+    const lus = readSync(fd, buf, 0, TAILLE_ENTETE, 0);
+    const entete = buf.subarray(0, lus);
+
+    // Du balisage sous un nom de média : le seul désaccord qui reste un refus.
+    if (contenuEstBalisage(entete)) {
+      return { valid: false, error: `Ce fichier contient du balisage, pas du ${ext.replace('.', '')}.` };
     }
-    return { valid: true };
+
+    const coherent = extensionCoherente(entete, ext);
+    const reelle = extensionDepuisOctets(entete);
+
+    // Un désaccord entre l'extension et les octets n'est PAS un motif de
+    // refus. Le nom est ce que le téléphone a bien voulu écrire ; les octets
+    // sont le fichier. On note l'écart, on retient le format réel, et on
+    // laisse passer — un enregistrement lisible ne doit jamais être perdu
+    // parce qu'il a été mal nommé.
+    if (coherent === false) {
+      logger.info('Extension et contenu divergent, le contenu fait foi', {
+        context: { ext, reelle },
+      });
+    }
+    return { valid: true, extensionReelle: reelle };
   } catch (err) {
     return { valid: false, error: `Lecture du fichier échouée: ${err.message}` };
   } finally {
@@ -170,8 +114,9 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE, allowImages = fals
     };
   }
 
-  // Vérifier l'extension
-  const ext = getFileExtension(file.originalname);
+  // Extension retenue : celle du nom, ou à défaut celle que trahit le type
+  // annoncé. Un fichier au nom nu n'est pas une faute (partage Android).
+  const ext = extensionEffective(file.originalname, file.mimetype) || getFileExtension(file.originalname);
   const allowedExts = allowImages
     ? ALLOWED_EXTENSIONS
     : ALLOWED_EXTENSIONS.filter((e) => !IMAGE_EXTENSIONS.includes(e));
@@ -209,13 +154,10 @@ export function validateFile(file, { maxSize = MAX_FILE_SIZE, allowImages = fals
     };
   }
 
-  // Vérifier que le nom de fichier ne contient pas de caractères suspects
-  if (SUSPICIOUS_PATTERNS.test(file.originalname)) {
-    return { 
-      valid: false, 
-      error: 'Nom de fichier contient des caractères non autorisés'
-    };
-  }
+  // Le nom d'origine ne sert QUE d'étiquette : le fichier est écrit sous un
+  // UUID. Un `:` ou un `?` — que produisent couramment les enregistrements
+  // iOS et Android — n'a donc aucune conséquence, et refuser l'envoi pour
+  // cela coûtait un reportage. Les appelants rangent ce nom via nomLisible().
 
   return { valid: true };
 }

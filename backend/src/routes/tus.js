@@ -2,9 +2,10 @@ import { Server, EVENTS } from '@tus/server';
 import { FileStore } from '@tus/file-store';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import { existsSync, unlinkSync } from 'fs';
+import { existsSync, unlinkSync, openSync, readSync, closeSync, renameSync } from 'fs';
 import logger from '../logger/index.js';
-import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyUpload } from '../lib/upload.js';
+import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyExtension, extensionEffective } from '../lib/upload.js';
+import { extensionDepuisOctets, TAILLE_ENTETE } from '../lib/signatures.js';
 import { addUpload, getCustomCountries, getExtensions, updateUploadSize, setUploadProxy } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
@@ -12,6 +13,9 @@ import { recordUpload } from '../monitoring/metrics.js';
 import { broadcastNotification, AUDIENCES } from './webpush.js';
 import { io } from '../app.js';
 import { safeEqual, normalizeToken } from '../middleware/auth.js';
+import { readReporterToken } from '../lib/reporterToken.js';
+import { evaluerPortee } from '../middleware/portee.js';
+import { nomLisible } from '../middleware/sanitizer.js';
 
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 // Délègue à la source de vérité partagée (inclut COUNTRIES + custom +
@@ -48,7 +52,7 @@ function checkUploadCutoff(weekId, countryId) {
 
     const err = new Error('Date limite d\'envoi dépassée');
     err.status_code = 423;
-    err.body = 'Délai dépassé : les uploads pour cette semaine sont clôturés depuis dimanche 17h30.';
+    err.body = 'Délai dépassé : les envois de cette semaine sont clôturés depuis dimanche 10h30 (GMT+2).';
     return err;
   }
   return null;
@@ -63,18 +67,109 @@ function checkUploadCutoff(weekId, countryId) {
  * `isAdmin` à partir d'ADMIN_PASSWORD — cette protection-là reste active et
  * distincte (bypass du cutoff hebdo, rubrique `mj`), hors périmètre du
  * retrait du mot de passe global.
+ *
+ * `correspondant` vient du lien personnel, que le client passe en métadonnée
+ * TUS faute de pouvoir compter sur `readReporter` : celui-ci est monté sur
+ * /api (app.js) alors que TUS est branché AVANT. Sans cette relecture, le
+ * chemin d'envoi le plus utilisé — celui des vidéos depuis un téléphone —
+ * échapperait entièrement à la portée.
  */
-export function authorizeTusUpload(meta = {}) {
+/**
+ * Lit un en-tête quelle que soit la forme de la requête.
+ *
+ * @tus/server v2 passe aux crochets un `Request` de l'API fetch, dont
+ * `headers` est un objet `Headers` : l'indexer comme un dictionnaire renvoie
+ * toujours `undefined`. C'est ce qui faisait passer pour anonyme un
+ * correspondant qui présentait pourtant son lien — et la portée refusait
+ * alors tous ses envois.
+ */
+function enTete(req, nom) {
+  const entetes = req?.headers;
+  if (!entetes) return '';
+  if (typeof entetes.get === 'function') return entetes.get(nom) || '';
+  return entetes[nom] || entetes[nom.toLowerCase()] || '';
+}
+
+export function authorizeTusUpload(meta = {}, req = null) {
   const ADMIN = process.env.ADMIN_PASSWORD;
   const token = normalizeToken(String(meta.adminPassword || meta.appPassword || ''));
   const isAdmin = !!(ADMIN && token && safeEqual(token, normalizeToken(String(ADMIN))));
-  return { ok: true, isAdmin };
+
+  // En-tête d'abord : il voyage hors des métadonnées, donc hors du sidecar
+  // écrit sur disque. La métadonnée reste acceptée en repli, car un proxy
+  // peut retirer un en-tête inconnu — et un envoi refusé pour cette raison
+  // serait incompréhensible pour le correspondant.
+  const brut = enTete(req, 'x-reporter-token') || meta.reporterToken || '';
+  const correspondant = readReporterToken(brut);
+  return { ok: true, isAdmin, correspondant };
 }
 
-/** Allowlist d'extensions — même règle que le chemin multer (lib/upload.js). */
-export function validateTusExtension(name) {
+/**
+ * Le nom porte-t-il une extension explicitement INTERDITE ?
+ *
+ * C'est la seule chose qui justifie encore un refus à l'ouverture : un
+ * `.html` ou un `.exe` nommé comme tel. L'absence d'extension, elle, n'est
+ * pas une faute — le partage Android et certains sélecteurs livrent
+ * couramment un nom nu, et le refuser coûtait un reportage. Ce cas-là est
+ * tranché à l'arrivée, sur les octets, où il n'y a plus à deviner.
+ */
+export function extensionInterdite(name) {
   const ext = path.extname(String(name || '')).toLowerCase();
-  return ALLOWED_EXTENSIONS.has(ext);
+  return Boolean(ext) && !ALLOWED_EXTENSIONS.has(ext);
+}
+
+/**
+ * Allowlist d'extensions — même règle que le chemin multer (lib/upload.js).
+ * Le type MIME sert de secours quand le nom n'a pas d'extension exploitable.
+ */
+export function validateTusExtension(name, mimetype = '') {
+  return Boolean(extensionEffective(name, mimetype));
+}
+
+/**
+ * Donne au fichier stocké l'extension que ses octets révèlent, quand il n'en
+ * a pas. Renvoie le nom à retenir — inchangé si tout allait déjà bien, ou si
+ * rien n'est reconnu (un script texte n'a aucune signature : il reste sans
+ * extension, et le serveur statique le sert en pièce jointe, ce qui est
+ * exactement ce qu'il faut).
+ *
+ * Ne jette jamais : au pire on garde le nom tel quel.
+ */
+function reconnaitreEtRenommer(id, meta) {
+  if (path.extname(id)) return id;
+
+  const chemin = path.join(uploadsDir, id);
+  let ext = '';
+  let fd;
+  try {
+    fd = openSync(chemin, 'r');
+    const buf = Buffer.alloc(TAILLE_ENTETE);
+    const lus = readSync(fd, buf, 0, TAILLE_ENTETE, 0);
+    ext = extensionDepuisOctets(buf.subarray(0, lus));
+  } catch (err) {
+    logger.warn('Lecture d\'en-tête impossible, nom conservé', { error: err.message, id });
+    return id;
+  } finally {
+    if (fd !== undefined) { try { closeSync(fd); } catch { /* ignore */ } }
+  }
+
+  if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+    logger.info('Format non reconnu sur les octets : fichier conservé sans extension', {
+      context: { id, nomDorigine: meta?.name || '', typeAnnonce: meta?.filetype || '' },
+    });
+    return id;
+  }
+
+  try {
+    renameSync(chemin, path.join(uploadsDir, `${id}${ext}`));
+    logger.info('Extension reconnue sur les octets', {
+      context: { id, ext, nomDorigine: meta?.name || '', typeAnnonce: meta?.filetype || '' },
+    });
+    return `${id}${ext}`;
+  } catch (err) {
+    logger.warn('Renommage impossible, nom conservé', { error: err.message, id });
+    return id;
+  }
 }
 
 export const tusServer = new Server({
@@ -92,8 +187,13 @@ export const tusServer = new Server({
     // IMAGE_EXT de ffmpeg, isImage de Remotion, mime du player). Un fichier
     // sans extension est traité comme vidéo → écran noir si c'était une
     // image, téléchargement forcé au lieu de lecture inline, etc.
-    const ext = path.extname(String(metadata?.filename || metadata?.name || '')).toLowerCase();
-    const safeExt = ALLOWED_EXTENSIONS.has(ext) ? ext : '';
+    // L'extension vient du nom, ou à défaut du type annoncé. Si rien n'est
+    // exploitable on écrit sans extension : les octets trancheront à
+    // l'arrivée (onUploadFinish), et le fichier sera renommé alors.
+    const safeExt = extensionEffective(
+      metadata?.filename || metadata?.name || '',
+      metadata?.filetype || '',
+    );
     return `${Date.now()}-${uuidv4()}${safeExt}`;
   },
   onUploadCreate: async (req, upload) => {
@@ -102,7 +202,7 @@ export const tusServer = new Server({
     const weekId = meta.weekId;
     const countryId = meta.countryId;
 
-    const { ok, isAdmin } = authorizeTusUpload(meta);
+    const { ok, isAdmin, correspondant } = authorizeTusUpload(meta, req);
     if (!ok) {
       throw { status_code: 401, body: 'Session requise : mot de passe invalide ou manquant.' };
     }
@@ -111,7 +211,21 @@ export const tusServer = new Server({
       throw { status_code: 404, body: 'Week ou Country invalide' };
     }
 
-    if (!validateTusExtension(meta.name || meta.filename)) {
+    // Même règle exactement que sur les routes HTTP : c'est `evaluerPortee`
+    // qui tranche, ici comme là-bas.
+    const portee = evaluerPortee({
+      redaction: isAdmin,
+      correspondant,
+      pays: countryId,
+      chemin: '/api/tus',
+    });
+    if (!portee.autorise) {
+      throw { status_code: 403, body: portee.erreur?.publicMessage || 'Envoi hors de votre pays.' };
+    }
+
+    // On ne refuse que ce qui se déclare interdit. Un nom sans extension
+    // passe : son format sera reconnu sur ses octets à la fin du transfert.
+    if (extensionInterdite(meta.name || meta.filename)) {
       throw { status_code: 415, body: 'Type de fichier non autorisé.' };
     }
 
@@ -120,20 +234,26 @@ export const tusServer = new Server({
       if (cutoffErr) throw cutoffErr;
     }
 
-    // On NE persiste PAS le mot de passe dans le .json sidecar du FileStore.
-    // upload.metadata est sérialisé sur disque par @tus/file-store ; si on
-    // y laisse adminPassword/appPassword, le secret reste lisible à toute
-    // personne ayant accès au volume d'uploads. On le filtre ici avant
-    // retour (l'auth a déjà été vérifiée juste au-dessus).
-    const { adminPassword: _ap, appPassword: _gp, ...safeMeta } = upload.metadata || {};
+    // On NE persiste PAS les secrets dans le .json sidecar du FileStore.
+    // upload.metadata est sérialisé sur disque par @tus/file-store ; si on y
+    // laisse adminPassword/appPassword/reporterToken, ils restent lisibles à
+    // toute personne ayant accès au volume d'uploads. Le lien personnel est
+    // un secret porteur au même titre que le mot de passe : il part avec eux.
+    // On filtre ici avant retour (l'auth a déjà été vérifiée juste au-dessus).
+    const { adminPassword: _ap, appPassword: _gp, reporterToken: _rt, ...safeMeta } = upload.metadata || {};
     return { metadata: safeMeta };
   },
   onUploadFinish: async (req, upload) => {
     const meta = upload.metadata || {};
     const weekId = meta.weekId;
     const countryId = meta.countryId;
-    const filename = upload.id; // Generated by namingFunction
-    const originalName = meta.name || 'Unknown.mp4';
+    // `namingFunction` a pu écrire sans extension, faute d'avoir su la
+    // déduire du nom ou du type annoncé. Les octets sont arrivés depuis :
+    // on lit l'en-tête et on renomme. C'est le seul juge fiable — le nom
+    // ment par omission, et le type annoncé vaut très souvent
+    // « application/octet-stream ».
+    let filename = reconnaitreEtRenommer(upload.id, meta);
+    const originalName = nomLisible(meta.name || meta.filename || 'envoi');
     const reportage = meta.reportage || null;
     // `sujetId` est la nouvelle attache. `reportage` reste écrit pour que les
     // écrans qui ne connaissent pas encore les sujets continuent d'afficher
@@ -141,6 +261,9 @@ export const tusServer = new Server({
     const sujetId = meta.sujetId || null;
     const fileType = meta.filetype || 'application/octet-stream';
     const fileSize = upload.size;
+    // Le classement se fait sur l'extension retenue après reconnaissance, et
+    // non sur le nom d'origine : c'est elle qui dit ce que le fichier est.
+    const extRetenue = path.extname(filename).toLowerCase();
 
     // Classement par extension d'abord, type MIME ensuite : un téléphone qui
     // annonce application/octet-stream pour un .wav rangeait son audio dans
@@ -149,7 +272,7 @@ export const tusServer = new Server({
       id: uuidv4(),
       name: originalName,
       filename: filename,
-      type: classifyUpload(originalName, fileType),
+      type: classifyExtension(extRetenue, fileType),
       size: `${(fileSize / (1024 * 1024)).toFixed(1)} MB`,
       status: 'pending',
       reportage,
@@ -188,7 +311,7 @@ export const tusServer = new Server({
       // téléphone, avant même de commencer l'envoi. Ici l'envoi est déjà
       // terminé et confirmé quand l'encodage démarre.
       if (fileData.type === 'video') {
-        const ext = path.extname(originalName).toLowerCase();
+        const ext = extRetenue || path.extname(originalName).toLowerCase();
         const absolutePath = path.join(uploadsDir, filename);
         queueCompression(absolutePath, ext, ({ compressed, proxyName, newSize }) => {
           if (!compressed) return;

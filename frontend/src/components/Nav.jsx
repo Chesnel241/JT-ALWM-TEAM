@@ -1,4 +1,4 @@
-import { LayoutDashboard, Sparkles, Mic, MapPin, BarChart2, Upload, Download, Home } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Mic, Mic2, ListOrdered, MapPin, BarChart2, Upload, Download, Home, CalendarDays } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { useState, useEffect } from 'react';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
@@ -56,7 +56,8 @@ export default function Nav({
   const iconSize = isReporter ? 24 : 20;
   const iconClass = isReporter ? 'sm:w-[22px] sm:h-[22px]' : 'sm:w-[18px] sm:h-[18px]';
 
-  // Espace journalistes : reportages, voix off et téléchargement du JT.
+  // Espace journalistes : reportages, voix off, les deux rubriques du
+  // journal, et le téléchargement du JT.
   const reporterNavItems = [
     {
       id: 'tour-country-list',
@@ -71,6 +72,20 @@ export default function Nav({
       icon: <Mic size={iconSize} className={iconClass} />,
       label: t.reporter.voixOffTab || t.nav.voixOff,
       match: ['voixoff'],
+    },
+    {
+      id: 'tour-nav-conducteur',
+      view: 'conducteur',
+      icon: <ListOrdered size={iconSize} className={iconClass} />,
+      label: isMobile ? 'Conducteur' : 'Conducteur du JT',
+      match: ['conducteur'],
+    },
+    {
+      id: 'tour-nav-motdujt',
+      view: 'motDuJt',
+      icon: <Mic2 size={iconSize} className={iconClass} />,
+      label: isMobile ? 'Mot du JT' : 'Le Mot du JT',
+      match: ['motDuJt'],
     },
     {
       id: 'tour-nav-delivery',
@@ -110,6 +125,13 @@ export default function Nav({
       icon: <Sparkles size={iconSize} className={iconClass} />,
       label: t.nav.delivery,
       match: ['delivery']
+    },
+    {
+      id: 'tour-nav-planning',
+      view: 'planning',
+      icon: <CalendarDays size={iconSize} className={iconClass} />,
+      label: isMobile ? 'Planning' : 'Programmation',
+      match: ['planning']
     },
     {
       id: 'tour-nav-stats',

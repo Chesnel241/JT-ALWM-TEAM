@@ -10,7 +10,7 @@ const MOCK_COUNTRIES = [
 ];
 
 const MOCK_WEEKS = [
-  { id: '2026-W34', status: 'active', startDate: '2026-08-18' }
+  { id: '2026-W34', status: 'active', startDate: '2026-08-18', cutoffAt: '2026-08-23T08:30:00.000Z' }
 ];
 
 function renderVoixOff(props = {}) {

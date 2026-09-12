@@ -16,6 +16,11 @@ process.env.NODE_ENV = 'test';
 process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS = '10000';
 process.env.RATE_LIMIT_MAX_REQUESTS = '10000';
 process.env.CREATE_RATE_LIMIT_MAX = '10000';
+// Portée des correspondants figée sur `ouvert` : la suite historique décrit
+// le comportement d'avant la séparation d'accès, et doit continuer de le
+// décrire. Les tests de la portée elle-même montent leur propre application
+// en basculant ce cran (voir tests/portee-acces.test.js).
+process.env.REPORTER_ACCESS = 'ouvert';
 process.chdir(tmpRoot);
 
 export const TEST_UPLOADS_DIR = join(tmpRoot, 'uploads');
