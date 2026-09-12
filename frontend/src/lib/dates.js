@@ -57,12 +57,41 @@ export function formatAbsolute(iso, locale = 'fr') {
 }
 
 /**
- * Formate le nom localisé d'une semaine.
- * Ex: "Semaine 21" (fr) / "Week 21" (en)
+ * Nom d'une semaine, tel que la rédaction la nomme.
+ *
+ * Deux numérotations coexistaient à l'écran : le sélecteur affichait
+ * « Semaine 37 » (numéro international, celui qui sert de clé technique) et le
+ * planning « Sem. 18 » (numéro de la saison, celui dont l'équipe parle). Même
+ * semaine, dix-neuf d'écart, et la question « la 18 ou la 37 ? » à chaque
+ * conversation.
+ *
+ * Le libellé de la rédaction gagne partout où il existe : c'est celui que les
+ * gens prononcent. Le numéro international reste le repli, et reste la clé.
  */
 export function formatWeekLabel(week, locale = 'fr') {
-  const num = week.num ?? week.name?.match(/\d+/)?.[0] ?? '';
+  const redaction = String(week?.libelle || '').trim();
+  if (redaction) return redaction;
+  const num = week?.num ?? week?.name?.match(/\d+/)?.[0] ?? '';
   return locale === 'en' ? `Week ${num}` : `Semaine ${num}`;
+}
+
+/**
+ * La forme complète : le nom, puis les dates. « Sem. 18 · 7 sept. - 13 sept. »
+ * C'est la seule forme à utiliser dans un sélecteur ou un en-tête — les dates
+ * lèvent l'ambiguïté que le seul numéro laisse entière.
+ */
+export function formatWeekFull(week, locale = 'fr') {
+  const nom = formatWeekLabel(week, locale);
+  const dates = formatWeekDates(week, locale);
+  return dates ? `${nom} · ${dates}` : nom;
+}
+
+/**
+ * L'identifiant technique, pour un attribut `title` ou un message de support.
+ * Quand quelqu'un signale un problème, c'est cette chaîne qu'on lui demande.
+ */
+export function formatWeekTechnical(week) {
+  return String(week?.id || '');
 }
 
 /**
@@ -70,7 +99,7 @@ export function formatWeekLabel(week, locale = 'fr') {
  * Ex: "18 mai - 24 mai" (fr) / "May 18 - May 24" (en)
  */
 export function formatWeekDates(week, locale = 'fr') {
-  if (!week.startDate || !week.endDate) return week.dates || '';
+  if (!week?.startDate || !week?.endDate) return week?.dates || '';
   const loc = locale === 'en' ? 'en-US' : 'fr-FR';
   const opts = { day: 'numeric', month: 'short' };
   const start = new Date(week.startDate).toLocaleDateString(loc, opts);

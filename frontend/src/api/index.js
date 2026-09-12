@@ -246,11 +246,25 @@ export const api = {
 
   getRubrique: (weekId, cle) => request(`/rubriques/${weekId}/${cle}`),
 
-  setRubrique: (weekId, cle, champs) =>
+  /**
+   * Écrit les champs d'une rubrique.
+   *
+   * `baseRevision` est la révision sur laquelle la personne a travaillé. Le
+   * serveur refuse d'écrire si quelqu'un d'autre a enregistré entre-temps, et
+   * rend `{ conflit: true, ... }` avec l'état à jour : c'est ce qui empêche
+   * deux rédacteurs du conducteur de s'effacer l'un l'autre en silence.
+   * Omise, l'écriture passe toujours — un client plus ancien continue donc
+   * de fonctionner comme avant.
+   */
+  setRubrique: (weekId, cle, champs, baseRevision) =>
     request(`/rubriques/${weekId}/${cle}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(champs),
+      body: JSON.stringify(
+        baseRevision === undefined || baseRevision === null
+          ? champs
+          : { ...champs, baseRevision }
+      ),
     }),
 
   // === Planning des monteurs ===
@@ -357,6 +371,37 @@ export const api = {
 
   getSubscriptions: (weekId, adminPassword) =>
     request(`/notifications/${weekId}`, { adminPassword }),
+
+  // === Contacts durables ===
+  // Un numéro était rangé POUR UNE SEMAINE : la suivante, la liste repartait
+  // vide et le bloc « prévenir les pays » n'avait plus personne à prévenir.
+  // Le contact d'un pays vit désormais en dehors des semaines ; la
+  // confirmation hebdomadaire ne fait que le reconduire.
+  getContacts: (adminPassword) => request('/notifications/contacts', { adminPassword }),
+
+  setContact: (countryId, phone, adminPassword) =>
+    request(`/notifications/contacts/${countryId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ phone }),
+    }),
+
+  retirerContact: (countryId, adminPassword) =>
+    request(`/notifications/contacts/${countryId}`, { method: 'DELETE', adminPassword }),
+
+  // === Demandes de délai ===
+  // Elles n'étaient visibles que dans l'onglet Statistiques, que personne
+  // n'ouvre le dimanche matin : le correspondant croyait avoir engagé quelque
+  // chose et attendait une réponse qui ne venait pas.
+  getDemandesDelai: (weekId, adminPassword) =>
+    request(`/delays/${weekId}/demandes`, { adminPassword }),
+
+  // === Relance des pays incomplets ===
+  // Ce que la plateforme sait déjà : qui n'a rien envoyé, et à quel numéro
+  // l'écrire. Il ne manquait que de les mettre côte à côte.
+  getRelances: (weekId, adminPassword) =>
+    request(`/notifications/${weekId}/relances`, { adminPassword }),
 
   // Jetons de téléchargement : le navigateur ouvre l'URL lui-même et ne peut
   // y joindre aucun en-tête. Le jeton signé (1 h, lié à la ressource) est ce

@@ -14,11 +14,19 @@ import CountdownTimer from './CountdownTimer.jsx';
 import { formatExpiry } from '../lib/dates.js';
 
 /**
- * Accueil de l'espace journalistes (URL /journalistes) : deux boutons, rien
- * d'autre. Beaucoup de correspondants sont peu à l'aise avec le web et
- * arrivent depuis un lien WhatsApp sur mobile — d'où des cibles tactiles
- * très larges (carte cliquable entière), un libellé par action et une
- * numérotation visuelle pour lever toute hésitation.
+ * Accueil de l'espace journalistes (URL /journalistes). L'écran sépare deux
+ * gestes qui n'appartiennent pas aux mêmes personnes : ce qu'un correspondant
+ * envoie chaque semaine (reportage, voix off, JT à récupérer) et ce que
+ * fabrique la rédaction (conducteur, Mot du JT). Les secondes restent
+ * accessibles, mais en retrait : un correspondant du Gabon ne les ouvre
+ * jamais.
+ *
+ * Aucune numérotation : elle annonçait une séquence qui n'existe pas. On fait
+ * la première carte, parfois la dernière, et jamais celles de la rédaction.
+ *
+ * Beaucoup de correspondants sont peu à l'aise avec le web et arrivent depuis
+ * un lien WhatsApp sur mobile — d'où des cibles tactiles très larges (carte
+ * cliquable entière) et un libellé par action.
  */
 export default function ReporterHomeView({
   onOpenReports,
@@ -40,10 +48,11 @@ export default function ReporterHomeView({
   const week = weeks.find((w) => w.id === selectedWeek) || null;
   const status = useCountryWeekStatus(homeCountry?.id, selectedWeek);
 
-  const choices = [
+  // Le geste hebdomadaire du correspondant : c'est pour ces trois cartes
+  // qu'il ouvre l'application, donc elles occupent la place.
+  const envoi = [
     {
       key: 'reports',
-      step: 1,
       Icon: Upload,
       title: r.uploadTitle,
       text: r.uploadText,
@@ -53,12 +62,10 @@ export default function ReporterHomeView({
         card: 'border-[color:var(--accent)]/40 hover:border-[color:var(--accent)]',
         icon: 'bg-[var(--accent)] text-white',
         cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
-        step: 'bg-[var(--accent)]/10 text-[color:var(--accent-deep)]',
       },
     },
     {
       key: 'voixoff',
-      step: 2,
       Icon: Mic,
       title: r.voixOffTitle,
       text: r.voixOffText,
@@ -68,42 +75,10 @@ export default function ReporterHomeView({
         card: 'border-purple-300 dark:border-purple-800/40 hover:border-purple-500',
         icon: 'bg-purple-600 text-white',
         cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
-        step: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-      },
-    },
-    {
-      key: 'conducteur',
-      step: 3,
-      Icon: ListOrdered,
-      title: 'Le conducteur du JT',
-      text: 'Le déroulé du journal, la voix off et son texte. Il recense les reportages de tous les pays.',
-      cta: 'Ouvrir le conducteur',
-      onClick: onOpenConducteur,
-      tone: {
-        card: 'border-[var(--border)] hover:border-[color:var(--accent)]',
-        icon: 'bg-[var(--accent-deep)] text-white',
-        cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
-        step: 'bg-[var(--accent)]/10 text-[color:var(--accent-deep)]',
-      },
-    },
-    {
-      key: 'motDuJt',
-      step: 4,
-      Icon: Mic2,
-      title: 'Le Mot du JT',
-      text: "L'intervention filmée : la vidéo, puis le nom de l'orateur, son pays et son thème.",
-      cta: 'Ouvrir le Mot du JT',
-      onClick: onOpenMotDuJt,
-      tone: {
-        card: 'border-[var(--border)] hover:border-[color:var(--accent-soft)]',
-        icon: 'bg-[var(--accent-soft)] text-[#111827]',
-        cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
-        step: 'bg-[var(--accent-soft)]/25 text-[color:var(--accent-deep)]',
       },
     },
     {
       key: 'delivery',
-      step: 5,
       Icon: Download,
       title: r.downloadTitle,
       text: r.downloadText,
@@ -113,8 +88,31 @@ export default function ReporterHomeView({
         card: 'border-[var(--border)] hover:border-[color:var(--accent-soft)]',
         icon: 'bg-[var(--accent-soft)] text-[#111827]',
         cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
-        step: 'bg-[var(--accent-soft)]/25 text-[color:var(--accent-deep)]',
       },
+    },
+  ];
+
+  // Le travail d'une ou deux personnes à la rédaction. On garde la porte
+  // ouverte — elles passent aussi par cet accueil — sans la mettre sur le
+  // chemin des quinze correspondants qui n'ont rien à y faire.
+  const redaction = [
+    {
+      key: 'conducteur',
+      Icon: ListOrdered,
+      title: t.rubriques.conducteurTitre,
+      text: t.rubriques.conducteurTexte,
+      cta: t.rubriques.conducteurCta,
+      onClick: onOpenConducteur,
+      icon: 'bg-[var(--accent-deep)] text-white',
+    },
+    {
+      key: 'motDuJt',
+      Icon: Mic2,
+      title: t.rubriques.motDuJtTitre,
+      text: t.rubriques.motDuJtTexte,
+      cta: t.rubriques.motDuJtCta,
+      onClick: onOpenMotDuJt,
+      icon: 'bg-[var(--accent-soft)] text-[#111827]',
     },
   ];
 
@@ -173,42 +171,82 @@ export default function ReporterHomeView({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 motion-stagger">
-        {choices.map(({ key, step, Icon, title, text, cta, onClick, tone }, index) => (
-          <button
-            key={key}
-            type="button"
-            style={{ '--i': index }}
-            onClick={onClick}
-            className={`group w-full text-left bg-[var(--paper)] border-2 ${tone.card} rounded-3xl p-6 sm:p-8 shadow-sm motion-tap active:scale-[0.98] sm:hover:shadow-[var(--shadow-soft)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40 flex flex-col gap-4 min-h-[220px] sm:min-h-[280px]`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-2xl flex items-center justify-center ${tone.icon}`}>
-                <Icon size={34} strokeWidth={2.2} />
-              </div>
-              <span className={`text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full ${tone.step}`}>
-                {step}
-              </span>
-            </div>
+      <section aria-labelledby="hub-envoi">
+        <div className="mb-3 sm:mb-4 text-left">
+          <h3 id="hub-envoi" className="text-lg sm:text-xl font-bold text-[color:var(--ink)]">
+            {t.hub.envoiTitre}
+          </h3>
+          <p className="text-sm text-[color:var(--muted)]">{t.hub.envoiSous}</p>
+        </div>
 
-            <div className="flex-1">
-              <h3 className="text-xl sm:text-2xl font-bold text-[color:var(--ink)] leading-snug">
-                {title}
-              </h3>
-              <p className="mt-2 text-sm sm:text-base text-[color:var(--muted)] leading-relaxed">
-                {text}
-              </p>
-            </div>
-
-            <span
-              className={`inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-2xl font-bold text-base ${tone.cta}`}
+        {/* Pas de hauteur plancher sur téléphone : imposée aux cartes, elle
+            repoussait l'aide WhatsApp à deux écrans de défilement. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 motion-stagger">
+          {envoi.map(({ key, Icon, title, text, cta, onClick, tone }, index) => (
+            <button
+              key={key}
+              type="button"
+              style={{ '--i': index }}
+              onClick={onClick}
+              className={`group w-full text-left bg-[var(--paper)] border-2 ${tone.card} rounded-3xl p-5 sm:p-8 shadow-sm motion-tap active:scale-[0.98] sm:hover:shadow-[var(--shadow-soft)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40 flex flex-col gap-3 sm:gap-4 sm:min-h-[280px]`}
             >
-              <span>{cta}</span>
-              <ChevronRight size={20} className="transition-transform sm:group-hover:translate-x-1" />
-            </span>
-          </button>
-        ))}
-      </div>
+              <div className={`h-14 w-14 sm:h-20 sm:w-20 rounded-2xl flex items-center justify-center ${tone.icon}`}>
+                <Icon size={30} strokeWidth={2.2} />
+              </div>
+
+              <div className="flex-1">
+                <h4 className="text-xl sm:text-2xl font-bold text-[color:var(--ink)] leading-snug">
+                  {title}
+                </h4>
+                <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-[color:var(--muted)] leading-relaxed">
+                  {text}
+                </p>
+              </div>
+
+              <span
+                className={`inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-2xl font-bold text-base ${tone.cta}`}
+              >
+                <span>{cta}</span>
+                <ChevronRight size={20} className="transition-transform sm:group-hover:translate-x-1" />
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="hub-redaction" className="mt-8 sm:mt-10">
+        <div className="mb-3 text-left">
+          <h3 id="hub-redaction" className="text-base sm:text-lg font-bold text-[color:var(--muted)]">
+            {t.hub.redactionTitre}
+          </h3>
+          <p className="text-sm text-[color:var(--muted)]">{t.hub.redactionSous}</p>
+        </div>
+
+        {/* Même largeur de colonne que les cartes d'envoi, mais en rangée :
+            le titre suffit à reconnaître la rubrique quand on la cherche. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {redaction.map(({ key, Icon, title, text, cta, onClick, icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={onClick}
+              aria-label={cta}
+              className="group w-full text-left bg-[var(--paper-2)] border border-[var(--border)] hover:border-[color:var(--accent)] rounded-2xl px-4 py-3 motion-tap active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40 flex items-center gap-3"
+            >
+              <span className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center ${icon}`}>
+                <Icon size={20} strokeWidth={2.2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-bold text-[color:var(--ink)] leading-snug">{title}</span>
+                <span className="mt-0.5 block text-xs text-[color:var(--muted)] leading-snug line-clamp-2">
+                  {text}
+                </span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-[color:var(--muted)] transition-transform sm:group-hover:translate-x-1" />
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* Sur téléphone la cloche de l'en-tête est réduite à une icône : cet
           encart rend l'abonnement visible là où il a du sens. */}

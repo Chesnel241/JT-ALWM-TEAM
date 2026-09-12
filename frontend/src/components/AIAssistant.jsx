@@ -10,9 +10,11 @@ import { getAIResponse, getSuggestedQuestions } from '../data/faqKnowledge';
 // d'action sur mobile à chaque visite).
 const BUBBLE_HIDDEN_KEY = 'jt-ai-bubble-hidden-until';
 
-// `showBubble` : la bulle d'invitation flotte au-dessus du contenu. Utile
-// pour l'équipe montage, gênante côté journalistes où elle recouvrait les
-// cartes sur petit écran — le bouton de chat, lui, reste accessible.
+// `showBubble` : l'invitation flotte au-dessus du contenu. On la coupe là où
+// le contenu se travaille de près — espace journalistes, listes à cocher du
+// montage — parce qu'elle y recouvrait cartes et premières lignes sur petit
+// écran. Le bouton de chat, lui, reste toujours accessible : c'est
+// l'invitation qui gêne, pas l'accès à l'aide.
 export default function AIAssistant({ currentPage, showBubble = true }) {
   const { t, lang } = useI18n();
   const [isChatOpen, setIsChatOpen] = useState(false);

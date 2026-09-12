@@ -1,9 +1,13 @@
 /**
- * Authentication routes — token-based (X-App-Password).
+ * Routes d'authentification.
  *
- * Le mot de passe (token) transite via le header `X-App-Password`
- * pour éviter les blocages de cookies cross-site (ITP) sur Safari
- * lorsque le frontend et le backend sont sur des domaines différents.
+ * Une seule protège réellement quelque chose : `/check-admin`, qui garde
+ * l'espace montage derrière `ADMIN_PASSWORD` (header `X-Admin-Password`).
+ *
+ * `/login`, `/logout` et `/check` n'authentifient plus personne : la
+ * plateforme n'a plus de mot de passe global. Elles restent en place pour les
+ * clients déjà ouverts dans un onglet, qui continuent de les appeler ; les
+ * retirer leur vaudrait une erreur visible sans qu'ils aient rien fait.
  */
 
 import { Router } from 'express';
@@ -14,15 +18,15 @@ import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-// Normalise un mot de passe avant comparaison :
+// Normalise le mot de passe admin avant comparaison :
 // - NFC unicode (un même caractère accentué peut arriver en deux formes
 //   différentes selon le clavier ou l'OS)
 // - retire les caractères invisibles ajoutés par copier-coller (NBSP,
 //   NARROW NBSP, ZW SPACE/JOINER, BOM, WORD JOINER)
 // - trim des espaces classiques en début/fin (auto-fill/auto-complete
 //   navigateur en injecte fréquemment)
-// - toLowerCase (login insensible à la casse — décision produit pour
-//   limiter les rejets sur mobile, validée par l'admin)
+// - toLowerCase (saisie insensible à la casse — décision produit pour
+//   limiter les rejets sur clavier mobile, validée par l'admin)
 function normalizePassword(s) {
   if (typeof s !== 'string') return '';
   return s
@@ -39,11 +43,10 @@ function safeEqual(a, b) {
   return timingSafeEqual(hashA, hashB);
 }
 
-// Limiteur login : 5/15 min était trop strict — un bureau-pays derrière
-// un NAT (5 correspondants partagent la même IP) atteignait la limite et
-// recevait 429 que le frontend affichait comme "mot de passe incorrect".
-// On passe à 30/15 min pour absorber les tentatives légitimes tout en
-// gardant un garde-fou brute-force.
+// La route n'a plus de secret à garder, mais elle reste publique : on
+// plafonne son débit pour qu'un client en boucle ou un robot ne la martèle
+// pas. 30/15 min laisse largement passer un bureau-pays entier, dont les
+// correspondants partagent une même IP derrière un NAT.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX || '30', 10),
@@ -60,25 +63,21 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// POST /api/auth/login — mot de passe de session global retiré (décision
-// produit). Accepte toujours, sans exiger de body : le frontend peut encore
-// appeler cette route (compat), mais elle ne bloque plus jamais personne.
-// requireAdmin (ADMIN_PASSWORD) reste, lui, entièrement inchangé.
+// POST /api/auth/login — accepte tout le monde, sans même lire le body :
+// il n'y a plus de mot de passe global à vérifier.
 router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   logger.info('Login (no-auth)', { context: { ip: req.ip } });
   return res.json({ success: true, token: 'no-auth' });
 }));
 
-// POST /api/auth/logout — ne fait plus rien côté serveur
+// POST /api/auth/logout — aucune session à fermer côté serveur.
 router.post('/logout', (req, res) => {
   return res.json({ success: true });
 });
 
-// GET /api/auth/check — plus de mot de passe de session à vérifier : toujours
-// authentifié. Important : NE PAS remettre un `if (!token) return 401`
-// avant ce point — ordonné ainsi, ça bloquait le frontend (App.jsx gate le
-// rendu entier sur ce endpoint) même une fois le mot de passe retiré
-// partout ailleurs, puisque localStorage n'a plus de token à envoyer.
+// GET /api/auth/check — répond « authentifié » à tout le monde. Ne pas y
+// remettre de garde : les clients n'envoient plus de jeton, et c'est
+// `/check-admin` ci-dessous qui protège ce qui doit l'être.
 router.get('/check', authLimiter, (_req, res) => {
   return res.json({ authenticated: true });
 });

@@ -5,6 +5,7 @@ import { getAlertState } from '../monitoring/alerts.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { uploadsDir as resolveUploadsDir } from '../lib/paths.js';
 import { etatFileCompression } from '../services/videoCompress.js';
+import { etatFileMesure } from '../services/mediaDuration.js';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ router.get('/', asyncHandler(async (req, res) => {
     const metrics = getMetrics(uploadsDir);
     const memUsage = process.memoryUsage();
     const fileCompression = etatFileCompression();
+    const mesureDurees = etatFileMesure();
 
     const healthData = {
       success: true,
@@ -56,6 +58,9 @@ router.get('/', asyncHandler(async (req, res) => {
         // maximum, annonce un fichier qu'ffmpeg n'arrive pas à lire — et le
         // studio qui devient lourd pour tout le monde.
         compression: fileCompression,
+        // Sondes de durée. Elles ne bloquent aucun envoi, mais une file qui
+        // ne se vide plus signale un ffprobe en peine.
+        mesureDurees,
       },
     };
 

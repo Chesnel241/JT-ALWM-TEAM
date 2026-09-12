@@ -6,7 +6,7 @@ import {
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
+import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekFull } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import EmptyState from './EmptyState.jsx';
@@ -144,7 +144,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
             >
               {weeks.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {formatWeekLabel(w, lang)}{w.status === 'active' ? ' • EN COURS' : ''}
+                  {formatWeekFull(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
                 </option>
               ))}
             </select>
@@ -287,7 +287,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
             >
               {weeks.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
+                  {formatWeekFull(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
                 </option>
               ))}
             </select>

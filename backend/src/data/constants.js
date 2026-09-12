@@ -131,37 +131,65 @@ export function isCountryAccepted(countryId, customCountries = []) {
   return false;
 }
 
-// Décale `date` au lundi de sa semaine ISO (ramener au début de la
-// semaine, lundi 00:00 dans le fuseau local du serveur).
+const MS_PAR_HEURE = 3600000;
+const MS_PAR_JOUR = 24 * MS_PAR_HEURE;
+
+/**
+ * Le même instant, lu dans le fuseau déclaré de la rédaction : sur l'objet
+ * rendu, `getUTCDay()`, `getUTCDate()` et consorts donnent l'heure de
+ * Libreville.
+ *
+ * La semaine de collecte commence le lundi à Libreville, pas à l'endroit où
+ * le serveur tourne. Le calcul s'écrivait `getDay()` / `setHours()`, donc en
+ * heure machine : sur un serveur en UTC, la semaine basculait deux heures
+ * trop tôt pour la rédaction — le dimanche 22h, les correspondants voyaient
+ * déjà la semaine suivante alors que la leur n'était pas finie — et la
+ * bascule aurait changé d'heure toute seule en cas de déménagement. C'est le
+ * défaut déjà corrigé sur la clôture (voir CLOTURE).
+ */
+function enHeureRedaction(date) {
+  return new Date(new Date(date).getTime() + CLOTURE.offsetUTC * MS_PAR_HEURE);
+}
+
+/** Chemin inverse : d'une lecture en heure rédaction vers l'instant réel. */
+function instantReel(local) {
+  return new Date(local.getTime() - CLOTURE.offsetUTC * MS_PAR_HEURE);
+}
+
+/** Lundi 00:00 heure rédaction de la semaine ISO de `date`, rendu en instant. */
 function startOfIsoWeek(date) {
-  const d = new Date(date);
-  const day = d.getDay(); // 0 = dim, 1 = lun, ..., 6 = sam
-  const diff = (day + 6) % 7; // 0 si lundi, 6 si dimanche
-  d.setDate(d.getDate() - diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const local = enHeureRedaction(date);
+  const recul = (local.getUTCDay() + 6) % 7; // 0 si lundi, 6 si dimanche
+  local.setUTCDate(local.getUTCDate() - recul);
+  local.setUTCHours(0, 0, 0, 0);
+  return instantReel(local);
 }
 
+/**
+ * Dernier instant de la semaine : dimanche 23:59:59.999 heure rédaction.
+ *
+ * Une simple addition suffit là où il fallait `setDate()` : l'offset est fixe
+ * et ne suit pas l'heure d'été, donc une semaine dure exactement 7 × 24 h.
+ */
 function endOfIsoWeek(monday) {
-  const d = new Date(monday);
-  d.setDate(d.getDate() + 6);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  return new Date(monday.getTime() + 7 * MS_PAR_JOUR - 1);
 }
 
-// Numéro de semaine ISO 8601 (1 à 53).
+// Numéro de semaine ISO 8601 (1 à 53), sur le calendrier de la rédaction.
 function isoWeekNumber(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = enHeureRedaction(date);
+  d.setUTCHours(0, 0, 0, 0);
   const day = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - day);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return Math.ceil(((d - yearStart) / MS_PAR_JOUR + 1) / 7);
 }
 
 function isoWeekYear(date) {
   // Le 4 janvier appartient toujours à la semaine 1 — décalage similaire
   // au calcul de isoWeekNumber.
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = enHeureRedaction(date);
+  d.setUTCHours(0, 0, 0, 0);
   const day = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - day);
   return d.getUTCFullYear();
@@ -169,9 +197,14 @@ function isoWeekYear(date) {
 
 const MONTHS_FR = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc'];
 
+// « 18 mai - 24 mai » : les jours affichés sont ceux du calendrier de la
+// rédaction. Lus en heure machine, le lundi 00:00 GMT+2 d'un serveur en UTC
+// s'annonçait « 17 mai », soit un jour de moins que la semaine réelle.
 function formatRange(monday, sunday) {
-  const m1 = `${monday.getDate()} ${MONTHS_FR[monday.getMonth()]}`;
-  const m2 = `${sunday.getDate()} ${MONTHS_FR[sunday.getMonth()]}`;
+  const l1 = enHeureRedaction(monday);
+  const l2 = enHeureRedaction(sunday);
+  const m1 = `${l1.getUTCDate()} ${MONTHS_FR[l1.getUTCMonth()]}`;
+  const m2 = `${l2.getUTCDate()} ${MONTHS_FR[l2.getUTCMonth()]}`;
   return `${m1} - ${m2}`;
 }
 
@@ -272,21 +305,20 @@ export function weekExpiryDate(weekId) {
  */
 export function buildWeeks(now = new Date()) {
   const currentMonday = startOfIsoWeek(now);
-  const isoDay = now.getDay() === 0 ? 7 : now.getDay(); // 1=lun, ..., 7=dim
+  // Le jour de la semaine est celui de la rédaction : c'est elle qui range
+  // les rushes, et c'est son mercredi qui fait disparaître la précédente.
+  const jour = enHeureRedaction(now).getUTCDay();
+  const isoDay = jour === 0 ? 7 : jour; // 1=lun, ..., 7=dim
   const weeks = [];
 
   // Semaine précédente visible uniquement lundi (1) et mardi (2)
   if (isoDay <= 2) {
-    const prevMonday = new Date(currentMonday);
-    prevMonday.setDate(prevMonday.getDate() - 7);
-    weeks.push(makeWeek(prevMonday, 'archived'));
+    weeks.push(makeWeek(new Date(currentMonday.getTime() - 7 * MS_PAR_JOUR), 'archived'));
   }
 
   weeks.push(makeWeek(currentMonday, 'active'));
 
-  const nextMonday = new Date(currentMonday);
-  nextMonday.setDate(nextMonday.getDate() + 7);
-  weeks.push(makeWeek(nextMonday, 'upcoming'));
+  weeks.push(makeWeek(new Date(currentMonday.getTime() + 7 * MS_PAR_JOUR), 'upcoming'));
 
   return weeks;
 }

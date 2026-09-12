@@ -592,6 +592,11 @@ export function addUpload(weekId, countryId, fileData) {
     fileData.isLate = true;
   }
 
+  // Durée en secondes, mesurée par le serveur. `null` explicite plutôt
+  // qu'absent : `undefined` disparaît à la sérialisation JSON, et l'affichage
+  // ne saurait plus distinguer « pas encore mesurée » d'un champ hors modèle.
+  if (fileData.duree === undefined) fileData.duree = null;
+
   db[weekId][countryId].push(fileData);
   persistDb();
   return fileData;
@@ -607,25 +612,94 @@ export function deleteUpload(weekId, countryId, fileId) {
   return removed;
 }
 
+/**
+ * Carnet d'adresses durable des correspondants : `{ [countryId]: { phone,
+ * majLe } }`.
+ *
+ * Un numéro de téléphone appartient au pays, pas à la semaine. Rangé
+ * uniquement sous `db[weekId]._subscriptions`, il disparaissait chaque lundi :
+ * le bloc « prévenir les pays que le JT est prêt » était vide la plupart du
+ * temps, et il fallait redemander son numéro à chacun toutes les semaines.
+ */
+function contactsStore() {
+  if (!db._contacts || typeof db._contacts !== 'object' || Array.isArray(db._contacts)) {
+    db._contacts = {};
+  }
+  return db._contacts;
+}
+
+export function getContacts() {
+  return JSON.parse(JSON.stringify(db._contacts || {}));
+}
+
+export function setContact(countryId, phone) {
+  const numero = String(phone || '').trim();
+  if (!countryId || !numero) return null;
+  const contacts = contactsStore();
+  contacts[countryId] = { phone: numero, majLe: new Date().toISOString() };
+  persistDb();
+  return { ...contacts[countryId] };
+}
+
+/** Un pays qui ne veut plus être prévenu sort du carnet, pas de la semaine. */
+export function retirerContact(countryId) {
+  if (!db._contacts?.[countryId]) return false;
+  delete db._contacts[countryId];
+  persistDb();
+  return true;
+}
+
 export function addSubscription(weekId, countryId, phone) {
   if (!db[weekId]) db[weekId] = {};
   if (!db[weekId]._subscriptions) db[weekId]._subscriptions = [];
-  
+
   const subs = db[weekId]._subscriptions;
   const existingIdx = subs.findIndex(sub => sub.countryId === countryId);
+  const dejaInscritAilleurs = existingIdx === -1 && subs.some(sub => sub.phone === phone);
+
   if (existingIdx !== -1) {
     subs[existingIdx] = { countryId, phone, timestamp: new Date().toISOString() };
     persistDb();
-  } else if (!subs.some(sub => sub.phone === phone)) {
+  } else if (!dejaInscritAilleurs) {
     subs.push({ countryId, phone, timestamp: new Date().toISOString() });
     persistDb();
   }
+
+  // Le numéro survit à la semaine : c'est celui du pays. Sauf s'il est déjà
+  // inscrit sous un autre pays — la semaine le refuse pour n'envoyer qu'un
+  // seul message à ce téléphone, et le carnet doit le refuser pour la même
+  // raison, sans quoi il le ferait réapparaître en double les semaines
+  // suivantes.
+  if (!dejaInscritAilleurs) setContact(countryId, phone);
+
   return { success: true };
 }
 
+/**
+ * Qui prévenir pour cette semaine.
+ *
+ * Les pays ayant confirmé cette semaine d'abord (`origine: 'semaine'`), puis
+ * ceux que l'on connaît par le carnet (`origine: 'contact'`) : sans eux, la
+ * liste serait vide toutes les semaines où personne n'a re-laissé son
+ * numéro. L'origine est rendue pour que la rédaction sache ce qu'elle
+ * regarde — un numéro repris n'a pas été reconfirmé par son propriétaire.
+ */
 export function getSubscriptions(weekId) {
-  if (!db[weekId]?._subscriptions) return [];
-  return db[weekId]._subscriptions;
+  const semaine = Array.isArray(db[weekId]?._subscriptions) ? db[weekId]._subscriptions : [];
+  const liste = semaine.map((sub) => ({ ...sub, origine: 'semaine' }));
+  const dejaLa = new Set(liste.map((sub) => sub.countryId));
+
+  for (const [countryId, contact] of Object.entries(db._contacts || {})) {
+    if (dejaLa.has(countryId) || !contact?.phone) continue;
+    liste.push({
+      countryId,
+      phone: contact.phone,
+      timestamp: contact.majLe || null,
+      origine: 'contact',
+    });
+  }
+
+  return liste;
 }
 
 export function updateFileStatus(weekId, fileId, status, feedback) {
@@ -692,6 +766,29 @@ export function setUploadProxy(weekId, countryId, fileId, proxyFilename, proxySi
   if (proxySize) file.proxySize = proxySize;
   persistDb();
   return file;
+}
+
+/**
+ * Pose la durée d'un fichier déjà déposé, en secondes.
+ *
+ * Le serveur mesure déjà chaque rush avec ffprobe pour fabriquer le master,
+ * puis jette la mesure. Or un journal se monte à durée contrainte : savoir ce
+ * que prélève chaque sujet se décide avant le montage, pas pendant.
+ *
+ * Une valeur inexploitable est rangée comme `null` — « durée inconnue » est
+ * une réponse, pas une erreur.
+ *
+ * @returns {boolean} faux si le fichier a disparu entre-temps.
+ */
+export function setFileDuration(weekId, countryId, fileId, duree) {
+  const list = db[weekId]?.[countryId];
+  if (!Array.isArray(list)) return false;
+  const file = list.find((f) => f && f.id === fileId);
+  if (!file) return false;
+  const secondes = Number(duree);
+  file.duree = Number.isFinite(secondes) && secondes >= 0 ? secondes : null;
+  persistDb();
+  return true;
 }
 
 /**
@@ -789,20 +886,74 @@ export function getRubriques(weekId) {
   return JSON.parse(JSON.stringify(db[weekId]?._rubriques || {}));
 }
 
+/**
+ * Les champs d'une rubrique, avec le numéro de l'état lu.
+ *
+ * Une rubrique jamais écrite est à la révision 0, et non à `undefined` :
+ * celui qui la remplit en premier peut se fonder dessus comme les suivants.
+ */
 export function getRubrique(weekId, cle) {
-  return { ...(db[weekId]?._rubriques?.[cle] || {}) };
+  const actuel = db[weekId]?._rubriques?.[cle];
+  return {
+    ...(actuel || {}),
+    revision: Number(actuel?.revision) || 0,
+    majLe: actuel?.majLe || null,
+  };
 }
 
-export function setRubrique(weekId, cle, champs) {
+/**
+ * Forme rendue par `setRubrique`.
+ *
+ * Les champs sont rendus à la fois à plat et regroupés sous `champs` : la
+ * route rend cet objet tel quel et la saisie du navigateur lit `texte`,
+ * `orateur`… à la racine depuis toujours, tandis que `revision` et `conflit`
+ * relèvent du protocole et n'ont rien à faire mêlés au contenu du journal.
+ */
+function etatRubrique(enregistrement, conflit) {
+  const { revision, majLe, ...champs } = enregistrement || {};
+  return {
+    ...champs,
+    champs,
+    revision: Number(revision) || 0,
+    majLe: majLe || null,
+    conflit,
+  };
+}
+
+/**
+ * Écrit les champs d'une rubrique sans effacer en silence le travail d'un
+ * autre.
+ *
+ * Même mécanique que le projet de montage (`saveTimelineWorkspace` et son
+ * garde dans /api/editor/timeline) : chaque enregistrement porte un numéro,
+ * et l'appelant dit sur quel numéro il a travaillé. Si la rubrique a bougé
+ * depuis, on n'écrit RIEN et on rend l'état courant, à charge pour lui de
+ * fusionner : deux personnes écrivent le conducteur en même temps, et la
+ * seconde effaçait jusqu'ici la première sans que personne ne le voie.
+ *
+ * `baseRevision` absent = client qui ne le connaît pas, comportement d'avant.
+ */
+export function setRubrique(weekId, cle, champs, { baseRevision } = {}) {
   if (!db[weekId]) db[weekId] = {};
   if (!db[weekId]._rubriques) db[weekId]._rubriques = {};
   const actuel = db[weekId]._rubriques[cle] || {};
+  const revision = Number(actuel.revision) || 0;
+
+  if (baseRevision !== undefined && baseRevision !== null && Number(baseRevision) !== revision) {
+    return etatRubrique(actuel, true);
+  }
+
   // Fusion : on n'efface pas un champ que l'appelant n'a pas envoyé. Deux
   // personnes peuvent remplir le conducteur et le texte de la voix off
   // chacune de son côté.
-  db[weekId]._rubriques[cle] = { ...actuel, ...champs, majLe: new Date().toISOString() };
+  db[weekId]._rubriques[cle] = {
+    ...actuel,
+    ...champs,
+    revision: revision + 1,
+    majLe: new Date().toISOString(),
+  };
   persistDb();
-  return { ...db[weekId]._rubriques[cle] };
+  return etatRubrique(db[weekId]._rubriques[cle], false);
 }
 
 /**
@@ -858,6 +1009,23 @@ export function getPlanning() {
       Object.entries(p.semaines).map(([id, s]) => [id, JSON.parse(JSON.stringify(s))]),
     ),
   };
+}
+
+/**
+ * Numéro d'édition de la rédaction pour une semaine (« Sem. 18 »), ou ''.
+ *
+ * L'application affiche « Semaine 37 » (le numéro ISO, celui qui sert de
+ * clé) là où le planning affiche « Sem. 18 » : c'est la même semaine, à 19
+ * près. Faire porter les deux à l'API des semaines évite que chaque écran
+ * refasse la conversion — et une semaine non programmée n'en a tout
+ * simplement pas, d'où la chaîne vide plutôt qu'un numéro inventé.
+ *
+ * Lecture seule, sans passer par `planningStore()` : consulter le libellé
+ * d'une semaine ne doit pas créer un planning vide dans le store.
+ */
+export function libelleSemaine(weekId) {
+  const libelle = db._planning?.semaines?.[weekId]?.libelle;
+  return typeof libelle === 'string' ? libelle : '';
 }
 
 export function ajouterMonteur(nom) {
@@ -933,7 +1101,9 @@ export function marquerSujetMonte(weekId, sujetId, monte) {
 // Clés réservées du store (méta-données qui ne sont pas des semaines).
 // `_liens` en fait partie : sans ça, les balayages de purge liraient le
 // registre des liens comme s'il s'agissait d'une semaine de reportages.
-const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens', '_planning']);
+// `_contacts` aussi, pour la même raison : le carnet d'adresses survit aux
+// semaines, c'est tout son intérêt.
+const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens', '_planning', '_contacts']);
 
 export function getFileMetadata(filename) {
   for (const weekId of Object.keys(db)) {

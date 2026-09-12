@@ -110,6 +110,26 @@ describe('leurs champs', () => {
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/orateur/);
   });
+
+  it('numérote chaque enregistrement, pour que deux mains ne s’effacent pas', async () => {
+    // Le conducteur s'écrit à plusieurs. La réponse dit désormais sur quelle
+    // révision le formulaire vient d'écrire — même mécanique que le plan de
+    // montage — sans rien changer à ce que la saisie lit déjà à la racine.
+    const res = await request(app)
+      .put(`/api/rubriques/${SEMAINE}/conducteur`)
+      .set('X-Reporter-Token', lien)
+      .send({ texte: 'Relecture du conducteur.' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.conflit).toBe(false);
+    expect(res.body.revision).toBeGreaterThan(0);
+    expect(res.body.texte).toBe('Relecture du conducteur.');
+    expect(res.body.champs.texte).toBe('Relecture du conducteur.');
+
+    // Et la lecture rend le même numéro, celui sur lequel un client se fonde.
+    const lu = await request(app).get(`/api/rubriques/${SEMAINE}/conducteur`);
+    expect(lu.body.champs.revision).toBe(res.body.revision);
+  });
 });
 
 describe('qui peut les remplir', () => {

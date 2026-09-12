@@ -42,3 +42,18 @@ export function useToast() {
   }
   return context;
 }
+
+// Un message affiché en passant n'est pas une raison de faire tomber son
+// parent. Les composants feuilles montés un peu partout — la cloche des
+// notifications dans la barre de navigation, par exemple — ne doivent pas
+// imposer un fournisseur à tous leurs hôtes : sans lui, le message n'est
+// simplement pas affiché, et l'écran continue de fonctionner.
+const SANS_FOURNISSEUR = Object.freeze({
+  toasts: [],
+  addToast: () => {},
+  removeToast: () => {},
+});
+
+export function useOptionalToast() {
+  return useContext(ToastContext) || SANS_FOURNISSEUR;
+}

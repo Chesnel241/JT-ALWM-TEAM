@@ -7,7 +7,7 @@ import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
+import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import { sectionsFromUploads, classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
@@ -408,7 +408,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     setIsRequestingDelay(true);
     try {
       await api.requestDelay(selectedWeek, country.id);
-      addToast(t.uploader?.delayRequested || 'Demande de délai envoyée', 'success');
+      addToast(t.delais.accuse, 'success');
       // Refresh delays
       const dls = await api.getDelays(selectedWeek);
       setDelaysData(dls);
@@ -574,7 +574,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           >
             {weeks.map((w) => (
               <option key={w.id} value={w.id}>
-                {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
+                {formatWeekFull(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
               </option>
             ))}
           </select>
@@ -596,7 +596,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           {extensionStatus === 'pending' ? (
             <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-medium text-sm shrink-0 sm:max-w-[240px]">
               <Clock size={18} className="shrink-0" />
-              <span>Demande de délai envoyée — en attente de validation.</span>
+              <span>{t.delais.accuse}</span>
             </div>
           ) : extensionStatus === 'approved' ? (
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium text-sm shrink-0">
