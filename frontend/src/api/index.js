@@ -193,8 +193,11 @@ export const api = {
   // === Sujets ===
   // Un sujet est l'unité de travail : un titre, un auteur, un état. Les
   // fichiers s'y rattachent par `sujetId` au lieu d'une étiquette texte.
-  getSujets: (weekId, countryId) =>
-    request(countryId ? `/sujets/${weekId}/${countryId}` : `/sujets/${weekId}`),
+  // Sans `countryId`, c'est la semaine entiere : une vue transversale que
+  // seule la redaction peut lire (middleware/portee.js cote serveur), d'ou
+  // le mot de passe montage.
+  getSujets: (weekId, countryId, adminPassword) =>
+    request(countryId ? `/sujets/${weekId}/${countryId}` : `/sujets/${weekId}`, { adminPassword }),
 
   createSujet: (weekId, countryId, titre) =>
     request(`/sujets/${weekId}/${countryId}`, {
@@ -218,17 +221,17 @@ export const api = {
       body: JSON.stringify({ etat }),
     }),
 
-  deleteSujet: (weekId, countryId, sujetId) =>
-    request(`/sujets/${weekId}/${countryId}/${sujetId}`, { method: 'DELETE' }),
+  deleteSujet: (weekId, countryId, sujetId, adminPassword) =>
+    request(`/sujets/${weekId}/${countryId}/${sujetId}`, { method: 'DELETE', adminPassword }),
 
   getUploads: (weekId, countryId) =>
     request(`/uploads/${weekId}/${countryId}`),
 
-  getDashboard: (weekId) =>
-    request(`/uploads/${weekId}`),
+  getDashboard: (weekId, adminPassword) =>
+    request(`/uploads/${weekId}`, { adminPassword }),
 
-  getTimelineWorkspace: (weekId) =>
-    request(`/editor/timeline/${weekId}`),
+  getTimelineWorkspace: (weekId, adminPassword) =>
+    request(`/editor/timeline/${weekId}`, { adminPassword }),
 
   saveTimelineWorkspace: (weekId, workspace, adminPassword) =>
     request(`/editor/timeline/${weekId}`, {
@@ -250,6 +253,17 @@ export const api = {
 
   getSubscriptions: (weekId, adminPassword) =>
     request(`/notifications/${weekId}`, { adminPassword }),
+
+  // La voix off passait jusqu'ici par un fetch a la main, qui envoyait le
+  // jeton de session dans l'en-tete du mot de passe admin — donc un en-tete
+  // toujours faux, et aucun lien personnel. `request` assemble les deux
+  // correctement, et c'est ce qui la fait passer la portee.
+  uploadVoiceover: (weekId, countryId, formData, adminPassword) =>
+    request(`/uploads/voiceover/${weekId}/${countryId}`, {
+      method: 'POST',
+      body: formData,
+      adminPassword,
+    }),
 
   uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, sujetId, adminPassword } = {}) => {
     const { Upload } = await import('tus-js-client');
@@ -373,7 +387,7 @@ export const api = {
       body: JSON.stringify({ status, feedback })
     }),
 
-  getAnalytics: () => request('/analytics'),
+  getAnalytics: (adminPassword) => request('/analytics', { adminPassword }),
 
   // === Editor / Studio de Montage ===
   editorConcat: (payload, adminPassword) => request('/editor/concat', {

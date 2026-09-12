@@ -760,7 +760,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       let migratedFromBrowser = false;
       let onlineAvailable = true;
       try {
-        const response = await api.getTimelineWorkspace(selectedWeek);
+        const response = await api.getTimelineWorkspace(selectedWeek, adminPasswordRef.current);
         workspace = response?.workspace;
         if (!workspace) {
           workspace = readLegacyWorkspace();
@@ -807,7 +807,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
     hydrateTimeline();
 
-    api.getDashboard(selectedWeek)
+    api.getDashboard(selectedWeek, adminPasswordRef.current)
       .then(setDashboard)
       .catch((err) => {
         console.error(err);
@@ -815,7 +815,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       })
       .finally(() => setLoading(false));
 
-    api.getSujets(selectedWeek)
+    api.getSujets(selectedWeek, null, adminPasswordRef.current)
       .then((list) => setSujets(Array.isArray(list) ? list : []))
       .catch(() => setSujets([]));
 
@@ -824,7 +824,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       .catch(console.error);
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWeek]);
+  }, [selectedWeek, authenticatedAdminPassword]);
 
   // Sauvegarde en ligne, debouncée pour ne pas envoyer une requête à chaque
   // pixel pendant le rognage. Le projet est ensuite disponible sur tout poste.
@@ -904,13 +904,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // Refresh dashboard quietly when becoming active
   useEffect(() => {
     if (!selectedWeek || !isActive) return;
-    api.getDashboard(selectedWeek)
+    api.getDashboard(selectedWeek, adminPasswordRef.current)
       .then(setDashboard)
       .catch(console.error);
     api.getDeliveries(selectedWeek)
       .then(setDeliveries)
       .catch(console.error);
-  }, [isActive, selectedWeek]);
+  }, [isActive, selectedWeek, authenticatedAdminPassword]);
 
   // Connect socket.io for real-time updates when authenticated as admin
   useEffect(() => {
@@ -944,9 +944,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     socket.on('upload_update', (data) => {
       if (data.weekId === selectedWeek) {
         addToast('Nouveau fichier !', 'info');
-        api.getDashboard(selectedWeek).then(setDashboard).catch(console.error);
+        api.getDashboard(selectedWeek, adminPasswordRef.current).then(setDashboard).catch(console.error);
         api.getDeliveries(selectedWeek).then(setDeliveries).catch(console.error);
-        api.getSujets(selectedWeek).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
+        api.getSujets(selectedWeek, null, adminPasswordRef.current).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
       }
     });
 
@@ -954,7 +954,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // recharger : le monteur travaille avec cet écran ouvert des heures.
     socket.on('sujet_update', (data) => {
       if (data.weekId === selectedWeek) {
-        api.getSujets(selectedWeek).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
+        api.getSujets(selectedWeek, null, adminPasswordRef.current).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
       }
     });
 
@@ -963,7 +963,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         // Synchronisation automatique si nous n'avons pas de modification locale en attente d'enregistrement
         if (!pendingTimelineSaveRef.current) {
           try {
-            const resp = await api.getTimelineWorkspace(selectedWeek);
+            const resp = await api.getTimelineWorkspace(selectedWeek, adminPasswordRef.current);
             if (resp?.workspace) {
               applyWorkspace(resp.workspace);
               setTimelineSyncState('saved');
@@ -1472,7 +1472,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       });
       addToast('Upload du reportage assemblé réussi', 'success');
       setAdminUploadOpen(false);
-      const updatedDashboard = await api.getDashboard(selectedWeek);
+      const updatedDashboard = await api.getDashboard(selectedWeek, adminPasswordRef.current);
       setDashboard(updatedDashboard);
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 5000);
@@ -1486,7 +1486,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // Rafraîchit le dashboard puis retourne le fichier ajouté { filename, name }.
   const uploadAsset = async (fileObj) => {
     await api.uploadFile(selectedWeek, 'tj', fileObj, { adminPassword: authenticatedAdminPassword });
-    const fresh = await api.getDashboard(selectedWeek);
+    const fresh = await api.getDashboard(selectedWeek, adminPasswordRef.current);
     setDashboard(fresh);
     const list = Array.isArray(fresh?.tj) ? fresh.tj : [];
     const match = [...list].reverse().find((f) => f.name === fileObj.name) || list[list.length - 1];
@@ -2890,7 +2890,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         selectedWeek={selectedWeek}
         selectedBin={selectedBin}
         adminPassword={authenticatedAdminPassword}
-        onContentChange={() => api.getDashboard(selectedWeek).then(setDashboard).catch(console.error)}
+        onContentChange={() => api.getDashboard(selectedWeek, adminPasswordRef.current).then(setDashboard).catch(console.error)}
       />
 
       {selectedBin && (

@@ -8,6 +8,8 @@ import { useToast } from '../hooks/useToast.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import { formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
+import { api } from '../api/index.js';
+import { readAdminPassword } from '../lib/adminSession.js';
 
 const getSupportedMimeType = () => {
   if (typeof MediaRecorder === 'undefined') return '';
@@ -344,20 +346,7 @@ export default function VoixOffView({
     try {
       setUploadStepText('Traitement studio broadcast FFmpeg (égalisation + compresseur dynamique)...');
 
-      const res = await fetch(`/api/uploads/voiceover/${selectedWeek}/${selectedCountry.id}`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-        headers: {
-          'X-App-Password': localStorage.getItem('app-password') || '',
-          'x-admin-password': localStorage.getItem('app-password') || '',
-        },
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || 'Erreur lors de l\'envoi de la voix-off.');
-      }
+      await api.uploadVoiceover(selectedWeek, selectedCountry.id, formData, readAdminPassword());
 
       addToast('Voix off traitée et ajoutée aux rushes avec succès !', 'success', 6000);
 
