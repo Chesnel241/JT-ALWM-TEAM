@@ -39,12 +39,11 @@ function loadCountries() {
     }
   }
 
-  // Injecter systématiquement "Titres & Rappels JT" s'il n'existe pas
-  if (!list.find(c => c.id === 'tj')) {
-    list = [{ id: 'tj', name: 'Titres & Rappels JT', code: 'TJ' }, ...list];
-  }
-
-  return list;
+  // « Titres & Rappels » était injecté ici comme un pays. Ce n'en est pas un :
+  // c'est le conducteur du journal, et il a désormais sa propre rubrique
+  // (data/rubriques.js), avec ses champs. On le RETIRE de la liste des pays,
+  // y compris d'un COUNTRIES_JSON hérité qui le contiendrait encore.
+  return list.filter((c) => c.id !== 'tj');
 }
 
 export const COUNTRIES = loadCountries();
@@ -57,7 +56,13 @@ export const COUNTRIES = loadCountries();
  * `delivery` → route /api/deliveries séparée, `studio` → vue read-only) ne
  * sont jamais envoyés comme countryId au backend.
  */
-export const SPECIAL_BUCKETS = new Set(['mj']);
+/**
+ * Tiroirs de rangement qui ne sont pas des pays : les deux rubriques du
+ * journal (conducteur et Mot du JT). Leurs identifiants restent `tj` et `mj`
+ * — c'est ainsi que le studio de montage et les exports les adressent — mais
+ * ils ne figurent plus dans la liste des pays.
+ */
+export const SPECIAL_BUCKETS = new Set(['mj', 'tj']);
 
 /**
  * Heure de clôture des envois : **dimanche 10h30 en GMT+2**.

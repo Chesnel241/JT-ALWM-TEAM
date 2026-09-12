@@ -141,13 +141,24 @@ describe('cran `strict` — la portée s’applique', () => {
     expect(res.body.message).toMatch(/lien personnel/i);
   });
 
-  it('refuse les chutiers de la rédaction même à un lien bien signé', async () => {
+  it('ouvre les rubriques du journal à tout correspondant identifié', async () => {
+    // Le conducteur et le Mot du JT ne sont le pays de personne : il suffit
+    // d'être identifié, quel que soit le pays de son lien.
     strict();
-    for (const bucket of ['tj', 'mj']) {
+    for (const rubrique of ['tj', 'mj']) {
       const res = await request(app)
-        .get(`/api/uploads/${SEMAINE}/${bucket}`)
+        .get(`/api/uploads/${SEMAINE}/${rubrique}`)
         .set('X-Reporter-Token', lienPour(GABON));
-      expect(res.status).toBe(403);
+      expect(res.status, rubrique).toBe(200);
+    }
+  });
+
+  it('refuse ces mêmes rubriques à qui ne présente aucun lien', async () => {
+    strict();
+    for (const rubrique of ['tj', 'mj']) {
+      const res = await request(app).get(`/api/uploads/${SEMAINE}/${rubrique}`);
+      expect(res.status, rubrique).toBe(403);
+      expect(res.body.message).toMatch(/lien personnel/i);
     }
   });
 
@@ -203,12 +214,13 @@ describe('révocation d’un lien', () => {
     expect(apres.status).toBe(403);
   });
 
-  it('n’émet pas de lien pour un chutier de la rédaction', async () => {
+  it('n’émet pas de lien « pour le conducteur » — ce n’est pas un pays', async () => {
     const res = await request(app)
       .post('/api/liens')
       .set('X-Admin-Password', ADMIN)
       .send({ pays: 'tj', nom: 'Quelqu’un' });
     expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/n'est pas un pays/i);
   });
 });
 

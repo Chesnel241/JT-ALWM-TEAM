@@ -12,6 +12,7 @@ import weeksRouter from './routes/weeks.js';
 import sujetsRouter from './routes/sujets.js';
 import liensRouter from './routes/liens.js';
 import planningRouter from './routes/planning.js';
+import rubriquesRouter from './routes/rubriques.js';
 import uploadsRouter from './routes/uploads.js';
 import deliveriesRouter from './routes/deliveries.js';
 import notificationsRouter from './routes/notifications.js';
@@ -328,6 +329,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/sujets', sujetsRouter);
   app.use('/api/liens', liensRouter);
   app.use('/api/planning', planningRouter);
+  app.use('/api/rubriques', rubriquesRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/themes', themesRouter);

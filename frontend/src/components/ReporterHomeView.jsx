@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Upload, Download, Mic, ChevronRight, MessageCircle, Bell,
+  Upload, Download, Mic, Mic2, ListOrdered, ChevronRight, MessageCircle, Bell,
   ArrowRight, RefreshCw, CheckCircle, AlertCircle, Clock,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -24,6 +24,8 @@ export default function ReporterHomeView({
   onOpenReports,
   onOpenVoixOff,
   onOpenDelivery,
+  onOpenConducteur,
+  onOpenMotDuJt,
   homeCountry = null,
   homeCountryConfirmed = false,
   onContinueWithCountry,
@@ -70,8 +72,38 @@ export default function ReporterHomeView({
       },
     },
     {
-      key: 'delivery',
+      key: 'conducteur',
       step: 3,
+      Icon: ListOrdered,
+      title: 'Le conducteur du JT',
+      text: 'Le déroulé du journal, la voix off et son texte. Il recense les reportages de tous les pays.',
+      cta: 'Ouvrir le conducteur',
+      onClick: onOpenConducteur,
+      tone: {
+        card: 'border-[var(--border)] hover:border-[color:var(--accent)]',
+        icon: 'bg-[var(--accent-deep)] text-white',
+        cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
+        step: 'bg-[var(--accent)]/10 text-[color:var(--accent-deep)]',
+      },
+    },
+    {
+      key: 'motDuJt',
+      step: 4,
+      Icon: Mic2,
+      title: 'Le Mot du JT',
+      text: "L'intervention filmée : la vidéo, puis le nom de l'orateur, son pays et son thème.",
+      cta: 'Ouvrir le Mot du JT',
+      onClick: onOpenMotDuJt,
+      tone: {
+        card: 'border-[var(--border)] hover:border-[color:var(--accent-soft)]',
+        icon: 'bg-[var(--accent-soft)] text-[#111827]',
+        cta: 'bg-[var(--action)] text-white shadow-md shadow-[var(--action)]/25',
+        step: 'bg-[var(--accent-soft)]/25 text-[color:var(--accent-deep)]',
+      },
+    },
+    {
+      key: 'delivery',
+      step: 5,
       Icon: Download,
       title: r.downloadTitle,
       text: r.downloadText,

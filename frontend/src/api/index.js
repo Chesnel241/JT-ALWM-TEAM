@@ -239,6 +239,20 @@ export const api = {
       body: JSON.stringify({ pays, nom }),
     }),
 
+  // === Rubriques du journal (conducteur, Mot du JT) ===
+  // Ce ne sont pas des pays : elles ont leurs propres champs, décrits par le
+  // serveur, et tout correspondant identifié peut les remplir.
+  getRubriques: (weekId) => request(`/rubriques/${weekId}`),
+
+  getRubrique: (weekId, cle) => request(`/rubriques/${weekId}/${cle}`),
+
+  setRubrique: (weekId, cle, champs) =>
+    request(`/rubriques/${weekId}/${cle}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(champs),
+    }),
+
   // === Planning des monteurs ===
   getPlanning: (adminPassword) => request('/planning', { adminPassword }),
 

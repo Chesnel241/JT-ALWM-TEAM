@@ -3,7 +3,8 @@ import { randomUUID } from 'crypto';
 import { issueReporterToken, isReporterTokenConfigured } from '../lib/reporterToken.js';
 import { isCountryAccepted } from '../data/constants.js';
 import { getCustomCountries, enregistrerLien, revoquerLien, listerLiens } from '../data/store.js';
-import { BUCKETS_REDACTION, niveauAcces } from '../middleware/portee.js';
+import { niveauAcces } from '../middleware/portee.js';
+import { estRubrique, trouverRubrique } from '../data/rubriques.js';
 import { lireEtat } from '../services/porteeStats.js';
 import { lireRefus } from '../middleware/rateLimiter.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
@@ -35,12 +36,13 @@ router.post('/', requireAdmin, createLimiter, asyncHandler(async (req, res, next
   if (!isCountryAccepted(paysPropre, getCustomCountries())) {
     return next(createErrors.badRequest('Pays inconnu.'));
   }
-  // `mj` et `tj` sont des rangements de la rédaction, pas des pays de
-  // correspondant : un lien personnel n'y donnerait accès à personne (la
-  // portée les refuse), autant ne pas laisser en émettre un.
-  if (BUCKETS_REDACTION.has(paysPropre)) {
+  // `tj` et `mj` sont les deux rubriques du journal, pas des pays. Elles
+  // s'ouvrent à n'importe quel lien valide : émettre un lien « pour le
+  // conducteur » n'aurait pas de sens, et créerait un pays fantôme.
+  if (estRubrique(paysPropre)) {
+    const nom = trouverRubrique(paysPropre)?.nom || 'Cette rubrique';
     return next(createErrors.badRequest(
-      'Ce chutier appartient à la rédaction : aucun lien de correspondant ne peut y être émis.'
+      `${nom} n'est pas un pays : elle est ouverte à tout correspondant muni de son lien, quel qu'il soit.`
     ));
   }
 

@@ -23,11 +23,25 @@ describe('COUNTRIES env override', () => {
       { id: 'bf', name: 'Burkina Faso', code: 'BF' },
     ]);
     const { COUNTRIES } = await loadConstants();
-    // 'tj' (Titres & Rappels JT) est toujours injecté en tête → 2 + 1.
-    expect(COUNTRIES).toHaveLength(3);
-    expect(COUNTRIES.find((c) => c.id === 'tj')).toBeDefined();
+    // Deux pays déclarés, deux pays rendus : « Titres & Rappels » n'est plus
+    // injecté ici. C'est le conducteur du journal, devenu une rubrique.
+    expect(COUNTRIES).toHaveLength(2);
     expect(COUNTRIES.find((c) => c.id === 'bj')).toBeDefined();
     expect(COUNTRIES.find((c) => c.id === 'bf')).toBeDefined();
+  });
+
+  it('écarte « tj » même d’un COUNTRIES_JSON hérité qui le contiendrait', async () => {
+    // Une configuration déployée avant ce changement peut encore le lister.
+    process.env.COUNTRIES_JSON = JSON.stringify([
+      { id: 'tj', name: 'Titres & Rappels JT', code: 'TJ' },
+      { id: 'bj', name: 'Bénin', code: 'BJ' },
+    ]);
+    const { COUNTRIES, SPECIAL_BUCKETS, isCountryAccepted } = await loadConstants();
+    expect(COUNTRIES.find((c) => c.id === 'tj')).toBeUndefined();
+    // Il reste un tiroir de rangement valide : les fichiers déjà déposés y
+    // sont toujours, et le studio de montage les adresse toujours ainsi.
+    expect(SPECIAL_BUCKETS.has('tj')).toBe(true);
+    expect(isCountryAccepted('tj')).toBe(true);
   });
 
   it('falls back to default when COUNTRIES_JSON is malformed JSON', async () => {

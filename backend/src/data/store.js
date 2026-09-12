@@ -347,7 +347,7 @@ export async function flushStore() {
 // Clés réservées d'une entrée de semaine (`db[weekId][...]`) qui ne sont
 // pas des correspondants. `_delivery` = montage final ("JT Prêt"),
 // `_timeline` = projet de montage partagé entre les postes de travail.
-const RESERVED_WEEK_KEYS = new Set(['_delivery', '_timeline', '_sujets', '_subscriptions', '_extensions']);
+const RESERVED_WEEK_KEYS = new Set(['_delivery', '_timeline', '_sujets', '_subscriptions', '_extensions', '_rubriques']);
 
 /**
  * Un identifiant de pays ne commence jamais par un tiret bas : c'est la marque
@@ -775,6 +775,34 @@ export function listerLiens() {
 export function estLienRevoque(id) {
   if (!id || !db._liens) return false;
   return Boolean(db._liens[id]?.revoqueLe);
+}
+
+/**
+ * Champs structurés des deux rubriques du journal, par semaine.
+ *
+ * Le conducteur et le texte de la voix off étaient déposés comme des `.txt`
+ * téléversés : corriger une virgule réécrivait un fichier. Ce sont des champs
+ * éditables. Les FICHIERS (voix off, vidéo de l'intervenant) continuent,
+ * eux, d'emprunter le chemin d'envoi habituel, dans les tiroirs `tj` et `mj`.
+ */
+export function getRubriques(weekId) {
+  return JSON.parse(JSON.stringify(db[weekId]?._rubriques || {}));
+}
+
+export function getRubrique(weekId, cle) {
+  return { ...(db[weekId]?._rubriques?.[cle] || {}) };
+}
+
+export function setRubrique(weekId, cle, champs) {
+  if (!db[weekId]) db[weekId] = {};
+  if (!db[weekId]._rubriques) db[weekId]._rubriques = {};
+  const actuel = db[weekId]._rubriques[cle] || {};
+  // Fusion : on n'efface pas un champ que l'appelant n'a pas envoyé. Deux
+  // personnes peuvent remplir le conducteur et le texte de la voix off
+  // chacune de son côté.
+  db[weekId]._rubriques[cle] = { ...actuel, ...champs, majLe: new Date().toISOString() };
+  persistDb();
+  return { ...db[weekId]._rubriques[cle] };
 }
 
 /**

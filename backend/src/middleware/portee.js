@@ -25,7 +25,8 @@
 
 import { createErrors } from './errorHandler.js';
 import { safeEqual, normalizeToken } from './auth.js';
-import { COUNTRIES, SPECIAL_BUCKETS } from '../data/constants.js';
+import { COUNTRIES } from '../data/constants.js';
+import { estRubrique, trouverRubrique } from '../data/rubriques.js';
 import { getCustomCountries } from '../data/store.js';
 import { noteAcces, DECISIONS } from '../services/porteeStats.js';
 
@@ -36,11 +37,15 @@ export const NIVEAUX = Object.freeze({
 });
 
 /**
- * Chutiers éditoriaux : ce ne sont pas des pays de correspondant mais des
- * rangements de la rédaction (`mj` = Mot du JT, `tj` = Titres & Rappels).
- * Aucun lien personnel ne doit y donner accès, même bien signé.
+ * Les deux rubriques du journal — le conducteur et le Mot du JT — ne sont
+ * pas des pays, et n'appartiennent donc à aucun correspondant en
+ * particulier. Décision produit : **tout correspondant identifié** peut les
+ * remplir ; un inconnu, non.
+ *
+ * Elles étaient auparavant traitées comme des chutiers réservés à la
+ * rédaction, ce qui les rendait inaccessibles à celui qui rédige le
+ * conducteur.
  */
-export const BUCKETS_REDACTION = new Set([...SPECIAL_BUCKETS, 'tj']);
 
 // Relu à chaque appel, comme ADMIN_PASSWORD dans requireAdmin : le cran doit
 // pouvoir changer par simple redémarrage, et les tests le basculent d'un bloc
@@ -89,9 +94,10 @@ function refus(message, code) {
   return err;
 }
 
-function messageRefus({ decision, bucket, pays, paysDuLien }) {
-  if (bucket) {
-    return 'Ce chutier est réservé à l\'équipe de rédaction.';
+function messageRefus({ decision, rubrique, pays, paysDuLien }) {
+  if (rubrique) {
+    const nom = trouverRubrique(pays)?.nom || 'Cette rubrique';
+    return `${nom} demande votre lien personnel. Demandez-le à la rédaction : n'importe lequel convient, cette rubrique n'appartient à aucun pays.`;
   }
   if (decision === DECISIONS.HORS_PAYS) {
     return `Votre lien personnel est celui du pays « ${nomPays(paysDuLien)} » : il ne donne pas accès aux reportages du pays « ${nomPays(pays)} ». Demandez le bon lien à la rédaction.`;
@@ -142,14 +148,12 @@ function deciderPays({ redaction, correspondant, pays }) {
 
   const lien = correspondant || null;
 
-  // Un chutier éditorial n'appartient à personne d'autre qu'à la rédaction :
-  // on ne compare même pas le lien, il ne peut pas correspondre.
-  if (BUCKETS_REDACTION.has(pays)) {
-    return {
-      decision: lien ? DECISIONS.HORS_PAYS : DECISIONS.ANONYME,
-      bucket: true,
-      paysDuLien: lien?.pays || null,
-    };
+  // Une rubrique du journal n'est le pays de personne : il suffit d'être
+  // identifié, quel que soit le pays de son lien.
+  if (estRubrique(pays)) {
+    return lien
+      ? { decision: DECISIONS.IDENTIFIE }
+      : { decision: DECISIONS.ANONYME, rubrique: true };
   }
 
   if (!lien) return { decision: DECISIONS.ANONYME };

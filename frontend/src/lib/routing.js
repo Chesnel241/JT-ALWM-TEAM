@@ -50,6 +50,10 @@ const ROUTES = {
     ['home', 'reportage'],
     ['uploader', 'reportage/envoi'],
     ['voixoff', 'voix-off'],
+    // Les deux rubriques du journal. Ce ne sont pas des pays : elles ont
+    // leur propre adresse, et non un segment de pays.
+    ['conducteur', 'conducteur'],
+    ['motDuJt', 'mot-du-jt'],
     ['delivery', 'telecharger-le-jt'],
   ],
   // L'équipe montage ouvre directement sur son studio : c'est là qu'elle

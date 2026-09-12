@@ -37,6 +37,7 @@ const VoixOffView = lazy(() => import('./components/VoixOffView.jsx'));
 const EditorView = lazy(() => import('./components/EditorView.jsx'));
 const StatsView = lazy(() => import('./components/StatsView.jsx'));
 const PlanningView = lazy(() => import('./components/PlanningView.jsx'));
+const RubriqueView = lazy(() => import('./components/RubriqueView.jsx'));
 const ReporterHomeView = lazy(() => import('./components/ReporterHomeView.jsx'));
 import LoginView from './components/LoginView.jsx';
 
@@ -407,6 +408,8 @@ function AppShell() {
                 <ReporterHomeView
                   onOpenReports={() => navigate('home')}
                   onOpenVoixOff={() => navigate('voixoff')}
+                  onOpenConducteur={() => navigate('conducteur')}
+                  onOpenMotDuJt={() => navigate('motDuJt')}
                   onOpenDelivery={() => navigate('delivery')}
                   homeCountry={homeCountry}
                   homeCountryConfirmed={homeCountryConfirmed}
@@ -474,6 +477,25 @@ function AppShell() {
                   isReporter={isReporter}
                 />
               </div>
+            )}
+            {/* Les deux rubriques du journal. Montées seulement quand on y
+                est : elles rechargent leurs champs à l'ouverture, et rien ne
+                sert de les tenir en mémoire le reste du temps. */}
+            {canRender('conducteur') && currentView === 'conducteur' && (
+              <RubriqueView
+                cle="conducteur"
+                selectedWeek={selectedWeek}
+                onBack={() => navigate('hub')}
+                isActive
+              />
+            )}
+            {canRender('motDuJt') && currentView === 'motDuJt' && (
+              <RubriqueView
+                cle="motDuJt"
+                selectedWeek={selectedWeek}
+                onBack={() => navigate('hub')}
+                isActive
+              />
             )}
             {canRender('planning') && (
               <div className={currentView === 'planning' ? 'block' : 'hidden'}>
