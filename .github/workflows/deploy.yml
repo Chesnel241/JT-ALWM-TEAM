@@ -145,7 +145,13 @@ jobs:
       - name: 🐳 Build & push Frontend image
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          # Contexte : la RACINE du dépôt, pas ./frontend. Le Dockerfile du
+          # frontend fait `COPY remotion /remotion` — un dossier situé hors de
+          # frontend/ — et écrit tous ses autres COPY depuis la racine. C'est
+          # déjà ce que fait docker-compose.yml ; le workflow, lui, passait
+          # ./frontend, si bien qu'aucun de ces chemins n'existait.
+          context: .
+          file: ./frontend/Dockerfile
           push: true
           tags: ${{ steps.frontend-meta.outputs.tags }}
           labels: ${{ steps.frontend-meta.outputs.labels }}
