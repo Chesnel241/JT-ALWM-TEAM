@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { TEST_UPLOADS_DIR } from './setup.js';
+import { RUBRIQUES, nettoyerChamps } from '../src/data/rubriques.js';
 
 /**
  * Le conducteur et le Mot du JT ne sont plus des pays.
@@ -109,6 +110,81 @@ describe('leurs champs', () => {
       .send({ nimporte: 'quoi' });
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/orateur/);
+  });
+
+  it('numérote chaque enregistrement, pour que deux mains ne s’effacent pas', async () => {
+    // Le conducteur s'écrit à plusieurs. La réponse dit désormais sur quelle
+    // révision le formulaire vient d'écrire — même mécanique que le plan de
+    // montage — sans rien changer à ce que la saisie lit déjà à la racine.
+    const res = await request(app)
+      .put(`/api/rubriques/${SEMAINE}/conducteur`)
+      .set('X-Reporter-Token', lien)
+      .send({ texte: 'Relecture du conducteur.' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.conflit).toBe(false);
+    expect(res.body.revision).toBeGreaterThan(0);
+    expect(res.body.texte).toBe('Relecture du conducteur.');
+    expect(res.body.champs.texte).toBe('Relecture du conducteur.');
+
+    // Et la lecture rend le même numéro, celui sur lequel un client se fonde.
+    // Il vit à la racine de la réponse, pas parmi les champs : la révision
+    // relève du protocole d'écriture, elle n'est pas un contenu du journal et
+    // ne doit jamais se retrouver affichée dans un formulaire de saisie.
+    const lu = await request(app).get(`/api/rubriques/${SEMAINE}/conducteur`);
+    expect(lu.body.revision).toBe(res.body.revision);
+    expect(lu.body.champs.texte).toBe('Relecture du conducteur.');
+    expect(lu.body.champs).not.toHaveProperty('revision');
+    expect(lu.body.champs).not.toHaveProperty('majLe');
+  });
+
+  it('refuse une écriture fondée sur une révision périmée, sans rien perdre', async () => {
+    // Deux personnes ouvrent le conducteur en même temps. La seconde écrivait
+    // par-dessus la première, sans que personne ne le sache.
+    const premiere = await request(app)
+      .put(`/api/rubriques/${SEMAINE}/conducteur`)
+      .set('X-Reporter-Token', lien)
+      .send({ texte: 'Version de la première personne.' });
+    expect(premiere.status).toBe(200);
+
+    const revisionPerimee = premiere.body.revision - 1;
+    const seconde = await request(app)
+      .put(`/api/rubriques/${SEMAINE}/conducteur`)
+      .set('X-Reporter-Token', lien)
+      .send({ texte: 'Version de la seconde.', baseRevision: revisionPerimee });
+
+    expect(seconde.status).toBe(409);
+    expect(seconde.body.conflit).toBe(true);
+    // Rien n'a été écrit : le texte de la première est intact, et la seconde
+    // reçoit de quoi se resituer plutôt qu'une erreur opaque.
+    expect(seconde.body.texte).toBe('Version de la première personne.');
+    expect(seconde.body.revision).toBe(premiere.body.revision);
+
+    const lu = await request(app).get(`/api/rubriques/${SEMAINE}/conducteur`);
+    expect(lu.body.champs.texte).toBe('Version de la première personne.');
+  });
+
+  it('écrit toujours quand le client n’annonce aucune révision', async () => {
+    // Un onglet ouvert avant la mise à jour n'envoie pas `baseRevision` :
+    // il doit continuer de fonctionner exactement comme avant.
+    const res = await request(app)
+      .put(`/api/rubriques/${SEMAINE}/conducteur`)
+      .set('X-Reporter-Token', lien)
+      .send({ texte: 'Écrit par un client plus ancien.' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.conflit).toBe(false);
+    expect(res.body.texte).toBe('Écrit par un client plus ancien.');
+  });
+
+  it('ne prend jamais « baseRevision » pour un champ du journal', () => {
+    // Elle voyage dans le même corps que le texte : si elle était rangée avec
+    // les champs, elle finirait affichée dans le conducteur.
+    const propre = nettoyerChamps(RUBRIQUES.conducteur, {
+      texte: 'Ouverture.',
+      baseRevision: 7,
+    });
+    expect(propre).toEqual({ texte: 'Ouverture.' });
   });
 });
 

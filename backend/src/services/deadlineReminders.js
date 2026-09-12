@@ -1,11 +1,7 @@
 import logger from '../logger/index.js';
-import {
-  getWeekUploads,
-  getCustomCountries,
-  wasReminderSent,
-  markReminderSent,
-} from '../data/store.js';
-import { COUNTRIES, SPECIAL_BUCKETS, buildWeeks, weekUploadCutoff } from '../data/constants.js';
+import { wasReminderSent, markReminderSent } from '../data/store.js';
+import { buildWeeks, weekUploadCutoff, CLOTURE } from '../data/constants.js';
+import { paysARelancer, MANQUE } from '../services/manquants.js';
 import { broadcastNotification, AUDIENCES } from '../routes/webpush.js';
 
 /**
@@ -13,8 +9,14 @@ import { broadcastNotification, AUDIENCES } from '../routes/webpush.js';
  *
  * La relance se faisait à la main, un dimanche sur deux, en parcourant le
  * tableau de bord pays par pays. Ici elle part toute seule la veille de la
- * clôture, et seulement vers les correspondants dont le chutier est vide :
- * un pays qui a déjà envoyé n'a aucune raison d'être dérangé.
+ * clôture, et seulement vers les correspondants qui n'ont pas de quoi être
+ * montés : un pays qui a envoyé sa vidéo n'a aucune raison d'être dérangé.
+ *
+ * Elle ne visait au départ que les chutiers COMPLÈTEMENT vides. Un pays ayant
+ * déposé une photo, ou un script sans vidéo, passait donc pour servi et
+ * n'était jamais relancé — alors qu'aucun de ces envois ne se monte. La règle
+ * partagée avec le panneau de relance de la rédaction (`services/manquants.js`)
+ * dit qu'un pays est en règle quand il a envoyé au moins une vidéo.
  *
  * Un pays n'est prévenu qu'une fois par semaine de production. Le marqueur
  * est persisté, donc un redémarrage du serveur ne relance pas la salve.
@@ -26,20 +28,6 @@ import { broadcastNotification, AUDIENCES } from '../routes/webpush.js';
 const REMIND_FROM_MS = 26 * 60 * 60 * 1000;
 const REMIND_UNTIL_MS = 18 * 60 * 60 * 1000;
 const TICK_MS = 30 * 60 * 1000;
-
-/** Pays réellement attendus : ni bucket technique, ni rubrique de montage. */
-function expectedCountries() {
-  const custom = getCustomCountries();
-  const all = [...COUNTRIES, ...(Array.isArray(custom) ? custom : [])];
-  const seen = new Set();
-  return all.filter((c) => {
-    if (!c || !c.id) return false;
-    if (c.id === 'tj' || SPECIAL_BUCKETS.has(c.id)) return false;
-    if (seen.has(c.id)) return false;
-    seen.add(c.id);
-    return true;
-  });
-}
 
 /** Semaine en cours de collecte, ou null. */
 function activeWeek(now) {
@@ -60,26 +48,29 @@ export async function runReminderPass(now = new Date()) {
   const remaining = cutoff.getTime() - now.getTime();
   if (remaining > REMIND_FROM_MS || remaining < REMIND_UNTIL_MS) return [];
 
-  const uploads = getWeekUploads(week.id);
   const notified = [];
 
-  for (const country of expectedCountries()) {
-    const files = uploads[country.id];
-    if (Array.isArray(files) && files.length > 0) continue;
-    if (wasReminderSent(week.id, country.id)) continue;
+  for (const pays of paysARelancer(week.id)) {
+    if (wasReminderSent(week.id, pays.countryId)) continue;
+
+    // Le message dit ce qui manque vraiment : « rien reçu » et « reçu mais
+    // pas de vidéo » n'appellent pas le même geste du correspondant.
+    const corps = pays.manque === MANQUE.SANS_VIDEO
+      ? `Nous avons bien reçu ${pays.nbFichiers} fichier(s) pour ${pays.nom}, mais aucune vidéo. Dernier délai : ${CLOTURE.libelle}.`
+      : `Il reste moins de 24 h pour envoyer le reportage ${pays.nom}. Dernier délai : ${CLOTURE.libelle}.`;
 
     try {
       await broadcastNotification({
         title: 'Votre reportage est attendu',
-        body: `Il reste moins de 24 h pour envoyer le reportage ${country.name}. Dernier délai : dimanche 10h30 (GMT+2).`,
-        url: `/journalistes/${country.id}`,
-      }, { audiences: [AUDIENCES.REPORTER], countryId: country.id });
-      markReminderSent(week.id, country.id);
-      notified.push(country.id);
+        body: corps,
+        url: `/journalistes/${pays.countryId}`,
+      }, { audiences: [AUDIENCES.REPORTER], countryId: pays.countryId });
+      markReminderSent(week.id, pays.countryId);
+      notified.push(pays.countryId);
     } catch (err) {
       // Un pays injoignable ne doit pas empêcher les autres d'être prévenus,
       // et son marqueur n'est pas posé : il sera retenté au passage suivant.
-      logger.warn('Rappel d\'échéance non envoyé', { countryId: country.id, error: err.message });
+      logger.warn('Rappel d\'échéance non envoyé', { countryId: pays.countryId, error: err.message });
     }
   }
 

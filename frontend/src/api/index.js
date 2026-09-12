@@ -161,36 +161,10 @@ export const getClientId = () => {
 export const api = {
   ...delaysApi,
   // === Auth ===
-  login: async (password) => {
-    const res = await request('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
-    if (res && res.token) {
-      localStorage.setItem('app-password', res.token);
-    }
-    return res;
-  },
-  logout: async () => {
-    localStorage.removeItem('app-password');
-    return request('/auth/logout', { method: 'POST' });
-  },
-  checkAuth: () => {
-    // Render free cold start peut prendre 30-50 s. Sans timeout, l'UI reste
-    // bloquée sur le skeleton (écran blanc perçu). Avec timeout 12 s on bascule
-    // vers la page login (l'utilisateur peut retenter, et le backend chauffe
-    // entre-temps).
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12000);
-    return fetch(`${BASE}/auth/check`, {
-      headers: { 'X-App-Password': localStorage.getItem('app-password') || '' },
-      signal: ctrl.signal,
-    })
-      .then((r) => r.ok)
-      .catch(() => false)
-      .finally(() => clearTimeout(timer));
-  },
+  // Le mot de passe global a été retiré : `login`, `logout` et `checkAuth`
+  // ont disparu avec l'écran de connexion, qui ne pouvait plus s'afficher.
+  // Seule la protection de l'espace montage subsiste, et c'est la seule qui
+  // protégeait réellement quelque chose.
   checkAdminPassword: async (adminPassword) => {
     try {
       await request('/auth/check-admin', { headers: { 'X-Admin-Password': adminPassword } });
@@ -246,12 +220,35 @@ export const api = {
 
   getRubrique: (weekId, cle) => request(`/rubriques/${weekId}/${cle}`),
 
-  setRubrique: (weekId, cle, champs) =>
-    request(`/rubriques/${weekId}/${cle}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(champs),
-    }),
+  /**
+   * Écrit les champs d'une rubrique.
+   *
+   * `baseRevision` est la révision sur laquelle la personne a travaillé. Le
+   * serveur refuse d'écrire si quelqu'un d'autre a enregistré entre-temps, et
+   * rend `{ conflit: true, ... }` avec l'état à jour : c'est ce qui empêche
+   * deux rédacteurs du conducteur de s'effacer l'un l'autre en silence.
+   * Omise, l'écriture passe toujours — un client plus ancien continue donc
+   * de fonctionner comme avant.
+   */
+  setRubrique: async (weekId, cle, champs, baseRevision) => {
+    try {
+      return await request(`/rubriques/${weekId}/${cle}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          baseRevision === undefined || baseRevision === null
+            ? champs
+            : { ...champs, baseRevision }
+        ),
+      });
+    } catch (err) {
+      // Un conflit n'est pas une panne : la demande était bonne, c'est l'état
+      // du serveur qui a bougé. On rend l'état à jour, que l'écran sait
+      // présenter, au lieu d'une erreur que l'appelant devrait deviner.
+      if (err?.status === 409 && err.body?.conflit) return err.body;
+      throw err;
+    }
+  },
 
   // === Planning des monteurs ===
   getPlanning: (adminPassword) => request('/planning', { adminPassword }),
@@ -357,6 +354,37 @@ export const api = {
 
   getSubscriptions: (weekId, adminPassword) =>
     request(`/notifications/${weekId}`, { adminPassword }),
+
+  // === Contacts durables ===
+  // Un numéro était rangé POUR UNE SEMAINE : la suivante, la liste repartait
+  // vide et le bloc « prévenir les pays » n'avait plus personne à prévenir.
+  // Le contact d'un pays vit désormais en dehors des semaines ; la
+  // confirmation hebdomadaire ne fait que le reconduire.
+  getContacts: (adminPassword) => request('/notifications/contacts', { adminPassword }),
+
+  setContact: (countryId, phone, adminPassword) =>
+    request(`/notifications/contacts/${countryId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ phone }),
+    }),
+
+  retirerContact: (countryId, adminPassword) =>
+    request(`/notifications/contacts/${countryId}`, { method: 'DELETE', adminPassword }),
+
+  // === Demandes de délai ===
+  // Elles n'étaient visibles que dans l'onglet Statistiques, que personne
+  // n'ouvre le dimanche matin : le correspondant croyait avoir engagé quelque
+  // chose et attendait une réponse qui ne venait pas.
+  getDemandesDelai: (weekId, adminPassword) =>
+    request(`/delays/${weekId}/demandes`, { adminPassword }),
+
+  // === Relance des pays incomplets ===
+  // Ce que la plateforme sait déjà : qui n'a rien envoyé, et à quel numéro
+  // l'écrire. Il ne manquait que de les mettre côte à côte.
+  getRelances: (weekId, adminPassword) =>
+    request(`/notifications/${weekId}/relances`, { adminPassword }),
 
   // Jetons de téléchargement : le navigateur ouvre l'URL lui-même et ne peut
   // y joindre aucun en-tête. Le jeton signé (1 h, lié à la ressource) est ce

@@ -83,6 +83,41 @@ describe('Nav — espace journalistes', () => {
     expect(screen.queryByText('Stats & Délais')).not.toBeInTheDocument();
   });
 
+  it('ne dépasse jamais trois onglets côté correspondants', () => {
+    // Garde-fou. À cinq onglets, mesuré dans un navigateur à 390 px, la barre
+    // du bas affichait « Repo… Voice… Cond… Mot … Dow… » : aucun libellé
+    // entier, sur le repère le plus utilisé des correspondants. Le conducteur
+    // et le Mot du JT s'ouvrent depuis l'accueil, pas depuis la barre.
+    // La barre du bas n'existe que sur téléphone : c'est à cette largeur que
+    // le défaut se produisait, donc c'est à cette largeur qu'on mesure.
+    const largeurReelle = window.innerWidth;
+    window.innerWidth = 390;
+    const { container } = renderReporter();
+    window.innerWidth = largeurReelle;
+
+    const barre = container.querySelector('.app-chrome-bottom');
+    const onglets = barre.querySelectorAll('button');
+    expect(onglets.length).toBeLessThanOrEqual(3);
+
+    // Et aucun libellé ne doit être une abréviation coupée, ni assez long
+    // pour que le navigateur le tronque : à 390 px, trois onglets ne laissent
+    // qu'environ 120 px chacun.
+    for (const onglet of onglets) {
+      const texte = onglet.textContent.trim();
+      expect(texte).not.toMatch(/…|\.\.\.$/);
+      expect(texte.length).toBeGreaterThan(0);
+      expect(texte.length, texte).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('n\'allume aucun onglet quand on est sur une rubrique du journal', () => {
+    // Le conducteur et le Mot du JT ne sont plus dans la barre : aucun des
+    // trois onglets ne doit paraître actif à leur place.
+    const { container } = renderReporter({ currentView: 'conducteur' });
+    const actifs = container.querySelectorAll('[aria-current="page"]');
+    expect(actifs.length).toBe(0);
+  });
+
   it('ouvre le JT prêt depuis l\'onglet de téléchargement', () => {
     const setView = vi.fn();
     renderReporter({ setCurrentView: setView });

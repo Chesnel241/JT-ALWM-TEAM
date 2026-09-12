@@ -39,7 +39,6 @@ const StatsView = lazy(() => import('./components/StatsView.jsx'));
 const PlanningView = lazy(() => import('./components/PlanningView.jsx'));
 const RubriqueView = lazy(() => import('./components/RubriqueView.jsx'));
 const ReporterHomeView = lazy(() => import('./components/ReporterHomeView.jsx'));
-import LoginView from './components/LoginView.jsx';
 
 function LoadingFallback() {
   return (
@@ -194,16 +193,9 @@ function AppShell() {
   const [countries, setCountries] = useState([]);
   const [weeks, setWeeks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  // null = inconnu (au boot), true = session valide, false = login requis.
-  // Source de vérité = le cookie httpOnly côté serveur (api.checkAuth).
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [isDesktopEditorAvailable, setIsDesktopEditorAvailable] = useState(() => (
     typeof window !== 'undefined' ? window.matchMedia('(min-width: 1180px)').matches : true
   ));
-
-  useEffect(() => {
-    api.checkAuth().then(setIsAuthenticated).catch(() => setIsAuthenticated(false));
-  }, []);
 
   // Le studio de montage est une interface dense sur grand écran : le
   // grossissement n'y a pas de sens et casserait la timeline.
@@ -230,8 +222,10 @@ function AppShell() {
   const [newUploadsCount, setNewUploadsCount] = useState(0);
   const previousTotalRef = useRef(null);
 
+  // Plus rien ne garde l'entrée de la plateforme : pays et semaines partent
+  // dès le montage. C'est un aller-retour réseau de moins avant le premier
+  // écran, et ça se sent sur une 4G de bureau-pays.
   useEffect(() => {
-    if (!isAuthenticated) return;
     setIsLoading(true);
     Promise.all([api.getCountries(), api.getWeeks()])
       .then(([c, w]) => {
@@ -252,13 +246,9 @@ function AppShell() {
       })
       .catch((err) => {
         console.error(err);
-        // 401 → cookie expiré/manquant → on retombe sur la page login.
-        if (err.message && /session|mot de passe|unauthor/i.test(err.message)) {
-          setIsAuthenticated(false);
-        }
       })
       .finally(() => setIsLoading(false));
-  }, [isAuthenticated]);
+  }, []);
 
   useEffect(() => {
     if (!selectedWeek) return;
@@ -296,7 +286,7 @@ function AppShell() {
     const onVis = () => { if (!document.hidden) checkNewUploads(); };
     document.addEventListener('visibilitychange', onVis);
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVis); };
-  }, [selectedWeek, currentView, addToast, isAuthenticated, isReporter]);
+  }, [selectedWeek, currentView, addToast, isReporter]);
 
   useEffect(() => {
     if (currentView === 'dashboard') {
@@ -368,18 +358,17 @@ function AppShell() {
     navigate('home');
   };
 
-  if (isAuthenticated === null) {
-    return <LoadingFallback />; // check en cours, évite le flash login
-  }
-  if (!isAuthenticated) {
-    return <LoginView onLogin={() => setIsAuthenticated(true)} />;
-  }
-
   const isEditorWorkspace = isEditorStudio;
   // L'accueil journalistes doit rester un écran à deux boutons : les bulles
   // flottantes (aide WhatsApp, assistant) recouvraient les cartes sur mobile
   // et dupliquaient le bloc d'aide déjà présent dans la page.
   const isReporterHub = isReporter && currentView === 'hub';
+  // Planning et statistiques se travaillent ligne à ligne, cases à cocher
+  // comprises. À 390 px, la bulle d'invitation de l'assistant se posait sur
+  // les deux premières lignes : affichées, mais ni lisibles ni cochables.
+  // Même arbitrage que côté journalistes, en plus resserré ici — seule
+  // l'invitation disparaît, le bouton de chat reste à portée.
+  const isEditorWorklist = !isReporter && (currentView === 'planning' || currentView === 'stats');
   const canRender = (view) => isViewAllowed(workspace, view);
 
   return (
@@ -541,7 +530,9 @@ function AppShell() {
           boutons d'envoi et détournaient les appuis. L'aide est dans la page :
           encart WhatsApp de l'accueil et bouton « Guide » de l'écran d'envoi. */}
       {!isEditorWorkspace && !isReporter && <HelpButton />}
-      {!isEditorWorkspace && !isReporter && <AIAssistant currentPage={currentView} />}
+      {!isEditorWorkspace && !isReporter && (
+        <AIAssistant currentPage={currentView} showBubble={!isEditorWorklist} />
+      )}
     </div>
   );
 }

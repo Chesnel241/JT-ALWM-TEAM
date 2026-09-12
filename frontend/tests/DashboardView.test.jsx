@@ -7,6 +7,10 @@ import { ToastProvider } from '../src/hooks/useToast.jsx';
 vi.mock('../src/api/index.js', () => ({
   api: {
     getDashboard: vi.fn().mockResolvedValue({ ga: [{ id: '1', filename: 'clip.mp4', name: 'clip.mp4', type: 'video' }] }),
+    // Le panneau de relance vit désormais en haut du tableau de bord : sans
+    // ces deux doublures, il fait tomber tout l'écran au montage.
+    getRelances: vi.fn().mockResolvedValue([]),
+    getDemandesDelai: vi.fn().mockResolvedValue([]),
     getDeliveries: vi.fn().mockResolvedValue([]),
     getTimeline: vi.fn().mockResolvedValue({ clips: [], overlays: [], branding: {} }),
     getTimelineWorkspace: vi.fn().mockResolvedValue({ clips: [], overlays: [], branding: {} }),

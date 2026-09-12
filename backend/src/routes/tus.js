@@ -8,6 +8,7 @@ import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyExtension, exten
 import { extensionDepuisOctets, TAILLE_ENTETE } from '../lib/signatures.js';
 import { addUpload, getCustomCountries, getExtensions, updateUploadSize, setUploadProxy } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
+import { planifierMesure } from '../services/mediaDuration.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { broadcastNotification, AUDIENCES } from './webpush.js';
@@ -284,6 +285,16 @@ export const tusServer = new Server({
       addUpload(weekId, countryId, fileData);
       recordUpload(1000, true); // Mock duration since we don't have start time across chunks
       logger.uploadReceived(weekId, countryId, originalName, fileData.size);
+
+      // La durée est mesurée après coup, jamais pendant l'envoi : le
+      // correspondant a déjà sa confirmation, et une sonde qui traîne sur un
+      // conteneur exotique ne doit pas retarder sa réponse. Les écrans ouverts
+      // sont rafraîchis quand le chiffre arrive.
+      if (fileData.type === 'video' || fileData.type === 'audio') {
+        planifierMesure(weekId, countryId, fileData.id, filename, () => {
+          io?.emit('upload_update', { weekId, countryId });
+        });
+      }
 
       logger.info('TUS Upload completed and persisted', {
         context: {

@@ -1,21 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Bell, BellOff, BellRing } from 'lucide-react';
+import { useI18n } from '../i18n/I18nContext.jsx';
+import { useOptionalToast } from '../hooks/useToast.jsx';
 
-// Assurez-vous d'utiliser la clé publique VAPID correcte
-const publicVapidKey = 'BDfun-W1NI1jLKY7gwtXtmqwLl7fs1jwlIUjdO8o50vl6k2VbzZppfW4Dc-TxNR1v8sJMfAtUe3k2irQU7y2O7A';
+/**
+ * Le bouton cloche : recevoir une alerte quand le JT est prêt, ou quand un
+ * fichier arrive.
+ *
+ * Deux corrections importantes par rapport à la version précédente.
+ *
+ * 1. La clé publique VAPID était écrite en dur ici, alors que le serveur
+ *    possède la sienne et l'expose. Si les deux diffèrent — et elles
+ *    diffèrent dès qu'on régénère les clés ou qu'on change d'hébergement —
+ *    le navigateur s'abonne avec une clé que le serveur ne peut pas signer :
+ *    l'abonnement est accepté, la cloche devient bleue, et AUCUNE
+ *    notification n'arrive jamais. On lit donc la clé du serveur, et on ne
+ *    propose l'abonnement que s'il y en a une.
+ *
+ * 2. L'appel d'abonnement ignorait la réponse du serveur. Quand le push n'est
+ *    pas configuré, il répond 503 : la personne voyait la demande
+ *    d'autorisation de son navigateur, acceptait, et croyait être abonnée.
+ *    On vérifie la réponse, et on défait l'abonnement local s'il n'a pas été
+ *    enregistré — sinon le navigateur garde un abonnement fantôme qui empêche
+ *    de réessayer proprement.
+ */
 
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
+// Repli historique, gardé pour les déploiements dont le serveur ne publie pas
+// encore sa clé. Ce n'est PAS un secret : la clé publique VAPID est faite pour
+// être distribuée aux navigateurs.
+const CLE_PUBLIQUE_DEFAUT = 'BDfun-W1NI1jLKY7gwtXtmqwLl7fs1jwlIUjdO8o50vl6k2VbzZppfW4Dc-TxNR1v8sJMfAtUe3k2irQU7y2O7A';
 
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+function base64VersOctets(base64) {
+  const bourrage = '='.repeat((4 - (base64.length % 4)) % 4);
+  const normalise = (base64 + bourrage).replace(/-/g, '+').replace(/_/g, '/');
+  const brut = window.atob(normalise);
+  const octets = new Uint8Array(brut.length);
+  for (let i = 0; i < brut.length; i += 1) octets[i] = brut.charCodeAt(i);
+  return octets;
+}
 
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+/** iPhone : le push n'existe que si la plateforme est sur l'écran d'accueil. */
+function estIOSHorsEcranAccueil() {
+  if (typeof navigator === 'undefined') return false;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+  const installee = window.matchMedia?.('(display-mode: standalone)')?.matches
+    || window.navigator.standalone === true;
+  return ios && !installee;
 }
 
 /**
@@ -24,118 +54,172 @@ function urlBase64ToUint8Array(base64String) {
  * correspondant était réveillé à chaque dépôt de fichier d'un autre pays.
  */
 export default function NotificationToggle({ compact = false, audience = '', countryId = '' }) {
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
+  const { addToast } = useOptionalToast();
+  const n = t.notifsPush || {};
+
+  const [abonne, setAbonne] = useState(false);
+  const [clePublique, setClePublique] = useState('');
+  const [indisponible, setIndisponible] = useState('');
+  const [occupe, setOccupe] = useState(true);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      setIsSupported(true);
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.pushManager.getSubscription().then((subscription) => {
-          setIsSubscribed(subscription !== null);
-          setLoading(false);
-        });
-      });
-    } else {
-      setLoading(false);
-    }
+    let vivant = true;
+
+    const preparer = async () => {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        if (vivant) {
+          setIndisponible(estIOSHorsEcranAccueil() ? n.nonSupporteIos : n.nonSupporte);
+          setOccupe(false);
+        }
+        return;
+      }
+
+      try {
+        // La clé du serveur d'abord. 503 = push non configuré côté serveur :
+        // inutile de demander une autorisation qui ne mènera nulle part.
+        const reponse = await fetch('/api/webpush/vapidPublicKey');
+        const cle = reponse.ok ? (await reponse.json())?.publicKey : '';
+        if (!vivant) return;
+        if (reponse.status === 503) {
+          setIndisponible(n.nonConfigure);
+          setOccupe(false);
+          return;
+        }
+        setClePublique(cle || CLE_PUBLIQUE_DEFAUT);
+      } catch {
+        // Serveur injoignable : on garde le repli plutôt que de bloquer la
+        // fonction pour un incident réseau passager.
+        if (vivant) setClePublique(CLE_PUBLIQUE_DEFAUT);
+      }
+
+      try {
+        const enregistrement = await navigator.serviceWorker.ready;
+        const existant = await enregistrement.pushManager.getSubscription();
+        if (vivant) setAbonne(existant !== null);
+      } catch {
+        // Pas de service worker prêt : l'abonnement reste simplement à faire.
+      } finally {
+        if (vivant) setOccupe(false);
+      }
+    };
+
+    preparer();
+    return () => { vivant = false; };
+    // Les libellés changent avec la langue, pas la disponibilité technique.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const subscribeUser = async () => {
+  const abonner = async () => {
+    setOccupe(true);
+    let abonnement = null;
     try {
-      setLoading(true);
-      const registration = await navigator.serviceWorker.ready;
-      
-      const subscription = await registration.pushManager.subscribe({
+      const enregistrement = await navigator.serviceWorker.ready;
+      abonnement = await enregistrement.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+        applicationServerKey: base64VersOctets(clePublique || CLE_PUBLIQUE_DEFAUT),
       });
 
-      await fetch('/api/webpush/subscribe', {
+      const reponse = await fetch('/api/webpush/subscribe', {
         method: 'POST',
-        body: JSON.stringify({ subscription, audience, countryId }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: abonnement, audience, countryId }),
       });
 
-      setIsSubscribed(true);
-    } catch (err) {
-      console.error('Failed to subscribe the user: ', err);
-      if (err.name === 'NotAllowedError') {
-        alert('Les notifications sont bloquées. Veuillez les autoriser dans les paramètres de votre navigateur/téléphone.');
-      } else {
-        alert("Erreur lors de l'activation des notifications: " + err.message);
+      if (!reponse.ok) {
+        // Le serveur n'a pas gardé l'abonnement : le défaire côté navigateur,
+        // sinon la cloche resterait allumée pour rien et un nouvel essai
+        // retomberait sur l'abonnement fantôme.
+        await abonnement.unsubscribe().catch(() => {});
+        setIndisponible(reponse.status === 503 ? n.nonConfigure : n.echec);
+        addToast(reponse.status === 503 ? n.nonConfigure : n.echec, 'error', 6000);
+        return;
       }
+
+      setAbonne(true);
+      addToast(n.activeeOk, 'success', 4000);
+    } catch (err) {
+      if (abonnement) await abonnement.unsubscribe().catch(() => {});
+      // Un refus d'autorisation n'est pas une panne : la personne a dit non,
+      // ou son navigateur bloque. Les deux se règlent dans les réglages.
+      addToast(err?.name === 'NotAllowedError' ? n.bloquees : n.echec, 'error', 7000);
     } finally {
-      setLoading(false);
+      setOccupe(false);
     }
   };
 
-  const unsubscribeUser = async () => {
+  const desabonner = async () => {
+    setOccupe(true);
     try {
-      setLoading(true);
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      
-      if (subscription) {
+      const enregistrement = await navigator.serviceWorker.ready;
+      const abonnement = await enregistrement.pushManager.getSubscription();
+      if (abonnement) {
         await fetch('/api/webpush/unsubscribe', {
           method: 'POST',
-          body: JSON.stringify(subscription),
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        await subscription.unsubscribe();
-        setIsSubscribed(false);
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(abonnement),
+        }).catch(() => {});
+        await abonnement.unsubscribe();
       }
-    } catch (err) {
-      console.error('Failed to unsubscribe the user: ', err);
+      setAbonne(false);
+      addToast(n.desactiveeOk, 'info', 3000);
+    } catch {
+      addToast(n.echec, 'error', 5000);
     } finally {
-      setLoading(false);
+      setOccupe(false);
     }
   };
 
-  if (!isSupported) {
+  if (indisponible) {
+    const court = n.indisponible || 'Notifications indisponibles';
     if (compact) {
       return (
         <div
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-xs font-bold text-[color:var(--muted)]"
-          title="Notifications push non supportées sur ce navigateur"
-          aria-label="Notifications push non supportées"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[color:var(--muted)]"
+          title={indisponible}
+          aria-label={indisponible}
         >
-          !
+          <BellOff size={16} aria-hidden="true" />
         </div>
       );
     }
+    // Une seule ligne, pas un pavé : ce bloc se pose souvent dans une barre
+    // de navigation, où deux lignes de texte décalent tout le reste. Le détail
+    // reste accessible au survol.
     return (
-      <div className="text-xs text-red-500 opacity-80 px-4 py-2 border border-red-500/20 rounded bg-red-500/10">
-        Notifications Push non supportées. (Sur iOS, ajoutez l'app à l'écran d'accueil).
-      </div>
+      <p
+        className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[color:var(--muted)]"
+        title={indisponible}
+      >
+        <BellOff size={14} aria-hidden="true" className="shrink-0" />
+        <span className="truncate max-w-[12rem]">{court}</span>
+      </p>
     );
   }
 
+  const libelle = abonne ? (n.activees || '') : (n.activer || '');
+  const Icone = abonne ? BellRing : Bell;
+
   return (
     <button
-      onClick={isSubscribed ? unsubscribeUser : subscribeUser}
-      disabled={loading}
-      title={isSubscribed ? 'Notifications activées' : 'Activer les notifications'}
-      aria-label={isSubscribed ? 'Notifications activées' : 'Activer les notifications'}
-      className={`${compact ? 'h-9 w-9 justify-center p-0' : 'px-4 py-2'} text-sm font-semibold rounded-lg transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] flex items-center gap-2 ${
-        isSubscribed 
-          ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/80' 
-          : 'bg-transparent border border-[var(--border)] text-[color:var(--muted)] hover:text-white hover:border-[var(--muted)]'
+      type="button"
+      onClick={abonne ? desabonner : abonner}
+      disabled={occupe}
+      title={abonne ? (n.desactiver || libelle) : libelle}
+      aria-label={abonne ? (n.desactiver || libelle) : libelle}
+      aria-pressed={abonne}
+      className={`${compact ? 'h-9 w-9 justify-center p-0' : 'px-4 py-2'} text-sm font-semibold rounded-lg transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] flex items-center gap-2 disabled:opacity-60 ${
+        abonne
+          ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/80'
+          : 'bg-transparent border border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:border-[var(--muted)]'
       }`}
     >
-      {loading ? (
-        <span className="w-4 h-4 rounded-full border-2 border-t-transparent border-current animate-spin"></span>
+      {occupe ? (
+        <span className="w-4 h-4 rounded-full border-2 border-t-transparent border-current animate-spin" />
       ) : (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isSubscribed ? "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" : "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"} />
-        </svg>
+        <Icone size={16} aria-hidden="true" />
       )}
-      {!compact && (isSubscribed ? 'Notifications Activées' : 'Activer Notifications')}
+      {!compact && libelle}
     </button>
   );
 }

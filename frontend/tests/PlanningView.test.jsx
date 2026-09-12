@@ -52,6 +52,10 @@ function rendreLePlanning(props = {}) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  // Les libellés attendus ci-dessous sont ceux du français. L'écran était
+  // écrit en dur dans cette langue ; il passe désormais par le dictionnaire,
+  // donc la langue doit être choisie explicitement.
+  localStorage.setItem('jt-alwm-lang', 'fr');
   sessionStorage.setItem('jt-admin-pass', 'dev');
   vi.spyOn(api, 'getPlanning').mockResolvedValue(structuredClone(PLANNING));
   vi.spyOn(api, 'getPlanningSujets').mockResolvedValue(structuredClone(SUJETS));
@@ -141,10 +145,98 @@ describe('le conducteur de la semaine', () => {
 });
 
 describe('sans le mot de passe montage', () => {
-  it('explique au lieu d’afficher une page vide', async () => {
+  it('offre la porte d’entrée au lieu d’un mur', async () => {
+    // Le mur disait « Déverrouillez l'espace montage » sans champ, sans
+    // bouton, sans rien : il fallait deviner qu'il fallait passer par un
+    // autre onglet, taper le mot de passe, puis revenir.
     sessionStorage.removeItem('jt-admin-pass');
     rendreLePlanning();
-    expect(await screen.findByText(/réservée à l'équipe montage/i)).toBeInTheDocument();
+
+    expect(await screen.findByLabelText(/mot de passe/i)).toBeInTheDocument();
+    expect(screen.getByRole('button')).toBeInTheDocument();
     expect(api.getPlanning).not.toHaveBeenCalled();
+  });
+
+  it('charge la programmation dès que le mot de passe est accepté', async () => {
+    sessionStorage.removeItem('jt-admin-pass');
+    vi.spyOn(api, 'checkAdminPassword').mockResolvedValue(true);
+    rendreLePlanning();
+
+    fireEvent.change(await screen.findByLabelText(/mot de passe/i), {
+      target: { value: 'montage2026' },
+    });
+    fireEvent.click(screen.getByRole('button'));
+
+    // Sans changer d'onglet ni recharger la page.
+    expect(await screen.findByText('Sem. 18')).toBeInTheDocument();
+    expect(api.getPlanning).toHaveBeenCalledWith('montage2026');
+  });
+});
+
+describe('la liste à cocher', () => {
+  it('groupe les reportages par pays', async () => {
+    // Ils arrivaient dans l'ordre de création, tous pays mêlés : le monteur
+    // sautait du Cameroun au Sénégal puis au Togo pour revenir au Cameroun.
+    rendreLePlanning();
+    // La semaine en cours est dépliée d'entrée : rien à cliquer.
+    await screen.findByText('Sem. 18');
+    await waitFor(() => expect(screen.getByText('CM')).toBeInTheDocument());
+    expect(screen.getByText('SN')).toBeInTheDocument();
+  });
+
+  it('n’offre pas de cocher un sujet dont rien n’est arrivé', async () => {
+    // Un sujet sans aucun fichier ne peut pas être monté. Il reste affiché,
+    // pour qu'on sache ce qui manque, mais la case est hors service.
+    api.getPlanningSujets.mockResolvedValue([
+      { id: 's1', titre: 'Marché central', countryId: 'cm', nbPieces: 3, duree: 120, monte: false },
+      { id: 's9', titre: 'Annoncé, jamais envoyé', countryId: 'cm', nbPieces: 0, duree: null, monte: false },
+    ]);
+    rendreLePlanning();
+    // La semaine en cours est dépliée d'entrée : rien à cliquer.
+    await screen.findByText('Sem. 18');
+
+    const vide = await screen.findByText('Annoncé, jamais envoyé');
+    const caseVide = vide.closest('label').querySelector('input[type="checkbox"]');
+    expect(caseVide).toBeDisabled();
+    expect(screen.getByText(/rien reçu pour l’instant/i)).toBeInTheDocument();
+
+    const rempli = screen.getByText('Marché central');
+    expect(rempli.closest('label').querySelector('input')).not.toBeDisabled();
+  });
+
+  it('ne compte dans la jauge que ce qui peut être monté', async () => {
+    // « 0 / 15 » dont neuf sont vides est un chiffre faux : le monteur ne
+    // peut pas s'y fier pour savoir où en est le journal.
+    api.getPlanningSujets.mockResolvedValue([
+      { id: 's1', titre: 'Reçu et monté', countryId: 'cm', nbPieces: 2, duree: 60, monte: true },
+      { id: 's2', titre: 'Reçu, à monter', countryId: 'cm', nbPieces: 1, duree: 30, monte: false },
+      { id: 's3', titre: 'Rien reçu', countryId: 'cm', nbPieces: 0, duree: null, monte: false },
+      { id: 's4', titre: 'Rien reçu non plus', countryId: 'sn', nbPieces: 0, duree: null, monte: false },
+    ]);
+    rendreLePlanning();
+    // La semaine en cours est dépliée d'entrée : rien à cliquer.
+    await screen.findByText('Sem. 18');
+
+    expect(await screen.findByText('1 / 2 monté')).toBeInTheDocument();
+  });
+
+  it('affiche la durée reçue, par sujet et pour la semaine', async () => {
+    api.getPlanningSujets.mockResolvedValue([
+      // Deux sujets pour le Cameroun : le total du pays (2 min 20) diffère
+      // ainsi de chaque durée de sujet, et l'assertion reste sans ambiguïté.
+      { id: 's1', titre: 'Marché central', countryId: 'cm', nbPieces: 2, duree: 102, monte: false },
+      { id: 's2', titre: 'Écoles', countryId: 'cm', nbPieces: 1, duree: 38, monte: false },
+      { id: 's3', titre: 'Le port', countryId: 'sn', nbPieces: 1, duree: 40, monte: false },
+    ]);
+    rendreLePlanning();
+    // La semaine en cours est dépliée d'entrée : rien à cliquer.
+    await screen.findByText('Sem. 18');
+
+    // Par sujet.
+    expect(await screen.findByText(/1 min 42/)).toBeInTheDocument();
+    // Par pays.
+    expect(screen.getByText('2 min 20 au total')).toBeInTheDocument();
+    // Et pour le journal entier.
+    expect(screen.getByText('3 min 00 de rushes reçus')).toBeInTheDocument();
   });
 });

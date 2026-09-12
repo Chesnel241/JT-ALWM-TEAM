@@ -46,10 +46,13 @@ describe('buildWeeks — règle "cycle 9 jours"', () => {
     expect(weeks).toHaveLength(2);
   });
 
-  it('mardi 23:59 = encore visible', () => {
-    const tueLate = new Date(2026, 4, 19, 23, 59, 0);
-    const weeks = buildWeeks(tueLate);
-    expect(weeks).toHaveLength(3);
+  it('mardi 23:59 à Libreville = encore visible, mercredi 00:00 = fini', () => {
+    // La bascule se lit dans le fuseau de la rédaction (GMT+2), plus dans
+    // celui de la machine : mardi 21:59 UTC, il est encore mardi 23:59 là-bas,
+    // et la semaine précédente doit rester là pour rattraper un rush.
+    expect(buildWeeks(new Date('2026-05-19T21:59:00.000Z'))).toHaveLength(3);
+    // Une minute plus tard, mercredi a commencé pour la rédaction : elle part.
+    expect(buildWeeks(new Date('2026-05-19T22:00:00.000Z'))).toHaveLength(2);
   });
 
   it('produit des IDs ISO 8601 stables (YYYY-wWW)', () => {
@@ -127,7 +130,11 @@ describe('date d\'effacement exposée aux clients', () => {
     const week = buildWeeks().find((w) => w.id === '2026-w37');
     if (!week) return; // la semaine 37 n'est pas toujours dans la fenêtre courante
     const apresFin = expiry.getTime() - new Date(week.endDate).getTime();
-    expect(apresFin).toBeGreaterThan(47 * 60 * 60 * 1000);
-    expect(apresFin).toBeLessThan(49 * 60 * 60 * 1000);
+    // La semaine finit dimanche 23:59:59.999 à Libreville (GMT+2) tandis que
+    // la purge tombe mercredi 00:00 UTC : 50 h les séparent, et non 48 — les
+    // deux heures d'écart sont exactement le fuseau de la rédaction, depuis
+    // que la semaine est bornée chez elle et non sur la machine.
+    expect(apresFin).toBeGreaterThan(49 * 60 * 60 * 1000);
+    expect(apresFin).toBeLessThan(51 * 60 * 60 * 1000);
   });
 });

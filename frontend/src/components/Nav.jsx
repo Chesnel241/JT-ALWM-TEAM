@@ -1,4 +1,4 @@
-import { LayoutDashboard, Sparkles, Mic, Mic2, ListOrdered, MapPin, BarChart2, Upload, Download, Home, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Mic, MapPin, BarChart2, Upload, Download, Home, CalendarDays } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { useState, useEffect } from 'react';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
@@ -28,7 +28,7 @@ export default function Nav({
   const isEditorWorkspace = !isReporter && currentView === 'dashboard' && isDesktopEditorAvailable;
 
   // Espace journalistes : onglets plus gros (doigt + presbytie). Ils sont
-  // masqués sur l'accueil, qui ne doit afficher que ses deux grands boutons.
+  // masqués sur l'accueil, qui porte déjà ses propres cartes.
   const showTabs = !isReporter || currentView !== 'hub';
 
   // La taille (dont la taille de police) est portée entièrement par `size` :
@@ -56,42 +56,32 @@ export default function Nav({
   const iconSize = isReporter ? 24 : 20;
   const iconClass = isReporter ? 'sm:w-[22px] sm:h-[22px]' : 'sm:w-[18px] sm:h-[18px]';
 
-  // Espace journalistes : reportages, voix off, les deux rubriques du
-  // journal, et le téléchargement du JT.
+  // Espace journalistes : les TROIS gestes d'un correspondant, et rien de
+  // plus. À cinq onglets, la barre du bas d'un téléphone de 390 px n'affichait
+  // plus que « Repo… Voice… Cond… Mot … Dow… » — le repère le plus utilisé
+  // devenu illisible. Le conducteur et le Mot du JT restent atteignables par
+  // l'accueil et par leur adresse directe ; c'est l'onglet qui disparaît, pas
+  // la vue.
   const reporterNavItems = [
     {
       id: 'tour-country-list',
       view: 'home',
       icon: <Upload size={iconSize} className={iconClass} />,
-      label: t.reporter.uploadTab,
+      label: isMobile ? t.reporter.uploadTabShort : t.reporter.uploadTab,
       match: ['home', 'uploader'],
     },
     {
       id: 'tour-nav-voixoff',
       view: 'voixoff',
       icon: <Mic size={iconSize} className={iconClass} />,
-      label: t.reporter.voixOffTab || t.nav.voixOff,
+      label: isMobile ? t.reporter.voixOffTabShort : (t.reporter.voixOffTab || t.nav.voixOff),
       match: ['voixoff'],
-    },
-    {
-      id: 'tour-nav-conducteur',
-      view: 'conducteur',
-      icon: <ListOrdered size={iconSize} className={iconClass} />,
-      label: isMobile ? 'Conducteur' : 'Conducteur du JT',
-      match: ['conducteur'],
-    },
-    {
-      id: 'tour-nav-motdujt',
-      view: 'motDuJt',
-      icon: <Mic2 size={iconSize} className={iconClass} />,
-      label: isMobile ? 'Mot du JT' : 'Le Mot du JT',
-      match: ['motDuJt'],
     },
     {
       id: 'tour-nav-delivery',
       view: 'delivery',
       icon: <Download size={iconSize} className={iconClass} />,
-      label: t.reporter.downloadTab,
+      label: isMobile ? t.reporter.downloadTabShort : t.reporter.downloadTab,
       match: ['delivery'],
     },
   ];
@@ -130,7 +120,7 @@ export default function Nav({
       id: 'tour-nav-planning',
       view: 'planning',
       icon: <CalendarDays size={iconSize} className={iconClass} />,
-      label: isMobile ? 'Planning' : 'Programmation',
+      label: t.planning.titre,
       match: ['planning']
     },
     {
@@ -195,8 +185,8 @@ export default function Nav({
           : 'max-w-6xl mx-auto px-4 sm:px-6 py-2.5 sm:py-4 flex flex-wrap items-center justify-between gap-4'
         }>
           {isReporter ? (
-            // Le logo ramène à l'accueil des deux boutons : un seul repère de
-            // retour, toujours au même endroit.
+            // Le logo ramène à l'accueil : un seul repère de retour, toujours
+            // au même endroit.
             <button
               type="button"
               onClick={() => setCurrentView('hub')}
@@ -248,9 +238,9 @@ export default function Nav({
           )}
         </div>
 
-        {/* Espace journalistes : rangée dédiée sur ordinateur. Les deux
-            onglets sont larges et centrés — coincés dans la ligne du logo,
-            ils se repliaient l'un sous l'autre. */}
+        {/* Espace journalistes : rangée dédiée sur ordinateur. Les onglets
+            sont larges et centrés — coincés dans la ligne du logo, ils se
+            repliaient l'un sous l'autre. */}
         {showTabs && isReporter && (
           <div className="hidden sm:block border-t border-[var(--border)]">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-center gap-3">

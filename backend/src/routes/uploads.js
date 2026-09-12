@@ -9,6 +9,7 @@ import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constan
 import { getCustomCountries } from '../data/store.js';
 import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry, updateUploadSize, setUploadProxy } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
+import { planifierMesure } from '../services/mediaDuration.js';
 import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { sanitizeFilename, nomLisible, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
@@ -433,6 +434,14 @@ router.post('/:weekId/:countryId', porteeCountry(), uploadMiddleware, asyncHandl
       
       io?.emit('upload_update', { weekId, countryId });
 
+      // Durée mesurée après coup, comme sur la voie TUS : la réponse part
+      // avant, et le chiffre rejoint la fiche du fichier quand il est prêt.
+      if (fileData.type === 'video' || fileData.type === 'audio') {
+        planifierMesure(weekId, countryId, fileData.id, file.filename, () => {
+          io?.emit('upload_update', { weekId, countryId });
+        });
+      }
+
       // Compression 720p en arrière-plan, une à la fois (cf. tus.js).
       if (fileData.type === 'video') {
         const ext = path.extname(file.originalname).toLowerCase();
@@ -828,6 +837,12 @@ router.post('/voiceover/:weekId/:countryId', porteeCountry(), upload.single('aud
 
     const uploadDurationMs = Date.now() - uploadStartTime;
     recordUpload(uploadDurationMs, true);
+
+    // La durée d'une voix off est le chiffre que le monteur regarde en
+    // premier pour caler son montage : on la mesure comme les autres rushes.
+    planifierMesure(weekId, countryId, audioFileMeta.id, audioFilename, () => {
+      io?.emit('upload_update', { weekId, countryId });
+    });
 
     io?.emit('upload_update', { weekId, countryId });
 

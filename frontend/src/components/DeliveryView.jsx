@@ -6,7 +6,7 @@ import {
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
+import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekFull } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import EmptyState from './EmptyState.jsx';
@@ -144,7 +144,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
             >
               {weeks.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {formatWeekLabel(w, lang)}{w.status === 'active' ? ' • EN COURS' : ''}
+                  {formatWeekFull(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
                 </option>
               ))}
             </select>
@@ -287,7 +287,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
             >
               {weeks.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {formatWeekLabel(w, lang)} ({formatWeekDates(w, lang)}){w.status === 'active' ? t.uploader.weekActiveTag : ''}
+                  {formatWeekFull(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
                 </option>
               ))}
             </select>
@@ -382,7 +382,15 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                       href={`https://wa.me/${sub.phone}?text=${encodeURIComponent(whatsappMessage)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] text-xs font-medium rounded-full transition-colors"
+                      // Un numéro repris des semaines précédentes n'a pas été
+                      // reconfirmé : le dire évite d'écrire à un correspondant
+                      // qui a changé de téléphone depuis.
+                      title={sub.origine === 'contact' ? t.delivery.notifyCarried : undefined}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                        sub.origine === 'contact'
+                          ? 'bg-[var(--paper-2)] hover:bg-[var(--border)] text-[color:var(--muted)] border border-dashed border-[var(--border)]'
+                          : 'bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366]'
+                      }`}
                     >
                       <MessageCircle size={12} />
                       {sub.countryId.toUpperCase()} ({sub.phone})
@@ -390,7 +398,16 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[color:var(--muted)]">Les boutons de notification apparaîtront ici lorsqu'un reportage sera publié et que des journalistes seront abonnés.</p>
+                /* Le bloc disait toujours la même chose, quelle que soit la
+                   raison : mot de passe manquant, JT pas encore publié, ou
+                   aucun numéro. Trois causes, trois gestes différents. */
+                <p className="text-xs text-[color:var(--muted)]">
+                  {!readAdminPassword()
+                    ? t.delivery.notifyLocked
+                    : deliveries.length === 0
+                      ? t.delivery.notifyNoDelivery
+                      : t.delivery.notifyNoContact}
+                </p>
               )}
             </div>
             )}

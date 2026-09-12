@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   getPlanning, ajouterMonteur, retirerMonteur, affecterSemaine,
   majEtatMontage, marquerSujetMonte, isRoleMontage, isEtatMontage,
-  getSujets,
+  getSujets, getWeekUploads,
 } from '../data/store.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
@@ -48,13 +48,55 @@ router.get('/', requireAdmin, globalLimiter, asyncHandler(async (_req, res) => {
  * C'est le conducteur vu par le monteur : ce qu'il reste à monter, et ce qui
  * est fait. `monte` est un axe distinct de l'état éditorial — un sujet validé
  * par la rédaction n'est pas pour autant monté.
+ *
+ * Chaque sujet porte aussi ce qu'il a REÇU : le nombre de pièces et la somme
+ * des durées connues. Sans cela, l'écran listait quinze lignes dont neuf
+ * n'avaient aucun fichier, les proposait à la coche, et les comptait dans sa
+ * jauge — un sujet sans rush ne peut pourtant pas être monté.
+ *
+ * Les sujets sont rendus groupés par pays. Ils arrivaient dans l'ordre de
+ * création, tous pays mêlés, si bien que le monteur sautait du Cameroun au
+ * Sénégal puis au Togo pour revenir au Cameroun.
  */
 router.get('/:weekId/sujets', requireAdmin, globalLimiter, asyncHandler(async (req, res, next) => {
   const { weekId } = req.params;
   if (!semaineValide(weekId)) return next(createErrors.notFound('Semaine'));
 
   const montes = new Set(getPlanning().semaines[weekId]?.sujetsMontes || []);
-  const sujets = getSujets(weekId).map((s) => ({ ...s, monte: montes.has(s.id) }));
+
+  // Les fichiers de la semaine, rangés par sujet. Un seul balayage : la
+  // semaine peut porter plusieurs centaines de pièces.
+  const parSujet = new Map();
+  for (const fichiers of Object.values(getWeekUploads(weekId) || {})) {
+    if (!Array.isArray(fichiers)) continue;
+    for (const f of fichiers) {
+      if (!f?.sujetId) continue;
+      const compte = parSujet.get(f.sujetId) || { nbPieces: 0, duree: 0, mesures: 0 };
+      compte.nbPieces += 1;
+      const secondes = Number(f.duree);
+      if (Number.isFinite(secondes) && secondes > 0) {
+        compte.duree += secondes;
+        compte.mesures += 1;
+      }
+      parSujet.set(f.sujetId, compte);
+    }
+  }
+
+  const sujets = getSujets(weekId)
+    .map((s) => {
+      const compte = parSujet.get(s.id) || { nbPieces: 0, duree: 0, mesures: 0 };
+      return {
+        ...s,
+        monte: montes.has(s.id),
+        nbPieces: compte.nbPieces,
+        // `null` et non `0` quand rien n'a pu être mesuré : une durée nulle
+        // ferait croire à un rush vide.
+        duree: compte.mesures > 0 ? Math.round(compte.duree * 10) / 10 : null,
+      };
+    })
+    .sort((a, b) => String(a.countryId).localeCompare(String(b.countryId))
+      || String(a.creeLe || '').localeCompare(String(b.creeLe || '')));
+
   return res.json(sujets);
 }));
 

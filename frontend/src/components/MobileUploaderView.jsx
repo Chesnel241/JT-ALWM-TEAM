@@ -7,7 +7,7 @@ import {
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates, formatExpiry } from '../lib/dates.js';
+import { formatRelative, formatAbsolute, formatWeekFull, formatExpiry } from '../lib/dates.js';
 import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
@@ -196,11 +196,14 @@ export default function MobileUploaderView({
             aria-label={t.uploader.weekLabel}
             className="min-w-0 flex-1 bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-sm font-semibold rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
           >
-            {/* Sans les dates : l'intitulé complet était coupé par le champ
-                natif, et c'est « EN COURS » qui disparaissait. */}
+            {/* Le libellé de la rédaction (« Sem. 18 ») tient là où « Semaine
+                37 » débordait : les dates reviennent dans le champ, et ce
+                sont elles qui disent de quelle semaine on parle. La mention
+                « en cours » suit la langue de l'interface — écrite en dur,
+                elle restait en français au milieu d'un écran anglais. */}
             {weeks.map((w) => (
               <option key={w.id} value={w.id}>
-                {formatWeekLabel(w, lang)}{w.status === 'active' ? ' • EN COURS' : ''}
+                {formatWeekFull(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
               </option>
             ))}
           </select>
@@ -247,7 +250,7 @@ export default function MobileUploaderView({
           </p>
           {extensionStatus === 'pending' ? (
             <div className="inline-block px-3 py-1.5 rounded-xl bg-[var(--signal)]/15 border border-[var(--signal)]/40 text-[color:var(--ink)] text-xs font-bold">
-              Demande de délai en cours de validation
+              {t.delais.accuse}
             </div>
           ) : (
             <button

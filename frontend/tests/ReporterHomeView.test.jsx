@@ -28,6 +28,50 @@ describe('ReporterHomeView', () => {
     expect(screen.queryByText('Espace Montage')).not.toBeInTheDocument();
   });
 
+  it('sépare ce qu’on envoie de ce que rédige la rédaction', () => {
+    // L'accueil alignait cinq cartes de même poids, marquées 1 à 5. La
+    // numérotation annonçait une suite à faire, alors qu'un correspondant du
+    // Gabon ne fait que la première, parfois la dernière, et jamais le
+    // conducteur ni le Mot du JT — qui sont le travail de la rédaction.
+    renderHub({ onOpenConducteur: () => {}, onOpenMotDuJt: () => {} });
+    expect(screen.getByText('Ce que vous envoyez')).toBeInTheDocument();
+    expect(screen.getByText('La rédaction du journal')).toBeInTheDocument();
+  });
+
+  it('n’affiche plus de numérotation qui promet une séquence', () => {
+    const { container } = renderHub({ onOpenConducteur: () => {}, onOpenMotDuJt: () => {} });
+    // Les pastilles portaient 1, 2, 3, 4, 5. Aucune carte ne doit plus avoir
+    // pour seul contenu un chiffre isolé.
+    const pastilles = [...container.querySelectorAll('span')]
+      .map((s) => s.textContent.trim())
+      .filter((texte) => /^[1-9]$/.test(texte));
+    expect(pastilles).toEqual([]);
+  });
+
+  it('ouvre le conducteur et le Mot du JT depuis l’accueil', () => {
+    // Ils ont quitté la barre d'onglets, où aucun libellé n'était lisible sur
+    // téléphone : l'accueil est désormais leur seule porte visible.
+    const onOpenConducteur = vi.fn();
+    const onOpenMotDuJt = vi.fn();
+    renderHub({ onOpenConducteur, onOpenMotDuJt });
+
+    fireEvent.click(screen.getByText('Le conducteur du JT'));
+    expect(onOpenConducteur).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Le Mot du JT'));
+    expect(onOpenMotDuJt).toHaveBeenCalled();
+  });
+
+  it('ne laisse aucune carte en français quand l’interface est en anglais', () => {
+    // Les deux rubriques étaient écrites en dur : « Le conducteur du JT » et
+    // « Le Mot du JT » s'affichaient tels quels au milieu de l'anglais.
+    localStorage.setItem('jt-alwm-lang', 'en');
+    renderHub({ onOpenConducteur: () => {}, onOpenMotDuJt: () => {} });
+    expect(screen.queryByText('Le conducteur du JT')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ouvrir le conducteur')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ouvrir le Mot du JT')).not.toBeInTheDocument();
+  });
+
   it('ouvre l\'espace reportage', () => {
     const onOpenReports = vi.fn();
     renderHub({ onOpenReports });

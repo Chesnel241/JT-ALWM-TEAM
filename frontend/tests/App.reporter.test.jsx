@@ -23,7 +23,6 @@ beforeEach(() => {
   localStorage.setItem('jt-alwm-lang', 'fr');
   stubMatchMedia();
   vi.clearAllMocks();
-  vi.spyOn(api, 'checkAuth').mockResolvedValue(true);
   vi.spyOn(api, 'getCountries').mockResolvedValue(COUNTRIES);
   vi.spyOn(api, 'getWeeks').mockResolvedValue(WEEKS);
   vi.spyOn(api, 'getDeliveries').mockResolvedValue([]);

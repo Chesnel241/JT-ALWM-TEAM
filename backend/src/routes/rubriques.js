@@ -36,7 +36,12 @@ router.get('/:weekId/:cle', globalLimiter, asyncHandler(async (req, res, next) =
   const rubrique = trouverRubrique(req.params.cle);
   if (!rubrique) return next(createErrors.notFound('Rubrique'));
   if (!semaineValide(req.params.weekId)) return next(createErrors.notFound('Semaine'));
-  return res.json({ rubrique, champs: getRubrique(req.params.weekId, rubrique.cle) });
+
+  // `revision` et `majLe` relèvent du protocole d'écriture, pas du contenu du
+  // journal : ils sortent de `champs` pour que la saisie ne les prenne jamais
+  // pour des champs à afficher.
+  const { revision, majLe, ...champs } = getRubrique(req.params.weekId, rubrique.cle);
+  return res.json({ rubrique, champs, revision, majLe });
 }));
 
 /**
@@ -45,6 +50,14 @@ router.get('/:weekId/:cle', globalLimiter, asyncHandler(async (req, res, next) =
  * La portée lit le TIROIR de la rubrique (`tj` ou `mj`), pas sa clé : c'est
  * lui qui sert d'identifiant partout ailleurs, et qui dit à `porteeCountry`
  * qu'un lien valide suffit, quel que soit son pays.
+ *
+ * `baseRevision` est la révision sur laquelle l'auteur a travaillé. Fournie et
+ * périmée, l'écriture est refusée et l'état courant rendu : c'est ce qui
+ * empêche deux rédacteurs du conducteur de s'effacer sans le savoir. Absente,
+ * l'écriture passe comme avant — un client plus ancien continue de marcher.
+ *
+ * Elle ne peut pas être confondue avec un champ du journal : `nettoyerChamps`
+ * ne garde que les clés déclarées par la rubrique.
  */
 router.put(
   '/:weekId/:cle',
@@ -62,7 +75,13 @@ router.put(
       ));
     }
 
-    return res.json(setRubrique(req.params.weekId, rubrique.cle, champs));
+    const { baseRevision } = req.body || {};
+    const etat = setRubrique(req.params.weekId, rubrique.cle, champs, { baseRevision });
+
+    // 409 : la demande était légitime, c'est l'état du serveur qui a changé.
+    // Le corps porte la version à jour, pour que l'écran puisse la proposer
+    // sans un aller-retour de plus.
+    return res.status(etat.conflit ? 409 : 200).json(etat);
   }),
 );
 
