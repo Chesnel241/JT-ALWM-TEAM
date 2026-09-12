@@ -5,6 +5,7 @@ import { isCountryAccepted } from '../data/constants.js';
 import { getCustomCountries, enregistrerLien, revoquerLien, listerLiens } from '../data/store.js';
 import { BUCKETS_REDACTION, niveauAcces } from '../middleware/portee.js';
 import { lireEtat } from '../services/porteeStats.js';
+import { lireRefus } from '../middleware/rateLimiter.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { createLimiter } from '../middleware/rateLimiter.js';
@@ -95,6 +96,10 @@ router.get('/etat', requireAdmin, asyncHandler(async (req, res) => {
       detail: liens,
     },
     acces: lireEtat(),
+    // Un 429 ressemble à une panne pour qui le reçoit. Les compter dit
+    // si le partage d'adresse publique (CGNAT, très répandu chez les
+    // opérateurs mobiles) gêne réellement, ou pas du tout.
+    refusParLimiteur: lireRefus(),
   });
 }));
 

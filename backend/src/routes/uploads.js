@@ -164,10 +164,13 @@ router.get('/:weekId/:countryId/archive', jetonArchive, porteeCountry(), archive
   // Sécurisation retirée à la demande de l'utilisateur : le téléchargement est public
 
   const uploads = getCountryUploads(weekId, countryId);
-  // On assume que le fichier existe dans le volume local.
-  // Sinon, on vérifie l'existence locale.
+  // Un fichier référencé au store mais absent du disque — purge passée,
+  // envoi interrompu — était silencieusement écarté : la rédaction recevait
+  // un zip incomplet sans jamais l'apprendre, et cherchait un rush qui
+  // n'arriverait pas. On les compte, et on le dit dans l'archive.
   const files = uploads.filter((u) => u.filename && existsSync(path.join(uploadsDir, u.filename)));
-  
+  const manquants = uploads.filter((u) => !u.filename || !existsSync(path.join(uploadsDir, u.filename)));
+
   if (files.length === 0) {
     logger.warn('Archive request with no files', {
       context: { weekId, countryId, totalUploads: uploads.length, ip: req.ip },
@@ -225,7 +228,27 @@ router.get('/:weekId/:countryId/archive', jetonArchive, porteeCountry(), archive
   });
 
   archive.pipe(res);
-  
+
+  if (manquants.length) {
+    logger.warn('Archive incomplète : des fichiers ne sont plus sur le disque', {
+      context: { weekId, countryId, manquants: manquants.length, presents: files.length },
+    });
+    const lignes = [
+      `Archive du chutier ${countryId}, semaine ${weekId}.`,
+      '',
+      `${manquants.length} fichier(s) référencé(s) ne sont plus sur le serveur`,
+      'et ne figurent donc pas dans ce zip :',
+      '',
+      ...manquants.map((u) => `  - ${u.name || u.filename || '(sans nom)'}`),
+      '',
+      'Cause la plus probable : la purge de fin de cycle est passée, ou',
+      "l'envoi a été interrompu avant d'aboutir. Redemandez la pièce au",
+      'correspondant concerné.',
+      '',
+    ].join('\n');
+    archive.append(Buffer.from(lignes, 'utf-8'), { name: 'FICHIERS-MANQUANTS.txt' });
+  }
+
   // Append streams lazily without eagerly opening S3 connections
   for (const file of files) {
     // Protection contre le Zip Slip (Path Traversal)
