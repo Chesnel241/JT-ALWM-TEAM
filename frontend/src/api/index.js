@@ -254,6 +254,25 @@ export const api = {
   getSubscriptions: (weekId, adminPassword) =>
     request(`/notifications/${weekId}`, { adminPassword }),
 
+  // Jetons de téléchargement : le navigateur ouvre l'URL lui-même et ne peut
+  // y joindre aucun en-tête. Le jeton signé (1 h, lié à la ressource) est ce
+  // qui prouve le droit sans écrire de secret durable dans l'URL.
+  createDownloadToken: (filename, adminPassword) =>
+    request('/uploads/download-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ filename }),
+    }),
+
+  createArchiveToken: (weekId, countryId, adminPassword) =>
+    request('/uploads/archive-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ weekId, countryId }),
+    }),
+
   // La voix off passait jusqu'ici par un fetch a la main, qui envoyait le
   // jeton de session dans l'en-tete du mot de passe admin — donc un en-tete
   // toujours faux, et aucun lien personnel. `request` assemble les deux

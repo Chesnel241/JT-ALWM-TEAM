@@ -1349,29 +1349,48 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const isArchive = fileToDownload.filename.endsWith('/archive');
 
     try {
-      // Pour la rubrique mj on n'expose PLUS le mot de passe admin en query
-      // string (logs proxy/Render/Sentry, historique navigateur). On
-      // demande un dl_token signé (HMAC, 1 h, lié au filename).
-      const needsToken = selectedBin === 'mj' && authenticatedAdminPassword && !isArchive;
-      let dlTokenQuery = '';
-      if (needsToken) {
-        const tokRes = await fetch(`${API_BASE}/api/uploads/download-token`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-App-Password': localStorage.getItem('app-password') || '',
-            'X-Admin-Password': authenticatedAdminPassword,
-          },
-          body: JSON.stringify({ filename: fileToDownload.filename }),
-        });
-        if (!tokRes.ok) throw new Error('Téléchargement refusé : authentification expirée.');
-        const { token } = await tokRes.json();
-        dlTokenQuery = `&dl_token=${encodeURIComponent(token)}`;
-      }
+      let downloadUrl;
 
-      const downloadUrl = isArchive
-        ? `${API_BASE}/api/uploads/${fileToDownload.filename}`
-        : `${API_BASE}/uploads/${fileToDownload.filename}?dl=1${dlTokenQuery}`;
+      if (isArchive) {
+        // Le zip d'un chutier s'ouvre par une navigation : aucun en-tête ne
+        // peut l'accompagner. On demande un jeton signé, qui sert à la fois
+        // de preuve du droit et de vérification préalable — s'il est délivré,
+        // le zip suivra. Le sonder par un HEAD relancerait la fabrication de
+        // l'archive entière pour rien.
+        const [weekId, countryId] = fileToDownload.filename.split('/');
+        const { token } = await api.createArchiveToken(weekId, countryId, adminPasswordRef.current);
+        downloadUrl = `${API_BASE}/api/uploads/${fileToDownload.filename}?dl_token=${encodeURIComponent(token)}`;
+      } else {
+        // Pour la rubrique mj on n'expose PLUS le mot de passe admin en query
+        // string (logs proxy/Render/Sentry, historique navigateur). On
+        // demande un dl_token signé (HMAC, 1 h, lié au filename).
+        let dlTokenQuery = '';
+        if (selectedBin === 'mj' && adminPasswordRef.current) {
+          const { token } = await api.createDownloadToken(
+            fileToDownload.filename,
+            adminPasswordRef.current,
+          );
+          dlTokenQuery = `&dl_token=${encodeURIComponent(token)}`;
+        }
+        downloadUrl = `${API_BASE}/uploads/${fileToDownload.filename}?dl=1${dlTokenQuery}`;
+
+        // Un <a> qui échoue ouvre un onglet blanc sans rien dire, et
+        // l'interface affirmait quand même « Téléchargement lancé… ». On
+        // vérifie d'abord : sur un fichier statique, un HEAD ne coûte rien.
+        const sonde = await fetch(downloadUrl, { method: 'HEAD' });
+        if (!sonde.ok) {
+          addToast(
+            sonde.status === 404
+              ? 'Ce fichier n\'est plus sur le serveur (il a peut-être été purgé).'
+              : 'Téléchargement refusé : reconnectez-vous à l\'espace montage.',
+            'error',
+            5000,
+          );
+          setDownloadDialogOpen(false);
+          setFileToDownload(null);
+          return;
+        }
+      }
 
       // Déclenchement non-bloquant et non-naviguant : évite que la page recharge ou perde la semaine sélectionnée
       const link = document.createElement('a');
@@ -1391,9 +1410,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       addToast('Téléchargement lancé…', 'info', 2000);
     } catch (err) {
       console.error('Erreur de téléchargement', err);
-      addToast('Erreur de téléchargement (vérifiez vos droits)', 'error');
+      addToast(err.message || 'Erreur de téléchargement (vérifiez vos droits)', 'error', 5000);
     }
-    
+
     setDownloadDialogOpen(false);
     setFileToDownload(null);
   };

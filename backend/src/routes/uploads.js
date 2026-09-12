@@ -18,7 +18,7 @@ import { archiveLimiter } from '../middleware/rateLimiter.js';
 import { porteeCountry, porteeRedaction, estRedaction } from '../middleware/portee.js';
 import { audit } from '../logger/audit.js';
 import { fileUpload as upload, uploadsDir, classifyUpload } from '../lib/upload.js';
-import { generateDownloadToken } from '../lib/downloadTokens.js';
+import { generateDownloadToken, verifyDownloadToken } from '../lib/downloadTokens.js';
 import { getFileMetadata } from '../data/store.js';
 
 import { Readable } from 'stream';
@@ -91,6 +91,39 @@ router.post('/download-token', requireAdmin, asyncHandler(async (req, res, next)
   return res.json({ token, expiresInSeconds: 3600 });
 }));
 
+/**
+ * Clé signée d'un chutier complet. Le nom contient des `/` mais jamais de
+ * `:`, ce qui préserve le découpage du jeton (`payload:expiration:signature`).
+ */
+const cleArchive = (weekId, countryId) => `archive/${weekId}/${countryId}`;
+
+// POST /api/uploads/archive-token — même principe que le jeton de fichier
+// au-dessus, pour le zip d'un chutier. Il existe parce que la rédaction ouvre
+// l'archive par une simple navigation (<a href>) : un navigateur ne peut y
+// joindre aucun en-tête, donc ni mot de passe montage ni lien personnel. Le
+// jeton signé est le seul moyen de prouver le droit dans une URL sans y
+// écrire de secret durable.
+router.post('/archive-token', requireAdmin, asyncHandler(async (req, res, next) => {
+  const weekId = String(req.body?.weekId || '').trim();
+  const countryId = String(req.body?.countryId || '').trim().toLowerCase();
+  if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
+    return next(createErrors.notFound('Week ou Country'));
+  }
+  return res.json({ token: generateDownloadToken(cleArchive(weekId, countryId)), expiresInSeconds: 3600 });
+}));
+
+/** Reconnaît un jeton d'archive valide et établit le droit avant la portée. */
+function jetonArchive(req, _res, next) {
+  const jeton = req.query?.dl_token;
+  if (typeof jeton === 'string' && jeton) {
+    const { weekId, countryId } = req.params;
+    if (verifyDownloadToken(jeton, cleArchive(weekId, String(countryId || '').toLowerCase()))) {
+      req.accesRedaction = true;
+    }
+  }
+  return next();
+}
+
 // GET /api/uploads/:weekId — tous les pays d'une semaine. Transversal par
 // nature : aucun correspondant n'a de raison de lire les rushes des autres.
 router.get('/:weekId', porteeRedaction(), (req, res) => {
@@ -118,7 +151,7 @@ router.get('/:weekId/:countryId', porteeCountry(), (req, res) => {
 });
 
 // GET /api/uploads/:weekId/:countryId/archive — zip des fichiers d'un pays
-router.get('/:weekId/:countryId/archive', porteeCountry(), archiveLimiter, asyncHandler(async (req, res, next) => {
+router.get('/:weekId/:countryId/archive', jetonArchive, porteeCountry(), archiveLimiter, asyncHandler(async (req, res, next) => {
   const { weekId, countryId } = req.params;
   
   if (!isValidWeek(weekId) || !isValidCountry(countryId)) {

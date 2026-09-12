@@ -172,7 +172,10 @@ export function porteeCountry(resolveur = paysDepuisParams) {
     // Pays illisible : ce n'est pas à la portée de trancher. La route valide
     // déjà ses paramètres et répondra 400/404 d'elle-même.
     const { autorise, erreur } = evaluerPortee({
-      redaction: estRedaction(req),
+      // `req.accesRedaction` est posé par un middleware amont qui a déjà
+      // établi le droit autrement — un jeton de téléchargement signé, pour
+      // une URL ouverte par le navigateur, qui ne peut porter aucun en-tête.
+      redaction: estRedaction(req) || req.accesRedaction === true,
       correspondant: req.correspondant,
       pays: resolveur(req),
       chemin: req.path,
