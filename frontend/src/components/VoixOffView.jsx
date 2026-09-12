@@ -10,6 +10,7 @@ import { formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { api } from '../api/index.js';
 import { readAdminPassword } from '../lib/adminSession.js';
+import { extensionDuBlob, extensionDepuisType } from '../lib/signatures.js';
 
 const getSupportedMimeType = () => {
   if (typeof MediaRecorder === 'undefined') return '';
@@ -330,13 +331,15 @@ export default function VoixOffView({
     setIsUploading(true);
     setUploadStepText('Envoi du fichier vers le serveur...');
 
-    const blobType = audioBlob.type || '';
-    let ext = 'webm';
-    if (blobType.includes('mp4')) ext = 'mp4';
-    else if (blobType.includes('ogg')) ext = 'ogg';
-    else if (blobType.includes('aac')) ext = 'aac';
-    else if (blobType.includes('mpeg') || blobType.includes('mp3')) ext = 'mp3';
-    else if (blobType.includes('wav')) ext = 'wav';
+    // Le format vient des OCTETS, pas du type annoncé. Safari appelle
+    // « audio/aac » un conteneur MP4, et livre parfois un type que personne
+    // n'attend : la cascade précédente retombait alors sur `webm` par
+    // défaut, et le serveur refusait l'enregistrement au motif que ses
+    // octets n'étaient pas du Matroska. « Format audio non reconnu », sans
+    // recours, pour une voix off parfaitement lisible.
+    const ext = (
+      await extensionDuBlob(audioBlob, extensionDepuisType(audioBlob.type) || '.m4a')
+    ).replace('.', '');
 
     const formData = new FormData();
     formData.append('audio', audioBlob, `voix-${Date.now()}.${ext}`);

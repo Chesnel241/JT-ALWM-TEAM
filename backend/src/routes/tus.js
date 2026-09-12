@@ -2,9 +2,10 @@ import { Server, EVENTS } from '@tus/server';
 import { FileStore } from '@tus/file-store';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import { existsSync, unlinkSync } from 'fs';
+import { existsSync, unlinkSync, openSync, readSync, closeSync, renameSync } from 'fs';
 import logger from '../logger/index.js';
-import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyUpload } from '../lib/upload.js';
+import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyExtension, extensionEffective } from '../lib/upload.js';
+import { extensionDepuisOctets, TAILLE_ENTETE } from '../lib/signatures.js';
 import { addUpload, getCustomCountries, getExtensions, updateUploadSize, setUploadProxy } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
@@ -14,6 +15,7 @@ import { io } from '../app.js';
 import { safeEqual, normalizeToken } from '../middleware/auth.js';
 import { readReporterToken } from '../lib/reporterToken.js';
 import { evaluerPortee } from '../middleware/portee.js';
+import { nomLisible } from '../middleware/sanitizer.js';
 
 const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 // Délègue à la source de vérité partagée (inclut COUNTRIES + custom +
@@ -86,10 +88,72 @@ export function authorizeTusUpload(meta = {}, req = null) {
   return { ok: true, isAdmin, correspondant };
 }
 
-/** Allowlist d'extensions — même règle que le chemin multer (lib/upload.js). */
-export function validateTusExtension(name) {
+/**
+ * Le nom porte-t-il une extension explicitement INTERDITE ?
+ *
+ * C'est la seule chose qui justifie encore un refus à l'ouverture : un
+ * `.html` ou un `.exe` nommé comme tel. L'absence d'extension, elle, n'est
+ * pas une faute — le partage Android et certains sélecteurs livrent
+ * couramment un nom nu, et le refuser coûtait un reportage. Ce cas-là est
+ * tranché à l'arrivée, sur les octets, où il n'y a plus à deviner.
+ */
+export function extensionInterdite(name) {
   const ext = path.extname(String(name || '')).toLowerCase();
-  return ALLOWED_EXTENSIONS.has(ext);
+  return Boolean(ext) && !ALLOWED_EXTENSIONS.has(ext);
+}
+
+/**
+ * Allowlist d'extensions — même règle que le chemin multer (lib/upload.js).
+ * Le type MIME sert de secours quand le nom n'a pas d'extension exploitable.
+ */
+export function validateTusExtension(name, mimetype = '') {
+  return Boolean(extensionEffective(name, mimetype));
+}
+
+/**
+ * Donne au fichier stocké l'extension que ses octets révèlent, quand il n'en
+ * a pas. Renvoie le nom à retenir — inchangé si tout allait déjà bien, ou si
+ * rien n'est reconnu (un script texte n'a aucune signature : il reste sans
+ * extension, et le serveur statique le sert en pièce jointe, ce qui est
+ * exactement ce qu'il faut).
+ *
+ * Ne jette jamais : au pire on garde le nom tel quel.
+ */
+function reconnaitreEtRenommer(id, meta) {
+  if (path.extname(id)) return id;
+
+  const chemin = path.join(uploadsDir, id);
+  let ext = '';
+  let fd;
+  try {
+    fd = openSync(chemin, 'r');
+    const buf = Buffer.alloc(TAILLE_ENTETE);
+    const lus = readSync(fd, buf, 0, TAILLE_ENTETE, 0);
+    ext = extensionDepuisOctets(buf.subarray(0, lus));
+  } catch (err) {
+    logger.warn('Lecture d\'en-tête impossible, nom conservé', { error: err.message, id });
+    return id;
+  } finally {
+    if (fd !== undefined) { try { closeSync(fd); } catch { /* ignore */ } }
+  }
+
+  if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+    logger.info('Format non reconnu sur les octets : fichier conservé sans extension', {
+      context: { id, nomDorigine: meta?.name || '', typeAnnonce: meta?.filetype || '' },
+    });
+    return id;
+  }
+
+  try {
+    renameSync(chemin, path.join(uploadsDir, `${id}${ext}`));
+    logger.info('Extension reconnue sur les octets', {
+      context: { id, ext, nomDorigine: meta?.name || '', typeAnnonce: meta?.filetype || '' },
+    });
+    return `${id}${ext}`;
+  } catch (err) {
+    logger.warn('Renommage impossible, nom conservé', { error: err.message, id });
+    return id;
+  }
 }
 
 export const tusServer = new Server({
@@ -107,8 +171,13 @@ export const tusServer = new Server({
     // IMAGE_EXT de ffmpeg, isImage de Remotion, mime du player). Un fichier
     // sans extension est traité comme vidéo → écran noir si c'était une
     // image, téléchargement forcé au lieu de lecture inline, etc.
-    const ext = path.extname(String(metadata?.filename || metadata?.name || '')).toLowerCase();
-    const safeExt = ALLOWED_EXTENSIONS.has(ext) ? ext : '';
+    // L'extension vient du nom, ou à défaut du type annoncé. Si rien n'est
+    // exploitable on écrit sans extension : les octets trancheront à
+    // l'arrivée (onUploadFinish), et le fichier sera renommé alors.
+    const safeExt = extensionEffective(
+      metadata?.filename || metadata?.name || '',
+      metadata?.filetype || '',
+    );
     return `${Date.now()}-${uuidv4()}${safeExt}`;
   },
   onUploadCreate: async (req, upload) => {
@@ -138,7 +207,9 @@ export const tusServer = new Server({
       throw { status_code: 403, body: portee.erreur?.publicMessage || 'Envoi hors de votre pays.' };
     }
 
-    if (!validateTusExtension(meta.name || meta.filename)) {
+    // On ne refuse que ce qui se déclare interdit. Un nom sans extension
+    // passe : son format sera reconnu sur ses octets à la fin du transfert.
+    if (extensionInterdite(meta.name || meta.filename)) {
       throw { status_code: 415, body: 'Type de fichier non autorisé.' };
     }
 
@@ -160,8 +231,13 @@ export const tusServer = new Server({
     const meta = upload.metadata || {};
     const weekId = meta.weekId;
     const countryId = meta.countryId;
-    const filename = upload.id; // Generated by namingFunction
-    const originalName = meta.name || 'Unknown.mp4';
+    // `namingFunction` a pu écrire sans extension, faute d'avoir su la
+    // déduire du nom ou du type annoncé. Les octets sont arrivés depuis :
+    // on lit l'en-tête et on renomme. C'est le seul juge fiable — le nom
+    // ment par omission, et le type annoncé vaut très souvent
+    // « application/octet-stream ».
+    let filename = reconnaitreEtRenommer(upload.id, meta);
+    const originalName = nomLisible(meta.name || meta.filename || 'envoi');
     const reportage = meta.reportage || null;
     // `sujetId` est la nouvelle attache. `reportage` reste écrit pour que les
     // écrans qui ne connaissent pas encore les sujets continuent d'afficher
@@ -169,6 +245,9 @@ export const tusServer = new Server({
     const sujetId = meta.sujetId || null;
     const fileType = meta.filetype || 'application/octet-stream';
     const fileSize = upload.size;
+    // Le classement se fait sur l'extension retenue après reconnaissance, et
+    // non sur le nom d'origine : c'est elle qui dit ce que le fichier est.
+    const extRetenue = path.extname(filename).toLowerCase();
 
     // Classement par extension d'abord, type MIME ensuite : un téléphone qui
     // annonce application/octet-stream pour un .wav rangeait son audio dans
@@ -177,7 +256,7 @@ export const tusServer = new Server({
       id: uuidv4(),
       name: originalName,
       filename: filename,
-      type: classifyUpload(originalName, fileType),
+      type: classifyExtension(extRetenue, fileType),
       size: `${(fileSize / (1024 * 1024)).toFixed(1)} MB`,
       status: 'pending',
       reportage,
@@ -216,7 +295,7 @@ export const tusServer = new Server({
       // téléphone, avant même de commencer l'envoi. Ici l'envoi est déjà
       // terminé et confirmé quand l'encodage démarre.
       if (fileData.type === 'video') {
-        const ext = path.extname(originalName).toLowerCase();
+        const ext = extRetenue || path.extname(originalName).toLowerCase();
         const absolutePath = path.join(uploadsDir, filename);
         queueCompression(absolutePath, ext, ({ compressed, proxyName, newSize }) => {
           if (!compressed) return;

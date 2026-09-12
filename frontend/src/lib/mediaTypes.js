@@ -162,11 +162,21 @@ export function groupByReportage(files, { untitledLabel = 'Sans section', sujets
  * Android n'associent ni le HEIC ni le 3GP à une famille et masquent alors le
  * fichier dans le sélecteur. On liste donc aussi les extensions.
  */
+/**
+ * Ce que le sélecteur de fichiers propose. La liste doit rester celle que le
+ * serveur accepte (`backend/src/lib/upload.js`) : les extensions qui
+ * manquaient ici — .mpe, .f4v, .vob, .asf, .divx, .wave, .m4b, .aif, .ac3,
+ * .jfif — étaient acceptées à l'arrivée mais invisibles au départ, si bien
+ * que le fichier apparaissait grisé sur le téléphone du correspondant.
+ */
 export const UPLOAD_ACCEPT = [
   'video/*', 'audio/*', 'image/*',
-  '.mp4', '.m4v', '.mov', '.avi', '.mkv', '.webm', '.mpg', '.mpeg', '.3gp', '.3g2',
-  '.wmv', '.flv', '.ts', '.mts', '.m2ts', '.ogv',
-  '.mp3', '.wav', '.ogg', '.oga', '.m4a', '.aac', '.flac', '.opus', '.wma', '.amr', '.3ga', '.aiff', '.caf',
-  '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tif', '.tiff', '.heic', '.heif', '.avif',
+  '.mp4', '.m4v', '.mov', '.avi', '.mkv', '.webm', '.mpg', '.mpeg', '.mpe',
+  '.3gp', '.3g2', '.wmv', '.flv', '.f4v', '.ts', '.mts', '.m2ts', '.ogv',
+  '.vob', '.asf', '.divx',
+  '.mp3', '.wav', '.wave', '.ogg', '.oga', '.m4a', '.m4b', '.aac', '.flac',
+  '.opus', '.wma', '.amr', '.3ga', '.aif', '.aiff', '.caf', '.ac3',
+  '.jpg', '.jpeg', '.jfif', '.png', '.webp', '.gif', '.bmp', '.tif', '.tiff',
+  '.heic', '.heif', '.avif',
   '.txt', '.rtf', '.md', '.doc', '.docx', '.odt', '.pdf', '.zip',
 ].join(',');

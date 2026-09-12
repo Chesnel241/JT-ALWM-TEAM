@@ -11,7 +11,7 @@ import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileS
 import { queueCompression } from '../services/videoCompress.js';
 import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
-import { sanitizeFilename, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
+import { sanitizeFilename, nomLisible, isValidUUID, validateUUIDParam } from '../middleware/sanitizer.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { archiveLimiter } from '../middleware/rateLimiter.js';
@@ -352,7 +352,7 @@ router.post('/:weekId/:countryId', porteeCountry(), uploadMiddleware, asyncHandl
 
     const fileData = {
       id: uuidv4(),
-      name: file.originalname,
+      name: nomLisible(file.originalname),
       filename: file.filename,
       // Classement par extension d'abord : le MIME envoyé par les téléphones
       // est trop souvent générique (cf. classifyUpload).
