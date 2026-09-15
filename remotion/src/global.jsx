@@ -18,7 +18,7 @@ export function Ticker({ ticker }) {
   const px = isNaN(Number(ticker.posX)) ? 0 : Number(ticker.posX);
   const py = isNaN(Number(ticker.posY)) ? 0 : Number(ticker.posY);
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 40, background: COL.navy, display: 'flex', alignItems: 'center', overflow: 'hidden', transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'bottom left', borderTop: `1px solid rgba(255,255,255,0.1)` }}>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 40, background: COL.ticker, display: 'flex', alignItems: 'center', overflow: 'hidden', transform: `translate(${px}px, ${py}px) scale(${scale})`, transformOrigin: 'bottom left', borderTop: `1px solid rgba(255,255,255,0.1)` }}>
       <div style={{ background: COL.blue, color: COL.white, fontWeight: 800, height: '100%', display: 'flex', alignItems: 'center', padding: '0 24px', flexShrink: 0, fontFamily: ff(null, "'Montserrat', sans-serif"), fontSize: 16, letterSpacing: '0.04em', zIndex: 2 }}>
         ALWM TV
       </div>

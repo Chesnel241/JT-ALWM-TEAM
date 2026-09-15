@@ -1,4 +1,5 @@
 import React from 'react';
+import { COULEURS } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
 
@@ -43,10 +44,10 @@ export function EnvatoSplitScreen({ overlay, durationInFrames }) {
   const leftSub = fields.leftSub || 'USA';
   const rightLocation = fields.rightLocation || 'NEW YORK';
   const rightSub = fields.rightSub || 'USA';
-  const colorMain = fields.colorMain || '#d61f1f';
-  const colorAccent = fields.colorAccent || '#fcfcfc';
-  const colorTextMain = fields.colorTextMain || '#fcfcfc';
-  const colorTextAccent = fields.colorTextAccent || '#111111';
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorAccent = fields.colorAccent || COULEURS.papier;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
 
   // Out phase logic
   const OUT_DUR = 30;

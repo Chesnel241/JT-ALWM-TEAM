@@ -1,5 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Img, staticFile } from 'remotion';
+import { COULEURS } from '../identite.js';
 import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 import { WorldMap } from '../worldmap.jsx';
@@ -75,9 +76,11 @@ const px = (n) => `${n}px`;
 // bleu clair, accents diagonaux, Montserrat. (cf. charte officielle)
 // ===========================================================================
 const SLANT = 26; // décalage horizontal du bord penché (px)
-const NAVY = '#14143C';
-const ELEC = '#0046C0';
-const LIGHT = '#5BA9F7';
+// Ces trois constantes doublaient la palette de theme.js avec des valeurs
+// différentes : un même bleu ALWM sortait en #0046C0 ici et en #0057D9 là.
+// Elles pointent maintenant sur la charte (identite.js).
+const NAVY = COULEURS.encre;      // texte foncé sur cartouche clair
+const ELEC = COULEURS.structure;  // libellé, contraste tenu sur fond clair
 
 // Parallélogramme penché (les 2 bords verticaux inclinés du même angle).
 // `reveal` 0→1 anime un wipe gauche→droite via clip-path.
@@ -400,7 +403,7 @@ function TitreReportage({ overlay, durationInFrames }) {
   const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
   // Personnalisable : bg = bandeau titre, text = titre, accent = chevron +
   // sous-titre. Défauts = charte (navy / blanc / bleu).
-  const cBand = C.bg(COL.navy);
+  const cBand = C.bg(COL.band);
   const cTitle = C.text(COL.white);
   const cAccent = C.accent(COL.blue);
 

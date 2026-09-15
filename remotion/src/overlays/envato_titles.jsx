@@ -1,4 +1,5 @@
 import React from 'react';
+import { COULEURS } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
 
@@ -49,10 +50,10 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
   const line1 = fields.line1 || titreL1 || 'TITRE DU JOURNAL';
   const line2 = fields.line2 || titreL2 || '';
   const subtitle = fields.subtitle || fields.sous_titre || '';
-  const colorMain = fields.colorMain || '#d61f1f';
-  const colorAccent = fields.colorAccent || '#fcfcfc';
-  const colorTextMain = fields.colorTextMain || '#fcfcfc';
-  const colorTextAccent = fields.colorTextAccent || '#111111';
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorAccent = fields.colorAccent || COULEURS.papier;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
 
   // Out phase logic
   const OUT_DUR = 30;
@@ -138,10 +139,10 @@ export function EnvatoTicker({ overlay, durationInFrames }) {
   let items = fields.items || [fields.text1, fields.text2].filter(Boolean);
   if (typeof items === 'string') items = items.split(',').map(s => s.trim());
   if (!items.length) items = ['INFORMATION À SAISIR'];
-  const colorMain = fields.colorMain || '#d61f1f';
-  const colorAccent = fields.colorAccent || '#111111';
-  const colorTextMain = fields.colorTextMain || '#fcfcfc';
-  const colorTextAccent = fields.colorTextAccent || '#fcfcfc';
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorAccent = fields.colorAccent || COULEURS.encre;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.papier;
 
   const isOut = frame > durationInFrames - 20;
   const outFrame = isOut ? frame - (durationInFrames - 20) : 0;

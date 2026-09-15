@@ -1,4 +1,5 @@
 import React from 'react';
+import { COULEURS } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
 
@@ -16,10 +17,10 @@ export function EnvatoPresenterLowerThird({ overlay, durationInFrames }) {
   const context = fields.context || 'TONY NIGHT SHOW';
   const name = fields.name || 'MARINA FORESTER';
   const title = fields.title || 'ADMINISTRATOR';
-  const colorMain = fields.colorMain || '#5a1d96';
-  const colorAccent = fields.colorAccent || '#fcfcfc';
-  const colorTextMain = fields.colorTextMain || '#fcfcfc';
-  const colorTextAccent = fields.colorTextAccent || '#111111';
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorAccent = fields.colorAccent || COULEURS.papier;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
   
   // Stagger delays
   const contextDelay = 10;
@@ -95,10 +96,10 @@ export function EnvatoNewsLowerThird({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const tag = fields.tag || 'BREAKING NEWS';
   const headline = fields.headline || 'ENVATO - THE WORLD\'S LEADING MARKETPLACE';
-  const colorMain = fields.colorMain || '#d61f1f';
-  const colorAccent = fields.colorAccent || '#fcfcfc';
-  const colorTextMain = fields.colorTextMain || '#fcfcfc';
-  const colorTextAccent = fields.colorTextAccent || '#111111';
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorAccent = fields.colorAccent || COULEURS.papier;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
   
   // Stagger delays
   const tagDelay = 5;

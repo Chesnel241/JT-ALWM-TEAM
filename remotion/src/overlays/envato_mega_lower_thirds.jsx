@@ -1,4 +1,5 @@
 import React from 'react';
+import { COULEURS } from '../identite.js';
 import { useCurrentFrame } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
 
@@ -18,9 +19,9 @@ export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
   const parts = fullNom.split(' ');
   const firstName = parts[0] || 'EMIL';
   const lastName = parts.slice(1).join(' ') || '';
-  const colorMain = fields.colorMain || '#fcfcfc';
-  const colorTextFirst = fields.colorTextFirst || '#111111';
-  const colorTextLast = fields.colorTextLast || '#666666';
+  const colorMain = fields.colorMain || COULEURS.papier;
+  const colorTextFirst = fields.colorTextFirst || COULEURS.encre;
+  const colorTextLast = fields.colorTextLast || COULEURS.sourdine;
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -69,10 +70,10 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const name = fields.nom || 'MICHAEL SCOTT';
   const title = fields.fonction || 'REGIONAL MANAGER';
-  const colorTop = fields.colorMain || '#0047AB'; // Corporate Blue
-  const colorBottom = fields.colorBg || '#fcfcfc';
-  const colorTextTop = fields.colorTextMain || '#ffffff';
-  const colorTextBottom = fields.colorTextAccent || '#111111';
+  const colorTop = fields.colorMain || COULEURS.accentSoutenu; // Corporate Blue
+  const colorBottom = fields.colorBg || COULEURS.papier;
+  const colorTextTop = fields.colorTextMain || COULEURS.papier;
+  const colorTextBottom = fields.colorTextAccent || COULEURS.encre;
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -133,11 +134,11 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
   const leftRole = fields.leftRole || 'HOST';
   const rightName = fields.rightName || 'JOHN SMITH';
   const rightRole = fields.rightRole || 'GUEST';
-  const colorBg = fields.colorBg || '#111111';
-  const colorMain = fields.colorMain || '#d61f1f';
-  const colorAccent = fields.colorAccent || '#fcfcfc';
-  const colorTextMain = fields.colorTextMain || '#ffffff';
-  const colorTextAccent = fields.colorTextAccent || '#111111';
+  const colorBg = fields.colorBg || COULEURS.encre;
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorAccent = fields.colorAccent || COULEURS.papier;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -199,10 +200,10 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
   const location = fields.location || 'PARIS, FRANCE';
-  const colorBg = fields.colorBg || '#111111';
-  const colorMain = fields.colorMain || '#fcfcfc';
-  const colorTextMain = fields.colorTextMain || '#fcfcfc';
-  const colorTextAccent = fields.colorTextAccent || '#111111';
+  const colorBg = fields.colorBg || COULEURS.encre;
+  const colorMain = fields.colorMain || COULEURS.papier;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
   
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
@@ -264,9 +265,9 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const quote = fields.quote || 'DESIGN IS NOT JUST WHAT IT LOOKS LIKE. DESIGN IS HOW IT WORKS.';
   const author = fields.author || 'STEVE JOBS';
-  const colorBg = fields.colorBg || '#111111';
-  const colorMain = fields.colorMain || '#d61f1f';
-  const colorTextMain = fields.colorTextMain || '#ffffff';
+  const colorBg = fields.colorBg || COULEURS.encre;
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
 
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;

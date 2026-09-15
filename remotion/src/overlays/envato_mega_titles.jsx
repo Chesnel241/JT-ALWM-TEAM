@@ -1,4 +1,5 @@
 import React from 'react';
+import { COULEURS } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
 
@@ -16,9 +17,9 @@ export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const title = fields.titre || "INVESTIGATIVE REPORT";
   const subtitle = fields.sous_titre || "UNCOVERING THE TRUTH";
-  const colorMain = fields.colorMain || "#d61f1f";
-  const colorTextMain = fields.colorTextMain || "#ffffff";
-  const colorTextAccent = fields.colorTextAccent || "#111111";
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -76,8 +77,8 @@ export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const line1 = fields.titre || "BREAKING";
   const line2 = fields.sous_titre || "NEWS TODAY";
-  const colorMain = fields.colorMain || "#d61f1f";
-  const colorAccent = fields.colorAccent || "#fcfcfc";
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorAccent = fields.colorAccent || COULEURS.papier;
   
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -134,8 +135,8 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const text = fields.titre || "EXCLUSIVE INTERVIEW";
   const subtitle = fields.sous_titre || "WITH THE PRESIDENT";
-  const colorMain = fields.colorMain || "#d61f1f";
-  const colorTextMain = fields.colorTextMain || "#ffffff";
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
   const colorBg = fields.colorBg || "rgba(255,255,255,0.4)";
   
   const isOut = frame > durationInFrames - 30;
@@ -190,8 +191,8 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
   const title = fields.titre || "UNDERCOVER";
   const subtitle = fields.sous_titre || "INSIDE THE CARTEL";
   const colorBg = fields.colorBg || "rgba(20, 20, 20, 0.4)";
-  const colorTextMain = fields.colorTextMain || "#ffffff";
-  const colorAccent = fields.colorAccent || "#ffffff";
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorAccent = fields.colorAccent || COULEURS.papier;
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
@@ -246,9 +247,9 @@ export function EnvatoReportageMassif({ overlay, durationInFrames }) {
   const fields = overlay?.fields || {};
   const line1 = fields.titre || "STATE OF";
   const line2 = fields.sous_titre || "EMERGENCY";
-  const colorMain = fields.colorMain || "#111111";
-  const colorText = fields.colorTextMain || "#ffffff";
-  const colorHighlight = fields.colorHighlight || "#d61f1f";
+  const colorMain = fields.colorMain || COULEURS.encre;
+  const colorText = fields.colorTextMain || COULEURS.papier;
+  const colorHighlight = fields.colorHighlight || COULEURS.structure;
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { COULEURS, versAss } from '../../../remotion/src/identite.js';
 
 /**
  * Overlay templates for the video editor.
@@ -20,14 +21,19 @@ import path from 'path';
  */
 
 // Colours are ASS BGR (&HBBGGRR&). Alpha is &HAA& (00 = opaque, FF = clear).
-const COL_WHITE = '&HFFFFFF&';
-const COL_BLACK = '&H000000&';
-const COL_GOLD = '&H00D7FF&'; // #FFD700
-const COL_NAVY = '&H3C1414&'; // deep blue band
-const COL_RED = '&H1818D8&'; // alert red
-const COL_DARK = '&H1A1A2E&'; // near-black band
-const COL_BLUE = '&HC04600&'; // bleu info (#0046C0)
-const COL_INK = '&H1A1A1A&'; // texte sombre sur fond clair
+// Une quatrieme palette vivait ici, en BGR et sans rapport avec les trois
+// autres : le bleu du JT y valait #0046C0 quand Remotion le rendait en
+// #0057D9. Ces constantes derivent maintenant de la charte, comme le rendu
+// Remotion et l'apercu du studio. `versAss` fait la conversion en BGR.
+const COL_WHITE = versAss(COULEURS.papier);
+const COL_BLACK = versAss(COULEURS.encre);
+const COL_NAVY = versAss(COULEURS.structure);
+const COL_RED = versAss(COULEURS.alerte);
+const COL_DARK = versAss(COULEURS.fond);
+const COL_BLUE = versAss(COULEURS.accentSoutenu);
+const COL_INK = versAss(COULEURS.encre);
+// L'or reste hors charte : accent ponctuel des habillages non enregistres.
+const COL_GOLD = '&H00D7FF&';
 const COL_TICKER = '&H2F1A0A&'; // fond bandeau ticker (#0A1A2F)
 
 // Familles de polices disponibles (doivent matcher les TTF de backend/fonts,

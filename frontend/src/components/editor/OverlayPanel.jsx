@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Layers, Clock } from 'lucide-react';
+import { COULEURS } from '../../../../remotion/src/identite.js';
 import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, TEXT_ANIMATIONS_IN, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
 
 function formatTime(s) {
@@ -8,6 +9,31 @@ function formatTime(s) {
   const sec = Math.floor(s % 60);
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
 }
+
+/**
+ * Les trois palettes du JT, tirées de la charte.
+ *
+ * Elles ne sont pas recopiées : `identite.js` est le fichier que lisent aussi
+ * le rendu Remotion et le générateur ASS. Un bleu changé là se répercute
+ * partout, au lieu de diverger d'une couche à l'autre.
+ */
+const PALETTES = [
+  {
+    id: 'jt',
+    label: 'JT ALWM',
+    colors: { bg: COULEURS.structure, text: COULEURS.papier, accent: COULEURS.accent },
+  },
+  {
+    id: 'alerte',
+    label: 'Alerte',
+    colors: { bg: COULEURS.alerte, text: COULEURS.papier, accent: COULEURS.papier },
+  },
+  {
+    id: 'sobre',
+    label: 'Sobre',
+    colors: { bg: COULEURS.encre, text: COULEURS.papier, accent: COULEURS.accent },
+  },
+];
 
 export function OverlayEditor({ overlay, onChange, onRemove }) {
   const template = OVERLAY_TEMPLATES.find((t) => t.id === overlay.templateId);
@@ -127,21 +153,25 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
 
       {/* Palettes Thématiques TV & Couleurs personnalisées */}
       <div className="space-y-2.5 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
-        <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider block">Thèmes de Couleurs TV</label>
+        <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider block">Couleurs</label>
+        {/* Cinq thèmes inventés vivaient ici — « ALWM Signature » était un or
+            sur ardoise, sans rapport avec la marque. Les trois qui restent
+            viennent de la charte du JT (remotion/src/identite.js), la même
+            que celle du rendu et du repli libass. La couleur y est nommée par
+            son rôle, et l'intitulé ne repose plus sur un emoji seul. */}
         <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: 'breaking', label: '🔴 Urgent', colors: { bg: '#dc2626', text: '#ffffff', accent: '#fbbf24' } },
-            { id: 'news', label: '🔵 Info JT', colors: { bg: '#1e3a8a', text: '#ffffff', accent: '#38bdf8' } },
-            { id: 'gold', label: '🟡 ALWM Signature', colors: { bg: '#0f172a', text: '#ffffff', accent: '#eab308' } },
-            { id: 'emerald', label: '🟢 Éco', colors: { bg: '#064e3b', text: '#ffffff', accent: '#34d399' } },
-            { id: 'dark', label: '⚫ Dark Luxe', colors: { bg: '#18181b', text: '#f4f4f5', accent: '#a1a1aa' } },
-          ].map((theme) => (
+          {PALETTES.map((theme) => (
             <button
               key={theme.id}
               type="button"
               onClick={() => onChange({ ...overlay, colors: { ...(overlay.colors || {}), ...theme.colors } })}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-[var(--accent)]/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 motion-tap"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-[var(--accent)]/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 motion-tap"
             >
+              <span
+                aria-hidden="true"
+                className="w-2.5 h-2.5 rounded-full border border-[var(--border)]"
+                style={{ background: theme.colors.bg }}
+              />
               {theme.label}
             </button>
           ))}
