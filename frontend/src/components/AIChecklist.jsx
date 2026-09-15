@@ -17,7 +17,8 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Si on n'est pas sur Titres & Rappels, on ne fait rien
+    // Le tiroir du conducteur, et lui seul : c'est là qu'arrive le script
+    // des titres, quand il est déposé en fichier.
     if (selectedBin !== 'tj') return;
 
     const tjFiles = dashboard['tj'] || [];
@@ -152,7 +153,9 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
           <p className="text-red-500 text-sm">{error}</p>
         ) : expectedCountries.length === 0 ? (
           <p className="text-[color:var(--muted)] text-sm">
-            {loading ? "Analyse du script en cours..." : "Aucun pays détecté dans le dernier script des titres. Assurez-vous d'avoir uploadé le script."}
+            {loading
+              ? "Analyse du script en cours..."
+              : "Aucun pays détecté. Ce suivi lit un script des titres déposé en fichier .txt dans ce chutier — le conducteur saisi au clavier n'y passe pas."}
           </p>
         ) : (
           <div className="space-y-3">

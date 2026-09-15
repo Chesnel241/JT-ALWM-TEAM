@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone, Link2, Image as ImageIcon } from 'lucide-react';
+import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone, Link2, Image as ImageIcon, ListOrdered } from 'lucide-react';
 import { api, API_BASE, getClientId } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import RelancePanel from './RelancePanel.jsx';
+import RubriquePanel from './RubriquePanel.jsx';
 import { formaterDuree, formaterTotal } from '../lib/duree.js';
 import { MEDIA_ORDER, MEDIA_TYPES, groupByReportage, classifyFile } from '../lib/mediaTypes.js';
 import { reportageTone } from '../lib/branding.js';
@@ -458,7 +459,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // c'est précisément lui qu'il faut relancer le dimanche après-midi. Avant,
     // il était simplement absent de la liste, donc invisible.
     const annonces = sujets.map((s) => s.countryId).filter(Boolean);
-    return Array.from(new Set([...uploaded, ...annonces, ...manualBins]));
+    // Les rubriques ont leur propre groupe dans la barre latérale : les
+    // laisser ici les remettrait au milieu des pays.
+    return Array.from(new Set([...uploaded, ...annonces, ...manualBins]))
+      .filter((id) => id !== 'tj' && id !== 'mj');
   }, [dashboard, manualBins, sujets]);
 
   /** Pays qui ont annoncé un sujet mais n'ont encore rien déposé. */
@@ -472,6 +476,31 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   }, [sujets, dashboard]);
 
   const SPECIAL_BINS = ['delivery', 'mj', 'tj', 'studio'];
+
+  // Depuis que le conducteur et le Mot du JT ont quitté la liste des pays, la
+  // barre latérale ne trouvait plus de nom pour leurs tiroirs et retombait sur
+  // les codes bruts « tj » et « mj ». On demande au serveur comment il les
+  // nomme, plutôt que de recopier ici une table qui existe déjà deux fois.
+  const [nomsRubriques, setNomsRubriques] = useState({});
+  useEffect(() => {
+    api.getDescriptionsRubriques()
+      .then((liste) => {
+        if (!Array.isArray(liste)) return;
+        setNomsRubriques(Object.fromEntries(liste.map((r) => [r.bin, r.nom])));
+      })
+      .catch(() => { /* les codes bruts restent le repli */ });
+  }, []);
+
+  /** Le nom d'un tiroir : un pays, une rubrique, ou son identifiant brut. */
+  const nomDuChutier = (id) => (
+    countries.find((c) => c.id === id)?.name || nomsRubriques[id] || id
+  );
+
+  // Les deux rubriques du journal sont toujours là, même sans fichier : leur
+  // TEXTE existe avant leur audio, et c'est justement ce que le monteur vient
+  // chercher. Tant qu'elles dépendaient d'un dépôt, le conducteur écrit par la
+  // rédaction restait invisible depuis l'espace montage.
+  const binsRubriques = ['tj', 'mj'];
 
   const binIsValid = (bin) =>
     bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
@@ -1859,8 +1888,37 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         <aside id="tour-editing-sidebar" className={`w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 ${isMobileSidebarOpen ? 'block' : 'hidden md:flex'}`}>
           <div className="p-2 md:p-4 md:flex-1 w-full overflow-hidden">
             <div className="flex items-center justify-between px-2 mb-3 md:mb-0">
-              <h3 className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Chutiers (Pays)</h3>
+              <h3 className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.rubriqueLue.chutiersTitre}</h3>
               <button className="md:hidden text-xs text-[color:var(--accent)]" onClick={() => setIsMobileSidebarOpen(false)}>Fermer</button>
+            </div>
+
+            {/* Le journal lui-même, avant les pays : le conducteur et le Mot
+                du JT ne sont pas des chutiers de correspondants, et leur texte
+                existe avant qu'un fichier n'y soit déposé. */}
+            <div className="mb-3 flex gap-2 overflow-x-auto pb-1 md:mb-4 md:flex-col md:gap-0 md:space-y-1 md:overflow-visible md:pb-0 -mx-2 px-2 md:mx-0 md:px-0">
+              {binsRubriques.map((bin) => {
+                const isActive = selectedBin === bin;
+                const fileCount = dashboard[bin]?.length ?? 0;
+                return (
+                  <button
+                    key={bin}
+                    onClick={() => setSelectedBin(bin)}
+                    className={`shrink-0 md:w-full flex items-center justify-between px-3 py-2 md:py-2.5 rounded-xl motion-tap active:scale-[0.98] border ${
+                      isActive
+                        ? 'bg-[var(--accent)] text-white font-semibold border-transparent shadow-md'
+                        : 'bg-[var(--paper)] border-[var(--border)] text-[color:var(--muted)] sm:hover:text-[color:var(--ink)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <ListOrdered size={16} className={isActive ? 'opacity-80' : ''} />
+                      <span className="truncate whitespace-nowrap text-sm md:text-base">{nomDuChutier(bin)}</span>
+                    </div>
+                    <span className={`ml-3 text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)]'}`}>
+                      {fileCount}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             {loading ? (
               <div className="space-y-2">
@@ -1871,7 +1929,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             ) : (
               <div className="flex overflow-x-auto pb-1 md:pb-0 gap-2 md:space-y-1 md:flex-col md:gap-0 snap-x scrollbar-hide -mx-2 px-2 md:mx-0 md:px-0">
                 {countriesWithUploads.map(countryId => {
-                  const country = countries.find((c) => c.id === countryId);
                   const fileCount = dashboard[countryId]?.length ?? 0;
                   const isActive = selectedBin === countryId;
                   return (
@@ -1886,7 +1943,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     >
                       <div className="flex items-center gap-2 truncate">
                         <Folder size={16} className={isActive ? 'fill-current opacity-30' : ''} />
-                        <span className="truncate whitespace-nowrap text-sm md:text-base">{country?.name || countryId}</span>
+                        <span className="truncate whitespace-nowrap text-sm md:text-base">{nomDuChutier(countryId)}</span>
                       </div>
                       {countriesAttendus.has(countryId) ? (
                         // Sujet annoncé, rien reçu : c'est le pays à relancer.
@@ -2261,7 +2318,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         <CountryAvatar country={countries.find(c => c.id === selectedBin)} className="w-8 h-8" />
                       )}
                       <h2 className="text-lg font-semibold text-[color:var(--ink)]">
-                        {selectedBin === 'delivery' ? 'Livraison JT' : countries.find(c => c.id === selectedBin)?.name || selectedBin}
+                        {selectedBin === 'delivery' ? 'Livraison JT' : nomDuChutier(selectedBin)}
                       </h2>
                       {selectedBin && selectedBin !== 'delivery' && selectedBin !== 'studio' && selectedBin !== 'tj' && selectedBin !== 'mj' && (
                         <div className="ml-2 hidden sm:block">
@@ -2329,14 +2386,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       onClick={() => openDownloadDialog({ filename: `${selectedWeek}/mj/archive`, name: `uploads_${selectedWeek}_mj.zip` })}
                       className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
                     >
-                      <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
+                      <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code || nomDuChutier(selectedBin))}
                     </button>
                   ) : (
                     <button
                       onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
                       className="btn btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5"
                     >
-                      <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}
+                      <Download size={14} /> {t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code || nomDuChutier(selectedBin))}
                     </button>
                   )}
                 </>
@@ -2375,14 +2432,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         onClick={() => openDownloadDialog({ filename: `${selectedWeek}/mj/archive`, name: `uploads_${selectedWeek}_mj.zip` })}
                         className="w-full btn btn-primary py-2 px-3 text-sm flex items-center justify-center gap-2"
                       >
-                        <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}</span>
+                        <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code || nomDuChutier(selectedBin))}</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
                         className="w-full btn btn-primary py-2 px-3 text-sm flex items-center justify-center gap-2 text-center"
                       >
-                        <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code)}</span>
+                        <Download size={16} /> <span>{t.dashboard.downloadAll(countries.find(c => c.id === selectedBin)?.code || nomDuChutier(selectedBin))}</span>
                       </button>
                     )}
                   </>
@@ -2644,6 +2701,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     </div>
                   )}
                 </div>
+
+                {/* Le conducteur écrit par la rédaction, au-dessus de ses
+                    fichiers. Le monteur venait chercher la voix off ici et
+                    devait aller lire le déroulé dans l'espace journalistes. */}
+                {(selectedBin === 'tj' || selectedBin === 'mj') && (
+                  <RubriquePanel selectedWeek={selectedWeek} bin={selectedBin} />
+                )}
 
                 {(() => {
                   const allFiles = Array.isArray(dashboard[selectedBin]) ? dashboard[selectedBin] : [];

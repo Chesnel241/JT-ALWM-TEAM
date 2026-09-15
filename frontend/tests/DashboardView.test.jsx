@@ -10,6 +10,10 @@ vi.mock('../src/api/index.js', () => ({
     // Le panneau de relance vit désormais en haut du tableau de bord : sans
     // ces deux doublures, il fait tomber tout l'écran au montage.
     getRelances: vi.fn().mockResolvedValue([]),
+    // Le tableau de bord nomme désormais ses tiroirs avec les noms que le
+    // serveur donne aux rubriques, et lit leur contenu dans le chutier.
+    getDescriptionsRubriques: vi.fn().mockResolvedValue([]),
+    getRubrique: vi.fn().mockResolvedValue({ rubrique: null, champs: {} }),
     getDemandesDelai: vi.fn().mockResolvedValue([]),
     getDeliveries: vi.fn().mockResolvedValue([]),
     getTimeline: vi.fn().mockResolvedValue({ clips: [], overlays: [], branding: {} }),

@@ -218,6 +218,22 @@ export const api = {
   // serveur, et tout correspondant identifié peut les remplir.
   getRubriques: (weekId) => request(`/rubriques/${weekId}`),
 
+  /**
+   * La description des deux rubriques : leur nom, leurs champs, le fichier
+   * qu'elles attendent. Sans semaine : c'est la forme, pas le contenu.
+   *
+   * L'espace montage s'en sert pour nommer les tiroirs `tj` et `mj` dans sa
+   * barre latérale, qui affichait jusqu'ici les deux codes bruts.
+   */
+  getDescriptionsRubriques: () => request('/rubriques'),
+
+  /**
+   * Le contenu d'une rubrique pour une semaine.
+   *
+   * `cle` accepte aussi bien la clé (`conducteur`) que le tiroir (`tj`) :
+   * c'est ce qui permet au chutier du montage d'aller chercher le conducteur
+   * sans connaître la correspondance entre les deux.
+   */
   getRubrique: (weekId, cle) => request(`/rubriques/${weekId}/${cle}`),
 
   /**
