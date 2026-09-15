@@ -142,9 +142,20 @@ function renderText(raw, animation, font, outline, glow) {
  * Aucune n'était rendue de toute façon : le moteur retombe sur un fondu.
  */
 export const ANIMATIONS_HERITEES = {
+  // Proposées par le studio sans que le serveur les accepte (lot 1).
   slide_left: 'slide',
   slide_right: 'slide',
   neon_on: 'fade',
+  // Retirées du menu quand le moteur d'animation est devenu réel : elles
+  // n'ont jamais rien produit à l'image, faute de moteur pour les lire.
+  // Chacune retombe sur le mouvement retenu le plus proche.
+  bounce: 'pop',
+  rotate: 'scale',
+  flip3d: 'scale',
+  letterspread: 'cascade',
+  // Boucles retirées, jamais implémentées nulle part.
+  kerning_shake: 'fade',
+  neon_flicker: 'fade',
 };
 
 const ANIMATIONS_HERITEES_IDS = Object.keys(ANIMATIONS_HERITEES);
@@ -165,8 +176,10 @@ export const TEXT_ANIMATIONS_IDS = [
   'mask_reveal', 'outline_morph', 'letterspread', 'weight_pulse',
   'kerning_shake', 'glitch_in',
   // Valeurs héritées, tolérées mais plus proposées (voir ANIMATIONS_HERITEES).
+  // Dédoublonnées : plusieurs d'entre elles figuraient déjà ci-dessus — elles
+  // étaient acceptées par le serveur, simplement jamais rendues à l'image.
   ...ANIMATIONS_HERITEES_IDS,
-];
+].filter((id, i, tous) => tous.indexOf(id) === i);
 
 // Animations qui nécessitent un split par caractère (N Dialogues per-char).
 const PER_CHAR_ANIMS = new Set(['cascade', 'charpop', 'wave']);

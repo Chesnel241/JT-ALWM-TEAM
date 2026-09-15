@@ -256,40 +256,45 @@ export const FONT_FAMILIES = [
 
 // Rien ici ne doit sortir de TEXT_ANIMATIONS_IDS côté serveur : le
 // validateur de `/editor/concat` refuse le reste avec un 400, et c'est tout
-// le master qui ne se génère pas. « Slide Left », « Slide Right » et
-// « Allumage Néon » étaient dans ce cas ; `animations-offertes.test.js` garde
-// désormais les deux listes d'accord.
+// le master qui ne se génère pas. `animations-offertes.test.js` garde les deux
+// listes d'accord.
+//
+// Et rien ici ne doit sortir de ce que `remotion/src/mouvement.js` implémente
+// réellement : ces menus ont proposé vingt-quatre mouvements dont aucun ne
+// changeait l'image, parce que le moteur qui les portait n'était appelé par
+// personne. `mouvement.test.js` compare désormais les deux sens.
+//
+// Les mouvements sont groupés par intention : sobre pour le corps du journal,
+// affirmée pour l'ouverture d'un sujet, marquée pour les alertes.
 export const TEXT_ANIMATIONS_IN = [
-  { id: 'fade', label: 'Fondu' },
-  { id: 'scale', label: 'Scale' },
-  { id: 'slide', label: 'Glissé' },
-  { id: 'pop', label: 'Pop' },
-  { id: 'bounce', label: 'Bounce' },
-  { id: 'blurin', label: 'Blur In' },
-  { id: 'mask_reveal', label: 'Mask Reveal' },
-  { id: 'glitch_in', label: 'Glitch In' },
-  { id: 'rotate', label: 'Rotate' },
-  { id: 'flip3d', label: 'Flip 3D' },
-  { id: 'letterspread', label: 'Letter Spread' },
-  { id: 'typewriter', label: 'Machine à écrire' },
-  { id: 'cascade', label: 'Cascade' },
+  // Sobre
+  { id: 'fade', label: 'Fondu', famille: 'sobre' },
+  { id: 'slide', label: 'Glissé', famille: 'sobre' },
+  { id: 'mask_reveal', label: 'Révélation', famille: 'sobre' },
+  // Affirmée
+  { id: 'pop', label: 'Ressort', famille: 'affirmee' },
+  { id: 'scale', label: 'Rapproché', famille: 'affirmee' },
+  { id: 'cascade', label: 'Cascade', famille: 'affirmee' },
+  // Marquée
+  { id: 'typewriter', label: 'Machine à écrire', famille: 'marquee' },
+  { id: 'glitch_in', label: 'Saccade', famille: 'marquee' },
+  { id: 'blurin', label: 'Flou', famille: 'marquee' },
 ];
 
 export const TEXT_ANIMATIONS_LOOP = [
-  { id: 'none', label: 'Aucun (statique)' },
-  { id: 'float', label: 'Flottement (Float)' },
-  { id: 'pulse', label: 'Pulsation (Pulse)' },
-  { id: 'kerning_shake', label: 'Vibration tendue' },
-  { id: 'neon_flicker', label: 'Grésillement Néon' },
+  { id: 'none', label: 'Immobile' },
+  { id: 'float', label: 'Flottement' },
+  { id: 'pulse', label: 'Pulsation' },
 ];
 
+// « auto » reprend l'entrée : un texte entré en glissant repart en glissant.
+// C'est ce qui ramène le choix courant à un seul geste au lieu de trois.
 export const TEXT_ANIMATIONS_OUT = [
-  { id: 'fade', label: 'Fondu out' },
-  { id: 'scale_down', label: 'Scale Down' },
-  { id: 'slide_out', label: 'Slide Out (Left)' },
-  { id: 'blurout', label: 'Blur Out' },
-  { id: 'glitch_out', label: 'Glitch Out' },
-  { id: 'typewriter_out', label: 'Machine à écrire (retour)' },
+  { id: 'auto', label: "Comme l'entrée" },
+  { id: 'fade', label: 'Fondu' },
+  { id: 'scale_down', label: 'Rétréci' },
+  { id: 'slide_out', label: 'Glissé' },
+  { id: 'blurout', label: 'Flou' },
 ];
 
 export const TEXT_ANIMATIONS = TEXT_ANIMATIONS_IN;

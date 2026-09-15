@@ -40,20 +40,29 @@ describe('TEXT_ANIMATIONS (front)', () => {
     expect(TEXT_ANIMATIONS).toBe(TEXT_ANIMATIONS_IN);
   });
 
-  it('TEXT_ANIMATIONS_IN contient fade + Remotion-only (mask_reveal, glitch_in, letterspread)', () => {
-    const ids = TEXT_ANIMATIONS_IN.map((a) => a.id);
-    ['fade', 'mask_reveal', 'glitch_in', 'letterspread', 'cascade', 'typewriter']
-      .forEach((id) => expect(ids).toContain(id));
+  // Ces trois listes énuméraient autrefois des identifiants qui n'étaient
+  // rendus par rien : `letterspread`, `kerning_shake`, `glitch_out`. Elles
+  // décrivent maintenant ce que le moteur implémente vraiment, et c'est
+  // `mouvement.test.js` qui compare les deux sens.
+
+  it('TEXT_ANIMATIONS_IN couvre les trois familles d’intention', () => {
+    const familles = new Set(TEXT_ANIMATIONS_IN.map((a) => a.famille));
+    expect(familles).toEqual(new Set(['sobre', 'affirmee', 'marquee']));
+    // Le fondu reste le recours universel : c'est lui qui rattrape toute
+    // valeur inconnue venue d'un montage enregistré.
+    expect(TEXT_ANIMATIONS_IN.map((a) => a.id)).toContain('fade');
   });
 
-  it('TEXT_ANIMATIONS_LOOP contient les loops permanents', () => {
-    const ids = TEXT_ANIMATIONS_LOOP.map((a) => a.id);
-    ['none', 'float', 'pulse', 'kerning_shake'].forEach((id) => expect(ids).toContain(id));
+  it('TEXT_ANIMATIONS_LOOP garde l’immobilité comme premier choix', () => {
+    // Une boucle est l'exception, pas la règle : un texte qui bouge en
+    // permanence fatigue à l'antenne.
+    expect(TEXT_ANIMATIONS_LOOP[0].id).toBe('none');
   });
 
-  it('TEXT_ANIMATIONS_OUT contient fade + glitch_out', () => {
-    const ids = TEXT_ANIMATIONS_OUT.map((a) => a.id);
-    ['fade', 'glitch_out', 'blurout'].forEach((id) => expect(ids).toContain(id));
+  it('TEXT_ANIMATIONS_OUT propose d’abord de reprendre l’entrée', () => {
+    // « auto » ramène le choix courant à un seul geste au lieu de trois.
+    expect(TEXT_ANIMATIONS_OUT[0].id).toBe('auto');
+    expect(TEXT_ANIMATIONS_OUT.map((a) => a.id)).toContain('fade');
   });
 
   it('chaque animation a un label non vide', () => {
