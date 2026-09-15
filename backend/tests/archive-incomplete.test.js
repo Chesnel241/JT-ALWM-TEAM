@@ -3,6 +3,7 @@ import request from 'supertest';
 import { writeFileSync } from 'fs';
 import path from 'path';
 import { TEST_UPLOADS_DIR } from './setup.js';
+import { semaineActive } from './semaine.js';
 
 /**
  * Le zip d'un chutier doit dire ce qu'il ne contient pas.
@@ -13,7 +14,9 @@ import { TEST_UPLOADS_DIR } from './setup.js';
  * jamais.
  */
 
-const SEMAINE = '2026-w37';
+// La semaine active, et non une semaine figée : une suite qui ne passe que la
+// semaine de son écriture annonce une panne tous les lundis.
+const SEMAINE = semaineActive();
 const PAYS = 'ci';
 
 let app;

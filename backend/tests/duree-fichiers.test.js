@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, rmSync } from 'fs';
 import './setup.js';
+import { semaineActive } from './semaine.js';
 
 /**
  * La durée des rushes, côté store.
@@ -11,7 +12,9 @@ import './setup.js';
  * la durée ; la mesurer et l'afficher viendront se brancher dessus.
  */
 
-const SEMAINE = '2026-w37';
+// La semaine active, et non une semaine figée : une suite qui ne passe que la
+// semaine de son écriture annonce une panne tous les lundis.
+const SEMAINE = semaineActive();
 const STORE_PATH = process.env.JT_STORE_PATH;
 
 let store;

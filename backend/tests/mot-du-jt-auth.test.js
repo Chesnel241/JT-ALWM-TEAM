@@ -2,13 +2,16 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { TEST_UPLOADS_DIR } from './setup.js';
+import { semaineActive } from './semaine.js';
 import * as store from '../src/data/store.js';
 import { generateDownloadToken } from '../src/lib/downloadTokens.js';
 import { writeFileSync, unlinkSync, existsSync } from 'fs';
 import path from 'path';
 
 const ADMIN = 'test-admin-password';
-const SEMAINE = '2026-w37';
+// La semaine active, et non une semaine figée : une suite qui ne passe que la
+// semaine de son écriture annonce une panne tous les lundis.
+const SEMAINE = semaineActive();
 
 let app;
 let prevAdmin;
