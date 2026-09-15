@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { TEST_UPLOADS_DIR } from './setup.js';
+import { semaineActive } from './semaine.js';
 
 /**
  * La portée : qui a le droit de toucher à quel pays.
@@ -16,7 +17,9 @@ import { TEST_UPLOADS_DIR } from './setup.js';
 
 const ADMIN = 'mot-de-passe-montage';
 const SECRET = 'secret-de-signature-des-liens';
-const SEMAINE = '2026-w37';
+// La semaine active, et non une semaine figée : une suite qui ne passe que la
+// semaine de son écriture annonce une panne tous les lundis.
+const SEMAINE = semaineActive();
 const GABON = 'cm';   // le pays du correspondant testé
 const AUTRE = 'sn';   // un pays qui n'est pas le sien
 const UUID = '00000000-0000-4000-8000-000000000000';

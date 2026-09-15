@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, rmSync } from 'fs';
 import './setup.js';
+import { semaineActive } from './semaine.js';
 
 /**
  * Deux personnes écrivent le conducteur en même temps.
@@ -12,7 +13,9 @@ import './setup.js';
  * rubriques reprennent exactement cette mécanique.
  */
 
-const SEMAINE = '2026-w37';
+// La semaine active, et non une semaine figée : une suite qui ne passe que la
+// semaine de son écriture annonce une panne tous les lundis.
+const SEMAINE = semaineActive();
 const STORE_PATH = process.env.JT_STORE_PATH;
 
 let store;

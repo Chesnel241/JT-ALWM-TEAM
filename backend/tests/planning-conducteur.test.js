@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { TEST_UPLOADS_DIR } from './setup.js';
+import { semaineActive } from './semaine.js';
 
 /**
  * Ce que le monteur a réellement sous les yeux quand il coche.
@@ -12,7 +13,9 @@ import { TEST_UPLOADS_DIR } from './setup.js';
  */
 
 const ADMIN = 'mot-de-passe-montage';
-const SEMAINE = '2026-w37';
+// La semaine active, et non une semaine figée : une suite qui ne passe que la
+// semaine de son écriture annonce une panne tous les lundis.
+const SEMAINE = semaineActive();
 
 let app;
 let store;

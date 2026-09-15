@@ -124,7 +124,7 @@ export const translations = {
       nomDuMonteur: 'Nom du monteur à ajouter',
       retirerNote: 'Retirer quelqu’un ne touche pas aux semaines déjà passées.',
       personne: 'Personne',
-      conducteurSemaine: 'Conducteur de la semaine',
+      conducteurSemaine: 'Les reportages à monter',
       monteSur: (faits, total) => `${faits} / ${total} monté`,
       enAttenteFichier: 'Rien reçu pour l’instant',
       pieces: (n) => (n <= 1 ? `${n} pièce` : `${n} pièces`),
@@ -134,6 +134,19 @@ export const translations = {
       maSemaine: 'Ouvrir ma semaine',
       ajoutImpossible: 'Ajout impossible.',
       majImpossible: 'Modification impossible.',
+    },
+    // Le contenu d'une rubrique, lu depuis le chutier de l'espace montage.
+    // Le monteur y récupère le déroulé écrit par la rédaction en même temps
+    // que la voix off : les fichiers arrivaient bien jusqu'à lui, les textes
+    // n'étaient lisibles que dans l'espace journalistes.
+    rubriqueLue: {
+      copier: 'Copier',
+      copie: 'Copié',
+      copieOk: 'Texte copié.',
+      copieEchec: 'Copie impossible : sélectionnez le texte à la main.',
+      vide: 'Pas encore rempli par la rédaction.',
+      modifier: 'Modifier dans l’espace journalistes',
+      chutiersTitre: 'Chutiers',
     },
     adminGate: {
       titre: 'Espace montage',
@@ -599,7 +612,7 @@ export const translations = {
       nomDuMonteur: 'Name of the editor to add',
       retirerNote: 'Removing someone does not change the weeks already gone.',
       personne: 'Nobody',
-      conducteurSemaine: 'Rundown of the week',
+      conducteurSemaine: 'Reports to edit',
       monteSur: (faits, total) => `${faits} / ${total} edited`,
       enAttenteFichier: 'Nothing received yet',
       pieces: (n) => (n <= 1 ? `${n} item` : `${n} items`),
@@ -609,6 +622,15 @@ export const translations = {
       maSemaine: 'Open my week',
       ajoutImpossible: 'Could not add.',
       majImpossible: 'Could not save the change.',
+    },
+    rubriqueLue: {
+      copier: 'Copy',
+      copie: 'Copied',
+      copieOk: 'Text copied.',
+      copieEchec: 'Could not copy: select the text by hand.',
+      vide: 'Not filled in by the newsroom yet.',
+      modifier: 'Edit in the reporters space',
+      chutiersTitre: 'Bins',
     },
     adminGate: {
       titre: 'Editing room',
