@@ -102,37 +102,26 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Taille</label>
-              <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.fontSize || 100}%</span>
-            </div>
-            <input
-              type="range"
-              min="50"
-              max="250"
-              step="5"
-              value={overlay.fontSize || 100}
-              onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
-              className="w-full accent-[var(--accent)]"
-            />
+        {/* « Interligne » vivait ici. Le curseur écrivait la valeur, le
+            serveur la validait, et aucun moteur de rendu ne la lisait : ni
+            Remotion, ni libass. Un réglage qui ne fait rien coûte plus qu'il
+            ne rapporte. L'interligne reviendra avec l'échelle typographique
+            du JT, appliquée à tous les habillages. */}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <label htmlFor="overlay-taille" className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Taille</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.fontSize || 100}%</span>
           </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Interligne</label>
-              <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.lineHeight || 120}%</span>
-            </div>
-            <input
-              type="range"
-              min="50"
-              max="250"
-              step="5"
-              value={overlay.lineHeight || 120}
-              onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) || 120 })}
-              className="w-full accent-[var(--accent)]"
-            />
-          </div>
+          <input
+            id="overlay-taille"
+            type="range"
+            min="50"
+            max="250"
+            step="5"
+            value={overlay.fontSize || 100}
+            onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
+            className="w-full accent-[var(--accent)]"
+          />
         </div>
       </div>
 

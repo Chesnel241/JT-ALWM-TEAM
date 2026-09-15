@@ -30,6 +30,7 @@ import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
+import ExportStatus from './editor/ExportStatus.jsx';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
 import ActionSheet from './ActionSheet.jsx';
@@ -2149,6 +2150,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     timelineOverlays={timelineOverlays}
                     branding={branding} 
                     onClose={() => {}} 
+                  />
+                  {/* Depuis le studio, « Générer le master » ne donnait aucun
+                      retour : progression, résultat et téléchargement ne
+                      vivaient que dans la branche « chutiers ». */}
+                  <ExportStatus
+                    enCours={isGeneratingVideo}
+                    progression={exportProgress}
+                    phase={exportPhase}
+                    secondes={exportElapsed}
+                    erreur={exportError}
+                    urlVideo={generatedVideoUrl}
+                    semaine={selectedWeek}
+                    onReessayer={() => { setExportError(null); handleGenerateVideo(); }}
                   />
                 </div>
 

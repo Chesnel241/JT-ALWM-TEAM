@@ -739,6 +739,39 @@ export default function Timeline({
     setStatusMessage(`Coupe créée à ${formatTimecode(globalTime)}.`);
   }, [commitClips, seekToTime, selectedClipId]);
 
+  /**
+   * Crée un titre sur la piste T1, à la tête de lecture.
+   *
+   * Cette piste n'avait aucun chemin de création : on ne pouvait y déposer un
+   * titre que s'il en existait déjà un, et le message d'aide renvoyait vers
+   * « Habillage JT », qui écrit dans un autre tableau. Elle restait donc vide
+   * indéfiniment.
+   *
+   * Le modèle par défaut est le titre de reportage, le plus courant, et
+   * l'inspecteur s'ouvre dans la foulée : créer un bandeau vide sans pouvoir
+   * le remplir tout de suite n'avancerait à rien.
+   */
+  const ajouterTitre = useCallback(() => {
+    const debut = roundToFrame(Math.max(0, playheadSec));
+    const restant = Math.max(0, layout.total - debut);
+    // 5 s par défaut, mais jamais au-delà de la fin du montage.
+    const duree = Math.max(MIN_CLIP_DURATION, Math.min(5, restant || 5));
+
+    const titre = {
+      id: createId('overlay'),
+      templateId: 'titre_reportage',
+      fields: {},
+      animation: 'fade',
+      startTime: debut,
+      duration: duree,
+    };
+
+    const suivants = [...timelineOverlays, titre];
+    setTimelineOverlays?.(suivants);
+    setStatusMessage(`Titre ajouté à ${formatTimecode(debut)}.`);
+    onOverlayClip?.({ isTimelineOverlays: true, overlays: suivants });
+  }, [playheadSec, layout.total, timelineOverlays, setTimelineOverlays, onOverlayClip]);
+
   const razorSplit = useCallback((item, event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const ratio = clamp((event.clientX - rect.left) / Math.max(1, rect.width), 0, 1);
@@ -1022,7 +1055,25 @@ export default function Timeline({
 
               {!compact && (
                 <div role="region" aria-label="Piste des titres" className="relative border-b border-[var(--editor-border)] bg-[var(--editor-panel)]/75" style={{ height: `${titleTrackHeight}px`, width: `${contentWidth}px` }}>
-                  {timelineOverlays.length === 0 && <span className="absolute inset-0 flex items-center px-3 text-xs text-[var(--editor-muted)]">Ajoutez un titre depuis Habillage JT, puis glissez-le ici.</span>}
+                  {/* Il n'existait aucun moyen de créer un titre ici : le
+                      message renvoyait vers « Habillage JT », qui écrit en
+                      réalité dans `branding.overlays`, un autre tableau qui
+                      n'apparaît jamais sur cette piste. La piste restait donc
+                      vide à jamais pour qui n'en avait pas déjà un. */}
+                  {timelineOverlays.length === 0 && (
+                    <div className="absolute inset-0 flex items-center gap-3 px-3">
+                      <button
+                        type="button"
+                        onClick={ajouterTitre}
+                        className="motion-tap flex items-center gap-1.5 rounded-lg border border-dashed border-[var(--editor-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--editor-muted)] hover:border-[var(--editor-accent-strong)] hover:text-[color:var(--editor-accent)]"
+                      >
+                        <Plus size={13} /> Ajouter un titre
+                      </button>
+                      <span className="text-xs text-[var(--editor-muted)]">
+                        Il s'affichera par-dessus toute la vidéo, indépendamment des clips.
+                      </span>
+                    </div>
+                  )}
                   {timelineOverlays.map((overlay, index) => (
                     <OverlayBlock
                       key={overlay.id || index}
@@ -1035,6 +1086,17 @@ export default function Timeline({
                       onOpen={() => onOverlayClip?.({ isTimelineOverlays: true, overlays: timelineOverlays })}
                     />
                   ))}
+                  {timelineOverlays.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={ajouterTitre}
+                      title="Ajouter un titre à la tête de lecture"
+                      aria-label="Ajouter un titre à la tête de lecture"
+                      className="motion-tap absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-lg border border-dashed border-[var(--editor-border)] p-1.5 text-[color:var(--editor-muted)] hover:border-[var(--editor-accent-strong)] hover:text-[color:var(--editor-accent)]"
+                    >
+                      <Plus size={13} />
+                    </button>
+                  )}
                 </div>
               )}
 
