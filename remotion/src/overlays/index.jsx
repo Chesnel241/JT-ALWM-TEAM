@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Img, staticFile } from 'remotion';
 import { COULEURS } from '../identite.js';
+import TexteJT, { FournisseurHabillage } from '../TexteJT.jsx';
 import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 import { WorldMap } from '../worldmap.jsx';
@@ -194,8 +195,11 @@ function NomInterview({ overlay, durationInFrames }) {
           display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1,
           opacity: contentOp, transform: `translateY(${contentY}px)`,
         }}>
-          <div style={{ fontFamily: ff(ffont, "'Inter', sans-serif"), fontWeight: 800, fontSize: `${fs * 22}px`, color: cAccent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{categorie}</div>
-          <div style={{ fontFamily: ff(ffont, "'Montserrat ExtraBold', sans-serif"), fontSize: `${fs * 36}px`, color: cText, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</div>
+          {/* Décalage de 5 images : celui du ressort qui fait entrer ce
+              panneau. « ALWM TV », au-dessus, est codé en dur et reste hors
+              de l'animation de texte — ce n'est pas une saisie du monteur. */}
+          <TexteJT role="courant" delai={5} style={{ fontFamily: ff(ffont, "'Inter', sans-serif"), fontWeight: 800, fontSize: `${fs * 22}px`, color: cAccent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{categorie}</TexteJT>
+          <TexteJT role="titrage" delai={5} style={{ fontFamily: ff(ffont, "'Montserrat ExtraBold', sans-serif"), fontSize: `${fs * 36}px`, color: cText, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</TexteJT>
         </div>
       </div>
     </Box>
@@ -412,12 +416,12 @@ function TitreReportage({ overlay, durationInFrames }) {
       {/* Bandeau titre */}
       <div style={{ display: 'flex', alignItems: 'stretch' }}>
         <Para bg={cBand} reveal={reveal} padding="0" style={{ boxShadow: '0 18px 40px rgba(0,0,0,0.35)' }}>
-          <div style={{
+          <TexteJT role="titrage" style={{
             padding: '18px 56px 18px 48px',
             fontFamily: fontB, fontWeight: 800,
             fontSize: `${fs * 50}px`, color: cTitle,
             textTransform: 'uppercase', letterSpacing: '0.01em', whiteSpace: 'nowrap',
-          }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</div>
+          }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</TexteJT>
         </Para>
         {/* accent diagonal */}
         <div style={{ opacity: reveal > 0.7 ? 1 : 0, transition: 'opacity .2s' }}>
@@ -428,12 +432,15 @@ function TitreReportage({ overlay, durationInFrames }) {
       <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 6, marginLeft: 18 }}>
         <div style={{ width: 14, background: cAccent, clipPath: `polygon(${SLANT * 0.5}px 0,100% 0,calc(100% - ${SLANT * 0.5}px) 100%,0 100%)` }} />
         <Para bg={COL.white} reveal={subSp} padding="0" style={{ boxShadow: '0 10px 24px rgba(0,0,0,0.2)' }}>
-          <div style={{
+          {/* Le décalage reprend celui du ressort qui révèle ce bandeau
+              (`subSp`, 6 images) : sans lui, le texte s'animerait derrière un
+              masque encore fermé. */}
+          <TexteJT role="courant" delai={6} style={{
             padding: '8px 40px 8px 28px',
             fontFamily: fontM, fontWeight: 600,
             fontSize: `${fs * 26}px`, color: cAccent,
             textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-          }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</div>
+          }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</TexteJT>
         </Para>
       </div>
     </Box>
@@ -1122,12 +1129,21 @@ export function Overlay({ overlay, durationInFrames }) {
     // du JT. Les `baseFontConfig` portent en plus leur propre repli.
     const fontVar = { '--ov-font': `'${overlay.font || 'Montserrat ExtraBold'}', ` };
     return (
-      <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, ...fontVar }}>
-        <Comp overlay={merged} durationInFrames={durationInFrames} />
-      </Box>
+      <FournisseurHabillage overlay={overlay} durationInFrames={durationInFrames}>
+        <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, ...fontVar }}>
+          <Comp overlay={merged} durationInFrames={durationInFrames} />
+        </Box>
+      </FournisseurHabillage>
     );
   }
 
   // Composants natifs ALWM : Box + pickColors déjà intégrés en interne.
-  return <Comp overlay={overlay} durationInFrames={durationInFrames} />;
+  // Le fournisseur enveloppe les deux branches : c'est le seul point de passage
+  // commun, et il évite d'enfiler trois propriétés à travers 23 gabarits pour
+  // qu'une ligne de texte connaisse la durée de son habillage.
+  return (
+    <FournisseurHabillage overlay={overlay} durationInFrames={durationInFrames}>
+      <Comp overlay={overlay} durationInFrames={durationInFrames} />
+    </FournisseurHabillage>
+  );
 }

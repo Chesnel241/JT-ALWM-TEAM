@@ -101,8 +101,15 @@ export function styleTexte({
   animation = 'fade',
   boucle = 'none',
   sortie = 'auto',
+  delai = 0,
 } = {}) {
-  const f = Math.max(0, Number(frame) || 0);
+  // Le texte ne commence à bouger qu'au moment où la boîte qui le contient
+  // s'ouvre. Un bandeau révèle ses lignes l'une après l'autre — surtitre à la
+  // 10e image, nom à la 16e, fonction à la 22e — et sans ce décalage
+  // l'animation se jouerait derrière un masque encore fermé : le monteur
+  // choisit « Machine à écrire » et découvre un texte déjà tapé.
+  const retard = Math.max(0, Number(delai) || 0);
+  const f = Math.max(0, (Number(frame) || 0) - retard);
   const cadence = Number(fps) > 0 ? Number(fps) : 30;
   const duree = Number(durationInFrames);
   const bornee = Number.isFinite(duree) && duree > 0 && duree < SANS_FIN;
@@ -162,8 +169,11 @@ export function styleTexte({
   }
 
   // --- sortie, seulement si la fin existe ---
-  if (bornee && f > duree - dSortie) {
-    const s = progression(f, duree - dSortie, dSortie);
+  // Elle se mesure sur l'image réelle : tous les textes d'un habillage
+  // disparaissent ensemble, même s'ils sont arrivés en décalé.
+  const fReelle = Math.max(0, Number(frame) || 0);
+  if (bornee && fReelle > duree - dSortie) {
+    const s = progression(fReelle, duree - dSortie, dSortie);
     switch (nomSortie) {
       case 'scale_down':
         transformations.push(`scale(${(1 - s * 0.15).toFixed(3)})`);
@@ -201,9 +211,10 @@ export function styleLettre({
   frame = 0,
   fps = 30,
   animation = 'typewriter',
+  delai = 0,
 } = {}) {
   const cadence = Number(fps) > 0 ? Number(fps) : 30;
-  const f = Math.max(0, Number(frame) || 0);
+  const f = Math.max(0, (Number(frame) || 0) - Math.max(0, Number(delai) || 0));
   const n = Math.max(1, Number(total) || 1);
 
   const dEntree = images(MOUVEMENT.entree, cadence);
@@ -227,8 +238,9 @@ export function styleLettre({
 }
 
 /** La révélation par masque, qui agit sur la boîte et non sur le texte. */
-export function styleMasque({ frame = 0, fps = 30 } = {}) {
+export function styleMasque({ frame = 0, fps = 30, delai = 0 } = {}) {
   const cadence = Number(fps) > 0 ? Number(fps) : 30;
-  const t = progression(Math.max(0, Number(frame) || 0), 0, images(MOUVEMENT.entree, cadence));
+  const f = Math.max(0, (Number(frame) || 0) - Math.max(0, Number(delai) || 0));
+  const t = progression(f, 0, images(MOUVEMENT.entree, cadence));
   return { clipPath: `inset(0 ${((1 - t) * 100).toFixed(2)}% 0 0)` };
 }
