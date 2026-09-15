@@ -3,19 +3,52 @@ import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
 
 const baseFontConfig = {
-  fontFamily: 'var(--ov-font) "Montserrat ExtraBold", system-ui, sans-serif',
+  fontFamily: 'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif',
   textTransform: 'uppercase',
   fontWeight: '900',
   lineHeight: 1,
   margin: 0,
 };
 
+/**
+ * Coupe un titre en deux lignes pour un habillage qui en attend deux.
+ *
+ * Un retour à la ligne explicite fait foi. Sinon on coupe à la frontière de
+ * mot la plus proche du milieu, ce qui évite la ligne d'un seul mot qu'un
+ * découpage à la moitié des caractères produit régulièrement.
+ */
+export function deuxLignes(titre) {
+  const t = String(titre || '').trim();
+  if (!t) return ['', ''];
+
+  const explicite = t.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (explicite.length > 1) return [explicite[0], explicite.slice(1).join(' ')];
+
+  const mots = t.split(/\s+/);
+  if (mots.length < 2) return [t, ''];
+
+  const milieu = t.length / 2;
+  let coupe = 1;
+  let meilleur = Infinity;
+  for (let i = 1; i < mots.length; i += 1) {
+    const ecart = Math.abs(mots.slice(0, i).join(' ').length - milieu);
+    if (ecart < meilleur) { meilleur = ecart; coupe = i; }
+  }
+  return [mots.slice(0, coupe).join(' '), mots.slice(coupe).join(' ')];
+}
+
 export function EnvatoBigTitle({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const line1 = fields.line1 || 'WHAT IS GOING ON';
-  const line2 = fields.line2 || 'IN THE WORLD';
-  const subtitle = fields.subtitle || 'BREAKING NEWS';
+  // Le catalogue déclare un champ « titre » ; ce composant lisait line1 /
+  // line2 / subtitle. Ce que le monteur tapait n'arrivait donc nulle part, et
+  // le JT partait à l'antenne avec le texte de démonstration du fournisseur :
+  // « WHAT IS GOING ON IN THE WORLD ». On lit désormais le champ déclaré, en
+  // gardant les trois anciens noms pour les montages déjà enregistrés.
+  const [titreL1, titreL2] = deuxLignes(fields.titre);
+  const line1 = fields.line1 || titreL1 || 'TITRE DU JOURNAL';
+  const line2 = fields.line2 || titreL2 || '';
+  const subtitle = fields.subtitle || fields.sous_titre || '';
   const colorMain = fields.colorMain || '#d61f1f';
   const colorAccent = fields.colorAccent || '#fcfcfc';
   const colorTextMain = fields.colorTextMain || '#fcfcfc';
@@ -61,6 +94,9 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
               </div>
             </EnvatoMaskReveal>
 
+            {/* Un titre court tient sur une ligne : sans ce garde, la seconde
+                bande s'afficherait quand même, en aplat de couleur vide. */}
+            {line2 && (
             <EnvatoMaskReveal frame={frame} delay={12} direction="left" duration={30}>
               <div style={{ backgroundColor: colorAccent, padding: '24px 64px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
                 <div style={{ transform: 'skewX(10deg)' }}>
@@ -72,6 +108,7 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
                 </div>
               </div>
             </EnvatoMaskReveal>
+            )}
             
             {subtitle && (
                 <EnvatoMaskReveal frame={frame} delay={24} direction="right" duration={30} style={{ marginTop: '-12px', zIndex: 10 }}>
@@ -95,8 +132,12 @@ export function EnvatoTicker({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
   const tag = fields.tag || 'LIVE';
-  let items = fields.items || ['MARKETS REACH NEW HIGHS', 'GLOBAL SUMMIT BEGINS TODAY', 'TECH STOCKS RALLY', 'WEATHER UPDATE: STORM APPROACHING COAST'];
+  // Même défaut que le Grand Titre : le catalogue déclare text1 et text2, le
+  // composant ne lisait que `items`. Les deux informations saisies par le
+  // monteur étaient ignorées au profit des titres de démonstration anglais.
+  let items = fields.items || [fields.text1, fields.text2].filter(Boolean);
   if (typeof items === 'string') items = items.split(',').map(s => s.trim());
+  if (!items.length) items = ['INFORMATION À SAISIR'];
   const colorMain = fields.colorMain || '#d61f1f';
   const colorAccent = fields.colorAccent || '#111111';
   const colorTextMain = fields.colorTextMain || '#fcfcfc';

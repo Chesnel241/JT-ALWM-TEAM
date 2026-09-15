@@ -254,16 +254,19 @@ export const FONT_FAMILIES = [
   'IBM Plex Sans', 'JetBrains Mono',
 ];
 
+// Rien ici ne doit sortir de TEXT_ANIMATIONS_IDS côté serveur : le
+// validateur de `/editor/concat` refuse le reste avec un 400, et c'est tout
+// le master qui ne se génère pas. « Slide Left », « Slide Right » et
+// « Allumage Néon » étaient dans ce cas ; `animations-offertes.test.js` garde
+// désormais les deux listes d'accord.
 export const TEXT_ANIMATIONS_IN = [
   { id: 'fade', label: 'Fondu' },
   { id: 'scale', label: 'Scale' },
-  { id: 'slide_left', label: 'Slide Left' },
-  { id: 'slide_right', label: 'Slide Right' },
+  { id: 'slide', label: 'Glissé' },
   { id: 'pop', label: 'Pop' },
   { id: 'bounce', label: 'Bounce' },
   { id: 'blurin', label: 'Blur In' },
   { id: 'mask_reveal', label: 'Mask Reveal' },
-  { id: 'neon_on', label: 'Allumage Néon' },
   { id: 'glitch_in', label: 'Glitch In' },
   { id: 'rotate', label: 'Rotate' },
   { id: 'flip3d', label: 'Flip 3D' },

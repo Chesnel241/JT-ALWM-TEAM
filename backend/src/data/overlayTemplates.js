@@ -122,6 +122,32 @@ function renderText(raw, animation, font, outline, glow) {
   }
 }
 
+/**
+ * Animations que l'interface a proposées sans que le serveur les accepte.
+ *
+ * Le studio offrait « Slide Left », « Slide Right » et « Allumage Néon » ;
+ * le validateur de `/editor/concat` les refusait avec un 400, et le monteur
+ * voyait « Générer le master » échouer sans comprendre pourquoi. Elles ne
+ * sont plus proposées, mais un montage enregistré avant cette correction les
+ * porte encore : les refuser aujourd'hui rendrait ce montage définitivement
+ * inexportable.
+ *
+ * On les accepte donc en entrée et on les ramène à leur équivalent connu.
+ * Aucune n'était rendue de toute façon : le moteur retombe sur un fondu.
+ */
+export const ANIMATIONS_HERITEES = {
+  slide_left: 'slide',
+  slide_right: 'slide',
+  neon_on: 'fade',
+};
+
+const ANIMATIONS_HERITEES_IDS = Object.keys(ANIMATIONS_HERITEES);
+
+/** Ramène une animation héritée à sa remplaçante. Laisse tout le reste intact. */
+export function normaliserAnimation(id) {
+  return ANIMATIONS_HERITEES[id] || id;
+}
+
 // Liste unique des animations d'entrée valides (source de vérité pour le
 // validateur de route + l'UI front).
 export const TEXT_ANIMATIONS_IDS = [
@@ -132,6 +158,8 @@ export const TEXT_ANIMATIONS_IDS = [
   // (cf. default du switch dans renderText).
   'mask_reveal', 'outline_morph', 'letterspread', 'weight_pulse',
   'kerning_shake', 'glitch_in',
+  // Valeurs héritées, tolérées mais plus proposées (voir ANIMATIONS_HERITEES).
+  ...ANIMATIONS_HERITEES_IDS,
 ];
 
 // Animations qui nécessitent un split par caractère (N Dialogues per-char).
@@ -236,6 +264,72 @@ function subtitleTags(style) {
   return `${align}${fontTag(style?.font)}\\fs${fs}\\1c&HFFFFFF&\\3c&H000000&\\bord3\\shad1`;
 }
 
+/**
+ * Rend n'importe quel habillage en lignes ASS, à partir des champs qu'il déclare.
+ *
+ * Chaque modèle portait autrefois son propre `buildAss`. Ces constructeurs ont
+ * disparu lors d'une réécriture du catalogue, mais `generateAssFile` a continué
+ * de les appeler : toute liste d'habillages non vide levait
+ * « template.buildAss is not a function ». Côté clip l'erreur était avalée et
+ * les titres disparaissaient en silence ; côté habillage global elle faisait
+ * échouer l'assemblage entier. Les tests ne passaient qu'un tableau vide, donc
+ * l'intégration continue ne voyait rien.
+ *
+ * Ce rendu est volontairement sobre : `libass` est le repli de secours, pas la
+ * référence visuelle — celle-ci est Remotion (RENDERER=remotion en production,
+ * cf. docs/CLOUD_RUN.md). Il doit produire un JT regardable, avec un texte
+ * lisible et bien placé, pas une copie au pixel des habillages Remotion.
+ */
+function buildAssGenerique(template, overlay, startStr, endStr) {
+  const ancre = DEFAULT_ANCHOR[template.id] || { x: 0, y: 950 };
+  const C = pickColors(overlay);
+  const couleurTexte = C.text(COL_WHITE);
+
+  // Un habillage ancré au centre de l'image se compose centré ; les autres
+  // s'alignent à gauche, comme les bandeaux bas dont ils viennent.
+  const centre = ancre.x > 600;
+  const alignement = centre ? '\\an5' : '\\an7';
+  const echelle = overlay.fontSize != null ? Number(overlay.fontSize) / 100 : 1;
+  const facteur = Number.isFinite(echelle) && echelle > 0 ? echelle : 1;
+
+  const valeurs = (template.fields || [])
+    .map((champ) => ({ cle: champ.key, texte: safe(overlay?.fields?.[champ.key]) }))
+    .filter((v) => v.texte);
+
+  if (!valeurs.length) return [];
+
+  // Hauteur du bloc, calculée avant de placer quoi que ce soit : empiler
+  // naïvement vers le bas depuis un ancrage déjà situé à y=1000 poussait la
+  // deuxième ligne à y=1073, hors d'une image qui s'arrête à 1080.
+  const tailles = valeurs.map((_, i) => Math.round((i === 0 ? 54 : 34) * facteur));
+  const interlignes = tailles.map((t) => Math.round(t * 1.35));
+  const hauteur = interlignes.reduce((a, b) => a + b, 0) - (interlignes.at(-1) - tailles.at(-1));
+
+  const MARGE_BASSE = 1080 - 40;
+  let y = centre
+    ? ancre.y - Math.round(hauteur / 2) + Math.round(tailles[0] / 2)
+    : Math.min(ancre.y, MARGE_BASSE - hauteur);
+  y = Math.max(40, y);
+
+  const lignes = [];
+  valeurs.forEach((v, i) => {
+    // Le premier champ est le titre, les suivants le précisent.
+    const taille = tailles[i];
+    const { prefix, body } = renderText(
+      v.texte, overlay.animation, overlay.font, overlay.outline, overlay.glow
+    );
+    const x = centre ? ancre.x : ancre.x + 60;
+    lignes.push(
+      `Dialogue: 3,${startStr},${endStr},Default,,0,0,0,,`
+      + `{${alignement}\\pos(${Math.round(x)},${Math.round(y)})\\fs${taille}`
+      + `\\1c${couleurTexte}${prefix}}${body}`
+    );
+    y += interlignes[i];
+  });
+
+  return lignes;
+}
+
 export function generateAssFile(overlays, workDir, ctx = {}, subtitles = null, subtitleStyle = null) {
   const assFilename = `overlays_${Date.now()}_${Math.floor(Math.random() * 1000)}.ass`;
   const absoluteAssPath = path.join(workDir, assFilename);
@@ -267,7 +361,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const startTimeStr = formatAssTime(startSec);
     const endTimeStr = formatAssTime(endSec);
 
-    let dialogues = template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec });
+    // Un modèle peut fournir son propre constructeur ; aucun ne le fait
+    // aujourd'hui, et le rendu générique prend le relais.
+    let dialogues = typeof template.buildAss === 'function'
+      ? template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec })
+      : buildAssGenerique(template, overlay, startTimeStr, endTimeStr);
+    if (!Array.isArray(dialogues)) dialogues = [];
     // Drag : si position custom, décaler le template comme un bloc.
     const def = DEFAULT_ANCHOR[overlay.templateId];
     if (def) {

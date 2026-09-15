@@ -1111,7 +1111,13 @@ export function Overlay({ overlay, durationInFrames }) {
   // les couleurs UI + la police via variable CSS héritée par les enfants.
   if (ENVATO_IDS.has(overlay.templateId)) {
     const merged = injectColors(overlay);
-    const fontVar = overlay.font ? { '--ov-font': `'${overlay.font}', ` } : {};
+    // La variable est TOUJOURS définie, même sans choix de police.
+    // Quand elle ne l'était pas, `font-family: var(--ov-font) "Montserrat
+    // ExtraBold", …` devenait invalide au calcul — une variable absente sans
+    // valeur de repli invalide toute la déclaration — et les quinze habillages
+    // s'affichaient dans la police par défaut du navigateur au lieu de celle
+    // du JT. Les `baseFontConfig` portent en plus leur propre repli.
+    const fontVar = { '--ov-font': `'${overlay.font || 'Montserrat ExtraBold'}', ` };
     return (
       <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, ...fontVar }}>
         <Comp overlay={merged} durationInFrames={durationInFrames} />
