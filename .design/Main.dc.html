@@ -1,0 +1,231 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Sora', ui-sans-serif, system-ui, sans-serif; background: oklch(0.145 0.022 245); }
+    a { color: #51b5e7; } a:hover { color: #7cc7ee; }
+    .cat { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: oklch(0.72 0.02 235); }
+    .card { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 12px;
+            background: oklch(0.19 0.024 245); border: 1px solid oklch(0.36 0.025 245); }
+    .card.on { border-color: #51b5e7; background: oklch(0.235 0.025 245); }
+    .nom { font-size: 13px; font-weight: 600; color: oklch(0.93 0.01 225); line-height: 1.25; }
+    .des { font-size: 11px; color: oklch(0.72 0.02 235); line-height: 1.4; margin-top: 2px; }
+    /* vignette 16:9 : une miniature de l'habillage, pas une icône */
+    .vig { width: 92px; height: 52px; border-radius: 6px; flex: none; position: relative; overflow: hidden;
+           background: linear-gradient(140deg, #0a2440, #061627); border: 1px solid oklch(0.36 0.025 245); }
+    .bar { position: absolute; background: #0d4d8b; }
+    .txt { position: absolute; background: rgba(255,255,255,.88); border-radius: 1px; }
+    .txt.dim { background: rgba(255,255,255,.42); }
+    .acc { position: absolute; background: #51b5e7; }
+    .reco { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 9px; font-weight: 700;
+            letter-spacing: .05em; background: rgba(0,128,101,.22); border: 1px solid rgba(0,128,101,.65); color: #4ecfae; }
+  </style>
+</helmet>
+
+<div style="width: 760px; background: oklch(0.145 0.022 245); color: oklch(0.93 0.01 225); padding: 24px; box-sizing: border-box;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+    <div style="font-size: 18px; font-weight: 700;">Choisir un habillage</div>
+    <div style="font-size: 11px; color: oklch(0.72 0.02 235);">23 modèles</div>
+  </div>
+  <div style="font-size: 12px; color: oklch(0.72 0.02 235); margin-bottom: 16px;">
+    Rangés par moment du JT, et non plus par portée technique.
+  </div>
+
+  <!-- recherche -->
+  <div style="display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-radius: 10px;
+              background: oklch(0.19 0.024 245); border: 1px solid oklch(0.36 0.025 245); margin-bottom: 18px;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2" stroke-linecap="round">
+      <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path>
+    </svg>
+    <span style="font-size: 13px; color: oklch(0.72 0.02 235);">Chercher un habillage…</span>
+  </div>
+
+  <!-- OUVERTURE -->
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 9px;">
+    <span class="cat">Ouverture</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 18px;">
+    <div class="card">
+      <div class="vig">
+        <div class="acc" style="left:0; top:14px; width:100%; height:2px; opacity:.5;"></div>
+        <div class="txt" style="left:22px; top:24px; width:48px; height:6px;"></div>
+        <div class="txt dim" style="left:30px; top:34px; width:32px; height:3px;"></div>
+      </div>
+      <div><div class="nom">Générique d'ouverture</div><div class="des">Plein écran, mots-clés puis logo</div></div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div class="bar" style="left:0; top:0; width:100%; height:100%; opacity:.55;"></div>
+        <div class="txt" style="left:24px; top:23px; width:44px; height:7px;"></div>
+      </div>
+      <div><div class="nom">Transition reportage</div><div class="des">Plein écran entre deux sujets</div></div>
+    </div>
+  </div>
+
+  <!-- TITRAGE -->
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 9px;">
+    <span class="cat">Titrage</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+    <span style="font-size: 10px; color: oklch(0.72 0.02 235);">7 modèles</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 18px;">
+    <div class="card on">
+      <div class="vig">
+        <div class="bar" style="left:8px; bottom:12px; width:66px; height:13px;"></div>
+        <div class="txt" style="left:12px; bottom:16px; width:44px; height:5px;"></div>
+        <div class="acc" style="left:8px; bottom:7px; width:3px; height:3px;"></div>
+        <div class="txt dim" style="left:14px; bottom:7px; width:26px; height:3px;"></div>
+      </div>
+      <div>
+        <div class="nom">Titre de reportage</div>
+        <div class="des">Bandeau bas, titre et sous-titre</div>
+        <div style="margin-top: 5px;"><span class="reco">Recommandé</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div class="txt" style="left:10px; top:16px; width:72px; height:9px;"></div>
+        <div class="txt" style="left:10px; top:29px; width:52px; height:9px;"></div>
+      </div>
+      <div><div class="nom">Grand titre</div><div class="des">Plein écran, deux lignes massives</div></div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div class="acc" style="left:10px; top:11px; width:30px; height:2px;"></div>
+        <div class="txt" style="left:10px; top:18px; width:60px; height:7px;"></div>
+        <div class="txt dim" style="left:10px; top:30px; width:40px; height:3px;"></div>
+      </div>
+      <div><div class="nom">Titre — filet minimal</div><div class="des">Sobre, un trait sous le titre</div></div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div class="txt dim" style="left:10px; top:10px; width:56px; height:4px;"></div>
+        <div class="txt dim" style="left:10px; top:20px; width:64px; height:4px;"></div>
+        <div class="txt dim" style="left:10px; top:30px; width:48px; height:4px;"></div>
+        <div class="acc" style="left:4px; top:10px; width:2px; height:24px;"></div>
+      </div>
+      <div><div class="nom">Rappel des titres</div><div class="des">Jusqu'à cinq titres enchaînés</div></div>
+    </div>
+  </div>
+
+  <!-- IDENTIFICATION -->
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 9px;">
+    <span class="cat">Identification</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+    <span style="font-size: 10px; color: oklch(0.72 0.02 235);">6 modèles</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 18px;">
+    <div class="card">
+      <div class="vig">
+        <div class="acc" style="left:8px; bottom:11px; width:16px; height:14px;"></div>
+        <div class="bar" style="left:24px; bottom:11px; width:52px; height:14px;"></div>
+        <div class="txt" style="left:28px; bottom:18px; width:34px; height:4px;"></div>
+        <div class="txt dim" style="left:28px; bottom:13px; width:24px; height:3px;"></div>
+      </div>
+      <div>
+        <div class="nom">Nom et fonction</div>
+        <div class="des">Le bandeau d'interview</div>
+        <div style="margin-top: 5px;"><span class="reco">Recommandé</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div class="acc" style="left:8px; top:10px; width:11px; height:11px; border-radius:999px;"></div>
+        <div class="bar" style="left:17px; top:12px; width:42px; height:8px; border-radius:0 8px 8px 0;"></div>
+        <div class="txt" style="left:24px; top:15px; width:28px; height:3px;"></div>
+      </div>
+      <div><div class="nom">Lieu</div><div class="des">Pastille de localisation</div></div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div class="acc" style="left:14px; top:14px; width:2px; height:24px;"></div>
+        <div class="txt" style="left:22px; top:16px; width:54px; height:5px;"></div>
+        <div class="txt" style="left:22px; top:25px; width:44px; height:5px;"></div>
+        <div class="txt dim" style="left:22px; top:34px; width:26px; height:3px;"></div>
+      </div>
+      <div><div class="nom">Citation</div><div class="des">Verbatim encadré</div></div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div class="bar" style="left:8px; bottom:14px; width:44px; height:9px;"></div>
+        <div class="bar" style="left:12px; bottom:6px; width:36px; height:7px; opacity:.7;"></div>
+      </div>
+      <div><div class="nom">Duo décalé</div><div class="des">Deux blocs superposés</div></div>
+    </div>
+  </div>
+
+  <!-- ALERTE -->
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 9px;">
+    <span class="cat">Alerte</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 18px;">
+    <div class="card">
+      <div class="vig">
+        <div style="position:absolute; left:8px; top:9px; width:34px; height:10px; background:#c62828;"></div>
+        <div style="position:absolute; left:8px; top:19px; width:34px; height:10px; background:#f5f5f5;"></div>
+      </div>
+      <div><div class="nom">Flash info</div><div class="des">Petit badge en haut à gauche</div></div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div style="position:absolute; inset:0; background: radial-gradient(circle at 50% 42%, rgba(81,181,231,.35), transparent 62%);"></div>
+        <div class="txt" style="left:12px; top:19px; width:68px; height:10px;"></div>
+        <div style="position:absolute; left:0; bottom:4px; width:100%; height:7px; background:#0d4d8b;"></div>
+      </div>
+      <div><div class="nom">Breaking news</div><div class="des">Plein écran et bandeau défilant</div></div>
+    </div>
+  </div>
+
+  <!-- LIAISON -->
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 9px;">
+    <span class="cat">Liaison</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 18px;">
+    <div class="card">
+      <div class="vig">
+        <div style="position:absolute; left:0; bottom:0; width:100%; height:13px; background:#0d4d8b;"></div>
+        <div class="acc" style="left:0; bottom:0; width:20px; height:13px;"></div>
+        <div class="txt dim" style="left:26px; bottom:5px; width:58px; height:3px;"></div>
+      </div>
+      <div><div class="nom">Bande défilante</div><div class="des">Fil d'informations en bas</div></div>
+    </div>
+    <div class="card">
+      <div class="vig">
+        <div style="position:absolute; left:41px; top:-6px; width:5px; height:64px; background:#51b5e7; transform: skewX(-15deg);"></div>
+        <div class="txt dim" style="left:8px; bottom:8px; width:24px; height:4px;"></div>
+        <div class="txt dim" style="right:8px; top:9px; width:24px; height:4px;"></div>
+      </div>
+      <div><div class="nom">Écran scindé</div><div class="des">Deux lieux côte à côte</div></div>
+    </div>
+  </div>
+
+  <!-- CLOTURE -->
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 9px;">
+    <span class="cat">Clôture</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;">
+    <div class="card">
+      <div class="vig">
+        <div class="txt" style="left:28px; top:18px; width:36px; height:6px;"></div>
+        <div class="acc" style="left:44px; top:28px; width:4px; height:1px;"></div>
+        <div class="txt dim" style="left:32px; top:33px; width:28px; height:3px;"></div>
+      </div>
+      <div><div class="nom">Fin du journal</div><div class="des">Remerciement et logo</div></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

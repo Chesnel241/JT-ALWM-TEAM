@@ -17,3 +17,9 @@ test-flags.html
 frontend/test-results/
 JT-ALWM-TEAM-master/
 
+
+# Maquettes : les sources des planches sont versionnées, pas le canevas
+# assemblé. Ce dernier embarque l'éditeur entier (2,5 Mo) et se régénère
+# depuis les .dc.html par la commande rappelée dans .design/README.md.
+.design/*.html
+!.design/*.dc.html

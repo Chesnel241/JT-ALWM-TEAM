@@ -1,0 +1,210 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Sora', ui-sans-serif, system-ui, sans-serif; background: oklch(0.145 0.022 245); }
+    a { color: #51b5e7; } a:hover { color: #7cc7ee; }
+    .tool { display: flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 8px;
+            border: 1px solid oklch(0.36 0.025 245); font-size: 12px; font-weight: 600; color: oklch(0.93 0.01 225); white-space: nowrap; }
+    .tool.on { background: rgba(81,181,231,.16); border-color: #51b5e7; color: #7cc7ee; }
+    .tool.mut { color: oklch(0.72 0.02 235); border-color: oklch(0.3 0.02 245); }
+    .sec { border: 1px solid oklch(0.36 0.025 245); border-radius: 10px; background: oklch(0.19 0.024 245); }
+    .sech { display: flex; align-items: center; gap: 8px; padding: 9px 11px; }
+    .sect { font-size: 12px; font-weight: 700; flex: 1; }
+    .secv { font-size: 11px; color: oklch(0.72 0.02 235); }
+    .lbl { font-size: 10px; font-weight: 700; color: oklch(0.72 0.02 235); text-transform: uppercase; letter-spacing: .06em; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .tk { font-size: 10px; font-weight: 700; letter-spacing: .08em; color: oklch(0.72 0.02 235); }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: oklch(0.145 0.022 245); color: oklch(0.93 0.01 225);
+            display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+
+  <!-- barre d'application -->
+  <div style="display: flex; align-items: center; gap: 14px; padding: 11px 18px; background: #ffffff; flex: none;">
+    <div style="display: flex; align-items: center; gap: 9px;">
+      <div style="width: 26px; height: 26px; border-radius: 999px; background: #0d4d8b;"></div>
+      <div>
+        <div style="font-size: 8px; font-weight: 700; letter-spacing: .14em; color: #6b7a8c;">JT ALWM</div>
+        <div style="font-size: 14px; font-weight: 700; color: #16233a;">Hub de reportages</div>
+      </div>
+    </div>
+    <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;">
+      <div style="padding: 7px 13px; font-size: 12px; font-weight: 600; color: #4a5a6e;">Espace Reportages</div>
+      <div style="padding: 7px 13px; border-radius: 8px; background: #0d4d8b; color: #fff; font-size: 12px; font-weight: 600;">Espace Montage</div>
+      <div style="padding: 7px 13px; font-size: 12px; font-weight: 600; color: #4a5a6e;">Voix Off</div>
+      <div style="padding: 7px 13px; font-size: 12px; font-weight: 600; color: #4a5a6e;">JT Prêt</div>
+      <div style="padding: 7px 13px; font-size: 12px; font-weight: 600; color: #4a5a6e;">Programmation</div>
+    </div>
+  </div>
+
+  <!-- lecteur + inspecteur -->
+  <div style="display: flex; flex: 1; min-height: 0;">
+    <div style="flex: 1; background: #000; position: relative; display: grid; place-items: center;">
+      <!-- l'image, avec le titre posé dessus -->
+      <div style="width: 84%; aspect-ratio: 16/9; background: linear-gradient(140deg, #123049, #07141f); position: relative; border-radius: 2px;">
+        <div style="position: absolute; left: 7%; bottom: 13%;">
+          <div style="display: inline-block; background: #0d4d8b; padding: 11px 26px; transform: skewX(-9deg);">
+            <div style="transform: skewX(9deg); font-size: 25px; font-weight: 800; letter-spacing: .01em; text-transform: uppercase;">Le marché de Douala</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 7px; margin-left: 4px;">
+            <div style="width: 13px; height: 3px; background: #51b5e7;"></div>
+            <div style="font-size: 13px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: rgba(255,255,255,.92);">Cameroun</div>
+          </div>
+        </div>
+      </div>
+      <!-- progression du rendu, désormais visible SANS quitter le studio -->
+      <div style="position: absolute; left: 18px; bottom: 18px; right: 18px; padding: 12px 15px; border-radius: 11px;
+                  background: rgba(10,22,38,.94); border: 1px solid #51b5e7; display: flex; align-items: center; gap: 13px;">
+        <div style="width: 26px; height: 26px; border-radius: 999px; border: 2.5px solid rgba(81,181,231,.28); border-top-color: #51b5e7; flex: none;"></div>
+        <div style="flex: 1;">
+          <div style="font-size: 12px; font-weight: 600; margin-bottom: 6px;">Assemblage du master — encodage</div>
+          <div style="height: 4px; border-radius: 999px; background: oklch(0.36 0.025 245); overflow: hidden;">
+            <div style="width: 62%; height: 100%; background: #51b5e7;"></div>
+          </div>
+        </div>
+        <div class="mono" style="font-size: 15px; font-weight: 700;">62 %</div>
+        <div style="font-size: 11px; color: oklch(0.72 0.02 235);">~2 min</div>
+      </div>
+    </div>
+
+    <!-- inspecteur -->
+    <div style="width: 400px; flex: none; background: oklch(0.145 0.022 245);
+                border-left: 1px solid oklch(0.36 0.025 245); padding: 16px; box-sizing: border-box; overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+        <div style="font-size: 14px; font-weight: 700;">Titre de reportage</div>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </div>
+      <div style="font-size: 11px; color: oklch(0.72 0.02 235); margin-bottom: 13px;">rush-douala.mp4</div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="sec">
+          <div class="sech">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#51b5e7" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
+            <span class="sect">Texte</span>
+          </div>
+          <div style="padding: 0 11px 11px; display: flex; flex-direction: column; gap: 9px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span class="lbl">Titre principal</span>
+              <div style="padding: 8px 10px; background: oklch(0.145 0.022 245); border: 1px solid #51b5e7;
+                          border-radius: 7px; font-size: 13px;">Le marché de Douala</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span class="lbl">Sous-titre</span>
+              <div style="padding: 8px 10px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);
+                          border-radius: 7px; font-size: 13px; color: oklch(0.72 0.02 235);">Cameroun</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec"><div class="sech">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2.5" stroke-linecap="round" style="transform: rotate(-90deg);"><path d="M6 9l6 6 6-6"></path></svg>
+          <span class="sect" style="color: oklch(0.72 0.02 235);">Mouvement</span><span class="secv">Fondu · immobile</span>
+        </div></div>
+
+        <div class="sec"><div class="sech">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2.5" stroke-linecap="round" style="transform: rotate(-90deg);"><path d="M6 9l6 6 6-6"></path></svg>
+          <span class="sect" style="color: oklch(0.72 0.02 235);">Typographie</span><span class="secv">Charte JT</span>
+        </div></div>
+
+        <div class="sec"><div class="sech">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2.5" stroke-linecap="round" style="transform: rotate(-90deg);"><path d="M6 9l6 6 6-6"></path></svg>
+          <span class="sect" style="color: oklch(0.72 0.02 235);">Couleur</span>
+          <div style="display: flex; gap: 3px;">
+            <div style="width: 12px; height: 12px; border-radius: 3px; background: #fff;"></div>
+            <div style="width: 12px; height: 12px; border-radius: 3px; background: #0d4d8b;"></div>
+            <div style="width: 12px; height: 12px; border-radius: 3px; background: #51b5e7;"></div>
+          </div>
+        </div></div>
+
+        <div class="sec"><div class="sech">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2.5" stroke-linecap="round" style="transform: rotate(-90deg);"><path d="M6 9l6 6 6-6"></path></svg>
+          <span class="sect" style="color: oklch(0.72 0.02 235);">Placement</span><span class="secv">Bas gauche</span>
+        </div></div>
+
+        <div class="sec"><div class="sech">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2.5" stroke-linecap="round" style="transform: rotate(-90deg);"><path d="M6 9l6 6 6-6"></path></svg>
+          <span class="sect" style="color: oklch(0.72 0.02 235);">Apparition</span><span class="secv mono">0,0 s → fin</span>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- timeline -->
+  <div style="flex: none; border-top: 1px solid oklch(0.36 0.025 245); background: oklch(0.145 0.022 245);">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; flex-wrap: nowrap;">
+      <div style="flex: none;">
+        <div class="mono" style="font-size: 14px; font-weight: 700; letter-spacing: .02em;">00:00:04:12</div>
+        <div class="mono" style="font-size: 9px; color: oklch(0.72 0.02 235);">sur 00:00:32:00</div>
+      </div>
+      <div style="width: 1px; height: 26px; background: oklch(0.36 0.025 245); margin: 0 3px;"></div>
+      <div class="tool">Rushs</div>
+      <div class="tool on">Sélection</div>
+      <div class="tool">Lame</div>
+      <div class="tool">Couper</div>
+      <div class="tool on">Magnétisme</div>
+      <div style="width: 1px; height: 26px; background: oklch(0.36 0.025 245); margin: 0 3px;"></div>
+      <div class="tool">Annuler</div>
+      <div class="tool mut">Rétablir</div>
+      <div style="width: 1px; height: 26px; background: oklch(0.36 0.025 245); margin: 0 3px;"></div>
+      <div class="tool">Habillage JT</div>
+      <div style="flex: 1;"></div>
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #4ecfae;">
+        <div style="width: 6px; height: 6px; border-radius: 999px; background: #4ecfae;"></div> Cloud à jour
+      </div>
+      <div style="padding: 9px 17px; border-radius: 999px; background: #008065; color: #fff; font-size: 12px; font-weight: 700;">Générer le master</div>
+    </div>
+
+    <!-- règle -->
+    <div style="height: 20px; border-top: 1px solid oklch(0.3 0.02 245); position: relative; display: flex; align-items: center; padding-left: 96px;">
+      <div class="mono" style="font-size: 9px; color: oklch(0.72 0.02 235); width: 116px;">00:00</div>
+      <div class="mono" style="font-size: 9px; color: oklch(0.72 0.02 235); width: 116px;">00:08</div>
+      <div class="mono" style="font-size: 9px; color: oklch(0.72 0.02 235); width: 116px;">00:16</div>
+      <div class="mono" style="font-size: 9px; color: oklch(0.72 0.02 235); width: 116px;">00:24</div>
+      <div style="position: absolute; left: 161px; top: 0; bottom: -128px; width: 2px; background: oklch(0.79 0.16 75);"></div>
+    </div>
+
+    <!-- pistes -->
+    <div style="display: flex; border-top: 1px solid oklch(0.3 0.02 245);">
+      <div style="width: 96px; flex: none; padding: 13px 12px; border-right: 1px solid oklch(0.3 0.02 245);">
+        <div class="tk" style="color: #51b5e7;">V1 <span style="color: oklch(0.72 0.02 235);">VIDÉO</span></div>
+      </div>
+      <div style="flex: 1; padding: 8px; display: flex; gap: 3px;">
+        <div style="width: 168px; height: 46px; border-radius: 6px; background: rgba(81,181,231,.15); border: 1px solid #51b5e7;
+                    display: flex; align-items: flex-end; padding: 6px; box-sizing: border-box; font-size: 10px; font-weight: 600;">rush-douala.mp4</div>
+        <div style="width: 210px; height: 46px; border-radius: 6px; background: oklch(0.235 0.025 245); border: 1px solid oklch(0.36 0.025 245);
+                    display: flex; align-items: flex-end; padding: 6px; box-sizing: border-box; font-size: 10px; color: oklch(0.72 0.02 235);">port-dakar.mp4</div>
+        <div style="width: 124px; height: 46px; border-radius: 6px; background: oklch(0.235 0.025 245); border: 1px solid oklch(0.36 0.025 245);
+                    display: flex; align-items: flex-end; padding: 6px; box-sizing: border-box; font-size: 10px; color: oklch(0.72 0.02 235);">plateau.mp4</div>
+      </div>
+    </div>
+
+    <!-- piste titres : elle a enfin un moyen de créer un titre -->
+    <div style="display: flex; border-top: 1px solid oklch(0.3 0.02 245);">
+      <div style="width: 96px; flex: none; padding: 13px 12px; border-right: 1px solid oklch(0.3 0.02 245);">
+        <div class="tk" style="color: oklch(0.62 0.14 305);">T1 <span style="color: oklch(0.72 0.02 235);">TITRES</span></div>
+      </div>
+      <div style="flex: 1; padding: 8px; display: flex; gap: 3px; align-items: center;">
+        <div style="width: 138px; height: 30px; border-radius: 6px; background: rgba(155,89,220,.2);
+                    border: 1px solid oklch(0.62 0.14 305); display: flex; align-items: center; padding: 0 9px;
+                    box-sizing: border-box; font-size: 10px; font-weight: 600;">Le marché de Douala</div>
+        <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 30px; border-radius: 6px;
+                    border: 1px dashed oklch(0.36 0.025 245); color: oklch(0.72 0.02 235); font-size: 11px; font-weight: 600;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          Ajouter un titre
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

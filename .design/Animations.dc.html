@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Sora', ui-sans-serif, system-ui, sans-serif; background: oklch(0.145 0.022 245); }
+    a { color: #51b5e7; } a:hover { color: #7cc7ee; }
+    .cat { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: oklch(0.72 0.02 235); }
+    .tile { padding: 8px; border-radius: 11px; background: oklch(0.19 0.024 245);
+            border: 1px solid oklch(0.36 0.025 245); display: flex; flex-direction: column; gap: 7px; }
+    .tile.on { border-color: #51b5e7; background: oklch(0.235 0.025 245); }
+    .stage { height: 62px; border-radius: 7px; overflow: hidden; position: relative;
+             background: linear-gradient(140deg, #0a2440, #061627); display: grid; place-items: center; }
+    .nm { font-size: 11px; font-weight: 600; color: oklch(0.93 0.01 225); text-align: center; }
+    /* le bloc de texte factice que chaque vignette anime */
+    .t { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+    .t i { display: block; background: rgba(255,255,255,.9); border-radius: 1px; height: 5px; width: 46px; }
+    .t i + i { height: 3px; width: 30px; background: rgba(255,255,255,.45); }
+    .ch { display: inline-block; width: 6px; height: 5px; margin-right: 2px; background: rgba(255,255,255,.9); border-radius: 1px; }
+
+    /* --- SOBRE --- */
+    @keyframes a-fondu   { 0%,8% {opacity:0} 26%,82% {opacity:1} 100% {opacity:0} }
+    @keyframes a-glisse  { 0%,8% {opacity:0; transform:translateX(-22px)} 30%,82% {opacity:1; transform:none} 100% {opacity:0} }
+    @keyframes a-masque  { 0%,8% {clip-path:inset(0 100% 0 0)} 34%,82% {clip-path:inset(0 0 0 0)} 100% {clip-path:inset(0 0 0 100%)} }
+    /* --- AFFIRMEE --- */
+    @keyframes a-pop     { 0%,8% {opacity:0; transform:scale(.72)} 26% {opacity:1; transform:scale(1.06)} 36%,82% {transform:scale(1)} 100% {opacity:0} }
+    @keyframes a-echelle { 0%,8% {opacity:0; transform:scale(1.3)} 32%,82% {opacity:1; transform:scale(1)} 100% {opacity:0} }
+    @keyframes a-monte   { 0%,8% {opacity:0; transform:translateY(16px)} 32%,82% {opacity:1; transform:none} 100% {opacity:0} }
+    /* --- MARQUEE --- */
+    @keyframes a-frappe  { 0%,10% {opacity:0} 11%,90% {opacity:1} 100% {opacity:0} }
+    @keyframes a-glitch  { 0%,8% {opacity:0; transform:translateX(0)} 14% {opacity:1; transform:translateX(5px)} 18% {transform:translateX(-4px)} 22% {transform:translateX(2px)} 28%,82% {transform:none} 100% {opacity:0} }
+    @keyframes a-neon    { 0%,8% {opacity:0} 13% {opacity:1} 17% {opacity:.15} 21% {opacity:1} 25% {opacity:.3} 30%,82% {opacity:1} 100% {opacity:0} }
+    /* --- BOUCLES --- */
+    @keyframes b-flot    { 0%,100% {transform:translateY(-3px)} 50% {transform:translateY(3px)} }
+    @keyframes b-puls    { 0%,100% {transform:scale(1)} 50% {transform:scale(1.05)} }
+
+    .anim { animation-duration: 2.6s; animation-iteration-count: infinite; animation-timing-function: cubic-bezier(.23,1,.32,1); }
+    .st-fondu   { animation-name: a-fondu; }
+    .st-glisse  { animation-name: a-glisse; }
+    .st-masque  { animation-name: a-masque; }
+    .st-pop     { animation-name: a-pop; }
+    .st-echelle { animation-name: a-echelle; }
+    .st-monte   { animation-name: a-monte; }
+    .st-glitch  { animation-name: a-glitch; animation-timing-function: steps(1, end); }
+    .st-neon    { animation-name: a-neon; animation-timing-function: steps(1, end); }
+    .st-flot    { animation-name: b-flot; animation-duration: 3.2s; animation-timing-function: ease-in-out; }
+    .st-puls    { animation-name: b-puls; animation-duration: 2.4s; animation-timing-function: ease-in-out; }
+    .ch { animation: a-frappe 2.6s infinite steps(1, end); }
+    .ch:nth-child(1){animation-delay:0s}.ch:nth-child(2){animation-delay:.1s}.ch:nth-child(3){animation-delay:.2s}
+    .ch:nth-child(4){animation-delay:.3s}.ch:nth-child(5){animation-delay:.4s}.ch:nth-child(6){animation-delay:.5s}
+    @media (prefers-reduced-motion: reduce) { .anim, .ch { animation: none !important; } }
+  </style>
+</helmet>
+
+<div style="width: 760px; background: oklch(0.145 0.022 245); color: oklch(0.93 0.01 225); padding: 24px; box-sizing: border-box;">
+
+  <div style="font-size: 18px; font-weight: 700; margin-bottom: 5px;">Animation du texte</div>
+  <div style="font-size: 12px; color: oklch(0.72 0.02 235); margin-bottom: 18px; max-width: 600px; line-height: 1.5;">
+    Chaque vignette joue le mouvement en boucle. On choisit ce qu'on voit, pas une étiquette&nbsp;:
+    «&nbsp;Blur In&nbsp;» ne veut rien dire, un bloc de texte qui entre en fondu flou, si.
+  </div>
+
+  <!-- ENTREE -->
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+    <span class="cat">À l'entrée</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+  </div>
+
+  <div style="font-size: 11px; color: oklch(0.72 0.02 235); margin: 12px 0 7px;">Sobre — pour le corps du journal</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px;">
+    <div class="tile on">
+      <div class="stage"><div class="t anim st-fondu"><i></i><i></i></div></div>
+      <div class="nm">Fondu</div>
+    </div>
+    <div class="tile">
+      <div class="stage"><div class="t anim st-glisse"><i></i><i></i></div></div>
+      <div class="nm">Glissé</div>
+    </div>
+    <div class="tile">
+      <div class="stage"><div class="t anim st-masque"><i></i><i></i></div></div>
+      <div class="nm">Révélation</div>
+    </div>
+  </div>
+
+  <div style="font-size: 11px; color: oklch(0.72 0.02 235); margin: 14px 0 7px;">Affirmée — pour ouvrir un sujet</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px;">
+    <div class="tile">
+      <div class="stage"><div class="t anim st-pop"><i></i><i></i></div></div>
+      <div class="nm">Ressort</div>
+    </div>
+    <div class="tile">
+      <div class="stage"><div class="t anim st-echelle"><i></i><i></i></div></div>
+      <div class="nm">Rapproché</div>
+    </div>
+    <div class="tile">
+      <div class="stage"><div class="t anim st-monte"><i></i><i></i></div></div>
+      <div class="nm">Montée</div>
+    </div>
+  </div>
+
+  <div style="font-size: 11px; color: oklch(0.72 0.02 235); margin: 14px 0 7px;">Marquée — à réserver aux alertes</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px;">
+    <div class="tile">
+      <div class="stage">
+        <div style="display: flex;"><span class="ch"></span><span class="ch"></span><span class="ch"></span><span class="ch"></span><span class="ch"></span><span class="ch"></span></div>
+      </div>
+      <div class="nm">Machine à écrire</div>
+    </div>
+    <div class="tile">
+      <div class="stage"><div class="t anim st-glitch"><i></i><i></i></div></div>
+      <div class="nm">Saccade</div>
+    </div>
+    <div class="tile">
+      <div class="stage"><div class="t anim st-neon"><i></i><i></i></div></div>
+      <div class="nm">Allumage</div>
+    </div>
+  </div>
+
+  <!-- BOUCLE -->
+  <div style="display: flex; align-items: center; gap: 10px; margin: 22px 0 10px;">
+    <span class="cat">Pendant</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px;">
+    <div class="tile on">
+      <div class="stage"><div class="t"><i></i><i></i></div></div>
+      <div class="nm">Immobile</div>
+    </div>
+    <div class="tile">
+      <div class="stage"><div class="t anim st-flot"><i></i><i></i></div></div>
+      <div class="nm">Flottement</div>
+    </div>
+    <div class="tile">
+      <div class="stage"><div class="t anim st-puls"><i></i><i></i></div></div>
+      <div class="nm">Pulsation</div>
+    </div>
+  </div>
+
+  <!-- SORTIE -->
+  <div style="display: flex; align-items: center; gap: 10px; margin: 22px 0 10px;">
+    <span class="cat">À la sortie</span>
+    <div style="flex: 1; height: 1px; background: oklch(0.36 0.025 245);"></div>
+  </div>
+  <div style="display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-radius: 11px;
+              background: oklch(0.19 0.024 245); border: 1px solid oklch(0.36 0.025 245);">
+    <div style="width: 15px; height: 15px; border-radius: 4px; background: #51b5e7; display: grid; place-items: center; flex: none;">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#08243c" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"></path></svg>
+    </div>
+    <div style="font-size: 12px; line-height: 1.45;">
+      <b>Sortie symétrique de l'entrée.</b>
+      <span style="color: oklch(0.72 0.02 235);">Un titre entré en fondu repart en fondu. Décochez pour en choisir une autre.</span>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px; padding: 12px 14px; border-radius: 11px; background: rgba(0,128,101,.1);
+              border: 1px solid rgba(0,128,101,.4);">
+    <div style="font-size: 12px; line-height: 1.5; color: oklch(0.93 0.01 225);">
+      <b>Neuf mouvements au lieu de vingt-six</b>
+      <span style="color: oklch(0.72 0.02 235);">— et les neuf fonctionnent réellement. La sortie suit l'entrée
+      par défaut, ce qui ramène le choix courant à un seul geste.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
