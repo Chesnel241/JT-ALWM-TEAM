@@ -32,6 +32,7 @@ import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
+import InspecteurClip from './editor/InspecteurClip.jsx';
 import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
 import {
   annuler as annulerHistorique,
@@ -609,6 +610,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   };
 
   // Un seul inspecteur doit être visible à la fois.
+  // Le clip sélectionné dans la timeline, pour que l'inspecteur au repos le
+  // montre au lieu de dire qu'aucun clip n'est sélectionné.
+  const [clipSelectionne, setClipSelectionne] = useState(null);
   const openTrimInspector = (clip) => {
     setOverlayTarget(null);
     setSubtitleTarget(null);
@@ -2289,19 +2293,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       }}
                     />
                   ) : (
-                    <div className="flex min-h-full flex-1 flex-col text-[color:var(--muted)]">
-                      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
-                        <Scissors size={16} className="text-[var(--accent)]" />
-                        <p className="text-sm font-semibold text-[color:var(--ink)]">{t.studio.timeline.inspecteur}</p>
-                      </div>
-                      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-                        <Scissors size={26} className="opacity-35" />
-                        <div>
-                          <p className="mb-1 text-sm font-semibold text-[color:var(--ink)]">{t.studio.timeline.inspecteurVide}</p>
-                          <p className="mx-auto max-w-[34ch] text-xs leading-5">{t.studio.timeline.inspecteurVideAide}</p>
-                        </div>
-                      </div>
-                    </div>
+                    <InspecteurClip
+                      clip={clipSelectionne}
+                      onRogner={openTrimInspector}
+                      onHabiller={openOverlayInspector}
+                      onSousTitrer={openSubtitleInspector}
+                    />
                   )}
                 </div>
               </div>
@@ -2365,6 +2362,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   retablissementPossible={peutRetablir(historique)}
                   syncState={timelineSyncState}
                   presenceCount={editorPresenceCount}
+                  onSelectionChange={setClipSelectionne}
                 />
               </div>
             </div>
