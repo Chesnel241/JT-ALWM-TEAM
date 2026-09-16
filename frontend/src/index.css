@@ -4,17 +4,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Polices de l'éditeur (mêmes TTF que le rendu libass) — pour que l'aperçu CSS
-   reproduise la typographie du master. font-display:swap → non bloquant. */
-@font-face { font-family: 'Inter'; src: url('/fonts/Inter.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
-@font-face { font-family: 'Bebas Neue'; src: url('/fonts/BebasNeue-Regular.ttf') format('truetype'); font-display: swap; }
-@font-face { font-family: 'Anton'; src: url('/fonts/Anton-Regular.ttf') format('truetype'); font-display: swap; }
-@font-face { font-family: 'Archivo Black'; src: url('/fonts/ArchivoBlack-Regular.ttf') format('truetype'); font-display: swap; }
-@font-face { font-family: 'Barlow'; src: url('/fonts/Barlow-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
-@font-face { font-family: 'Fjalla One'; src: url('/fonts/FjallaOne-Regular.ttf') format('truetype'); font-display: swap; }
-@font-face { font-family: 'PT Serif'; src: url('/fonts/PTSerif-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
-@font-face { font-family: 'PT Sans'; src: url('/fonts/PTSans-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
-@font-face { font-family: 'Titillium Web'; src: url('/fonts/TitilliumWeb-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+/* Polices de l'éditeur — pour que l'aperçu CSS reproduise la typographie du
+   master. `font-display: swap` → non bloquant.
+
+   En **woff2** : les mêmes dessins que le rendu, mais 64 % plus légers. Le
+   moteur de repli `libass` garde le TTF de son côté (`backend/fonts/`), qui
+   n'est pas servi au navigateur — c'est le seul endroit où les deux formats
+   divergent, et c'est parce que libass ne lit pas le woff2. */
+@font-face { font-family: 'Inter'; src: url('/fonts/Inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'Bebas Neue'; src: url('/fonts/BebasNeue-Regular.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Anton'; src: url('/fonts/Anton-Regular.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Archivo Black'; src: url('/fonts/ArchivoBlack-Regular.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Barlow'; src: url('/fonts/Barlow-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Fjalla One'; src: url('/fonts/FjallaOne-Regular.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'PT Serif'; src: url('/fonts/PTSerif-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'PT Sans'; src: url('/fonts/PTSans-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Titillium Web'; src: url('/fonts/TitilliumWeb-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
 
 :root {
 	color-scheme: light;

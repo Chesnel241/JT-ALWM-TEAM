@@ -48,7 +48,11 @@ function estUneVraiePolice(chemin) {
   const tete = readFileSync(chemin).subarray(0, 4);
   const marque = tete.toString('latin1');
   return tete.readUInt32BE(0) === 0x00010000
-    || marque === 'OTTO' || marque === 'true' || marque === 'ttcf';
+    || marque === 'OTTO' || marque === 'true' || marque === 'ttcf'
+    // `wOF2` pour les deux dossiers servis au navigateur, passés au woff2 :
+    // 6,2 Mo de TTF y sont devenus 2,2 Mo. `backend/fonts/` garde le TTF,
+    // libass ne lisant pas le woff2.
+    || marque === 'wOF2' || marque === 'wOFF';
 }
 
 describe('les fichiers de police', () => {
@@ -61,8 +65,6 @@ describe('les fichiers de police', () => {
         .filter((n) => /\.(ttf|otf|ttc|woff2?)$/i.test(n))
         .forEach((n) => {
           const f = join(chemin, n);
-          // Le woff2 a sa propre signature ; on ne le juge pas ici.
-          if (n.endsWith('.woff2') || n.endsWith('.woff')) return;
           if (!estUneVraiePolice(f)) {
             imposteurs.push(`${dossier}/${n} (${Math.round(readFileSync(f).length / 1024)} Ko)`);
           }
@@ -74,12 +76,18 @@ describe('les fichiers de police', () => {
   it('sont là, tous, pour chacune des familles que le moteur déclare', () => {
     // L'autre moitié : une famille déclarée sans fichier ne se charge pas non
     // plus, et le navigateur ne dit rien.
+    //
+    // Les deux côtés divergent, et c'est voulu : `FONT_FILES` nomme les woff2
+    // servis au navigateur, tandis que `backend/fonts/` garde les TTF que
+    // libass sait lire. La correspondance se vérifie donc par le nom de base,
+    // pas par l'extension.
     const manquants = [];
     Object.entries(FONT_FILES).forEach(([famille, fichier]) => {
-      DOSSIERS.forEach((dossier) => {
-        const chemin = join(RACINE, dossier, fichier);
-        if (!existsSync(chemin)) manquants.push(`${famille} → ${dossier}/${fichier}`);
+      ['remotion/public/fonts', 'frontend/public/fonts'].forEach((dossier) => {
+        if (!existsSync(join(RACINE, dossier, fichier))) manquants.push(`${famille} → ${dossier}/${fichier}`);
       });
+      const ttf = fichier.replace(/\.woff2?$/, '.ttf');
+      if (!existsSync(join(RACINE, 'backend/fonts', ttf))) manquants.push(`${famille} → backend/fonts/${ttf}`);
     });
     expect(manquants, 'ces familles sont déclarées sans fichier').toEqual([]);
   });
@@ -98,5 +106,23 @@ describe('ce que le studio propose au monteur', () => {
     // dans trois images de conteneur.
     const oubliees = Object.keys(FONT_FILES).filter((f) => !FONT_FAMILIES.includes(f));
     expect(oubliees, 'ces polices sont livrées mais jamais proposées').toEqual([]);
+  });
+});
+
+describe('le poids servi au navigateur', () => {
+  it('reste en woff2 des deux côtés', () => {
+    // Ces polices voyagent jusqu'à des monteurs qui n'ont pas tous la fibre.
+    // Un retour au TTF quadruplerait la charge sans que rien ne le signale.
+    ['remotion/public/fonts', 'frontend/public/fonts'].forEach((dossier) => {
+      const restes = readdirSync(join(RACINE, dossier)).filter((n) => /\.(ttf|otf)$/i.test(n));
+      expect(restes, `${dossier} sert encore du TTF`).toEqual([]);
+    });
+  });
+
+  it('garde le TTF là où libass en a besoin', () => {
+    // L'inverse est aussi un défaut : le moteur de repli ne lit pas le woff2,
+    // et le chargement échouerait sans un mot — les titres disparaîtraient.
+    const ttf = readdirSync(join(RACINE, 'backend/fonts')).filter((n) => /\.ttf$/i.test(n));
+    expect(ttf.length, 'backend/fonts n’a plus de TTF pour libass').toBeGreaterThan(10);
   });
 });
