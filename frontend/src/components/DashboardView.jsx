@@ -1393,9 +1393,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (e.dataTransfer.files?.[0]) handleDeliveryFiles(e.dataTransfer.files);
   };
   
-  const handleDeleteDelivery = async (fileId, fileName) => {
-    if(!window.confirm(`Supprimer ${fileName} ?`)) return;
-    
+  // Le `window.confirm()` natif bloquait le fil, ignorait le thème sombre et
+  // se contentait de « Supprimer machin.mp4 ? » — sans dire que c'est
+  // irréversible. La suppression d'un fichier de chutier, juste à côté,
+  // passait déjà par `ConfirmDialog` : les deux gestes se ressemblent trop
+  // pour se comporter différemment.
+  const [montageASupprimer, setMontageASupprimer] = useState(null);
+
+  const handleDeleteDelivery = (fileId, fileName) => setMontageASupprimer({ id: fileId, name: fileName });
+
+  const confirmerSuppressionMontage = async () => {
+    const cible = montageASupprimer;
+    setMontageASupprimer(null);
+    if (!cible) return;
+    const { id: fileId, name: fileName } = cible;
+
     let previousDeliveries = [];
     setDeliveries((prev) => {
       previousDeliveries = prev;
@@ -3005,6 +3017,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           setDeleteDialogOpen(false);
           setFileToDelete(null);
         }}
+      />
+
+      <ConfirmDialog
+        isOpen={!!montageASupprimer}
+        title={t.delivery.deleteTitle}
+        message={t.delivery.deleteMsg(montageASupprimer?.name || '')}
+        confirmText={t.uploader.deleteConfirm}
+        cancelText={t.uploader.cancel}
+        variant="danger"
+        onConfirm={confirmerSuppressionMontage}
+        onCancel={() => setMontageASupprimer(null)}
       />
 
       <ConfirmDialog

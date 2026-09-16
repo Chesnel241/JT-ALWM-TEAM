@@ -5,9 +5,16 @@ import { OverlayEditor } from './OverlayPanel.jsx';
 import { api } from '../../api/index.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
+import { useOptionalToast } from '../../hooks/useToast.jsx';
+import ConfirmDialog from '../ConfirmDialog.jsx';
 
 // Bouton d'upload d'un asset (musique/voix-off/image) → uploadAsset → {filename,name}.
 function UploadBtn({ accept, label, envoiLabel, uploadAsset, onUploaded }) {
+  // `useOptionalToast` plutôt que `useToast` : ce bouton est monté un peu
+  // partout, et un message affiché en passant n'est pas une raison de faire
+  // tomber son hôte. C'est la convention posée avec le hook.
+  const { addToast } = useOptionalToast();
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   return (
     <label className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-dashed border-[var(--border)] text-xs cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] ${busy ? 'opacity-60 pointer-events-none' : 'text-[color:var(--muted)]'}`}>
@@ -22,7 +29,7 @@ function UploadBtn({ accept, label, envoiLabel, uploadAsset, onUploaded }) {
           if (!f) return;
           setBusy(true);
           try { const r = await uploadAsset(f); if (r) onUploaded(r); }
-          catch (err) { alert(`Échec de l'upload : ${err.message}`); }
+          catch (err) { addToast(t.studio.panneaux.envoiEchoue(err.message), 'error', 5000); }
           finally { setBusy(false); e.target.value = ''; }
         }}
       />
@@ -52,6 +59,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
   // n'est pas modal — il vit dans la mise en page —, donc le piège s'y tait.
   const boiteModale = usePiegeFocus(!inline, onClose);
   const { t } = useI18n();
+  const { addToast } = useOptionalToast();
   const v = value;
   const setTicker = (p) => onChange({ ...v, ticker: { ...v.ticker, ...p } });
   const setLive = (p) => onChange({ ...v, live: { ...v.live, ...p } });
@@ -100,7 +108,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
   };
 
   const handleSaveTheme = async () => {
-    if (!themeName.trim()) return alert('Entrez un nom pour le thème');
+    if (!themeName.trim()) { addToast(t.studio.panneaux.themeNommez, 'info'); return; }
     try {
       const payload = {
         name: themeName,
@@ -109,27 +117,40 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
       await api.saveTheme(payload, adminPassword);
       setThemeName('');
       loadThemes();
-      alert('Thème sauvegardé avec succès !');
+      addToast(t.studio.panneaux.themeEnregistre, 'success');
     } catch (err) {
-      alert('Erreur lors de la sauvegarde du thème');
+      addToast(t.studio.panneaux.themeEchecEnregistrement, 'error', 5000);
     }
   };
 
-  const handleDeleteTheme = async (id) => {
-    if (!confirm('Supprimer ce thème ?')) return;
+  // Les deux `confirm()` natifs bloquaient le fil, ignoraient le thème sombre
+  // et ne disaient pas ce qu'on perdait. Une seule demande à la fois : les
+  // deux gestes s'excluent, et un état partagé évite deux jeux de drapeaux qui
+  // finiraient par se contredire.
+  const [demande, setDemande] = useState(null);
+
+  const confirmer = async () => {
+    const encours = demande;
+    setDemande(null);
+    if (!encours) return;
+    if (encours.nature === 'appliquer') {
+      onChange(encours.theme.branding);
+      return;
+    }
     try {
-      await api.deleteTheme(id, adminPassword);
+      await api.deleteTheme(encours.theme.id, adminPassword);
       loadThemes();
     } catch (err) {
-      alert('Erreur lors de la suppression');
+      addToast(t.studio.panneaux.themeEchecSuppression, 'error', 5000);
     }
   };
 
-  const handleApplyTheme = (theme) => {
-    if (confirm(`Appliquer le thème "${theme.name}" ? Cela écrasera votre configuration globale actuelle.`)) {
-      onChange(theme.branding);
-    }
+  const handleDeleteTheme = (id) => {
+    const theme = themes.find((x) => String(x.id) === String(id)) || { id, name: '' };
+    setDemande({ nature: 'supprimer', theme });
   };
+
+  const handleApplyTheme = (theme) => setDemande({ nature: 'appliquer', theme });
 
   const field = 'w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]';
   const sectionCls = 'flex flex-col gap-3 border border-[var(--border)] rounded-xl p-4';
@@ -496,12 +517,26 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
       </div>
   );
 
-  if (inline) return content;
+  const boiteConfirmation = demande && (
+    <ConfirmDialog
+      isOpen
+      variant={demande.nature === 'supprimer' ? 'danger' : 'default'}
+      title={demande.nature === 'supprimer' ? t.studio.panneaux.themeSupprimerTitre : t.studio.panneaux.themeAppliquerTitre}
+      message={(demande.nature === 'supprimer' ? t.studio.panneaux.themeSupprimerTexte : t.studio.panneaux.themeAppliquerTexte)(demande.theme.name)}
+      confirmText={demande.nature === 'supprimer' ? t.studio.panneaux.supprimer : t.studio.panneaux.appliquer}
+      cancelText={t.studio.panneaux.annuler}
+      onConfirm={confirmer}
+      onCancel={() => setDemande(null)}
+    />
+  );
+
+  if (inline) return (<>{content}{boiteConfirmation}</>);
 
   return (
     <div
       ref={boiteModale} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
       {content}
+      {boiteConfirmation}
     </div>
   );
 }

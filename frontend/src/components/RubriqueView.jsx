@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { UPLOAD_ACCEPT } from '../lib/mediaTypes.js';
 import { readAdminPassword } from '../lib/adminSession.js';
+import ConfirmDialog from './ConfirmDialog.jsx';
 import { formatRelative } from '../lib/dates.js';
 import { formaterDuree } from '../lib/duree.js';
 import {
@@ -183,14 +184,24 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
 
   // Navigation interne : l'enregistrement différé n'aura pas eu le temps de
   // partir, on le déclenche avant de quitter.
+  // Le `window.confirm()` natif bloquait le fil et ignorait le thème sombre.
+  // Il se remplace par la boîte de la maison, qui demande de rendre le départ
+  // asynchrone : `quitter` pose la question, `quitterVraiment` s'en va.
+  const [demandeDeSortie, setDemandeDeSortie] = useState(false);
+
   const quitter = () => {
     if (etatRef.current === 'en_attente') {
       clearTimeout(minuteur.current);
       enregistrer(champsRef.current);
-    } else if (etatRef.current === 'conflit'
-      && !window.confirm(r.quitterSansEnregistrer)) {
+    } else if (etatRef.current === 'conflit') {
+      setDemandeDeSortie(true);
       return;
     }
+    onBack?.();
+  };
+
+  const quitterVraiment = () => {
+    setDemandeDeSortie(false);
     onBack?.();
   };
 
@@ -518,6 +529,17 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
           )}
         </section>
       )}
+
+      <ConfirmDialog
+        isOpen={demandeDeSortie}
+        variant="danger"
+        title={r.quitterTitre}
+        message={r.quitterTexte}
+        confirmText={r.quitterConfirmer}
+        cancelText={r.quitterRester}
+        onConfirm={quitterVraiment}
+        onCancel={() => setDemandeDeSortie(false)}
+      />
     </div>
   );
 }

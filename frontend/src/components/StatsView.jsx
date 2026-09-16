@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/index.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
+import { useOptionalToast } from '../hooks/useToast.jsx';
 import { Lock, Clock, CheckCircle, BarChart2 } from 'lucide-react';
 import { formatAbsolute } from '../lib/dates.js';
 
 export default function StatsView({ weeks, selectedWeek }) {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
+  const { addToast } = useOptionalToast();
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticatedAdmin, setIsAuthenticatedAdmin] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -56,7 +58,7 @@ export default function StatsView({ weeks, selectedWeek }) {
       loadStats();
     } catch (err) {
       console.error(err);
-      alert("Erreur lors de l'approbation du délai");
+      addToast(t.delais.echecApprobation, 'error', 5000);
     }
   };
   
@@ -66,7 +68,7 @@ export default function StatsView({ weeks, selectedWeek }) {
       loadStats();
     } catch (err) {
       console.error(err);
-      alert('Erreur lors de la définition du délai global');
+      addToast(t.delais.echecDelaiGlobal, 'error', 5000);
     }
   };
   

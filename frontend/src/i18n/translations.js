@@ -84,7 +84,14 @@ export const translations = {
       enregistrement: 'Enregistrement…',
       enregistreA: (heure) => `Enregistré à ${heure}`,
       brouillonLocal: 'Brouillon gardé sur cet appareil',
+      // Le `window.confirm()` natif bloquait le fil et ignorait le thème
+      // sombre. Séparé en titre et texte pour la boîte de la maison, et
+      // enrichi de ce qu'on perd — l'ancienne version ne le disait pas.
       quitterSansEnregistrer: 'Vous avez des modifications non enregistrées. Quitter quand même ?',
+      quitterTitre: 'Quitter sans enregistrer ?',
+      quitterTexte: 'Vos dernières modifications n’ont pas pu être enregistrées sur le serveur. Quitter maintenant les perdrait.',
+      quitterConfirmer: 'Quitter quand même',
+      quitterRester: 'Rester ici',
       conflitTitre: 'Quelqu’un a modifié cette rubrique entre-temps',
       conflitTexte: 'Vos modifications n’ont pas été écrasées, mais elles ne sont pas encore enregistrées. Reprenez la version à jour, puis réappliquez vos changements.',
       conflitRecharger: 'Voir la version à jour',
@@ -162,6 +169,10 @@ export const translations = {
       accorder: 'Accorder un délai',
       accuse: 'Demande transmise à l’équipe montage. Réponse avant la clôture.',
       aucune: 'Aucune demande en attente.',
+      // Deux `alert()` natifs qui bloquaient le fil et parlaient français à
+      // tout le monde, dans un écran réservé à l'équipe montage.
+      echecApprobation: 'L’approbation du délai a échoué.',
+      echecDelaiGlobal: 'La définition du délai global a échoué.',
     },
     relance: {
       titre: 'Pays à relancer',
@@ -526,6 +537,21 @@ export const translations = {
         // écrits en français dans le code : ce sont des libellés de curseur, et
         // relier un curseur à un libellé que le monteur anglophone ne comprend
         // pas ne l'avance pas beaucoup.
+        // Onze `alert()` et `confirm()` natifs bloquaient le fil, ignoraient le
+        // thème sombre et parlaient français à tout le monde. Leurs textes
+        // rejoignent le dictionnaire en passant au toast et au ConfirmDialog.
+        envoiEchoue: (raison) => `Échec de l'envoi : ${raison}`,
+        themeNommez: 'Donnez un nom au thème avant de l’enregistrer.',
+        themeEnregistre: 'Thème enregistré.',
+        themeEchecEnregistrement: 'L’enregistrement du thème a échoué.',
+        themeEchecSuppression: 'La suppression du thème a échoué.',
+        themeSupprimerTitre: 'Supprimer ce thème ?',
+        themeSupprimerTexte: (nom) => `« ${nom} » sera retiré de la liste. Les JT déjà montés ne changent pas.`,
+        themeAppliquerTitre: 'Appliquer ce thème ?',
+        themeAppliquerTexte: (nom) => `« ${nom} » remplacera tout l’habillage global en cours. Annuler le rétablira.`,
+        supprimer: 'Supprimer',
+        appliquer: 'Appliquer',
+        annuler: 'Annuler',
         vignettage: 'Vignettage',
         grain: 'Grain (film)',
         balayage: 'Balayage lumineux',
@@ -1031,6 +1057,10 @@ export const translations = {
       enregistreA: (heure) => `Saved at ${heure}`,
       brouillonLocal: 'Draft kept on this device',
       quitterSansEnregistrer: 'You have changes that are not saved. Leave anyway?',
+      quitterTitre: 'Leave without saving?',
+      quitterTexte: 'Your latest changes could not be saved to the server. Leaving now would lose them.',
+      quitterConfirmer: 'Leave anyway',
+      quitterRester: 'Stay here',
       conflitTitre: 'Someone else changed this section in the meantime',
       conflitTexte: 'Your changes were not overwritten, but they are not saved yet. Open the up-to-date version, then apply your changes again.',
       conflitRecharger: 'See the up-to-date version',
@@ -1103,6 +1133,8 @@ export const translations = {
       accorder: 'Give more time',
       accuse: 'Your request has been sent to the editing team. They will answer before the deadline.',
       aucune: 'No request waiting.',
+      echecApprobation: 'Approving the extension failed.',
+      echecDelaiGlobal: 'Setting the global extension failed.',
     },
     relance: {
       titre: 'Countries to remind',
@@ -1458,6 +1490,18 @@ export const translations = {
         halo: 'Glow',
         positionX: 'Position X',
         positionY: 'Position Y',
+        envoiEchoue: (raison) => `Upload failed: ${raison}`,
+        themeNommez: 'Name the theme before saving it.',
+        themeEnregistre: 'Theme saved.',
+        themeEchecEnregistrement: 'Saving the theme failed.',
+        themeEchecSuppression: 'Deleting the theme failed.',
+        themeSupprimerTitre: 'Delete this theme?',
+        themeSupprimerTexte: (nom) => `“${nom}” will be removed from the list. Newscasts already built are unaffected.`,
+        themeAppliquerTitre: 'Apply this theme?',
+        themeAppliquerTexte: (nom) => `“${nom}” will replace the whole global look. Undo will bring it back.`,
+        supprimer: 'Delete',
+        appliquer: 'Apply',
+        annuler: 'Cancel',
         vignettage: 'Vignette',
         grain: 'Film grain',
         balayage: 'Light sweep',
