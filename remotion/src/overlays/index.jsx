@@ -917,7 +917,9 @@ function FinMerci({ overlay, durationInFrames }) {
         </div>
         <div style={{ width: 2, height: 90, background: C.colorAccent || 'rgba(74,163,255,0.5)', opacity: logoOp }} />
         <div style={{ opacity: logoOp, transform: `scale(${logoScale})`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 320, objectFit: 'contain', filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.6))' }} />
+          {/* Version fond sombre : le bloc-marque officiel est dessine pour
+              un fond clair et arriverait ici dans sa carte blanche. */}
+          <Img src={staticFile('images/alwm-logo-sombre.png')} style={{ width: 320, objectFit: 'contain', filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.6))' }} />
           <div style={{ fontFamily: fontM, fontWeight: 500, fontSize: `${fs * 22}px`, color: C.colorTextAccent || COL.light, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
             {f.sous_titre || "L'ACTUALITÉ EN CONTINU"}
           </div>
@@ -1004,7 +1006,7 @@ function IntroJT({ overlay, durationInFrames }) {
       <DoveFlyThrough fromF={s3} toF={s3 + fps * 1.6} y={28} size={240} />
       {frame >= s3 && (
         <AbsoluteFill style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
-          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 460, objectFit: 'contain', opacity: logoOp, transform: `scale(${logoScale})`, filter: 'drop-shadow(0 14px 30px rgba(0,0,0,0.6))' }} />
+          <Img src={staticFile('images/alwm-logo-sombre.png')} style={{ width: 460, objectFit: 'contain', opacity: logoOp, transform: `scale(${logoScale})`, filter: 'drop-shadow(0 14px 30px rgba(0,0,0,0.6))' }} />
           <div style={{ opacity: jtOp, transform: `scale(${jtScale})`, fontFamily: fontXB, fontWeight: 800, fontSize: 84, color: C.text(COL.white), letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {f.titre || 'LE JOURNAL'}
           </div>
