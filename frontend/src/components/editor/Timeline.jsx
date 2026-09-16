@@ -44,9 +44,14 @@ import { animationRecommandee } from '../../data/overlayTemplates.js';
 import {
   FPS,
   MIN_CLIP_DURATION,
+  aimanter,
   computeTimelineLayout,
+  defilementApresZoom,
   findClipAtTime,
   getClipRange,
+  pointsDAimantation,
+  pointsDeRognage,
+  reperesVersSource,
   roundToFrame,
   splitClipAtTime,
 } from './timelineModel.js';
@@ -54,6 +59,8 @@ import {
 const PX_PER_SEC_DEFAULT = 60;
 const PX_PER_SEC_MIN = 18;
 const PX_PER_SEC_MAX = 220;
+/** L'aimant mord à huit pixels de l'écran, quel que soit l'agrandissement. */
+const SEUIL_AIMANT_PX = 8;
 
 // Les libellés vivent dans le dictionnaire : ce tableau est au niveau du
 // module, hors de portée du fournisseur i18n, et une liste de noms français
@@ -155,7 +162,7 @@ function Ruler({ totalSec, pxPerSec, playheadSec, onPointerDown, onNudge }) {
   );
 }
 
-function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, onOpen }) {
+function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, onOpen, reperes = [], seuilAimant = 0 }) {
   const { t } = useI18n();
   const startTime = Math.max(0, Number(overlay.startTime) || 0);
   const duration = Math.max(MIN_CLIP_DURATION, Number(overlay.duration) || Math.max(MIN_CLIP_DURATION, totalSec - startTime));
@@ -177,17 +184,23 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
       if (Math.abs(pointerEvent.clientX - startX) > 2) moved = true;
       nextOverlays = overlays.map((item, itemIndex) => {
         if (itemIndex !== index) return item;
+        // Un titre se pose sur un bord de plan : viser au pixel donnait trois
+        // images de décalage, qu'on ne découvrait qu'à l'export.
+        const accrocher = (valeur) => aimanter(valeur, reperes, seuilAimant);
         if (mode === 'move') {
-          const nextStart = clamp(roundToFrame(original.start + delta), 0, Math.max(0, totalSec - original.duration));
+          const vise = accrocher(roundToFrame(original.start + delta));
+          const nextStart = clamp(vise, 0, Math.max(0, totalSec - original.duration));
           return { ...item, startTime: nextStart };
         }
         if (mode === 'left') {
-          const nextStart = clamp(roundToFrame(original.start + delta), 0, original.start + original.duration - MIN_CLIP_DURATION);
+          const vise = accrocher(roundToFrame(original.start + delta));
+          const nextStart = clamp(vise, 0, original.start + original.duration - MIN_CLIP_DURATION);
           return { ...item, startTime: nextStart, duration: roundToFrame(original.start + original.duration - nextStart) };
         }
+        const fin = accrocher(roundToFrame(original.start + original.duration + delta));
         return {
           ...item,
-          duration: clamp(roundToFrame(original.duration + delta), MIN_CLIP_DURATION, Math.max(MIN_CLIP_DURATION, totalSec - original.start)),
+          duration: clamp(roundToFrame(fin - original.start), MIN_CLIP_DURATION, Math.max(MIN_CLIP_DURATION, totalSec - original.start)),
         };
       });
       onChange(nextOverlays, geste, Infinity);
@@ -226,7 +239,7 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
           onOpen();
         }
       }}
-      aria-label={`Titre ${label}, début ${formatTimecode(startTime)}, durée ${formatTimecode(duration)}`}
+      aria-label={t.studio.timeline.etiquetteTitre(label, formatTimecode(startTime), formatTimecode(duration))}
       title={t.studio.timeline.clipGlisser}
       className="absolute inset-y-1 rounded border border-[var(--editor-title)] bg-[var(--editor-title)]/75 text-[var(--editor-text)] shadow-sm cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
       style={{ left: `${startTime * pxPerSec}px`, width: `${Math.max(6, duration * pxPerSec)}px`, touchAction: 'none' }}
@@ -272,7 +285,7 @@ function SortableClip({
   active,
   toolMode,
   snapping,
-  playheadSec,
+  reperes,
   onSelect,
   onRazorSplit,
   onCommitRange,
@@ -318,21 +331,20 @@ function SortableClip({
     // Sans durée source connue, on autorise toujours à raccourcir mais jamais
     // à inventer des images au-delà de la dernière borne fiable.
     const sourceLimit = original.sourceDurationSec ?? original.outPoint;
-    const playheadSource = original.inPoint + (playheadSec - item.start);
-    const snapThreshold = 8 / pxPerSec;
+    // Les repères arrivent en secondes de montage ; un rognage raisonne en
+    // points d'entrée et de sortie de la source.
+    const accrocher = (valeur) => (snapping
+      ? aimanter(valeur, reperesVersSource(reperes, { debutMontage: item.start, inPoint: original.inPoint }), SEUIL_AIMANT_PX / pxPerSec)
+      : valeur);
     if (edge === 'left') {
-      let nextIn = clamp(roundToFrame(original.inPoint + deltaSec), 0, original.outPoint - MIN_CLIP_DURATION);
-      if (snapping && playheadSec >= item.start && playheadSec <= item.end && Math.abs(nextIn - playheadSource) <= snapThreshold) {
-        nextIn = clamp(roundToFrame(playheadSource), 0, original.outPoint - MIN_CLIP_DURATION);
-      }
+      const vise = accrocher(roundToFrame(original.inPoint + deltaSec));
+      const nextIn = clamp(vise, 0, original.outPoint - MIN_CLIP_DURATION);
       return { ...original, inPoint: nextIn, durationSec: roundToFrame(original.outPoint - nextIn) };
     }
-    let nextOut = clamp(roundToFrame(original.outPoint + deltaSec), original.inPoint + MIN_CLIP_DURATION, sourceLimit);
-    if (snapping && playheadSec >= item.start && playheadSec <= item.end && Math.abs(nextOut - playheadSource) <= snapThreshold) {
-      nextOut = clamp(roundToFrame(playheadSource), original.inPoint + MIN_CLIP_DURATION, sourceLimit);
-    }
+    const vise = accrocher(roundToFrame(original.outPoint + deltaSec));
+    const nextOut = clamp(vise, original.inPoint + MIN_CLIP_DURATION, sourceLimit);
     return { ...original, outPoint: nextOut, durationSec: roundToFrame(nextOut - original.inPoint) };
-  }, [item.end, item.start, playheadSec, pxPerSec, snapping, sourceRange]);
+  }, [item.start, pxPerSec, reperes, snapping, sourceRange]);
 
   const beginEdgeDrag = (edge) => (event) => {
     event.preventDefault();
@@ -398,7 +410,7 @@ function SortableClip({
             onSelect(item.id);
           }
         }}
-        aria-label={`Clip ${index + 1}, ${clip.name || clip.filename || t.studio.timeline.sansNom}, ${t.studio.timeline.duree} ${formatTimecode(displayRange.durationSec)}${selected ? t.studio.timeline.selectionne : ''}`}
+        aria-label={`${t.studio.timeline.etiquetteClip(index + 1, clip.name || clip.filename || t.studio.timeline.sansNom, formatTimecode(displayRange.durationSec))}${selected ? t.studio.timeline.selectionne : ''}`}
         className={`group absolute inset-0 overflow-hidden rounded-md border bg-[var(--editor-panel)] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] ${
           selected
             ? 'border-[var(--editor-accent)] ring-2 ring-[var(--editor-accent)]'
@@ -551,6 +563,11 @@ export default function Timeline({
     [clips, selectedClipId],
   );
   const selectedIndex = selectedClip ? clips.indexOf(selectedClip) : -1;
+  // Deux jeux de repères, parce que les deux gestes n'ont pas les mêmes points
+  // fixes : un titre se pose sur un bord de plan, un rognage vise un bord de
+  // titre — les bords de plan, eux, suivent le rognage au lieu de l'arrêter.
+  const reperesTitre = useMemo(() => pointsDAimantation(layout, playheadSec), [layout, playheadSec]);
+  const reperesRognage = useMemo(() => pointsDeRognage(timelineOverlays, playheadSec), [timelineOverlays, playheadSec]);
   const totalPx = Math.max(1, layout.total * pxPerSec);
   const contentWidth = Math.max(viewportWidth, totalPx);
   const videoTrackHeight = compact ? 64 : 112;
@@ -803,10 +820,98 @@ export default function Timeline({
     setStatusMessage(t.studio.timeline.msgOrdre);
   }, [commitClips]);
 
+  /**
+   * Zoomer sans perdre ce qu'on regarde.
+   *
+   * Le zoom recentrait sur le bord gauche : sur un JT de dix minutes,
+   * agrandir faisait disparaître l'endroit qu'on venait de viser, et il
+   * fallait refaire défiler à la main. `ancreX` est la position du pointeur
+   * dans la fenêtre ; à défaut, on garde le centre.
+   */
+  const zoomer = useCallback((suivant, ancreX = null) => {
+    const conteneur = scrollRef.current;
+    setPxPerSec((avant) => {
+      const apres = clamp(Math.round(typeof suivant === 'function' ? suivant(avant) : suivant), PX_PER_SEC_MIN, PX_PER_SEC_MAX);
+      if (conteneur && apres !== avant) {
+        const pointeurX = ancreX == null
+          ? conteneur.clientWidth / 2
+          : clamp(ancreX - conteneur.getBoundingClientRect().left, 0, conteneur.clientWidth);
+        const defilement = defilementApresZoom({
+          scrollLeft: conteneur.scrollLeft,
+          pointeurX,
+          pxPerSecAvant: avant,
+          pxPerSecApres: apres,
+        });
+        // Après le rendu : la largeur du contenu n'a pas encore changé.
+        requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollLeft = defilement; });
+      }
+      return apres;
+    });
+  }, []);
+
+  // Ctrl/⌘ + molette : le geste de toutes les stations de montage.
+  useEffect(() => {
+    const conteneur = scrollRef.current;
+    if (!conteneur) return undefined;
+    const surMolette = (event) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      zoomer((valeur) => valeur * (event.deltaY < 0 ? 1.12 : 1 / 1.12), event.clientX);
+    };
+    conteneur.addEventListener('wheel', surMolette, { passive: false });
+    return () => conteneur.removeEventListener('wheel', surMolette);
+  }, [zoomer]);
+
   const fitToView = useCallback(() => {
     if (layout.total <= 0 || viewportWidth <= 0) return;
     setPxPerSec(clamp(Math.floor((viewportWidth - 12) / layout.total), PX_PER_SEC_MIN, PX_PER_SEC_MAX));
   }, [layout.total, viewportWidth]);
+
+  /**
+   * Décale l'élément sélectionné à l'image près, sans souris.
+   *
+   * Les flèches ne déplaçaient que la tête de lecture. Caler un bandeau sur un
+   * plan demandait donc de viser au pixel : `Alt` + flèche décale d'une image,
+   * `Alt` + `Maj` + flèche d'une seconde. C'est la seule façon d'être exact.
+   */
+  const decalerSelection = useCallback((direction, large = false) => {
+    const pas = (large ? 1 : 1 / FPS) * direction;
+
+    // Un titre sélectionné se déplace ; sinon c'est le clip, par son rognage.
+    const titre = timelineOverlays.findIndex((o) => String(o.id) === String(selectedClipId));
+    if (titre >= 0) {
+      const courant = timelineOverlays[titre];
+      const duree = Math.max(MIN_CLIP_DURATION, Number(courant.duration) || MIN_CLIP_DURATION);
+      const debut = clamp(roundToFrame((Number(courant.startTime) || 0) + pas), 0, Math.max(0, layout.total - duree));
+      commitOverlays(
+        timelineOverlays.map((o, i) => (i === titre ? { ...o, startTime: debut } : o)),
+        `clavier-titre:${courant.id}`,
+      );
+      setStatusMessage(t.studio.timeline.msgDecaleTitre(formatTimecode(debut)));
+      return;
+    }
+    if (selectedIndex < 0) return;
+
+    // Sur un clip, décaler revient à déplacer son point de sortie : c'est ce
+    // qui change sa durée sur la timeline sans toucher aux plans voisins.
+    // `dureeObtenue` est relevée dans la mise à jour plutôt que recalculée à
+    // côté : le bornage — durée minimale d'un côté, fin de la source de
+    // l'autre — ne doit s'écrire qu'une fois, sinon le message et le montage
+    // finiront par ne plus dire la même chose.
+    let dureeObtenue = null;
+    commitClips((current) => current.map((clip, index) => {
+      if (index !== selectedIndex) return clip;
+      const plage = getClipRange(clip);
+      const limite = plage.sourceDurationSec ?? plage.outPoint;
+      const sortie = clamp(roundToFrame(plage.outPoint + pas), plage.inPoint + MIN_CLIP_DURATION, limite);
+      if (sortie === plage.outPoint) return clip;
+      dureeObtenue = roundToFrame(sortie - plage.inPoint);
+      return { ...clip, inPoint: plage.inPoint, outPoint: sortie, durationSec: dureeObtenue };
+    }), `clavier-clip:${selectedClipId}`, Infinity);
+    // Rien quand le plan est déjà au bout de son rush : mieux vaut un message
+    // inchangé qu'un message qui annonce un décalage qui n'a pas eu lieu.
+    if (dureeObtenue != null) setStatusMessage(t.studio.timeline.msgDecaleClip(formatTimecode(dureeObtenue)));
+  }, [commitClips, commitOverlays, layout.total, selectedClipId, selectedIndex, t, timelineOverlays]);
 
   const togglePlayback = useCallback(() => {
     const player = playerRef?.current;
@@ -847,12 +952,15 @@ export default function Timeline({
         togglePlayback();
       } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
-        nudgePlayhead(event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        // Alt : on déplace la sélection. Sans Alt : la tête de lecture.
+        if (event.altKey) decalerSelection(direction, event.shiftKey);
+        else nudgePlayhead(direction, event.shiftKey);
       }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [compact, nudgePlayhead, playheadSec, redo, removeSelected, splitAt, togglePlayback, undo]);
+  }, [compact, decalerSelection, nudgePlayhead, playheadSec, redo, removeSelected, splitAt, togglePlayback, undo]);
 
   const playheadX = clamp(playheadSec, 0, layout.total) * pxPerSec;
   const activeItem = findClipAtTime(layout, playheadSec, selectedClipId) || findClipAtTime(layout, playheadSec);
@@ -913,18 +1021,18 @@ export default function Timeline({
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
-              <ToolButton icon={<Minus size={15} />} label={t.studio.timeline.dezoomer} compact onClick={() => setPxPerSec((value) => clamp(value - 10, PX_PER_SEC_MIN, PX_PER_SEC_MAX))} title={t.studio.timeline.dezoomerTitre} />
+              <ToolButton icon={<Minus size={15} />} label={t.studio.timeline.dezoomer} compact onClick={() => zoomer((value) => value - 10)} title={t.studio.timeline.dezoomerTitre} />
               <input
                 type="range"
                 min={PX_PER_SEC_MIN}
                 max={PX_PER_SEC_MAX}
                 step="2"
                 value={pxPerSec}
-                onChange={(event) => setPxPerSec(Number(event.target.value))}
+                onChange={(event) => zoomer(Number(event.target.value))}
                 aria-label={`Zoom de timeline, ${pxPerSec} pixels par seconde`}
                 className="w-16 accent-[var(--editor-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)] min-[1440px]:w-24"
               />
-              <ToolButton icon={<Plus size={15} />} label={t.studio.timeline.zoomer} compact onClick={() => setPxPerSec((value) => clamp(value + 10, PX_PER_SEC_MIN, PX_PER_SEC_MAX))} title={t.studio.timeline.zoomerTitre} />
+              <ToolButton icon={<Plus size={15} />} label={t.studio.timeline.zoomer} compact onClick={() => zoomer((value) => value + 10)} title={t.studio.timeline.zoomerTitre} />
               <ToolButton icon={<Maximize2 size={15} />} label={t.studio.timeline.ajuster} compact onClick={fitToView} title={t.studio.timeline.ajusterTitre} />
             </div>
             <button
@@ -1024,7 +1132,7 @@ export default function Timeline({
                         active={activeItem?.id === item.id}
                         toolMode={toolMode}
                         snapping={snapping}
-                        playheadSec={playheadSec}
+                        reperes={reperesRognage}
                         onSelect={setSelectedClipId}
                         onRazorSplit={razorSplit}
                         onCommitRange={commitRange}
@@ -1064,6 +1172,8 @@ export default function Timeline({
                       totalSec={layout.total}
                       pxPerSec={pxPerSec}
                       overlays={timelineOverlays}
+                      reperes={snapping ? reperesTitre : []}
+                      seuilAimant={SEUIL_AIMANT_PX / pxPerSec}
                       onChange={commitOverlays}
                       onOpen={() => onOverlayClip?.({ isTimelineOverlays: true, overlays: timelineOverlays })}
                     />

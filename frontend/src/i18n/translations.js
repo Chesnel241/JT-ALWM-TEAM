@@ -671,6 +671,12 @@ export const translations = {
         raccourcis: 'Bords = rogner · Règle = parcourir · ⌘/Ctrl K = couper · Suppr = retirer',
         duree: 'durée',
         sansNom: 'sans nom',
+        // L'étiquette lue par un lecteur d'écran. Elle était composée en
+        // français dans le code, avec seulement « durée » pris au
+        // dictionnaire : un monteur anglophone entendait une phrase à moitié
+        // traduite — « Titre Douala, début 00:00:05:00, duration … ».
+        etiquetteTitre: (nom, debut, duree) => `Titre ${nom}, début ${debut}, durée ${duree}`,
+        etiquetteClip: (rang, nom, duree) => `Clip ${rang}, ${nom}, durée ${duree}`,
         clipSelectionne: 'Clip sélectionné',
         msgAide: 'Sélectionnez un clip, déplacez la tête de lecture, puis cliquez sur Couper.',
         msgAnnule: 'Dernière modification annulée.',
@@ -683,6 +689,12 @@ export const translations = {
         msgTitreAjoute: (temps) => `Titre ajouté à ${temps}.`,
         msgClipRetire: 'Clip retiré. Utilisez Annuler pour le restaurer.',
         msgOrdre: 'Ordre des clips mis à jour.',
+        // Deux messages, parce que le geste ne fait pas la même chose des deux
+        // côtés : un titre se déplace, un plan voit son point de sortie bouger.
+        // Un « Décalé : 00:00:05:01 » unique laissait le monteur deviner s'il
+        // lisait une position ou une durée.
+        msgDecaleTitre: (temps) => `Titre déplacé à ${temps}.`,
+        msgDecaleClip: (duree) => `Plan ajusté à ${duree}.`,
         poigneeTimeline: 'Timeline',
         etatSauvegarde: 'Sauvegarde…',
         etatHorsLigne: 'Hors ligne',
@@ -1587,6 +1599,8 @@ export const translations = {
         raccourcis: 'Edges = trim · Ruler = scrub · ⌘/Ctrl K = cut · Del = remove',
         duree: 'duration',
         sansNom: 'untitled',
+        etiquetteTitre: (nom, debut, duree) => `Title ${nom}, starts ${debut}, lasts ${duree}`,
+        etiquetteClip: (rang, nom, duree) => `Clip ${rang}, ${nom}, duration ${duree}`,
         clipSelectionne: 'Selected clip',
         msgAide: 'Select a clip, move the playhead, then click Cut.',
         msgAnnule: 'Last change undone.',
@@ -1599,6 +1613,8 @@ export const translations = {
         msgTitreAjoute: (temps) => `Title added at ${temps}.`,
         msgClipRetire: 'Clip removed. Use Undo to bring it back.',
         msgOrdre: 'Clip order updated.',
+        msgDecaleTitre: (temps) => `Title moved to ${temps}.`,
+        msgDecaleClip: (duree) => `Shot trimmed to ${duree}.`,
         poigneeTimeline: 'Timeline',
         etatSauvegarde: 'Saving…',
         etatHorsLigne: 'Offline',

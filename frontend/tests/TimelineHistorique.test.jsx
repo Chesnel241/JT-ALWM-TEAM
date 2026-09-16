@@ -42,7 +42,9 @@ const clip = (n) => ({
   filename: `rush-${n}.mp4`,
   url: `blob:rush-${n}`,
   durationSec: 5,
-  sourceDurationSec: 5,
+  // La source est plus longue que le plan : sans marge, le décalage vers la
+  // droite n'a nulle part où aller — on n'invente pas des images.
+  sourceDurationSec: 20,
   overlays: [],
 });
 
@@ -111,6 +113,13 @@ function poser() {
   auMontage.modifier = (...args) => act(() => auMontage.current.modifierMontage(...args));
   return auMontage;
 }
+
+/** Le minutage tel que la timeline l'affiche : heures:minutes:secondes:images. */
+const minutage = (secondes) => {
+  const total = Math.max(0, Math.round(secondes * 30));
+  const parts = [Math.floor(total / 108000), Math.floor(total / 1800) % 60, Math.floor(total / 30) % 60, total % 30];
+  return parts.map((n) => String(n).padStart(2, '0')).join(':');
+};
 
 const boutonAnnuler = () => screen.getByRole('button', { name: new RegExp(dit.annuler, 'i') });
 
@@ -199,5 +208,96 @@ describe('la pile d’annulation survit à ce qui n’est pas une coupe', () => 
     expect(au.current.montage.clips.length).toBe(1);
     fireEvent.click(boutonAnnuler());
     expect(au.current.montage.clips.length).toBe(2);
+  });
+});
+
+describe('le clavier, à l’image près', () => {
+  const flecheDroite = (options = {}) => fireEvent.keyDown(window, { key: 'ArrowRight', ...options });
+
+  it('décale le clip sélectionné d’une image, sans toucher aux voisins', () => {
+    // Les flèches ne déplaçaient que la tête de lecture : caler un plan
+    // demandait de viser au pixel à la souris.
+    const au = poser();
+    const avant = au.current.montage.clips[0].durationSec;
+    act(() => flecheDroite({ altKey: true }));
+    const apres = au.current.montage.clips[0].durationSec;
+
+    expect(apres).toBeCloseTo(avant + 1 / 30, 5);
+    expect(au.current.montage.clips[1].durationSec, 'le plan voisin a bougé').toBe(5);
+  });
+
+  it('refuse d’inventer des images au-delà de la source', () => {
+    // Un plan déjà tiré jusqu'au bout de son rush ne s'allonge pas.
+    const au = poser();
+    for (let i = 0; i < 40; i += 1) act(() => flecheDroite({ altKey: true, shiftKey: true }));
+    expect(au.current.montage.clips[0].durationSec).toBeLessThanOrEqual(20);
+  });
+
+  it('décale d’une seconde avec Maj', () => {
+    const au = poser();
+    const avant = au.current.montage.clips[0].durationSec;
+    act(() => flecheDroite({ altKey: true, shiftKey: true }));
+    expect(au.current.montage.clips[0].durationSec).toBeCloseTo(avant + 1, 5);
+  });
+
+  it('ne touche à rien sans Alt : la flèche reste à la tête de lecture', () => {
+    const au = poser();
+    const avant = au.current.montage.clips[0].durationSec;
+    act(() => flecheDroite());
+    expect(au.current.montage.clips[0].durationSec).toBe(avant);
+  });
+
+  it('dit ce qui a bougé, et non la taille du pas', () => {
+    // Le message unique « Décalé : 00:00:05:01 » laissait le monteur deviner
+    // s'il lisait une position ou une durée — et sur un plan, il affichait le
+    // pas (une image), qui ne lui apprenait rien.
+    const au = poser();
+    act(() => flecheDroite({ altKey: true }));
+    const duree = au.current.montage.clips[0].durationSec;
+    expect(screen.getByText(dit.msgDecaleClip(minutage(duree)))).toBeInTheDocument();
+  });
+
+  it('se tait quand le plan est déjà au bout de son rush', () => {
+    // Annoncer un décalage qui n'a pas eu lieu est pire que ne rien dire.
+    const au = poser();
+    for (let i = 0; i < 40; i += 1) act(() => flecheDroite({ altKey: true, shiftKey: true }));
+    const bloque = au.current.montage.clips[0].durationSec;
+    const avant = screen.getByText(dit.msgDecaleClip(minutage(bloque)));
+    act(() => flecheDroite({ altKey: true }));
+    expect(avant, 'le message a changé alors que rien n’a bougé').toBeInTheDocument();
+  });
+
+  it('regroupe une rafale de décalages en une seule annulation', () => {
+    // Maintenir la flèche enfoncée émet une répétition : trente entrées pour
+    // un seul geste rendraient l'annulation inutilisable.
+    const au = poser();
+    for (let i = 0; i < 10; i += 1) act(() => flecheDroite({ altKey: true }));
+    const decale = au.current.montage.clips[0].durationSec;
+    expect(decale).toBeGreaterThan(5);
+
+    fireEvent.click(boutonAnnuler());
+    expect(au.current.montage.clips[0].durationSec).toBe(5);
+    expect(boutonAnnuler()).toBeDisabled();
+  });
+});
+
+describe('ce qu’un lecteur d’écran annonce', () => {
+  // L'étiquette des blocs était composée en français dans le code, avec
+  // seulement « durée » pris au dictionnaire. Un monteur anglophone entendait
+  // « Titre Banc, début 00:00:05:00, duration 00:00:02:00 » — la moitié d'une
+  // phrase dans chaque langue. Le lot 4 a fermé ce défaut partout ailleurs.
+  it('nomme un plan dans la langue choisie', () => {
+    localStorage.setItem('jt-alwm-lang', 'en');
+    poser();
+    const en = translations.en.studio.timeline;
+    expect(screen.getByLabelText(new RegExp(`^${en.etiquetteClip(1, 'rush-1\\.mp4', '.+')}`))).toBeInTheDocument();
+    expect(screen.queryByLabelText(/durée/)).toBeNull();
+  });
+
+  it('nomme un titre dans la langue choisie', () => {
+    localStorage.setItem('jt-alwm-lang', 'en');
+    poser();
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(translations.en.studio.timeline.ajouterTitre, 'i') }));
+    expect(screen.getByLabelText(/^Title .*, starts .*, lasts /)).toBeInTheDocument();
   });
 });
