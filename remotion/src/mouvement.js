@@ -27,14 +27,44 @@ import { CASCADE, MOUVEMENT, RESSORT, images } from './identite.js';
 /**
  * Au-delà de ce seuil, la durée n'en est pas une.
  *
- * `JTMaster` donne `durationInFrames = 99999` à tout habillage dont la durée
- * n'est pas renseignée, et le champ du studio annonce justement « vide =
- * toute la vidéo ». Un test `frame > durationInFrames - 30` est alors faux en
- * permanence : la sortie ne se joue jamais. Plutôt que de faire semblant, on
- * reconnaît le cas — un habillage sans fin n'a pas de sortie, et c'est la
- * seule réponse honnête.
+ * `JTMaster` donnait `durationInFrames = 99 999` à tout habillage dont la
+ * durée n'est pas renseignée, alors que le champ du studio annonce « vide =
+ * toute la vidéo ». Un test `frame > durationInFrames - 30` était alors faux
+ * en permanence : la sortie ne se jouait jamais, et le bandeau était coupé net
+ * à la fin du plan.
+ *
+ * Depuis le lot 5, `dureeHabillage()` ci-dessous fait hériter cet habillage de
+ * ce qui reste de son plan — ou du montage pour les couches globales — et la
+ * sortie retrouve un sens. Ce garde-fou reste pour le cas où une durée
+ * aberrante arriverait quand même : un habillage sans fin n'a pas de sortie,
+ * et c'est la seule réponse honnête.
  */
 const SANS_FIN = 90000;
+
+/**
+ * La durée qu'un habillage reçoit quand le monteur n'en a pas fixé.
+ *
+ * « Vide = toute la vidéo » veut dire « jusqu'au bout de ce qui le porte » :
+ * la fin de son plan pour un habillage de clip, la fin du montage pour un
+ * habillage global. Pas 99 999 images, soit cinquante-cinq minutes.
+ *
+ * Une fonction plutôt que la même expression recopiée aux trois endroits de
+ * `JTMaster` : c'est cette triplication qui avait laissé le défaut s'installer
+ * sans que personne ne le voie, et c'est ce qui rend la règle testable sans
+ * monter le moteur de rendu.
+ *
+ * Toutes les valeurs sont en images. `demandee` vient du monteur (`null`,
+ * `0` ou absent = pas de durée), `porteuse` est la durée du plan ou du
+ * montage, `debut` le décalage de l'habillage dans celui-ci.
+ */
+export function dureeHabillage(demandee, porteuse, debut = 0) {
+  if (demandee > 0) return Math.max(1, Math.round(demandee));
+  const restant = Math.round(porteuse) - Math.round(debut);
+  // Une porteuse absurde (absente, négative, non finie) ne doit pas produire
+  // une sortie qui se jouerait à la première image.
+  if (!Number.isFinite(restant) || restant < 1) return 1;
+  return restant;
+}
 
 /** Les mouvements qui se jouent lettre par lettre. */
 export const PAR_LETTRE = new Set(['typewriter', 'cascade']);

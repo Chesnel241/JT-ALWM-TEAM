@@ -60,7 +60,7 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
   const outFrame = isOut ? frame - (durationInFrames - OUT_DUR) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outY = isOut ? (outEase * 60) : 0;
   const outOpacity = isOut ? (1 - outEase) : 1;
 
@@ -132,6 +132,10 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
 
 export function EnvatoTicker({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
+  // La cadence était importée sans jamais être lue : tout le minutage tenait
+  // à ce qu'elle vaille 30. Le jour où un JT sort en 25, la bande défilerait
+  // d'un cinquième plus vite.
+  const { fps } = useVideoConfig();
   const fields = overlay?.fields || {};
   const tag = fields.tag || 'LIVE';
   // Même défaut que le Grand Titre : le catalogue déclare text1 et text2, le
@@ -150,13 +154,25 @@ export function EnvatoTicker({ overlay, durationInFrames }) {
   const outEase = getExpEaseOut(outFrame, 0, 20);
   const outY = isOut ? (outEase * 64) : 0;
 
-  // Repeat items for a continuous ticker tape effect
+  // La bande défilait sur `-(frame * 4)` SANS REPLI : à 4 px par image, elle
+  // avait quitté l'écran au bout de huit secondes et n'y revenait plus. Un JT
+  // de trois minutes montrait donc une barre vide pendant deux minutes
+  // cinquante.
+  //
+  // Le repli se fait sans mesurer le texte — et donc sans dépendance nouvelle,
+  // `@remotion/layout-utils` n'étant pas installé et l'image du worker n'ayant
+  // pas à être reconstruite pour un seul habillage. La bande est rendue DEUX
+  // FOIS dans une rangée `max-content` : translater de la moitié de sa propre
+  // largeur déplace exactement une copie, donc la boucle se referme sans
+  // raccord visible, quelle que soit la police.
   const separator = '   ///   ';
-  const tickerText = [...items, ...items, ...items, ...items, ...items].join(separator);
-  
-  // Ticker scrolls to the left continuously.
-  const speed = 4;
-  const translateX = -(frame * speed); 
+  const bande = [...items, ...items, ...items].join(separator) + separator;
+
+  // Une durée de cycle tirée de la longueur du texte : sans elle, une bande
+  // longue défilerait plus vite qu'une courte pour le même réglage. ~12
+  // caractères par seconde, la vitesse de lecture d'un bandeau d'antenne.
+  const cycleImages = Math.max(fps, Math.round((bande.length / 12) * fps));
+  const progression = (frame % cycleImages) / cycleImages;
 
   return (
     <div style={{
@@ -177,15 +193,19 @@ export function EnvatoTicker({ overlay, durationInFrames }) {
             <div style={{
                 position: 'absolute',
                 left: '200px', // Starts just behind the LIVE tag
+                display: 'flex',
+                width: 'max-content',
                 whiteSpace: 'nowrap',
-                transform: `translateX(${translateX}px)`,
+                // −50 % de SA PROPRE largeur = exactement une copie.
+                transform: `translateX(${-progression * 50}%)`,
                 ...baseFontConfig,
                 fontSize: '28px',
                 color: colorTextAccent,
                 fontWeight: '600',
                 letterSpacing: '1px'
             }}>
-                {tickerText}
+                <span>{bande}</span>
+                <span>{bande}</span>
             </div>
         </div>
       </EnvatoMaskReveal>

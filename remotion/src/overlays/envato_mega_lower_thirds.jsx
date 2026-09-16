@@ -27,7 +27,7 @@ export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
   const outFrame = isOut ? frame - (durationInFrames - OUT_DUR) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outY = isOut ? (outEase * 40) : 0;
   const outOpacity = isOut ? (1 - outEase) : 1;
 
@@ -79,7 +79,7 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
   const outFrame = isOut ? frame - (durationInFrames - OUT_DUR) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outY = isOut ? (outEase * 40) : 0;
   const outOpacity = isOut ? (1 - outEase) : 1;
 
@@ -144,7 +144,7 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
   const outFrame = isOut ? frame - (durationInFrames - OUT_DUR) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outY = isOut ? (outEase * 40) : 0;
   const outOpacity = isOut ? (1 - outEase) : 1;
 
@@ -209,7 +209,7 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
   const outFrame = isOut ? frame - (durationInFrames - OUT_DUR) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outY = isOut ? -(outEase * 40) : 0;
   const outOpacity = isOut ? (1 - outEase) : 1;
 
@@ -273,7 +273,7 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
   const outFrame = isOut ? frame - (durationInFrames - OUT_DUR) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outScale = isOut ? 1 - (outEase * 0.05) : 1;
   const outOpacity = isOut ? (1 - outEase) : 1;
 

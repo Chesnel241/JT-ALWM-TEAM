@@ -54,7 +54,7 @@ export function EnvatoSplitScreen({ overlay, durationInFrames }) {
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
   const outFrame = isOut ? frame - (durationInFrames - OUT_DUR) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outOpacity = isOut ? (1 - outEase) : 1;
   const outScale = isOut ? 1 + (outEase * 0.05) : 1; // Slight scale up as it fades out
 
@@ -67,8 +67,13 @@ export function EnvatoSplitScreen({ overlay, durationInFrames }) {
       willChange: 'opacity, transform',
       pointerEvents: 'none' // Don't block interaction
     }}>
-      {/* Central Diagonal Divider */}
-      <EnvatoMaskReveal frame={frame} delay={0} direction="vertical" duration={35}>
+      {/* Séparateur diagonal central.
+          `EnvatoMaskReveal` rend un <div> EN FLUX, et son enfant est en
+          position absolue : la boîte de l'enveloppe faisait donc 0 × 0, et un
+          `inset()` en pourcentage ne se résolvait contre rien. Le séparateur
+          et le liseré ci-dessous n'ont probablement jamais été visibles depuis
+          l'import — le rendu du lot 3 l'a confirmé. Il leur faut une boîte. */}
+      <EnvatoMaskReveal frame={frame} delay={0} direction="vertical" duration={35} style={{ position: 'absolute', inset: 0 }}>
           <div style={{
              position: 'absolute',
              top: '-10%', left: '50%',
@@ -79,8 +84,8 @@ export function EnvatoSplitScreen({ overlay, durationInFrames }) {
           }} />
       </EnvatoMaskReveal>
 
-      {/* Outer Premium Border */}
-      <EnvatoMaskReveal frame={frame} delay={10} direction="horizontal" duration={40}>
+      {/* Liseré extérieur — même cause, même correctif. */}
+      <EnvatoMaskReveal frame={frame} delay={10} direction="horizontal" duration={40} style={{ position: 'absolute', inset: 0 }}>
         <div style={{
           position: 'absolute',
           top: '30px', left: '30px', right: '30px', bottom: '30px',

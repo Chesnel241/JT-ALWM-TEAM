@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  styleTexte, styleLettre, styleMasque,
+  styleTexte, styleLettre, styleMasque, dureeHabillage,
   ENTREES, ENTREES_PLATES, BOUCLES, SORTIES, PAR_LETTRE,
 } from '../../remotion/src/mouvement.js';
 import { MOUVEMENT, images } from '../../remotion/src/identite.js';
@@ -205,5 +205,63 @@ describe('le studio et le moteur proposent la même chose', () => {
       expect(liste.length, famille).toBeGreaterThan(0);
     });
     expect(new Set(ENTREES_PLATES).size).toBe(ENTREES_PLATES.length);
+  });
+});
+
+describe('la durée qu’un habillage reçoit quand le monteur n’en fixe pas', () => {
+  /**
+   * L'incident, vérifié au banc de rendu.
+   *
+   * Le champ du studio annonce « vide = toute la vidéo ». `JTMaster` traduisait
+   * cela par 99 999 images — cinquante-cinq minutes. Le test `frame >
+   * durationInFrames - 30` que porte chaque habillage était donc faux en
+   * permanence : **la sortie ne se jouait jamais**, et le bandeau était coupé
+   * net à la coupe. Les rendus avant / après le montrent sur le titre de
+   * reportage, le flash, l'alerte et la barre défilante.
+   *
+   * La règle vivait recopiée aux trois endroits de `JTMaster`. C'est cette
+   * triplication qui l'a laissée passer : elle est ici, une fois.
+   */
+  it('hérite de ce qui reste de son plan', () => {
+    // Un plan de 120 images, un bandeau posé à la 30ᵉ : il lui en reste 90.
+    expect(dureeHabillage(null, 120, 30)).toBe(90);
+    expect(dureeHabillage(0, 120, 0)).toBe(120);
+    expect(dureeHabillage(undefined, 300, 0)).toBe(300);
+  });
+
+  it('respecte la durée que le monteur a fixée', () => {
+    expect(dureeHabillage(45, 120, 30)).toBe(45);
+    // Même quand elle dépasse le plan : c'est son choix, et `Sequence` coupe.
+    expect(dureeHabillage(400, 120, 0)).toBe(400);
+  });
+
+  it('ne rend jamais 99 999', () => {
+    // Le test qui aurait attrapé le défaut.
+    expect(dureeHabillage(null, 120, 0)).toBeLessThan(1000);
+    expect(dureeHabillage(null, 90, 10)).toBeLessThan(1000);
+  });
+
+  it('survit à un habillage posé après la fin de sa porteuse', () => {
+    // Une image plutôt qu'une durée nulle ou négative : `Sequence` refuse zéro.
+    expect(dureeHabillage(null, 120, 200)).toBe(1);
+    expect(dureeHabillage(null, 120, 120)).toBe(1);
+    expect(dureeHabillage(null, NaN, 0)).toBe(1);
+    expect(dureeHabillage(null, -5, 0)).toBe(1);
+  });
+
+  it('rend un nombre entier d’images', () => {
+    // Une durée fractionnaire ferait tomber la sortie entre deux images.
+    expect(Number.isInteger(dureeHabillage(null, 120.4, 30.7))).toBe(true);
+    expect(Number.isInteger(dureeHabillage(45.6, 120, 0))).toBe(true);
+  });
+
+  it('donne une sortie, là où 99 999 n’en donnait aucune', () => {
+    // La conséquence qui compte : avec la durée héritée, le style de sortie
+    // bouge dans les dernières images ; avec l'ancienne valeur, jamais.
+    const duree = dureeHabillage(null, 120, 0);
+    const finAvant = styleTexte({ frame: duree - 2, durationInFrames: duree, fps: 30, sortie: 'fade' });
+    const finApres = styleTexte({ frame: 99999 - 2, durationInFrames: 99999, fps: 30, sortie: 'fade' });
+    expect(finAvant.opacity, 'la sortie ne se joue toujours pas').toBeLessThan(1);
+    expect(finApres.opacity, 'une durée aberrante ne doit pas produire de sortie').toBe(1);
   });
 });

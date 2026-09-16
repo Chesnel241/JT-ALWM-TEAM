@@ -24,7 +24,7 @@ export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outOpacity = isOut ? 1 - outEase : 1;
   const outScale = isOut ? 1 + outEase * 0.05 : 1;
 
@@ -83,7 +83,7 @@ export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
   
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outOpacity = isOut ? 1 - outEase : 1;
 
   // Box 1 (slides from left)
@@ -142,7 +142,7 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
   
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outOpacity = isOut ? 1 - outEase : 1;
 
   // The luminous gradient swipe block
@@ -197,7 +197,7 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outOpacity = isOut ? 1 - outEase : 1;
   const outY = isOut ? outEase * 50 : 0;
 
@@ -254,7 +254,7 @@ export function EnvatoReportageMassif({ overlay, durationInFrames }) {
 
   const isOut = frame > durationInFrames - 30;
   const outFrame = isOut ? frame - (durationInFrames - 30) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outOpacity = isOut ? 1 - outEase : 1;
 
   // A massive box sliding up

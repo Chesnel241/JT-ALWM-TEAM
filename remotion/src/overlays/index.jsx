@@ -409,7 +409,10 @@ function TitreReportage({ overlay, durationInFrames }) {
       {/* Sous-titre : fond blanc, texte accent + petit carré accent à gauche */}
       <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 6, marginLeft: 18 }}>
         <div style={{ width: 14, background: cAccent, clipPath: `polygon(${SLANT * 0.5}px 0,100% 0,calc(100% - ${SLANT * 0.5}px) 100%,0 100%)` }} />
-        <Para bg={COL.white} reveal={subSp} padding="0" style={{ boxShadow: '0 10px 24px rgba(0,0,0,0.2)' }}>
+        {/* `subSp` est le ressort d'ENTRÉE : le bandeau titre au-dessus se
+            refermait (`reveal`) pendant que celui-ci restait plein. Il lui
+            faut la même variable de révélation, décalée de ses six images. */}
+        <Para bg={COL.white} reveal={isOut ? 1 - outSp : subSp} padding="0" style={{ boxShadow: '0 10px 24px rgba(0,0,0,0.2)' }}>
           {/* Le décalage reprend celui du ressort qui révèle ce bandeau
               (`subSp`, 6 images) : sans lui, le texte s'animerait derrière un
               masque encore fermé. */}
@@ -574,8 +577,16 @@ function FlashInfo({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const frame = useCurrentFrame();
-  const y = interpolate(frame, [0, 15], [-20, 0], { extrapolateRight: 'clamp' });
-  const op = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
+  // Il recevait `durationInFrames` et ne le lisait jamais : le cartouche
+  // restait plein jusqu'à la coupe. Sa sortie est la symétrique de son
+  // entrée — il remonte et s'efface sur les douze dernières images.
+  const SORTIE = 12;
+  const debutSortie = durationInFrames - SORTIE;
+  const sortie = frame > debutSortie
+    ? interpolate(frame - debutSortie, [0, SORTIE], [0, 1], { extrapolateRight: 'clamp' })
+    : 0;
+  const y = interpolate(frame, [0, 15], [-20, 0], { extrapolateRight: 'clamp' }) - sortie * 20;
+  const op = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' }) * (1 - sortie);
   return (
     <Box overlay={overlay} style={{ left: 80, top: 80, opacity: op, transform: `translateY(${y}px)` }}>
       <div style={{ width: 340, height: 80, display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden' }}>
@@ -599,13 +610,20 @@ function BreakingNews({ overlay, durationInFrames }) {
   const flash = eo(frame, [0, fps * 0.2, fps * 0.45], [1, 0.5, 0]);
   const titleScale = eo(frame, [fps * 0.1, fps * 0.9], [1.05, 1]);
   const titleOp = eo(frame, [fps * 0.1, fps * 0.6], [0, 1]);
+  // Lui aussi recevait sa durée sans jamais la lire : l'alerte plein écran
+  // était coupée net. Elle s'efface maintenant sur une demi-seconde.
+  const SORTIE = Math.round(fps * 0.5);
+  const debutSortie = durationInFrames - SORTIE;
+  const sortie = frame > debutSortie
+    ? interpolate(frame - debutSortie, [0, SORTIE], [0, 1], { extrapolateRight: 'clamp' })
+    : 0;
   // Marquee bas (continu, ~120 px/s).
   const marqueeText = `${subtitle}   •   `.repeat(8);
   const mx = -((frame * (120 / fps)) % 1600);
   const fs = (overlay.fontSize || 100) / 100;
 
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: 1 - sortie, transform: `scale(${1 - sortie * 0.04})` }}>
       <BackdropALWM globeOpacity={0.16} />
       {/* Lueur centrale */}
       <div style={{ position: 'absolute', width: 1100, height: 360, background: 'radial-gradient(ellipse, rgba(0,87,217,0.45) 0%, transparent 70%)', filter: 'blur(50px)' }} />
