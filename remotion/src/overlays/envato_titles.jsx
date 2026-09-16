@@ -48,7 +48,7 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
   // « WHAT IS GOING ON IN THE WORLD ». On lit désormais le champ déclaré, en
   // gardant les trois anciens noms pour les montages déjà enregistrés.
   const [titreL1, titreL2] = deuxLignes(fields.titre);
-  const line1 = fields.line1 || titreL1 || 'TITRE DU JOURNAL';
+  const line1 = fields.line1 || titreL1 || '';
   const line2 = fields.line2 || titreL2 || '';
   const subtitle = fields.subtitle || fields.sous_titre || '';
   const colorMain = fields.colorMain || COULEURS.structure;

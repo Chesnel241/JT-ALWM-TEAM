@@ -144,8 +144,8 @@ function NomInterview({ overlay, durationInFrames }) {
   const slideOutOp = isOut ? interpolate(outSpring, [0, 1], [1, 0]) : 1;
   const fs = (overlay.fontSize || 100) / 100;
   
-  const categorie = (f.categorie || f.title || f.fonction || 'POLITIQUE').toUpperCase();
-  const corps = f.name || f.nom || f.texte || 'Titre de l’information';
+  const categorie = (f.categorie || f.title || f.fonction || '').toUpperCase();
+  const corps = f.name || f.nom || f.texte || '';
   // Personnalisable : accent = bloc + catégorie, bg = panneau, text = corps.
   const C = pickColors(overlay);
   const cAccent = C.accent(COL.blue);
@@ -388,6 +388,10 @@ function TitreReportage({ overlay, durationInFrames }) {
   const cBand = C.bg(COL.band);
   const cTitle = C.text(COL.white);
   const cAccent = C.accent(COL.blue);
+  // Un champ vide n'affiche rien : l'aperçu et le master sont identiques, et
+  // aucun texte d'exemple ne peut partir à l'antenne. L'exemple vit dans le
+  // placeholder du champ, côté inspecteur.
+  const sousTitre = f.subtitle || f.sous_titre || '';
 
   return (
     <Box overlay={overlay} style={{ left: 110, top: 820, width: 1300, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -399,14 +403,17 @@ function TitreReportage({ overlay, durationInFrames }) {
             fontFamily: fontB, fontWeight: 800,
             fontSize: `${fs * 50}px`, color: cTitle,
             textTransform: 'uppercase', letterSpacing: '0.01em', whiteSpace: 'nowrap',
-          }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</TexteJT>
+          }}>{f.titre || f.sujet || f.title || ''}</TexteJT>
         </Para>
         {/* accent diagonal */}
         <div style={{ opacity: reveal > 0.7 ? 1 : 0, transition: 'opacity .2s' }}>
           <AccentSlash height={Math.round(fs * 50 + 36)} color={cAccent} />
         </div>
       </div>
-      {/* Sous-titre : fond blanc, texte accent + petit carré accent à gauche */}
+      {/* Sous-titre : fond blanc, texte accent + petit carré accent à gauche.
+          Absent si le champ est vide : sinon « UN SOUS-TITRE OU PRÉCISION »
+          sortait dans le master. */}
+      {sousTitre && (
       <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 6, marginLeft: 18 }}>
         <div style={{ width: 14, background: cAccent, clipPath: `polygon(${SLANT * 0.5}px 0,100% 0,calc(100% - ${SLANT * 0.5}px) 100%,0 100%)` }} />
         {/* `subSp` est le ressort d'ENTRÉE : le bandeau titre au-dessus se
@@ -421,9 +428,10 @@ function TitreReportage({ overlay, durationInFrames }) {
             fontFamily: fontM, fontWeight: 600,
             fontSize: `${fs * 26}px`, color: cAccent,
             textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-          }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</TexteJT>
+          }}>{sousTitre}</TexteJT>
         </Para>
       </div>
+      )}
     </Box>
   );
 }
@@ -446,7 +454,7 @@ function SignatureReportage({ overlay, durationInFrames }) {
   const fontB = ff(overlay.font, PILES.titrage);
   const fontM = ff(overlay.font, PILES.courant);
   const label = f.label || 'REPORTAGE';
-  const name = f.texte || f.signature || f.nom || 'PRÉNOM NOM';
+  const name = f.texte || f.signature || f.nom || '';
 
   return (
     <Box overlay={overlay} style={{ left: 1400, top: 930, transform: `translateX(${moveX}px)`, opacity: isOut ? outFade : opacity }}>
