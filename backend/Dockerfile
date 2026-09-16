@@ -5,15 +5,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files (contexte de build : racine du dépôt)
+COPY backend/package*.json ./
 
 # Install dependencies (including devDependencies if needed for build)
 RUN npm ci --only=production
 
 # Copy source code + bundled fonts (libass overlays need them at render time)
-COPY src ./src
-COPY fonts ./fonts
+COPY backend/src ./src
+COPY backend/fonts ./fonts
 
 # Verify the app structure
 RUN ls -la
@@ -39,6 +39,12 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/fonts ./fonts
 COPY --from=builder /app/package*.json ./
+
+# Charte partagée avec Remotion : overlayTemplates.js importe
+# ../../../remotion/src/identite.js, soit /remotion/src/identite.js depuis
+# /app/src/data. Ce fichier ne dépend de rien, on ne copie que lui.
+# D'où le contexte de build à la racine du dépôt (docker-compose.yml, CI).
+COPY remotion/src/identite.js /remotion/src/identite.js
 
 # Create uploads directory with proper permissions
 RUN mkdir -p /app/uploads && chown -R node:node /app
