@@ -365,3 +365,101 @@ export function splitClipAtTime(clips, options = {}) {
 
   return { clips: nextClips, left: leftClip, right: rightClip, index: hit.index };
 }
+
+/**
+ * Les repères auxquels un élément peut s'accrocher, en secondes de montage.
+ *
+ * L'aimantation n'existait que vers la tête de lecture, et seulement pour le
+ * rognage d'un clip. Un titre déposé sur la piste T1 n'avait aucun repère :
+ * pour le faire commencer exactement avec un plan, il fallait viser au pixel,
+ * puis constater à l'export qu'on avait trois images de décalage.
+ *
+ * Les bords de plan sont les repères qui comptent — c'est là qu'un bandeau se
+ * pose. Le début et la fin du montage aussi. La tête de lecture reste dans la
+ * liste : elle est le repère qu'on vient de placer soi-même.
+ */
+export function pointsDAimantation(layout, playheadSec = null) {
+  const points = [0];
+  (layout?.items || []).forEach((item) => {
+    points.push(item.start, item.end);
+  });
+  if (Number.isFinite(layout?.total)) points.push(layout.total);
+  if (Number.isFinite(playheadSec)) points.push(playheadSec);
+  // Triés et dédoublonnés : deux plans qui se touchent donnent deux fois le
+  // même repère, et `aimanter` s'arrêterait au premier venu.
+  return [...new Set(points.filter((v) => Number.isFinite(v) && v >= 0))].sort((a, b) => a - b);
+}
+
+/**
+ * Accroche une valeur au repère le plus proche, s'il est assez près.
+ *
+ * `seuil` est en secondes : l'appelant le calcule depuis le zoom courant
+ * (`8 / pxPerSec`), pour que l'aimant morde toujours à la même distance à
+ * l'écran quel que soit l'agrandissement. Aimantation coupée, la valeur passe
+ * intacte — c'est ce que le bouton « Magnétisme » promet.
+ */
+export function aimanter(valeur, points, seuil) {
+  if (!Number.isFinite(valeur) || !(seuil > 0) || !points?.length) return valeur;
+  let meilleur = valeur;
+  let ecart = seuil;
+  points.forEach((point) => {
+    const d = Math.abs(point - valeur);
+    if (d <= ecart) { ecart = d; meilleur = point; }
+  });
+  return roundToFrame(meilleur);
+}
+
+/**
+ * Le zoom qui garde sous le pointeur ce qui s'y trouvait.
+ *
+ * Zoomer recentrait sur le bord gauche : sur un JT de dix minutes, agrandir
+ * faisait perdre l'endroit qu'on regardait, et il fallait refaire défiler à la
+ * main. Rend le nouveau défilement horizontal à appliquer.
+ */
+export function defilementApresZoom({ scrollLeft, pointeurX, pxPerSecAvant, pxPerSecApres }) {
+  if (!(pxPerSecAvant > 0) || !(pxPerSecApres > 0)) return scrollLeft;
+  // Le temps qui se trouvait sous le pointeur doit y rester.
+  const temps = (scrollLeft + pointeurX) / pxPerSecAvant;
+  return Math.max(0, temps * pxPerSecApres - pointeurX);
+}
+
+/**
+ * Les repères d'un **rognage**, en secondes de montage.
+ *
+ * Ce ne sont pas les mêmes que ceux d'un titre, et c'est une propriété de la
+ * timeline elle-même : les plans y sont posés bout à bout. Raccourcir le plan 3
+ * fait remonter le 4, le 5 et la fin du montage — tous ces bords suivent le
+ * geste au lieu de l'arrêter, et s'y accrocher ne voudrait rien dire.
+ *
+ * Les bords des **titres** de la piste T1, eux, ne bougent pas : ils portent un
+ * temps absolu. Ce sont les seuls repères fixes qu'un rognage puisse viser,
+ * avec la tête de lecture — et c'est le geste utile : « que ce plan s'arrête
+ * exactement où le bandeau se referme ».
+ */
+export function pointsDeRognage(overlays, playheadSec = null) {
+  const points = [];
+  (overlays || []).forEach((overlay) => {
+    const debut = Number(overlay?.startTime) || 0;
+    const duree = Number(overlay?.duration);
+    points.push(debut);
+    if (Number.isFinite(duree) && duree > 0) points.push(debut + duree);
+  });
+  if (Number.isFinite(playheadSec)) points.push(playheadSec);
+  return [...new Set(points.filter((v) => Number.isFinite(v) && v >= 0))].sort((a, b) => a - b);
+}
+
+/**
+ * Ramène des repères de montage dans le temps de la source d'un plan.
+ *
+ * Un rognage raisonne en points d'entrée et de sortie de la source, pas en
+ * secondes de montage : sans cette conversion, accrocher la fin d'un plan au
+ * bord d'un bandeau le poserait à la mauvaise image du rush.
+ */
+export function reperesVersSource(reperes, { debutMontage = 0, inPoint = 0 } = {}) {
+  const decalage = (Number(inPoint) || 0) - (Number(debutMontage) || 0);
+  return (reperes || [])
+    .filter((v) => Number.isFinite(v))
+    .map((v) => v + decalage)
+    .filter((v) => v >= 0)
+    .sort((a, b) => a - b);
+}

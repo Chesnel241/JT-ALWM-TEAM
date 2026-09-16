@@ -4,11 +4,13 @@ import { X } from 'lucide-react';
 import { JTMaster, totalDurationInFrames } from '../../../../remotion/src/JTMaster.jsx';
 import { API_BASE } from '../../api/index.js';
 import { previewUrl } from '../../lib/mediaSource.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 
 // Le mot de passe admin ne transite plus par l'URL des médias : /uploads est
 // servi sans authentification, et un secret en query string finissait dans les
 // journaux d'accès (Caddy, nginx) et l'historique du navigateur.
-export default function RemotionLivePreview({ clips, global, branding, timelineOverlays, onClose, inline = false, playerRef = null }) {
+export default function RemotionLivePreview({ clips, branding, timelineOverlays, onClose, inline = false, playerRef = null }) {
+  const { t } = useI18n();
   // Prépare les données pour le Player (exactement comme pour le backend)
   const inputProps = useMemo(() => {
     // On résout les URLs relatives pour que Remotion puisse lire les vidéos depuis l'API locale.
@@ -25,11 +27,29 @@ export default function RemotionLivePreview({ clips, global, branding, timelineO
       };
     });
 
+    // L'aperçu doit composer comme l'export, sinon il ne montre pas ce qu'on
+    // va diffuser. L'export fusionne `branding.overlays` (section « Animations
+    // & Habillages Globaux ») avec la piste des titres avant d'envoyer, et
+    // JTMaster ne lit que `timelineOverlays` : sans cette fusion, l'intro du
+    // JT, la transition, la barre défilante, le flash info et le breaking news
+    // étaient absents du lecteur tout en étant présents dans le master.
+    const habillagesGlobaux = [...(branding?.overlays || []), ...(timelineOverlays || [])];
+
+    // Même écart pour les incrustations d'images : elles vivent sous
+    // `branding.imageOverlays` alors que JTMaster attend un prop de premier
+    // niveau, et n'apparaissaient donc jamais à l'aperçu.
+    const incrustations = (branding?.imageOverlays || [])
+      .filter((o) => o && o.filename)
+      .map((o) => ({
+        ...o,
+        url: o.filename.startsWith('http') ? o.filename : `${API_BASE}/uploads/${o.filename}?cors=2`,
+      }));
+
     return {
       clips: resolvedClips,
-      global: global || {},
       branding: branding || {},
-      timelineOverlays: timelineOverlays || [],
+      timelineOverlays: habillagesGlobaux,
+      imageOverlays: incrustations,
       music: branding?.music?.enabled && branding.music.filename ? {
         filename: branding.music.filename,
         url: branding.music.filename.startsWith('http') ? branding.music.filename : `${API_BASE}/uploads/${branding.music.filename}?cors=2`,
@@ -42,7 +62,7 @@ export default function RemotionLivePreview({ clips, global, branding, timelineO
         volume: branding.voiceover.volume
       } : null
     };
-  }, [clips, global, branding, timelineOverlays]);
+  }, [clips, branding, timelineOverlays]);
 
   const durationInFrames = useMemo(() => {
     return Math.max(30, totalDurationInFrames(inputProps.clips, 30));
@@ -72,8 +92,8 @@ export default function RemotionLivePreview({ clips, global, branding, timelineO
       <div className="bg-[var(--paper)] rounded-2xl w-full max-w-5xl flex flex-col shadow-2xl border border-[var(--border)] max-h-[95vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
-          <h2 className="font-bold text-[color:var(--ink)]">Aperçu Temps Réel (Remotion Player)</h2>
-          <button onClick={onClose} className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] rounded-lg transition-colors bg-[var(--border)] hover:bg-[var(--border-dark)]">
+          <h2 className="font-bold text-[color:var(--ink)]">{t.studio.panneaux.apercuTitre}</h2>
+          <button onClick={onClose} className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] rounded-lg transition-colors bg-[var(--border)] hover:bg-[var(--muted)]/30">
             <X size={20} />
           </button>
         </div>
@@ -94,8 +114,7 @@ export default function RemotionLivePreview({ clips, global, branding, timelineO
           />
         </div>
         <div className="px-5 py-3 text-[11px] text-[color:var(--muted)] text-center bg-[var(--paper-2)] border-t border-[var(--border)]">
-          Ceci est le rendu exact (pixel-perfect) de ce qui sera généré par le moteur Remotion.
-        </div>
+          {t.studio.panneaux.apercuAide}</div>
       </div>
     </div>
   );

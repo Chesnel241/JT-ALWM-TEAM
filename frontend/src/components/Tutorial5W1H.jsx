@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { Users, Info, MapPin, Clock, HelpCircle, Wrench, CheckCircle, X } from 'lucide-react';
+import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
 const icons = {
   who: Users,
@@ -26,13 +27,20 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
 
   const isVisible = isOpen !== undefined ? isOpen : internalVisible;
 
-  if (!t.tutorial || !isVisible) return null;
-
+  // Remontée au-dessus de la garde : le piège de focus doit la connaître, et
+  // un hook ne se déclare pas après un retour anticipé.
   const handleDismiss = () => {
     localStorage.setItem('hasSeen5W1H', 'true');
     setInternalVisible(false);
     onClose?.();
   };
+
+  // Le tutoriel s'ouvre au premier passage d'un correspondant. Il annonçait
+  // `role="dialog" aria-modal="true"` sans retenir le clavier : Échap ne le
+  // fermait pas, et la tabulation partait dans la page derrière lui.
+  const boiteModale = usePiegeFocus(Boolean(t.tutorial && isVisible), handleDismiss);
+
+  if (!t.tutorial || !isVisible) return null;
 
   const items = [
     { id: 'who', color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-200 dark:border-blue-800' },
@@ -44,12 +52,12 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true">
+    <div ref={boiteModale} className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true">
       <div 
         className="fixed inset-0" 
         onClick={handleDismiss} 
       />
-      <div className="relative w-full max-w-5xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto bg-[var(--paper)] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[var(--border)] animate-in fade-in slide-in-from-bottom-6 sm:zoom-in duration-300 z-10 custom-scrollbar">
+      <div className="relative w-full max-w-5xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto bg-[var(--paper)] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[var(--border)] motion-boite z-10 custom-scrollbar">
         <div className="p-5 sm:p-8 border-l-4 border-l-[color:var(--accent)] bg-gradient-to-br from-[var(--paper)] to-[var(--paper-2)] relative">
           
           {/* Mobile swipe notch */}

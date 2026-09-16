@@ -34,12 +34,19 @@ describe('OVERLAY_TEMPLATES (registre brand ALWM)', () => {
     expect(OVERLAY_TEMPLATES.length).toBeGreaterThanOrEqual(13);
   });
 
-  it('chaque template a id + label + fields[] non vides', () => {
+  it('chaque template porte un id et des champs, et rien d’autre', () => {
+    // Le catalogue serveur portait aussi libellés, emojis, aperçus et
+    // intitulés de champ, recopiés du studio et déjà divergents — lus par
+    // personne : le serveur ne s'en sert que pour valider un identifiant et
+    // retrouver un gabarit ASS. Une donnée d'affichage que rien n'affiche ne
+    // peut que pourrir, et c'est ce genre de dérive qui avait laissé deux
+    // habillages lire des champs que le catalogue ne déclarait pas.
     for (const t of OVERLAY_TEMPLATES) {
       expect(typeof t.id).toBe('string');
-      expect(typeof t.label).toBe('string');
-      expect(t.label.length).toBeGreaterThan(0);
+      expect(t.id.length).toBeGreaterThan(0);
       expect(Array.isArray(t.fields)).toBe(true);
+      expect(Object.keys(t).sort(), t.id).toEqual(t.scope ? ['fields', 'id', 'scope'] : ['fields', 'id']);
+      for (const f of t.fields) expect(Object.keys(f), `${t.id}.${f.key}`).toEqual(['key']);
     }
   });
 

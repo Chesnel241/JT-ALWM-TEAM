@@ -174,7 +174,7 @@ export default function AIAssistant({ currentPage, showBubble = true }) {
 
         {/* The Chat Window */}
         {isChatOpen && (
-          <div className="mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-[var(--paper)] rounded-2xl shadow-2xl border border-[var(--border)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
+          <div className="mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-[var(--paper)] rounded-2xl shadow-2xl border border-[var(--border)] flex flex-col overflow-hidden motion-boite">
             {/* Header */}
             <div className="p-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2 text-[color:var(--ink)] font-semibold">

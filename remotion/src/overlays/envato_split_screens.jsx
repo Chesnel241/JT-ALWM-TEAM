@@ -1,9 +1,11 @@
 import React from 'react';
+import { COULEURS, POLICE_HABILLAGE } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
+import TexteJT from '../TexteJT.jsx';
 
 const baseFontConfig = {
-  fontFamily: 'var(--ov-font) "Montserrat ExtraBold", system-ui, sans-serif',
+  fontFamily: POLICE_HABILLAGE,
   textTransform: 'uppercase',
   fontWeight: '800',
   lineHeight: 1,
@@ -17,18 +19,18 @@ function LocationLabel({ frame, delay, location, sub, colorMain, colorAccent, co
          <EnvatoMaskReveal frame={frame} delay={delay} direction={isRight ? 'left' : 'right'} duration={25}>
             <div style={{ backgroundColor: colorAccent, padding: '16px 24px', display: 'flex', alignItems: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
                <EnvatoMaskReveal frame={frame} delay={delay + 10} direction="bottom" duration={20}>
-                 <div style={{ ...baseFontConfig, fontSize: '36px', color: colorTextAccent, letterSpacing: '1px' }}>
+                 <TexteJT role="titrage" delai={delay + 10} style={{ ...baseFontConfig, fontSize: '36px', color: colorTextAccent, letterSpacing: '1px' }}>
                     {location}
-                 </div>
+                 </TexteJT>
                </EnvatoMaskReveal>
             </div>
          </EnvatoMaskReveal>
          <EnvatoMaskReveal frame={frame} delay={delay + 8} direction={isRight ? 'left' : 'right'} duration={25} style={{ marginTop: '-4px', zIndex: 10 }}>
             <div style={{ backgroundColor: colorMain, padding: '10px 24px', boxShadow: '0 5px 20px rgba(0,0,0,0.2)' }}>
                <EnvatoMaskReveal frame={frame} delay={delay + 18} direction="bottom" duration={20}>
-                 <div style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, fontWeight: '700', letterSpacing: '2px' }}>
+                 <TexteJT role="courant" delai={delay + 18} style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, fontWeight: '700', letterSpacing: '2px' }}>
                     {sub}
-                 </div>
+                 </TexteJT>
                </EnvatoMaskReveal>
             </div>
          </EnvatoMaskReveal>
@@ -43,16 +45,16 @@ export function EnvatoSplitScreen({ overlay, durationInFrames }) {
   const leftSub = fields.leftSub || 'USA';
   const rightLocation = fields.rightLocation || 'NEW YORK';
   const rightSub = fields.rightSub || 'USA';
-  const colorMain = fields.colorMain || '#d61f1f';
-  const colorAccent = fields.colorAccent || '#fcfcfc';
-  const colorTextMain = fields.colorTextMain || '#fcfcfc';
-  const colorTextAccent = fields.colorTextAccent || '#111111';
+  const colorMain = fields.colorMain || COULEURS.structure;
+  const colorAccent = fields.colorAccent || COULEURS.papier;
+  const colorTextMain = fields.colorTextMain || COULEURS.papier;
+  const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
 
   // Out phase logic
   const OUT_DUR = 30;
   const isOut = frame > durationInFrames - OUT_DUR;
   const outFrame = isOut ? frame - (durationInFrames - OUT_DUR) : 0;
-  const outEase = getExpEaseOut(outFrame, 0, 20);
+  const outEase = getExpEaseOut(outFrame, 0, 30);
   const outOpacity = isOut ? (1 - outEase) : 1;
   const outScale = isOut ? 1 + (outEase * 0.05) : 1; // Slight scale up as it fades out
 
@@ -65,8 +67,13 @@ export function EnvatoSplitScreen({ overlay, durationInFrames }) {
       willChange: 'opacity, transform',
       pointerEvents: 'none' // Don't block interaction
     }}>
-      {/* Central Diagonal Divider */}
-      <EnvatoMaskReveal frame={frame} delay={0} direction="vertical" duration={35}>
+      {/* Séparateur diagonal central.
+          `EnvatoMaskReveal` rend un <div> EN FLUX, et son enfant est en
+          position absolue : la boîte de l'enveloppe faisait donc 0 × 0, et un
+          `inset()` en pourcentage ne se résolvait contre rien. Le séparateur
+          et le liseré ci-dessous n'ont probablement jamais été visibles depuis
+          l'import — le rendu du lot 3 l'a confirmé. Il leur faut une boîte. */}
+      <EnvatoMaskReveal frame={frame} delay={0} direction="vertical" duration={35} style={{ position: 'absolute', inset: 0 }}>
           <div style={{
              position: 'absolute',
              top: '-10%', left: '50%',
@@ -77,8 +84,8 @@ export function EnvatoSplitScreen({ overlay, durationInFrames }) {
           }} />
       </EnvatoMaskReveal>
 
-      {/* Outer Premium Border */}
-      <EnvatoMaskReveal frame={frame} delay={10} direction="horizontal" duration={40}>
+      {/* Liseré extérieur — même cause, même correctif. */}
+      <EnvatoMaskReveal frame={frame} delay={10} direction="horizontal" duration={40} style={{ position: 'absolute', inset: 0 }}>
         <div style={{
           position: 'absolute',
           top: '30px', left: '30px', right: '30px', bottom: '30px',

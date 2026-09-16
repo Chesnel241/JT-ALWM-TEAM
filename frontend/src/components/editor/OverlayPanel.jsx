@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Layers, Clock } from 'lucide-react';
-import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, TEXT_ANIMATIONS_IN, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
+import React, { useEffect, useId, useMemo, useState } from 'react';
+import { X, Plus, Trash2, Layers, Clock, Search } from 'lucide-react';
+import { COULEURS } from '../../../../remotion/src/identite.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
+import { ApercuCombinaison, ChoixEntree } from './ChoixMouvement.jsx';
+import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
+import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -9,15 +13,61 @@ function formatTime(s) {
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
 }
 
+/**
+ * Les trois palettes du JT, tirées de la charte.
+ *
+ * Elles ne sont pas recopiées : `identite.js` est le fichier que lisent aussi
+ * le rendu Remotion et le générateur ASS. Un bleu changé là se répercute
+ * partout, au lieu de diverger d'une couche à l'autre.
+ */
+const PALETTES = [
+  {
+    id: 'jt',
+    label: 'JT ALWM',
+    colors: { bg: COULEURS.structure, text: COULEURS.papier, accent: COULEURS.accent },
+  },
+  {
+    id: 'alerte',
+    label: 'Alerte',
+    colors: { bg: COULEURS.alerte, text: COULEURS.papier, accent: COULEURS.papier },
+  },
+  {
+    id: 'sobre',
+    label: 'Sobre',
+    colors: { bg: COULEURS.encre, text: COULEURS.papier, accent: COULEURS.accent },
+  },
+];
+
+/**
+ * Le texte que l'aperçu fait jouer.
+ *
+ * Celui que le monteur a tapé, parce qu'un titre long ne se comporte pas
+ * comme un mot court — une machine à écrire sur quatre-vingts caractères
+ * n'est pas la même chose que sur six. À défaut, l'exemple du gabarit, puis
+ * un mot neutre.
+ */
+function apercuTexte(overlay, dit) {
+  const saisis = Object.values(overlay.fields || {}).map((v) => String(v || '').trim()).filter(Boolean);
+  if (saisis.length) return saisis[0].slice(0, 40);
+  const premier = Object.values(dit.champs || {})[0];
+  return (premier && premier.exemple) || 'Texte';
+}
+
 export function OverlayEditor({ overlay, onChange, onRemove }) {
-  const template = OVERLAY_TEMPLATES.find((t) => t.id === overlay.templateId);
+  // Un préfixe par instance : plusieurs habillages sont édités dans la même
+  // page, et un identifiant partagé ferait donner le focus au curseur du
+  // voisin quand on clique un libellé.
+  const idc = useId();
+  const { t } = useI18n();
+  const template = OVERLAY_TEMPLATES.find((x) => x.id === overlay.templateId);
   if (!template) return null;
+  const dit = t.studio.habillages[template.id] || { label: template.id, champs: {} };
 
   return (
     <div className="border border-[var(--border)] rounded-xl p-4 bg-[var(--paper)] flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="font-semibold text-[color:var(--ink)] flex items-center gap-2 text-sm">
-          <span>{template.emoji}</span> {template.label}
+          <span aria-hidden="true">{template.emoji}</span> {dit.label}
         </span>
         <button
           onClick={onRemove}
@@ -28,12 +78,14 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       </div>
 
       {/* Text fields */}
-      {template.fields.map((field) => (
+      {template.fields.map((field) => {
+        const champ = dit.champs[field.key] || { label: field.key, exemple: '' };
+        return (
         <div key={field.key} className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">{field.label}</label>
+          <label className="text-xs font-medium text-[color:var(--muted)]">{champ.label}</label>
           <input
             type="text"
-            placeholder={field.placeholder}
+            placeholder={champ.exemple}
             value={overlay.fields?.[field.key] || ''}
             onChange={(e) =>
               onChange({
@@ -44,43 +96,58 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
             className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
           />
         </div>
-      ))}
+        );
+      })}
 
-      {/* Animations : In / Loop / Out */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Entrée</label>
-          <select
-            value={overlay.animation || 'fade'}
-            onChange={(e) => onChange({ ...overlay, animation: e.target.value })}
-            className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
-          >
-            {TEXT_ANIMATIONS_IN.map((a) => (
-              <option key={a.id} value={a.id}>{a.label}</option>
-            ))}
-          </select>
+      {/* Mouvement du texte : l'aperçu d'abord, le choix ensuite. */}
+      <div className="space-y-3 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
+        <div className="flex items-center justify-between">
+          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.studio.interface.mouvementTitre}</label>
+          <span className="text-[10px] text-[color:var(--muted)]">{t.studio.interface.apercuReel}</span>
         </div>
+
+        {/* La combinaison telle qu'elle sortira : entrée, boucle et sortie sur
+            le texte réellement saisi. Trois listes déroulantes ne disent pas
+            qu'une machine à écrire suivie d'un flou sortant ne va pas
+            ensemble ; cet aperçu, si. */}
+        <ApercuCombinaison
+          animation={overlay.animation || 'fade'}
+          boucle={overlay.animationLoop || 'none'}
+          sortie={overlay.animationOut || 'auto'}
+          mot={apercuTexte(overlay, dit)}
+        />
+
+        <ChoixEntree
+          valeur={overlay.animation}
+          onChange={(id) => onChange({ ...overlay, animation: id })}
+          recommandee={animationRecommandee(overlay.templateId)}
+        />
+      </div>
+
+      {/* Boucle et sortie : peu d'options, des noms qui se comprennent, et
+          leur effet se voit dans l'aperçu ci-dessus. */}
+      <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Continue</label>
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.interface.continue}</label>
           <select
             value={overlay.animationLoop || 'none'}
             onChange={(e) => onChange({ ...overlay, animationLoop: e.target.value })}
             className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
           >
             {TEXT_ANIMATIONS_LOOP.map((a) => (
-              <option key={a.id} value={a.id}>{a.label}</option>
+              <option key={a.id} value={a.id}>{t.studio.boucles[a.id]}</option>
             ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Sortie</label>
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.interface.sortie}</label>
           <select
-            value={overlay.animationOut || 'fade'}
+            value={overlay.animationOut || 'auto'}
             onChange={(e) => onChange({ ...overlay, animationOut: e.target.value })}
             className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
           >
             {TEXT_ANIMATIONS_OUT.map((a) => (
-              <option key={a.id} value={a.id}>{a.label}</option>
+              <option key={a.id} value={a.id}>{t.studio.sorties[a.id]}</option>
             ))}
           </select>
         </div>
@@ -89,70 +156,63 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {/* Police, Taille et Interligne */}
       <div className="space-y-3 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Police de caractères</label>
+          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.police}</label>
           <select
             value={overlay.font || ''}
             onChange={(e) => onChange({ ...overlay, font: e.target.value || undefined })}
             className="w-full px-3 py-2 bg-[var(--paper)] border border-[var(--border)] rounded-lg text-sm font-medium text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
           >
-            <option value="">Par défaut (Système)</option>
+            <option value="">{t.studio.panneaux.policeDefaut}</option>
             {FONT_FAMILIES.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Taille</label>
-              <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.fontSize || 100}%</span>
-            </div>
-            <input
-              type="range"
-              min="50"
-              max="250"
-              step="5"
-              value={overlay.fontSize || 100}
-              onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
-              className="w-full accent-[var(--accent)]"
-            />
+        {/* « Interligne » vivait ici. Le curseur écrivait la valeur, le
+            serveur la validait, et aucun moteur de rendu ne la lisait : ni
+            Remotion, ni libass. Un réglage qui ne fait rien coûte plus qu'il
+            ne rapporte. L'interligne reviendra avec l'échelle typographique
+            du JT, appliquée à tous les habillages. */}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <label htmlFor="overlay-taille" className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.taille}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.fontSize || 100}%</span>
           </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Interligne</label>
-              <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.lineHeight || 120}%</span>
-            </div>
-            <input
-              type="range"
-              min="50"
-              max="250"
-              step="5"
-              value={overlay.lineHeight || 120}
-              onChange={(e) => onChange({ ...overlay, lineHeight: parseInt(e.target.value, 10) || 120 })}
-              className="w-full accent-[var(--accent)]"
-            />
-          </div>
+          <input
+            id="overlay-taille"
+            type="range"
+            min="50"
+            max="250"
+            step="5"
+            value={overlay.fontSize || 100}
+            onChange={(e) => onChange({ ...overlay, fontSize: parseInt(e.target.value, 10) || 100 })}
+            className="w-full accent-[var(--accent)]"
+          />
         </div>
       </div>
 
       {/* Palettes Thématiques TV & Couleurs personnalisées */}
       <div className="space-y-2.5 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
-        <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider block">Thèmes de Couleurs TV</label>
+        <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider block">{t.studio.panneaux.couleurs}</label>
+        {/* Cinq thèmes inventés vivaient ici — « ALWM Signature » était un or
+            sur ardoise, sans rapport avec la marque. Les trois qui restent
+            viennent de la charte du JT (remotion/src/identite.js), la même
+            que celle du rendu et du repli libass. La couleur y est nommée par
+            son rôle, et l'intitulé ne repose plus sur un emoji seul. */}
         <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: 'breaking', label: '🔴 Urgent', colors: { bg: '#dc2626', text: '#ffffff', accent: '#fbbf24' } },
-            { id: 'news', label: '🔵 Info JT', colors: { bg: '#1e3a8a', text: '#ffffff', accent: '#38bdf8' } },
-            { id: 'gold', label: '🟡 ALWM Signature', colors: { bg: '#0f172a', text: '#ffffff', accent: '#eab308' } },
-            { id: 'emerald', label: '🟢 Éco', colors: { bg: '#064e3b', text: '#ffffff', accent: '#34d399' } },
-            { id: 'dark', label: '⚫ Dark Luxe', colors: { bg: '#18181b', text: '#f4f4f5', accent: '#a1a1aa' } },
-          ].map((theme) => (
+          {PALETTES.map((theme) => (
             <button
               key={theme.id}
               type="button"
               onClick={() => onChange({ ...overlay, colors: { ...(overlay.colors || {}), ...theme.colors } })}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-[var(--accent)]/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 motion-tap"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-[var(--accent)]/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 motion-tap"
             >
+              <span
+                aria-hidden="true"
+                className="w-2.5 h-2.5 rounded-full border border-[var(--border)]"
+                style={{ background: theme.colors.bg }}
+              />
               {theme.label}
             </button>
           ))}
@@ -161,9 +221,9 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
         {/* 3 slots manuels : texte / fond / accent */}
         <div className="grid grid-cols-3 gap-2 pt-1">
           {[
-            ['text', 'Texte'],
-            ['bg', 'Fond'],
-            ['accent', 'Accent'],
+            ['text', t.studio.panneaux.couleurTexte],
+            ['bg', t.studio.panneaux.couleurFond],
+            ['accent', t.studio.panneaux.couleurAccent],
           ].map(([k, lab]) => (
             <div key={k} className="flex items-center justify-between gap-1 border border-[var(--border)] rounded-lg px-2 py-1 bg-[var(--paper)]">
               <span className="text-[11px] font-medium text-[color:var(--muted)]">{lab}</span>
@@ -173,13 +233,13 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
                   value={(overlay.colors && overlay.colors[k]) || '#000000'}
                   onChange={(e) => onChange({ ...overlay, colors: { ...(overlay.colors || {}), [k]: e.target.value } })}
                   className="w-6 h-6 rounded cursor-pointer border-0 p-0 bg-transparent"
-                  title={`Couleur ${lab}`}
+                  title={lab}
                 />
                 {overlay.colors && overlay.colors[k] && (
                   <button
                     onClick={() => { const c = { ...(overlay.colors || {}) }; delete c[k]; onChange({ ...overlay, colors: c }); }}
                     className="text-[10px] text-[color:var(--muted)] hover:text-[var(--signal)] font-bold"
-                    title="Réinitialiser"
+                    title={t.studio.panneaux.reinitialiser}
                   >×</button>
                 )}
               </div>
@@ -191,14 +251,28 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {/* Contour + halo (gravés par libass \bord + \blur) */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">Contour : {overlay.outline ?? 0}</label>
-          <input type="range" min="0" max="6" step="1" value={overlay.outline ?? 0}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « contour : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-contour`} className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.contour}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.outline ?? 0}</span>
+          </div>
+          <input id={`${idc}-contour`} type="range" min="0" max="6" step="1" value={overlay.outline ?? 0}
             onChange={(e) => onChange({ ...overlay, outline: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">Halo : {overlay.glow ?? 0}</label>
-          <input type="range" min="0" max="10" step="1" value={overlay.glow ?? 0}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « halo : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-halo`} className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.halo}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.glow ?? 0}</span>
+          </div>
+          <input id={`${idc}-halo`} type="range" min="0" max="10" step="1" value={overlay.glow ?? 0}
             onChange={(e) => onChange({ ...overlay, glow: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
@@ -207,20 +281,41 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {/* Transform controls */}
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Position X : {overlay.posX ?? 0}</label>
-          <input type="range" min="-1920" max="1920" step="10" value={overlay.posX ?? 0}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « positionX : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-posx`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.positionX}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.posX ?? 0}</span>
+          </div>
+          <input id={`${idc}-posx`} type="range" min="-1920" max="1920" step="10" value={overlay.posX ?? 0}
             onChange={(e) => onChange({ ...overlay, posX: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Position Y : {overlay.posY ?? 0}</label>
-          <input type="range" min="-1080" max="1080" step="10" value={overlay.posY ?? 0}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « positionY : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-posy`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.positionY}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.posY ?? 0}</span>
+          </div>
+          <input id={`${idc}-posy`} type="range" min="-1080" max="1080" step="10" value={overlay.posY ?? 0}
             onChange={(e) => onChange({ ...overlay, posY: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Taille : {overlay.scale ?? 100}%</label>
-          <input type="range" min="10" max="300" step="5" value={overlay.scale ?? 100}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « taille : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-echelle`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.taille}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.scale ?? 100}%</span>
+          </div>
+          <input id={`${idc}-echelle`} type="range" min="10" max="300" step="5" value={overlay.scale ?? 100}
             onChange={(e) => onChange({ ...overlay, scale: parseInt(e.target.value, 10) || 100 })}
             className="w-full accent-[var(--accent)]" />
         </div>
@@ -230,7 +325,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-[color:var(--muted)] flex items-center gap-1">
-            <Clock size={11} /> Début (s)
+            <Clock size={11} /> {t.studio.panneaux.debutSec}
           </label>
           <input
             type="number"
@@ -242,7 +337,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">Durée (s, vide = toute la vidéo)</label>
+          <label className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.dureeSec}</label>
           <input
             type="number"
             min="0.5"
@@ -261,7 +356,105 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
   );
 }
 
+/**
+ * Choisir un habillage parmi vingt-trois, sous la pression du bouclage.
+ *
+ * Ils s'affichaient en une seule liste rangée par portée technique — « clip »
+ * ou « global » —, c'est-à-dire par un détail d'implémentation que le monteur
+ * n'a aucune raison de connaître. Il fallait parcourir les vingt-trois pour
+ * retrouver le bandeau nom.
+ *
+ * Ici ils sont rangés par moment du JT, dans l'ordre où ces moments arrivent à
+ * l'antenne, et une recherche filtre sur le nom comme sur la description : un
+ * monteur qui tape « alerte » ou « citation » arrive en un geste.
+ */
+export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
+  const { t } = useI18n();
+  const [recherche, setRecherche] = useState('');
+
+  const groupes = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    const correspond = (modele, moment) => {
+      if (!q) return true;
+      const dit = t.studio.habillages[modele.id] || {};
+      return [dit.label, dit.apercu, moment.label, moment.aide]
+        .some((v) => (v || '').toLowerCase().includes(q));
+    };
+
+    return MOMENTS_IDS
+      .map((id) => ({ id, ...t.studio.moments[id] }))
+      .map((moment) => ({ moment, liste: habillagesDuMoment(moment.id, modeles).filter((m) => correspond(m, moment)) }))
+      .filter((g) => g.liste.length > 0);
+  }, [recherche, modeles, t]);
+
+  const total = groupes.reduce((n, g) => n + g.liste.length, 0);
+
+  return (
+    <div className="border border-[var(--accent)]/40 rounded-xl p-4 bg-[var(--accent)]/5 flex flex-col gap-3">
+      <div className="flex items-center gap-2 px-3 py-2 bg-[var(--paper)] border border-[var(--border)] rounded-lg">
+        <Search size={14} className="text-[color:var(--muted)] shrink-0" aria-hidden="true" />
+        <input
+          id="recherche-habillage"
+          type="search"
+          autoFocus
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder={t.studio.interface.chercherExemple}
+          aria-label={t.studio.interface.chercher}
+          className="w-full bg-transparent text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none"
+        />
+      </div>
+
+      {total === 0 && (
+        <p className="text-xs text-[color:var(--muted)] text-center py-4">
+          {t.studio.interface.aucunResultat} « {recherche} ».
+        </p>
+      )}
+
+      {groupes.map(({ moment, liste }) => (
+        <div key={moment.id} className="flex flex-col gap-1.5">
+          <div className="flex items-baseline gap-2 px-0.5">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{moment.label}</h3>
+            <p className="text-[10px] text-[color:var(--muted)] truncate">{moment.aide}</p>
+          </div>
+          {liste.map((modele) => {
+            const dit = t.studio.habillages[modele.id] || { label: modele.id, apercu: '' };
+            return (
+              <button
+                key={modele.id}
+                type="button"
+                onClick={() => onChoisir(modele.id)}
+                className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 motion-tap text-left"
+              >
+                <span className="text-2xl" aria-hidden="true">{modele.emoji}</span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-[color:var(--ink)]">{dit.label}</p>
+                  <p className="text-xs text-[color:var(--muted)]">{dit.apercu}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={onAnnuler}
+        className="text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)] text-center mt-1 transition-colors"
+      >
+        {t.studio.panneaux.annuler}
+      </button>
+    </div>
+  );
+}
+
 export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, inline = false }) {
+  // Ce panneau annonçait `role="dialog" aria-modal="true"` sans en être un :
+  // la tabulation repartait derrière le voile, sur les boutons de la page
+  // qu'on croyait avoir quittée, et Échap ne fermait rien. En mode `inline` il
+  // n'est pas modal — il vit dans la mise en page —, donc le piège s'y tait.
+  const boiteModale = usePiegeFocus(!inline, onClose);
+  const { t } = useI18n();
   const [overlays, setOverlays] = useState(clip.overlays || []);
   const [picking, setPicking] = useState(false);
 
@@ -280,7 +473,10 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
         id: `${templateId}-${Date.now()}`,
         templateId,
         fields: {},
-        animation: 'fade',
+        // Tout habillage naissait en « Fondu », quel qu'il soit : le monteur
+        // corrigeait à chaque fois, ou livrait vingt-trois fondus. Le défaut
+        // dépend maintenant du moment du JT, et le menu reste entier.
+        animation: animationRecommandee(templateId),
         startTime: 0,
         duration: null,
       },
@@ -304,13 +500,13 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
   };
 
   const content = (
-    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-lg shadow-2xl border border-[var(--border)] max-h-[90vh] animate-in fade-in zoom-in-95 duration-200'}`}>
+    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-lg shadow-2xl border border-[var(--border)] max-h-[90vh] motion-boite'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
           <h2 className="font-bold text-[color:var(--ink)] flex items-center gap-2 text-base">
             <Layers className="text-[var(--accent)]" size={18} />
-            Animations & Habillage
+            {t.studio.panneaux.titre}
           </h2>
           <p className="text-xs text-[color:var(--muted)] truncate max-w-[150px]">{clip.name}</p>
           <button
@@ -327,8 +523,8 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
           {overlays.length === 0 && !picking && (
             <div className="text-center py-8 text-[color:var(--muted)]">
               <Layers size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Aucune animation pour ce clip.</p>
-              <p className="text-xs mt-1">Cliquez sur "Ajouter une animation" ci-dessous.</p>
+              <p className="text-sm">{t.studio.panneaux.aucuneAnimation}</p>
+              <p className="text-xs mt-1">{t.studio.panneaux.aucuneAnimationAide}</p>
             </div>
           )}
 
@@ -341,37 +537,16 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
             />
           ))}
 
-          {/* Template picker */}
+          {/* Sélecteur d'habillage */}
           {picking ? (
-            <div className="border border-[var(--accent)]/40 rounded-xl p-4 bg-[var(--accent)]/5 flex flex-col gap-2">
-              <p className="text-xs font-semibold text-[color:var(--accent)] mb-1">Choisissez un modèle :</p>
-              {CLIP_TEMPLATES.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => addOverlay(t.id)}
-                  className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 motion-tap text-left"
-                >
-                  <span className="text-2xl">{t.emoji}</span>
-                  <div>
-                    <p className="font-semibold text-sm text-[color:var(--ink)]">{t.label}</p>
-                    <p className="text-xs text-[color:var(--muted)]">{t.preview}</p>
-                  </div>
-                </button>
-              ))}
-              <button
-                onClick={() => setPicking(false)}
-                className="text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)] text-center mt-1 transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
+            <SelecteurHabillage modeles={CLIP_TEMPLATES} onChoisir={addOverlay} onAnnuler={() => setPicking(false)} />
           ) : (
             <button
               onClick={() => setPicking(true)}
               className="flex items-center justify-center gap-2 py-2.5 px-4 border-2 border-dashed border-[var(--border)] rounded-xl text-sm text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent)] transition-colors"
             >
               <Plus size={16} />
-              Ajouter une animation
+              {t.studio.panneaux.ajouterAnimation}
             </button>
           )}
         </div>
@@ -382,14 +557,14 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)] text-sm transition-colors"
           >
-            Annuler
+            {t.studio.panneaux.annuler}
           </button>
           <button
             onClick={handleSave}
             className="flex-1 py-2.5 rounded-xl bg-[var(--ink)] text-[color:var(--paper)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
           >
             <Layers size={15} />
-            Appliquer ({overlays.length} animation{overlays.length !== 1 ? 's' : ''})
+            {t.studio.panneaux.appliquer} ({overlays.length} {overlays.length !== 1 ? t.studio.panneaux.animationPlusieurs : t.studio.panneaux.animationUne})
           </button>
         </div>
     </div>
@@ -398,6 +573,7 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
 
   return (
     <div
+      ref={boiteModale}
       className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"

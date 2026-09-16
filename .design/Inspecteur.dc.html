@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Sora', ui-sans-serif, system-ui, sans-serif; background: oklch(0.145 0.022 245); }
+    a { color: #51b5e7; } a:hover { color: #7cc7ee; }
+    .sec { border: 1px solid oklch(0.36 0.025 245); border-radius: 12px; background: oklch(0.19 0.024 245); overflow: hidden; }
+    .sech { display: flex; align-items: center; gap: 9px; padding: 11px 13px; }
+    .sect { font-size: 12px; font-weight: 700; color: oklch(0.93 0.01 225); flex: 1; }
+    .secv { font-size: 11px; color: oklch(0.72 0.02 235); }
+    .secb { padding: 0 13px 13px; display: flex; flex-direction: column; gap: 11px; }
+    .lbl { font-size: 10px; font-weight: 700; color: oklch(0.72 0.02 235); text-transform: uppercase; letter-spacing: .06em; }
+    .fld { padding: 8px 11px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);
+           border-radius: 8px; font-size: 13px; color: oklch(0.93 0.01 225); }
+    .seg { display: flex; padding: 3px; gap: 3px; background: oklch(0.145 0.022 245);
+           border: 1px solid oklch(0.36 0.025 245); border-radius: 9px; }
+    .seg > div { flex: 1; text-align: center; padding: 6px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; color: oklch(0.72 0.02 235); }
+    .seg > div.on { background: #51b5e7; color: #08243c; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 700; }
+    .chev { flex: none; }
+  </style>
+</helmet>
+
+<div style="width: 420px; background: oklch(0.145 0.022 245); color: oklch(0.93 0.01 225); padding: 18px; box-sizing: border-box;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+    <div style="font-size: 15px; font-weight: 700;">Titre de reportage</div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+  </div>
+  <div style="font-size: 11px; color: oklch(0.72 0.02 235); margin-bottom: 15px;">rush-douala.mp4 · 0,0 s → fin</div>
+
+  <div style="display: flex; flex-direction: column; gap: 9px;">
+
+    <!-- TEXTE : ouvert, c'est ce qu'on vient faire -->
+    <div class="sec">
+      <div class="sech">
+        <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#51b5e7" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
+        <span class="sect">Texte</span>
+      </div>
+      <div class="secb">
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <span class="lbl">Titre principal</span>
+          <div class="fld">Le marché de Douala</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <span class="lbl">Sous-titre</span>
+          <div class="fld" style="color: oklch(0.72 0.02 235);">Cameroun</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOUVEMENT -->
+    <div class="sec">
+      <div class="sech">
+        <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#51b5e7" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
+        <span class="sect">Mouvement</span>
+        <span class="secv">Fondu · immobile</span>
+      </div>
+      <div class="secb">
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+            <span class="lbl">Entrée</span>
+            <div style="height: 46px; border-radius: 7px; background: linear-gradient(140deg, #0a2440, #061627);
+                        border: 1px solid #51b5e7; display: grid; place-items: center;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <div style="width: 38px; height: 4px; background: rgba(255,255,255,.9); border-radius: 1px;"></div>
+                <div style="width: 24px; height: 3px; background: rgba(255,255,255,.45); border-radius: 1px;"></div>
+              </div>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; text-align: center;">Fondu</span>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+            <span class="lbl">Pendant</span>
+            <div style="height: 46px; border-radius: 7px; background: oklch(0.145 0.022 245);
+                        border: 1px solid oklch(0.36 0.025 245); display: grid; place-items: center;
+                        font-size: 11px; color: oklch(0.72 0.02 235);">Immobile</div>
+            <span style="font-size: 11px; color: oklch(0.72 0.02 235); text-align: center;">Modifier</span>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: oklch(0.72 0.02 235); line-height: 1.45;">
+          La sortie reprend l'entrée. <span style="color: #51b5e7;">La choisir séparément</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TYPOGRAPHIE : par rôle, pas par nom de police -->
+    <div class="sec">
+      <div class="sech">
+        <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#51b5e7" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
+        <span class="sect">Typographie</span>
+        <span class="secv">Charte JT</span>
+      </div>
+      <div class="secb">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span class="lbl">Caractère</span>
+          <div class="seg">
+            <div class="on">Titrage</div>
+            <div>Texte courant</div>
+          </div>
+          <div style="font-size: 11px; color: oklch(0.72 0.02 235); line-height: 1.45;">
+            Les deux familles du JT. <span style="color: #51b5e7;">Autres polices (16)</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span class="lbl">Corps</span>
+          <div class="seg">
+            <div>Petit</div><div class="on">Normal</div><div>Grand</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COULEUR -->
+    <div class="sec">
+      <div class="sech">
+        <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2.5" stroke-linecap="round" style="transform: rotate(-90deg);"><path d="M6 9l6 6 6-6"></path></svg>
+        <span class="sect" style="color: oklch(0.72 0.02 235);">Couleur</span>
+        <div style="display: flex; gap: 3px;">
+          <div style="width: 13px; height: 13px; border-radius: 3px; background: #ffffff;"></div>
+          <div style="width: 13px; height: 13px; border-radius: 3px; background: #0d4d8b;"></div>
+          <div style="width: 13px; height: 13px; border-radius: 3px; background: #51b5e7;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLACEMENT -->
+    <div class="sec">
+      <div class="sech">
+        <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#51b5e7" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
+        <span class="sect">Placement</span>
+        <span class="secv">Bas gauche</span>
+      </div>
+      <div class="secb">
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: 78px; flex: none;">
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);"></div>
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);"></div>
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);"></div>
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);"></div>
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);"></div>
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);"></div>
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: #51b5e7;"></div>
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);"></div>
+            <div style="aspect-ratio: 16/9; border-radius: 3px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245);"></div>
+          </div>
+          <div style="font-size: 11px; color: oklch(0.72 0.02 235); line-height: 1.5;">
+            Neuf ancrages sûrs à l'antenne.<br>
+            <span style="color: #51b5e7;">Ajuster au pixel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APPARITION -->
+    <div class="sec">
+      <div class="sech">
+        <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.02 235)" stroke-width="2.5" stroke-linecap="round" style="transform: rotate(-90deg);"><path d="M6 9l6 6 6-6"></path></svg>
+        <span class="sect" style="color: oklch(0.72 0.02 235);">Apparition</span>
+        <span class="secv mono">0,0 s → fin</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 9px; margin-top: 16px;">
+    <div style="flex: 1; text-align: center; padding: 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+                border: 1px solid oklch(0.36 0.025 245); color: oklch(0.72 0.02 235);">Annuler</div>
+    <div style="flex: 2; text-align: center; padding: 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+                background: #008065; color: #ffffff;">Appliquer</div>
+  </div>
+
+  <div style="margin-top: 14px; font-size: 11px; color: oklch(0.72 0.02 235); line-height: 1.5;">
+    Six sections repliées sur leur valeur courante, au lieu de seize réglages empilés.
+    On ouvre ce qu'on veut changer.
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,7 +1,8 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Img, staticFile } from 'remotion';
+import { COULEURS, PILES, varPolice } from '../identite.js';
+import TexteJT, { FournisseurHabillage } from '../TexteJT.jsx';
 import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
-import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 import { WorldMap } from '../worldmap.jsx';
 import { BackdropALWM, Dove, DoveFlyThrough, eo } from '../broadcast.jsx';
 import { EnvatoPresenterLowerThird, EnvatoNewsLowerThird } from './envato_lower_thirds';
@@ -38,27 +39,6 @@ function Watermark({ mode = 'overlay', opacity = 0.06 }) {
     }} />
   );
 }
-// Text with entrance animation (per-char or block) + outline/halo + font.
-function Tx({ children, overlay, durationInFrames, fontFamily, baseStyle }) {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const animIn = overlay.animation || 'mask_reveal';
-  const animOut = overlay.animationOut || 'slide_out';
-  const fx = fxStyle(overlay.outline, overlay.glow);
-  const wrapperStyle = { fontFamily: ff(overlay.font, fontFamily), ...baseStyle, ...fx, ...entranceStyle(overlay, frame, fps, durationInFrames) };
-  const text = children == null ? '' : String(children);
-  
-  if (PER_CHAR.has(animIn) || PER_CHAR.has(animOut)) {
-    return (
-      <span style={wrapperStyle}>
-        {[...text].map((c, i) => (
-          <span key={i} style={{ ...charStyle(overlay, frame, fps, durationInFrames, i, text.length), whiteSpace: 'pre' }}>{c}</span>
-        ))}
-      </span>
-    );
-  }
-  return <span style={wrapperStyle}>{text}</span>;
-}
 
 // Position of an overlay: default anchor + drag delta.
 function shift(overlay) {
@@ -75,9 +55,11 @@ const px = (n) => `${n}px`;
 // bleu clair, accents diagonaux, Montserrat. (cf. charte officielle)
 // ===========================================================================
 const SLANT = 26; // décalage horizontal du bord penché (px)
-const NAVY = '#14143C';
-const ELEC = '#0046C0';
-const LIGHT = '#5BA9F7';
+// Ces trois constantes doublaient la palette de theme.js avec des valeurs
+// différentes : un même bleu ALWM sortait en #0046C0 ici et en #0057D9 là.
+// Elles pointent maintenant sur la charte (identite.js).
+const NAVY = COULEURS.encre;      // texte foncé sur cartouche clair
+const ELEC = COULEURS.structure;  // libellé, contraste tenu sur fond clair
 
 // Parallélogramme penché (les 2 bords verticaux inclinés du même angle).
 // `reveal` 0→1 anime un wipe gauche→droite via clip-path.
@@ -181,7 +163,7 @@ function NomInterview({ overlay, durationInFrames }) {
         {/* Bloc gauche (accent) ALWM TV */}
         <div style={{
           width: 160, background: cAccent, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: COL.white, fontFamily: ff(ffont, "'Montserrat ExtraBold', sans-serif"), fontSize: 24, letterSpacing: '0.04em'
+          color: COL.white, fontFamily: ff(ffont, PILES.titrage), fontSize: 24, letterSpacing: '0.04em'
         }}>
           ALWM TV
         </div>
@@ -191,8 +173,11 @@ function NomInterview({ overlay, durationInFrames }) {
           display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1,
           opacity: contentOp, transform: `translateY(${contentY}px)`,
         }}>
-          <div style={{ fontFamily: ff(ffont, "'Inter', sans-serif"), fontWeight: 800, fontSize: `${fs * 22}px`, color: cAccent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{categorie}</div>
-          <div style={{ fontFamily: ff(ffont, "'Montserrat ExtraBold', sans-serif"), fontSize: `${fs * 36}px`, color: cText, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</div>
+          {/* Décalage de 5 images : celui du ressort qui fait entrer ce
+              panneau. « ALWM TV », au-dessus, est codé en dur et reste hors
+              de l'animation de texte — ce n'est pas une saisie du monteur. */}
+          <TexteJT role="courant" delai={5} style={{ fontFamily: ff(ffont, PILES.courant), fontWeight: 800, fontSize: `${fs * 22}px`, color: cAccent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{categorie}</TexteJT>
+          <TexteJT role="titrage" delai={5} style={{ fontFamily: ff(ffont, PILES.titrage), fontSize: `${fs * 36}px`, color: cText, lineHeight: 1.1, whiteSpace: 'nowrap' }}>{corps}</TexteJT>
         </div>
       </div>
     </Box>
@@ -248,7 +233,7 @@ function LowerThirdPro({ overlay, durationInFrames }) {
           color: C.accent(COL.gold), 
           fontWeight: 700, 
           fontSize: `${(overlay.fontSize || 100) / 100 * 32}px`, 
-          fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+          fontFamily: ff(overlay.font, PILES.titrage),
           textShadow: '0 4px 8px rgba(0,0,0,0.8)',
           textTransform: 'uppercase',
           letterSpacing: '0.05em'
@@ -292,7 +277,7 @@ function GrandTitre({ overlay, durationInFrames }) {
         opacity: titleOpacity,
         textAlign: 'center',
         color: COL.white,
-        fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"),
+        fontFamily: ff(null, PILES.titrage),
         zIndex: 3,
         textShadow: '0 10px 30px rgba(0,0,0,0.8)'
       }}>
@@ -309,7 +294,7 @@ function GrandTitre({ overlay, durationInFrames }) {
           <div style={{
             fontSize: `${fs * 42}px`,
             color: COL.light,
-            fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"),
+            fontFamily: ff(null, PILES.titrage),
             marginTop: 16,
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
@@ -342,7 +327,7 @@ function EditionSpeciale({ overlay, durationInFrames }) {
         transform: `scale(${titleScale})`,
         opacity: titleOpacity,
         textAlign: 'center',
-        fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"),
+        fontFamily: ff(null, PILES.titrage),
         zIndex: 3,
         textShadow: '0 10px 40px rgba(0,0,0,0.9)'
       }}>
@@ -378,7 +363,7 @@ function TitreKaraoke({ overlay, durationInFrames }) {
         boxShadow: '0 0 40px rgba(0,0,0,0.5)',
         textTransform: 'uppercase'
       }}>
-        <Tx overlay={o} durationInFrames={durationInFrames} fontFamily="Anton">{f.title}</Tx>
+        <TexteJT as="span" role="titrage" style={{ fontFamily: ff(o.font, 'Anton') }}>{f.title}</TexteJT>
       </div>
     </Box>
   );
@@ -396,11 +381,11 @@ function TitreReportage({ overlay, durationInFrames }) {
   const outSp = isOut ? interpolate(frame - (durationInFrames - 18), [0, 18], [0, 1], { extrapolateRight: 'clamp' }) : 0;
   const reveal = isOut ? 1 - outSp : inSp;
   const fs = (overlay.fontSize || 100) / 100;
-  const fontB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  const fontB = ff(overlay.font, PILES.titrage);
+  const fontM = ff(overlay.font, PILES.courant);
   // Personnalisable : bg = bandeau titre, text = titre, accent = chevron +
   // sous-titre. Défauts = charte (navy / blanc / bleu).
-  const cBand = C.bg(COL.navy);
+  const cBand = C.bg(COL.band);
   const cTitle = C.text(COL.white);
   const cAccent = C.accent(COL.blue);
 
@@ -409,12 +394,12 @@ function TitreReportage({ overlay, durationInFrames }) {
       {/* Bandeau titre */}
       <div style={{ display: 'flex', alignItems: 'stretch' }}>
         <Para bg={cBand} reveal={reveal} padding="0" style={{ boxShadow: '0 18px 40px rgba(0,0,0,0.35)' }}>
-          <div style={{
+          <TexteJT role="titrage" style={{
             padding: '18px 56px 18px 48px',
             fontFamily: fontB, fontWeight: 800,
             fontSize: `${fs * 50}px`, color: cTitle,
             textTransform: 'uppercase', letterSpacing: '0.01em', whiteSpace: 'nowrap',
-          }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</div>
+          }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</TexteJT>
         </Para>
         {/* accent diagonal */}
         <div style={{ opacity: reveal > 0.7 ? 1 : 0, transition: 'opacity .2s' }}>
@@ -424,13 +409,19 @@ function TitreReportage({ overlay, durationInFrames }) {
       {/* Sous-titre : fond blanc, texte accent + petit carré accent à gauche */}
       <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 6, marginLeft: 18 }}>
         <div style={{ width: 14, background: cAccent, clipPath: `polygon(${SLANT * 0.5}px 0,100% 0,calc(100% - ${SLANT * 0.5}px) 100%,0 100%)` }} />
-        <Para bg={COL.white} reveal={subSp} padding="0" style={{ boxShadow: '0 10px 24px rgba(0,0,0,0.2)' }}>
-          <div style={{
+        {/* `subSp` est le ressort d'ENTRÉE : le bandeau titre au-dessus se
+            refermait (`reveal`) pendant que celui-ci restait plein. Il lui
+            faut la même variable de révélation, décalée de ses six images. */}
+        <Para bg={COL.white} reveal={isOut ? 1 - outSp : subSp} padding="0" style={{ boxShadow: '0 10px 24px rgba(0,0,0,0.2)' }}>
+          {/* Le décalage reprend celui du ressort qui révèle ce bandeau
+              (`subSp`, 6 images) : sans lui, le texte s'animerait derrière un
+              masque encore fermé. */}
+          <TexteJT role="courant" delai={6} style={{
             padding: '8px 40px 8px 28px',
             fontFamily: fontM, fontWeight: 600,
             fontSize: `${fs * 26}px`, color: cAccent,
             textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-          }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</div>
+          }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</TexteJT>
         </Para>
       </div>
     </Box>
@@ -452,8 +443,8 @@ function SignatureReportage({ overlay, durationInFrames }) {
   const moveX = interpolate(inSpring, [0, 1], [20, 0]); // mouvement sobre 20 px (charte)
   const opacity = interpolate(inSpring, [0, 1], [0, 1]);
   const fs = (overlay.fontSize || 100) / 100;
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  const fontB = ff(overlay.font, PILES.titrage);
+  const fontM = ff(overlay.font, PILES.courant);
   const label = f.label || 'REPORTAGE';
   const name = f.texte || f.signature || f.nom || 'PRÉNOM NOM';
 
@@ -500,11 +491,11 @@ function RappelTitres({ overlay, durationInFrames }) {
         position: 'absolute', left: 0, right: 0, top: 120, textAlign: 'center', zIndex: 2,
         opacity: eo(frame, [listStart - 6, listStart + 8], [0, 1]),
       }}>
-        <span style={{
-          fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 64, color: C.text(COL.white),
+        <TexteJT as="span" role="titrage" delai={listStart - 6} style={{
+          fontFamily: ff(null, PILES.titrage), fontWeight: 800, fontSize: 64, color: C.text(COL.white),
           textTransform: 'uppercase', letterSpacing: '0.06em',
           borderBottom: `4px solid ${C.accent(COL.blue)}`, paddingBottom: 14,
-        }}>{f.titre || 'RAPPEL DES TITRES'}</span>
+        }}>{f.titre || 'RAPPEL DES TITRES'}</TexteJT>
       </div>
 
       <div style={{ position: 'absolute', left: 400, right: 400, top: 320, zIndex: 2 }}>
@@ -520,9 +511,9 @@ function RappelTitres({ overlay, durationInFrames }) {
               padding: '24px 0', borderBottom: `1px solid ${C.accent('rgba(74,163,255,0.18)')}`,
             }}>
               <span style={{ width: 16, height: 16, background: C.accent(COL.blue), transform: 'rotate(45deg)', flexShrink: 0 }} />
-              <span style={{
-                color: C.text(COL.white), fontSize: 42, fontFamily: ff(null, "'Inter', sans-serif"), fontWeight: 500, lineHeight: 1.2,
-              }}>{titre}</span>
+              <TexteJT as="span" role="courant" delai={delay} style={{
+                color: C.text(COL.white), fontSize: 42, fontFamily: ff(null, PILES.courant), fontWeight: 500, lineHeight: 1.2,
+              }}>{titre}</TexteJT>
             </div>
           );
         })}
@@ -541,12 +532,12 @@ function SousTitre({ overlay, durationInFrames }) {
         color: C.text(COL.white), 
         fontSize: 38, 
         padding: '12px 80px',
-        fontFamily: ff(overlay.font, "'Inter', sans-serif"),
+        fontFamily: ff(overlay.font, PILES.courant),
         fontWeight: 500,
         letterSpacing: '0.02em',
         textShadow: '0 4px 10px rgba(0,0,0,0.8)'
       }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames}>{f.texte}</Tx>
+        <TexteJT as="span" role="courant">{f.texte}</TexteJT>
       </div>
     </Box>
   );
@@ -567,7 +558,7 @@ function BandeauPays({ overlay, durationInFrames }) {
         background: C.bg(COL.red), 
         padding: '12px 40px',
         color: C.text(COL.white), 
-        fontFamily: "'Montserrat', sans-serif", 
+        fontFamily: PILES.titrage, 
         fontWeight: 900,
         fontSize: 36, 
         textAlign: 'center', 
@@ -586,13 +577,21 @@ function FlashInfo({ overlay, durationInFrames }) {
   const f = overlay.fields || {};
   const C = pickColors(overlay);
   const frame = useCurrentFrame();
-  const y = interpolate(frame, [0, 15], [-20, 0], { extrapolateRight: 'clamp' });
-  const op = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
+  // Il recevait `durationInFrames` et ne le lisait jamais : le cartouche
+  // restait plein jusqu'à la coupe. Sa sortie est la symétrique de son
+  // entrée — il remonte et s'efface sur les douze dernières images.
+  const SORTIE = 12;
+  const debutSortie = durationInFrames - SORTIE;
+  const sortie = frame > debutSortie
+    ? interpolate(frame - debutSortie, [0, SORTIE], [0, 1], { extrapolateRight: 'clamp' })
+    : 0;
+  const y = interpolate(frame, [0, 15], [-20, 0], { extrapolateRight: 'clamp' }) - sortie * 20;
+  const op = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' }) * (1 - sortie);
   return (
     <Box overlay={overlay} style={{ left: 80, top: 80, opacity: op, transform: `translateY(${y}px)` }}>
       <div style={{ width: 340, height: 80, display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{ background: C.bg(COL.blue), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.white), fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.titre || 'FLASH'}</div>
-        <div style={{ background: C.accent(COL.white), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.black), fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.texte || 'INFO'}</div>
+        <TexteJT role="titrage" style={{ background: C.bg(COL.blue), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.white), fontFamily: ff(null, PILES.titrage), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.titre || 'FLASH'}</TexteJT>
+        <TexteJT role="courant" delai={6} style={{ background: C.accent(COL.white), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.black), fontFamily: ff(null, PILES.titrage), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.texte || 'INFO'}</TexteJT>
       </div>
     </Box>
   );
@@ -606,27 +605,37 @@ function BreakingNews({ overlay, durationInFrames }) {
   const { fps } = useVideoConfig();
   const title = (f.titre || 'BREAKING NEWS').toUpperCase();
   const subtitle = (f.texte || 'ALERTE INFO').toUpperCase();
-  const fontB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
+  const fontB = ff(overlay.font, PILES.titrage);
   // Flash bleu d'entrée ~200 ms.
   const flash = eo(frame, [0, fps * 0.2, fps * 0.45], [1, 0.5, 0]);
   const titleScale = eo(frame, [fps * 0.1, fps * 0.9], [1.05, 1]);
   const titleOp = eo(frame, [fps * 0.1, fps * 0.6], [0, 1]);
+  // Lui aussi recevait sa durée sans jamais la lire : l'alerte plein écran
+  // était coupée net. Elle s'efface maintenant sur une demi-seconde.
+  const SORTIE = Math.round(fps * 0.5);
+  const debutSortie = durationInFrames - SORTIE;
+  const sortie = frame > debutSortie
+    ? interpolate(frame - debutSortie, [0, SORTIE], [0, 1], { extrapolateRight: 'clamp' })
+    : 0;
   // Marquee bas (continu, ~120 px/s).
   const marqueeText = `${subtitle}   •   `.repeat(8);
   const mx = -((frame * (120 / fps)) % 1600);
   const fs = (overlay.fontSize || 100) / 100;
 
   return (
-    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: 1 - sortie, transform: `scale(${1 - sortie * 0.04})` }}>
       <BackdropALWM globeOpacity={0.16} />
       {/* Lueur centrale */}
       <div style={{ position: 'absolute', width: 1100, height: 360, background: 'radial-gradient(ellipse, rgba(0,87,217,0.45) 0%, transparent 70%)', filter: 'blur(50px)' }} />
-      <div style={{
+      <TexteJT role="titrage" delai={Math.round(fps * 0.1)} style={{
         position: 'relative', zIndex: 3, transform: `scale(${titleScale})`, opacity: titleOp,
         fontFamily: fontB, fontWeight: 800, fontSize: `${fs * 130}px`, color: C.text(COL.white),
         textTransform: 'uppercase', letterSpacing: '0.02em', textShadow: '0 14px 40px rgba(0,0,0,0.6)',
-      }}>{title}</div>
-      {/* Bandeau marquee bas */}
+      }}>{title}</TexteJT>
+      {/* Bandeau marquee bas. Il reste hors du moteur d'animation : son
+          défilement EST son mouvement, et le découper lettre par lettre
+          produirait plusieurs centaines de <span> pour un texte répété seize
+          fois. Le titre au-dessus porte le mouvement choisi par le monteur. */}
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 60, height: 64, background: C.bg(COL.blue), display: 'flex', alignItems: 'center', overflow: 'hidden', zIndex: 3 }}>
         <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${mx}px)`, color: C.text(COL.white), fontFamily: fontB, fontWeight: 700, fontSize: 30, letterSpacing: '0.06em' }}>
           {marqueeText}{marqueeText}
@@ -649,7 +658,7 @@ function ScoreResultat({ overlay, durationInFrames }) {
         background: `linear-gradient(180deg, ${C.bg(COL.navy)} 0%, ${C.bg(COL.dark)} 100%)`, 
         color: C.text(COL.white), 
         padding: '16px 40px', 
-        fontFamily: "'Montserrat', sans-serif", 
+        fontFamily: PILES.titrage, 
         fontWeight: 800,
         fontSize: 50,
         borderRadius: 12,
@@ -685,8 +694,8 @@ function HorlogeDate({ overlay, durationInFrames }) {
         border: `1px solid ${C.accent('rgba(255,255,255,0.15)')}`,
         boxShadow: '0 10px 20px rgba(0,0,0,0.3)'
       }}>
-        <span style={{ color: C.text(COL.white), fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 36, letterSpacing: '0.05em' }}>{f.heure}</span>
-        <span style={{ color: C.accent(COL.gold), fontSize: 22, marginLeft: 16, fontFamily: "'Inter', sans-serif", fontWeight: 600, textTransform: 'uppercase' }}>{f.date}</span>
+        <span style={{ color: C.text(COL.white), fontFamily: PILES.titrage, fontWeight: 700, fontSize: 36, letterSpacing: '0.05em' }}>{f.heure}</span>
+        <span style={{ color: C.accent(COL.gold), fontSize: 22, marginLeft: 16, fontFamily: PILES.courant, fontWeight: 600, textTransform: 'uppercase' }}>{f.date}</span>
       </div>
     </Box>
   );
@@ -703,8 +712,8 @@ function AnnonceCard({ overlay, durationInFrames, label, defaultText, snappy }) 
   const isOut = frame > durationInFrames - 16;
   const reveal = isOut ? interpolate(frame - (durationInFrames - 16), [0, 16], [1, 0], { extrapolateRight: 'clamp' }) : sp;
   const fs = (overlay.fontSize || 100) / 100;
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  const fontB = ff(overlay.font, PILES.titrage);
+  const fontM = ff(overlay.font, PILES.courant);
   return (
     <Box overlay={overlay} style={{ left: 1320, top: 800 }}>
       <div style={{ display: 'flex', alignItems: 'stretch', filter: 'drop-shadow(0 14px 30px rgba(0,0,0,0.25))' }}>
@@ -752,7 +761,7 @@ function Publicite({ overlay, durationInFrames }) {
           transform: `scale(${textScale})`,
           opacity: textOp,
           fontSize: 160,
-          fontFamily: ff(overlay.font, "'Montserrat', sans-serif"),
+          fontFamily: ff(overlay.font, PILES.titrage),
           fontWeight: 900,
           color: C.text(COL.white),
           letterSpacing: '0.15em',
@@ -808,8 +817,8 @@ function CompteARebours({ overlay, durationInFrames }) {
   // Charte : carte blanche penchée, label bleu "NOUS REVENONS DANS UN
   // INSTANT" + compteur navy. Flip digits navy sur cellules claires.
   const fs = (overlay.fontSize || 100) / 100;
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  const fontB = ff(overlay.font, PILES.titrage);
+  const fontM = ff(overlay.font, PILES.courant);
   const inSp = spring({ frame, fps, config: { damping: 18, stiffness: 110 } });
   const label = f.label || 'NOUS REVENONS\nDANS UN INSTANT';
 
@@ -844,7 +853,7 @@ function LaSpeciale({ overlay, durationInFrames }) {
   const scale = eo(frame, [0, fps], [1.05, 1]);
   const op = eo(frame, [0, fps * 0.7], [0, 1]);
   const fs = (overlay.fontSize || 100) / 100;
-  const fontB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
+  const fontB = ff(overlay.font, PILES.titrage);
   // Découpe "ÉDITION SPÉCIALE" → ligne 1 blanche, ligne 2 (dernier mot) bleu.
   const raw = (f.texte || 'ÉDITION SPÉCIALE').trim();
   const words = raw.split(/\s+/);
@@ -889,28 +898,30 @@ function FinMerci({ overlay, durationInFrames }) {
   // Fade out général sur la dernière seconde.
   const globalOut = durationInFrames > fps ? eo(frame, [durationInFrames - fps, durationInFrames], [1, 0]) : 1;
   const fs = (overlay.fontSize || 100) / 100;
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
-  const fontB = ff(overlay.font, "'Montserrat Bold', sans-serif");
+  const fontM = ff(overlay.font, PILES.courant);
+  const fontB = ff(overlay.font, PILES.titrage);
 
   return (
     <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, opacity: globalOut }}>
       <BackdropALWM />
       <DoveFlyThrough fromF={doveFrom} toF={doveTo} y={30} size={240} />
       <AbsoluteFill style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 50 }}>
-        <div style={{
+        <TexteJT role="titrage" delai={Math.round(fps * 1.0)} style={{
           opacity: textOp,
           fontSize: `${fs * 56}px`, fontFamily: fontM, fontWeight: 500,
           color: C.colorTextMain || COL.white, letterSpacing: '0.02em',
           textShadow: '0 10px 24px rgba(0,0,0,0.5)',
         }}>
           {f.titre || f.texte || 'Merci de votre fidélité'}
-        </div>
+        </TexteJT>
         <div style={{ width: 2, height: 90, background: C.colorAccent || 'rgba(74,163,255,0.5)', opacity: logoOp }} />
         <div style={{ opacity: logoOp, transform: `scale(${logoScale})`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 320, objectFit: 'contain', filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.6))' }} />
-          <div style={{ fontFamily: fontM, fontWeight: 500, fontSize: `${fs * 22}px`, color: C.colorTextAccent || COL.light, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+          {/* Version fond sombre : le bloc-marque officiel est dessine pour
+              un fond clair et arriverait ici dans sa carte blanche. */}
+          <Img src={staticFile('images/alwm-logo-sombre.png')} style={{ width: 320, objectFit: 'contain', filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.6))' }} />
+          <TexteJT role="courant" delai={Math.round(fps * 2.4)} style={{ fontFamily: fontM, fontWeight: 500, fontSize: `${fs * 22}px`, color: C.colorTextAccent || COL.light, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
             {f.sous_titre || "L'ACTUALITÉ EN CONTINU"}
-          </div>
+          </TexteJT>
         </div>
       </AbsoluteFill>
     </Box>
@@ -928,8 +939,8 @@ function IntroJT({ overlay, durationInFrames }) {
   const D = durationInFrames || fps * 10;
   // Bornes des 4 séquences (proportionnelles à la durée totale).
   const s1 = D * 0.2, s2 = D * 0.5, s3 = D * 0.7;
-  const fontXB = ff(overlay.font, "'Montserrat ExtraBold', sans-serif");
-  const fontM = ff(overlay.font, "'Montserrat Medium', sans-serif");
+  const fontXB = ff(overlay.font, PILES.titrage);
+  const fontM = ff(overlay.font, PILES.courant);
   const words = (f.mots && String(f.mots).trim())
     ? String(f.mots).split(/[•,\n]+/).map((w) => w.trim()).filter(Boolean)
     : ['ACTUALITÉ', 'POLITIQUE', 'ÉCONOMIE', 'SPORT', 'CULTURE', 'MONDE'];
@@ -984,7 +995,7 @@ function IntroJT({ overlay, durationInFrames }) {
                 : interpolate(wf, [0, step / 2, step], [0, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
               if (op <= 0) return null;
               const y = eo(wf, [0, 8], [40, 0]);
-              return <div key={i} style={{ position: 'absolute', inset: 0, textAlign: 'center', opacity: op, transform: `translateY(${y}px)`, fontFamily: fontXB, fontWeight: 800, fontSize: 88, color: C.text(COL.white), letterSpacing: '0.04em', lineHeight: '120px', textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>{w}</div>;
+              return <TexteJT key={i} role="titrage" delai={s2 + i * step} style={{ position: 'absolute', inset: 0, textAlign: 'center', opacity: op, transform: `translateY(${y}px)`, fontFamily: fontXB, fontWeight: 800, fontSize: 88, color: C.text(COL.white), letterSpacing: '0.04em', lineHeight: '120px', textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>{w}</TexteJT>;
             })}
           </div>
         </AbsoluteFill>
@@ -994,10 +1005,10 @@ function IntroJT({ overlay, durationInFrames }) {
       <DoveFlyThrough fromF={s3} toF={s3 + fps * 1.6} y={28} size={240} />
       {frame >= s3 && (
         <AbsoluteFill style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
-          <Img src={staticFile('images/alwm-logo.png')} style={{ width: 460, objectFit: 'contain', opacity: logoOp, transform: `scale(${logoScale})`, filter: 'drop-shadow(0 14px 30px rgba(0,0,0,0.6))' }} />
-          <div style={{ opacity: jtOp, transform: `scale(${jtScale})`, fontFamily: fontXB, fontWeight: 800, fontSize: 84, color: C.text(COL.white), letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <Img src={staticFile('images/alwm-logo-sombre.png')} style={{ width: 460, objectFit: 'contain', opacity: logoOp, transform: `scale(${logoScale})`, filter: 'drop-shadow(0 14px 30px rgba(0,0,0,0.6))' }} />
+          <TexteJT role="titrage" delai={jtOpStart} style={{ opacity: jtOp, transform: `scale(${jtScale})`, fontFamily: fontXB, fontWeight: 800, fontSize: 84, color: C.text(COL.white), letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {f.titre || 'LE JOURNAL'}
-          </div>
+          </TexteJT>
         </AbsoluteFill>
       )}
     </Box>
@@ -1031,10 +1042,10 @@ function TransitionReportage({ overlay, durationInFrames }) {
       </div>
       
       <AbsoluteFill style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ 
+        <TexteJT role="titrage" style={{ 
           opacity: titleOpacity, 
           transform: `scale(${titleScale})`,
-          fontFamily: ff(overlay.font, "'Montserrat ExtraBold', sans-serif"),
+          fontFamily: ff(overlay.font, PILES.titrage),
           fontWeight: 800,
           fontSize: 100,
           color: C.text(COL.white),
@@ -1043,7 +1054,7 @@ function TransitionReportage({ overlay, durationInFrames }) {
           textShadow: '0 10px 30px rgba(0,0,0,0.8)'
         }}>
           {f.titre || f.texte || 'REPORTAGE'}
-        </div>
+        </TexteJT>
       </AbsoluteFill>
     </Box>
   );
@@ -1111,14 +1122,29 @@ export function Overlay({ overlay, durationInFrames }) {
   // les couleurs UI + la police via variable CSS héritée par les enfants.
   if (ENVATO_IDS.has(overlay.templateId)) {
     const merged = injectColors(overlay);
-    const fontVar = overlay.font ? { '--ov-font': `'${overlay.font}', ` } : {};
+    // La variable est TOUJOURS définie, même sans choix de police, et sa
+    // valeur ne porte pas de virgule finale : elle en portait une, ce qui
+    // insérait une famille vide dans la déclaration des gabarits et la rendait
+    // invalide — les quinze habillages sortaient alors dans la serif par
+    // défaut du navigateur. Les deux moitiés vivent maintenant dans
+    // `identite.js`, côte à côte, et un test les compose.
+    const fontVar = varPolice(overlay);
     return (
-      <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, ...fontVar }}>
-        <Comp overlay={merged} durationInFrames={durationInFrames} />
-      </Box>
+      <FournisseurHabillage overlay={overlay} durationInFrames={durationInFrames}>
+        <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, ...fontVar }}>
+          <Comp overlay={merged} durationInFrames={durationInFrames} />
+        </Box>
+      </FournisseurHabillage>
     );
   }
 
   // Composants natifs ALWM : Box + pickColors déjà intégrés en interne.
-  return <Comp overlay={overlay} durationInFrames={durationInFrames} />;
+  // Le fournisseur enveloppe les deux branches : c'est le seul point de passage
+  // commun, et il évite d'enfiler trois propriétés à travers 23 gabarits pour
+  // qu'une ligne de texte connaisse la durée de son habillage.
+  return (
+    <FournisseurHabillage overlay={overlay} durationInFrames={durationInFrames}>
+      <Comp overlay={overlay} durationInFrames={durationInFrames} />
+    </FournisseurHabillage>
+  );
 }

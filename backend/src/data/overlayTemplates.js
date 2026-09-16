@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { COULEURS, versAss } from '../../../remotion/src/identite.js';
 
 /**
  * Overlay templates for the video editor.
@@ -20,14 +21,19 @@ import path from 'path';
  */
 
 // Colours are ASS BGR (&HBBGGRR&). Alpha is &HAA& (00 = opaque, FF = clear).
-const COL_WHITE = '&HFFFFFF&';
-const COL_BLACK = '&H000000&';
-const COL_GOLD = '&H00D7FF&'; // #FFD700
-const COL_NAVY = '&H3C1414&'; // deep blue band
-const COL_RED = '&H1818D8&'; // alert red
-const COL_DARK = '&H1A1A2E&'; // near-black band
-const COL_BLUE = '&HC04600&'; // bleu info (#0046C0)
-const COL_INK = '&H1A1A1A&'; // texte sombre sur fond clair
+// Une quatrieme palette vivait ici, en BGR et sans rapport avec les trois
+// autres : le bleu du JT y valait #0046C0 quand Remotion le rendait en
+// #0057D9. Ces constantes derivent maintenant de la charte, comme le rendu
+// Remotion et l'apercu du studio. `versAss` fait la conversion en BGR.
+const COL_WHITE = versAss(COULEURS.papier);
+const COL_BLACK = versAss(COULEURS.encre);
+const COL_NAVY = versAss(COULEURS.structure);
+const COL_RED = versAss(COULEURS.alerte);
+const COL_DARK = versAss(COULEURS.fond);
+const COL_BLUE = versAss(COULEURS.accentSoutenu);
+const COL_INK = versAss(COULEURS.encre);
+// L'or reste hors charte : accent ponctuel des habillages non enregistres.
+const COL_GOLD = '&H00D7FF&';
 const COL_TICKER = '&H2F1A0A&'; // fond bandeau ticker (#0A1A2F)
 
 // Familles de polices disponibles (doivent matcher les TTF de backend/fonts,
@@ -122,6 +128,43 @@ function renderText(raw, animation, font, outline, glow) {
   }
 }
 
+/**
+ * Animations que l'interface a proposées sans que le serveur les accepte.
+ *
+ * Le studio offrait « Slide Left », « Slide Right » et « Allumage Néon » ;
+ * le validateur de `/editor/concat` les refusait avec un 400, et le monteur
+ * voyait « Générer le master » échouer sans comprendre pourquoi. Elles ne
+ * sont plus proposées, mais un montage enregistré avant cette correction les
+ * porte encore : les refuser aujourd'hui rendrait ce montage définitivement
+ * inexportable.
+ *
+ * On les accepte donc en entrée et on les ramène à leur équivalent connu.
+ * Aucune n'était rendue de toute façon : le moteur retombe sur un fondu.
+ */
+export const ANIMATIONS_HERITEES = {
+  // Proposées par le studio sans que le serveur les accepte (lot 1).
+  slide_left: 'slide',
+  slide_right: 'slide',
+  neon_on: 'fade',
+  // Retirées du menu quand le moteur d'animation est devenu réel : elles
+  // n'ont jamais rien produit à l'image, faute de moteur pour les lire.
+  // Chacune retombe sur le mouvement retenu le plus proche.
+  bounce: 'pop',
+  rotate: 'scale',
+  flip3d: 'scale',
+  letterspread: 'cascade',
+  // Boucles retirées, jamais implémentées nulle part.
+  kerning_shake: 'fade',
+  neon_flicker: 'fade',
+};
+
+const ANIMATIONS_HERITEES_IDS = Object.keys(ANIMATIONS_HERITEES);
+
+/** Ramène une animation héritée à sa remplaçante. Laisse tout le reste intact. */
+export function normaliserAnimation(id) {
+  return ANIMATIONS_HERITEES[id] || id;
+}
+
 // Liste unique des animations d'entrée valides (source de vérité pour le
 // validateur de route + l'UI front).
 export const TEXT_ANIMATIONS_IDS = [
@@ -132,7 +175,11 @@ export const TEXT_ANIMATIONS_IDS = [
   // (cf. default du switch dans renderText).
   'mask_reveal', 'outline_morph', 'letterspread', 'weight_pulse',
   'kerning_shake', 'glitch_in',
-];
+  // Valeurs héritées, tolérées mais plus proposées (voir ANIMATIONS_HERITEES).
+  // Dédoublonnées : plusieurs d'entre elles figuraient déjà ci-dessus — elles
+  // étaient acceptées par le serveur, simplement jamais rendues à l'image.
+  ...ANIMATIONS_HERITEES_IDS,
+].filter((id, i, tous) => tous.indexOf(id) === i);
 
 // Animations qui nécessitent un split par caractère (N Dialogues per-char).
 const PER_CHAR_ANIMS = new Set(['cascade', 'charpop', 'wave']);
@@ -236,6 +283,72 @@ function subtitleTags(style) {
   return `${align}${fontTag(style?.font)}\\fs${fs}\\1c&HFFFFFF&\\3c&H000000&\\bord3\\shad1`;
 }
 
+/**
+ * Rend n'importe quel habillage en lignes ASS, à partir des champs qu'il déclare.
+ *
+ * Chaque modèle portait autrefois son propre `buildAss`. Ces constructeurs ont
+ * disparu lors d'une réécriture du catalogue, mais `generateAssFile` a continué
+ * de les appeler : toute liste d'habillages non vide levait
+ * « template.buildAss is not a function ». Côté clip l'erreur était avalée et
+ * les titres disparaissaient en silence ; côté habillage global elle faisait
+ * échouer l'assemblage entier. Les tests ne passaient qu'un tableau vide, donc
+ * l'intégration continue ne voyait rien.
+ *
+ * Ce rendu est volontairement sobre : `libass` est le repli de secours, pas la
+ * référence visuelle — celle-ci est Remotion (RENDERER=remotion en production,
+ * cf. docs/CLOUD_RUN.md). Il doit produire un JT regardable, avec un texte
+ * lisible et bien placé, pas une copie au pixel des habillages Remotion.
+ */
+function buildAssGenerique(template, overlay, startStr, endStr) {
+  const ancre = DEFAULT_ANCHOR[template.id] || { x: 0, y: 950 };
+  const C = pickColors(overlay);
+  const couleurTexte = C.text(COL_WHITE);
+
+  // Un habillage ancré au centre de l'image se compose centré ; les autres
+  // s'alignent à gauche, comme les bandeaux bas dont ils viennent.
+  const centre = ancre.x > 600;
+  const alignement = centre ? '\\an5' : '\\an7';
+  const echelle = overlay.fontSize != null ? Number(overlay.fontSize) / 100 : 1;
+  const facteur = Number.isFinite(echelle) && echelle > 0 ? echelle : 1;
+
+  const valeurs = (template.fields || [])
+    .map((champ) => ({ cle: champ.key, texte: safe(overlay?.fields?.[champ.key]) }))
+    .filter((v) => v.texte);
+
+  if (!valeurs.length) return [];
+
+  // Hauteur du bloc, calculée avant de placer quoi que ce soit : empiler
+  // naïvement vers le bas depuis un ancrage déjà situé à y=1000 poussait la
+  // deuxième ligne à y=1073, hors d'une image qui s'arrête à 1080.
+  const tailles = valeurs.map((_, i) => Math.round((i === 0 ? 54 : 34) * facteur));
+  const interlignes = tailles.map((t) => Math.round(t * 1.35));
+  const hauteur = interlignes.reduce((a, b) => a + b, 0) - (interlignes.at(-1) - tailles.at(-1));
+
+  const MARGE_BASSE = 1080 - 40;
+  let y = centre
+    ? ancre.y - Math.round(hauteur / 2) + Math.round(tailles[0] / 2)
+    : Math.min(ancre.y, MARGE_BASSE - hauteur);
+  y = Math.max(40, y);
+
+  const lignes = [];
+  valeurs.forEach((v, i) => {
+    // Le premier champ est le titre, les suivants le précisent.
+    const taille = tailles[i];
+    const { prefix, body } = renderText(
+      v.texte, overlay.animation, overlay.font, overlay.outline, overlay.glow
+    );
+    const x = centre ? ancre.x : ancre.x + 60;
+    lignes.push(
+      `Dialogue: 3,${startStr},${endStr},Default,,0,0,0,,`
+      + `{${alignement}\\pos(${Math.round(x)},${Math.round(y)})\\fs${taille}`
+      + `\\1c${couleurTexte}${prefix}}${body}`
+    );
+    y += interlignes[i];
+  });
+
+  return lignes;
+}
+
 export function generateAssFile(overlays, workDir, ctx = {}, subtitles = null, subtitleStyle = null) {
   const assFilename = `overlays_${Date.now()}_${Math.floor(Math.random() * 1000)}.ass`;
   const absoluteAssPath = path.join(workDir, assFilename);
@@ -267,7 +380,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const startTimeStr = formatAssTime(startSec);
     const endTimeStr = formatAssTime(endSec);
 
-    let dialogues = template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec });
+    // Un modèle peut fournir son propre constructeur ; aucun ne le fait
+    // aujourd'hui, et le rendu générique prend le relais.
+    let dialogues = typeof template.buildAss === 'function'
+      ? template.buildAss(overlay, startTimeStr, endTimeStr, { ...ctx, startSec, endSec, durSec })
+      : buildAssGenerique(template, overlay, startTimeStr, endTimeStr);
+    if (!Array.isArray(dialogues)) dialogues = [];
     // Drag : si position custom, décaler le template comme un bloc.
     const def = DEFAULT_ANCHOR[overlay.templateId];
     if (def) {
@@ -301,242 +419,189 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   return absoluteAssPath;
 }
 
+/**
+ * Le catalogue cote serveur.
+ *
+ * Il ne sert qu'a deux choses : valider l'identifiant d'un habillage recu du
+ * studio, et retrouver son gabarit pour le repli ASS. Il ne porte donc que ce
+ * que le rendu lit — identifiant, portee, cles de champ — et plus aucune
+ * donnee d'affichage.
+ *
+ * Il en portait : libelles, emojis, apercus, intitules et exemples de champ,
+ * recopies du studio et deja divergents. Une donnee d'affichage que rien
+ * n'affiche ne peut que pourrir, et c'est cette famille de derive qui avait
+ * laisse deux habillages lire des champs que le catalogue ne declarait pas.
+ * `data-mirror.test.js` compare maintenant les deux catalogues sur ce qui
+ * compte : les identifiants, la portee et les cles de champ.
+ */
 export const OVERLAY_TEMPLATES = [
   {
     id: 'intro_jt',
-    label: 'Intro du JT (Générique)',
-    emoji: '🌍',
     scope: 'global',
-    preview: 'Générique d\'ouverture officiel ALWM TV.',
     fields: [
-      { key: 'titre', label: 'Titre final', placeholder: 'LE JOURNAL' },
-      { key: 'mots', label: 'Mots-clés', placeholder: 'ACTUALITÉ • MONDE' }
+      { key: 'titre' },
+      { key: 'mots' }
     ]
   },
   {
     id: 'titre_reportage',
-    label: 'Titre Reportage (Lower Third)',
-    emoji: '📰',
-    preview: 'Bandeau inférieur bleu pour le nom du reportage.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'transition_reportage',
-    label: 'Transition Reportage (Plein Écran)',
-    emoji: '🎬',
-    preview: 'Transition plein écran avec Globe et titre.',
+    scope: 'global',
     fields: [
-      { key: 'titre', label: 'Texte Transition', placeholder: 'REPORTAGE' }
+      { key: 'titre' }
     ]
   },
   {
     id: 'envato_presenter',
-    label: 'Présentateur (Envato Premium)',
-    emoji: '🎙️',
-    preview: 'Bandeau 3 lignes élégant avec masques de révélation.',
     fields: [
-      { key: 'context', label: 'Contexte (Surtitre)', placeholder: 'TONY NIGHT SHOW' },
-      { key: 'name', label: 'Prénom & Nom', placeholder: 'MARINA FORESTER' },
-      { key: 'title', label: 'Fonction (Sous-titre)', placeholder: 'ADMINISTRATOR' }
+      { key: 'context' },
+      { key: 'name' },
+      { key: 'title' }
     ]
   },
   {
     id: 'envato_news',
-    label: 'Alerte News (Envato Premium)',
-    emoji: '🔥',
-    preview: 'Bandeau bicolore à glissement pour les titres chauds.',
     fields: [
-      { key: 'tag', label: 'Label (ex: BREAKING NEWS)', placeholder: 'BREAKING NEWS' },
-      { key: 'headline', label: 'Gros titre', placeholder: 'LE GROS TITRE DE L\'ACTUALITÉ' }
+      { key: 'tag' },
+      { key: 'headline' }
     ]
   },
   {
     id: 'envato_big_title',
-    label: 'Grand Titre (Envato Premium)',
-    emoji: '💥',
-    preview: 'Titre massif plein écran avec animation élastique biseautée.',
     fields: [
-      { key: 'titre', label: 'Gros Titre', placeholder: 'WHAT IS GOING ON IN THE WORLD?' }
+      { key: 'titre' }
     ]
   },
   {
     id: 'envato_ticker',
-    label: 'Barre Défilante (Envato Premium)',
-    emoji: '📜',
     scope: 'global',
-    preview: 'Bandeau d\'information continu en bas de l\'écran.',
     fields: [
-      { key: 'tag', label: 'Label (ex: LIVE)', placeholder: 'LIVE' },
-      { key: 'text1', label: 'Info 1', placeholder: 'Texte défilant...' },
-      { key: 'text2', label: 'Info 2', placeholder: 'Texte défilant...' }
+      { key: 'tag' },
+      { key: 'text1' },
+      { key: 'text2' }
     ]
   },
   {
     id: 'envato_split_screen',
-    label: 'Écran Scindé (Envato Premium)',
-    emoji: '✂️',
-    preview: 'Séparation diagonale animée avec labels géographiques.',
     fields: [
-      { key: 'leftLocation', label: 'Titre Gauche', placeholder: 'NEW YORK' },
-      { key: 'leftSub', label: 'Sous-titre Gauche', placeholder: 'USA' },
-      { key: 'rightLocation', label: 'Titre Droit', placeholder: 'CALIFORNIA' },
-      { key: 'rightSub', label: 'Sous-titre Droit', placeholder: 'USA' }
+      { key: 'leftLocation' },
+      { key: 'leftSub' },
+      { key: 'rightLocation' },
+      { key: 'rightSub' }
     ]
   },
   {
     id: 'nom_interview',
-    label: 'Nom Personne (Lower Third)',
-    emoji: '🗣️',
-    preview: 'Bandeau pour présenter un invité ou journaliste.',
     fields: [
-      { key: 'nom', label: 'Prénom & Nom', placeholder: 'PRÉNOM NOM' },
-      { key: 'fonction', label: 'Fonction / Qualité', placeholder: 'FONCTION' }
+      { key: 'nom' },
+      { key: 'fonction' }
     ]
   },
   {
     id: 'flash_info',
-    label: 'Flash Info',
-    emoji: '🔴',
-    scope: 'clip',
-    preview: 'Bandeau info dynamique rouge/bleu.',
+    scope: 'global',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'FLASH INFO' },
-      { key: 'texte', label: 'Texte', placeholder: 'Sujet du flash' }
+      { key: 'titre' },
+      { key: 'texte' }
     ]
   },
   {
     id: 'breaking_news',
-    label: 'Breaking News',
-    emoji: '🚨',
-    scope: 'clip',
-    preview: 'Alerte Breaking News premium avec glitch.',
+    scope: 'global',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'BREAKING NEWS' },
-      { key: 'texte', label: 'Texte urgent', placeholder: 'Texte de l\'alerte' }
+      { key: 'titre' },
+      { key: 'texte' }
     ]
   },
   {
     id: 'rappel_titres',
-    label: 'Rappel des Titres',
-    emoji: '📑',
-    preview: 'Sommaire avec cascade de titres.',
     fields: [
-      { key: 'titre1', label: 'Titre 1', placeholder: 'Sujet 1' },
-      { key: 'titre2', label: 'Titre 2', placeholder: 'Sujet 2' },
-      { key: 'titre3', label: 'Titre 3', placeholder: 'Sujet 3' }
+      { key: 'titre1' },
+      { key: 'titre2' },
+      { key: 'titre3' }
     ]
   },
   {
     id: 'fin_merci',
-    label: 'Générique de Fin',
-    emoji: '👋',
-    preview: 'Générique de conclusion de journal.',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_minimal',
-    label: 'Titre Reportage - Minimal Line',
-    emoji: '📏',
-    preview: 'Une fine ligne s\'étire et révèle le texte.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_skew',
-    label: 'Titre Reportage - Double Skew',
-    emoji: '💥',
-    preview: 'Deux blocs obliques qui se croisent pour former le titre.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_swipe',
-    label: 'Titre Reportage - Gradient Swipe',
-    emoji: '🌈',
-    preview: 'Un balayage lumineux avec un dégradé.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_glass',
-    label: 'Titre Reportage - Glassmorphism',
-    emoji: '🪟',
-    preview: 'Un effet verre dépoli très élégant.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_massif',
-    label: 'Titre Reportage - Bloc Massif',
-    emoji: '⬛',
-    preview: 'Un titre lourd et impactant avec Drop Shadow profond.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_lt_compact',
-    label: 'Lower Third - Compact 1 Ligne',
-    emoji: '🏷️',
-    preview: 'Prénom/nom très rapide, pour les micro-trottoirs.',
     fields: [
-      { key: 'nom', label: 'Nom', placeholder: 'PRÉNOM NOM' }
+      { key: 'nom' }
     ]
   },
   {
     id: 'envato_lt_corporate',
-    label: 'Lower Third - Duo Corporate',
-    emoji: '🏢',
-    preview: 'Affichage nom/fonction très carré.',
     fields: [
-      { key: 'nom', label: 'Nom', placeholder: 'PRÉNOM NOM' },
-      { key: 'fonction', label: 'Fonction', placeholder: 'FONCTION / QUALITÉ' }
+      { key: 'nom' },
+      { key: 'fonction' }
     ]
   },
   {
     id: 'envato_lt_interview',
-    label: 'Lower Third - Interview',
-    emoji: '💬',
-    preview: 'Bandeau double pour afficher qui parle face à qui.',
     fields: [
-      { key: 'leftName', label: 'Nom Gauche', placeholder: 'JOURNALISTE' },
-      { key: 'leftRole', label: 'Rôle Gauche', placeholder: 'HÔTE' },
-      { key: 'rightName', label: 'Nom Droit', placeholder: 'INVITÉ' },
-      { key: 'rightRole', label: 'Rôle Droit', placeholder: 'EXPERT' }
+      { key: 'leftName' },
+      { key: 'leftRole' },
+      { key: 'rightName' },
+      { key: 'rightRole' }
     ]
   },
   {
     id: 'envato_loc_pin',
-    label: 'Location Pin (Lieu)',
-    emoji: '📌',
-    preview: 'Petite animation de géolocalisation.',
     fields: [
-      { key: 'location', label: 'Lieu', placeholder: 'Paris, France' }
+      { key: 'location' }
     ]
   },
   {
     id: 'envato_quote',
-    label: 'Quote Block (Citation)',
-    emoji: '❝',
-    preview: 'Magnifique pavé avec des guillemets animés.',
     fields: [
-      { key: 'quote', label: 'Citation', placeholder: 'Texte de la citation ici...' },
-      { key: 'author', label: 'Auteur', placeholder: 'Nom de l\'auteur' }
+      { key: 'quote' },
+      { key: 'author' }
     ]
   }
 ];

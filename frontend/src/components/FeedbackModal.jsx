@@ -7,6 +7,7 @@ import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
+import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
 const REJECTION_PRESETS = [
   { label: '🎙️ Son saturé / inaudible', text: 'Le son est inaudible ou saturé (bruit de fond / vent). Merci de refaire la prise avec un audio plus clair.' },
@@ -48,6 +49,9 @@ export default function FeedbackModal({
       setPhone('');
     }
   }, [initialPhone]);
+
+  // Même défaut : la boîte était annoncée modale sans l'être au clavier.
+  const boiteModale = usePiegeFocus(isOpen && !!file, onClose);
 
   if (!isOpen || !file) return null;
 
@@ -141,8 +145,9 @@ export default function FeedbackModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm motion-voile">
       <div 
+        ref={boiteModale}
         role="dialog"
         aria-modal="true"
         aria-labelledby="feedback-modal-title"

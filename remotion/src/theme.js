@@ -1,25 +1,35 @@
 import { staticFile } from 'remotion';
+import { COULEURS } from './identite.js';
 
-// Palette ALWM TV (brand officiel) :
-// - navy : bleu marine (fond habillage principal)
-// - blue : bleu électrique (accent CTA / barres / chiffres)
-// - light : bleu clair (highlights, dégradés)
-// Le rouge reste réservé à FLASH INFO / ALERTE INFO ; le gold est un accent
-// premium ponctuel (LA SPÉCIALE, score, horloge).
-// Palette officielle ALWM TV — Broadcast Package v1.0.
-// 60% bleu · 30% blanc · 10% noir. Globe + colombe + bleu = signature.
+/**
+ * `COL` n'est plus une palette : c'est une table de correspondance vers la
+ * charte (`identite.js`), gardée pour les habillages qui l'utilisent déjà.
+ *
+ * Trois palettes se contredisaient — celle-ci, une locale dans
+ * overlays/index.jsx, et la charte web relevée sur le logo. Les teintes
+ * viennent désormais toutes du logo ; seuls les rôles sont conservés, pour
+ * qu'aucun habillage ne change de hiérarchie en cours de route.
+ *
+ * Les nouveaux habillages lisent `COULEURS` directement.
+ */
 export const COL = {
-  white: '#FFFFFF',
-  black: '#0A0A0A',
+  white: COULEURS.papier,
+  black: COULEURS.encre,
+  ink: COULEURS.encre,
+  // Fond pleine image : dégradés de générique, écrans d'alerte.
+  navy: COULEURS.fond,
+  dark: COULEURS.fond,
+  // Bandeaux et cartouches pleins.
+  band: COULEURS.structure,
+  ticker: COULEURS.structure,
+  // Accents, du plus soutenu au plus clair.
+  blue: COULEURS.accentSoutenu,
+  light: COULEURS.accent,
+  grey: '#1E293B',
+  red: COULEURS.alerte,
+  // L'or reste un accent ponctuel, hors charte : il ne sert qu'aux habillages
+  // « premium » (score, horloge, édition spéciale), tous non enregistrés.
   gold: '#FFD700',
-  navy: '#031A3A',          // alwm-dark-blue
-  red: '#D81818',
-  dark: '#031A3A',
-  blue: '#0057D9',          // alwm-blue
-  light: '#4AA3FF',         // alwm-blue-light
-  grey: '#1E293B',          // alwm-grey
-  ink: '#0A0A0A',
-  ticker: '#031A3A',
 };
 
 // Polices bundlées → familles CSS. Chargées via @font-face injecté (loadFonts).

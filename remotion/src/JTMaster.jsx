@@ -10,6 +10,7 @@ import { Overlay } from './overlays/index.jsx';
 import { Ticker, LiveBadge, Logo, Subtitles } from './global.jsx';
 import { Vignette, Grain, LightSweep } from './atmosphere.jsx';
 import { Stage } from './Stage.jsx';
+import { dureeHabillage } from './mouvement.js';
 
 loadFonts();
 
@@ -54,12 +55,18 @@ function presentation(type) {
 function ClipLayer({ clip }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  // Le champ du studio annonce « vide = toute la vidéo ». Il valait 99 999
+  // images, soit 55 minutes : le test `frame > durationInFrames - 30` était
+  // alors faux en permanence et **la sortie ne se jouait jamais** — le bandeau
+  // était coupé net à la fin du plan. Un habillage sans durée hérite donc de
+  // ce qui reste de son plan, et sa sortie retrouve un sens.
+  const dureePlan = Math.max(1, secToFrames(clip.durationSec, fps));
   return (
     <AbsoluteFill>
       <Subtitles subtitles={clip.subtitles} style={clip.subtitleStyle} clipTimeSec={(clip.inPoint || 0) + frame / fps} />
       {clip.overlays && clip.overlays.map((o, i) => {
         const start = Math.max(0, secToFrames(o.startTime || 0, fps));
-        const dur = o.duration ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
+        const dur = dureeHabillage(o.duration && secToFrames(o.duration, fps), dureePlan, start);
         return (
           <Sequence key={o.id || `cl-o-${i}`} from={start} durationInFrames={dur} layout="none">
             <Overlay overlay={o} durationInFrames={dur} fps={fps} />
@@ -71,7 +78,10 @@ function ClipLayer({ clip }) {
 }
 
 export function GlobalTimelineOverlays({ timelineOverlays }) {
-  const { fps } = useVideoConfig();
+  // `durationInFrames` est bien celle du montage : cette couche n'est pas
+  // enveloppée dans une `<Sequence>` — `Stage` n'est qu'un `AbsoluteFill` mis
+  // à l'échelle. Sans elle, l'habillage global n'avait pas de sortie non plus.
+  const { fps, durationInFrames: dureeMontage } = useVideoConfig();
   if (!timelineOverlays || timelineOverlays.length === 0) return null;
 
   return (
@@ -79,7 +89,7 @@ export function GlobalTimelineOverlays({ timelineOverlays }) {
       <Stage>
         {timelineOverlays.map((o, i) => {
           const start = Math.max(0, secToFrames(o.startTime || 0, fps));
-          const dur = o.duration ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
+          const dur = dureeHabillage(o.duration && secToFrames(o.duration, fps), dureeMontage, start);
           return (
             <Sequence key={o.id || `glo-${i}`} from={start} durationInFrames={dur} layout="none">
               <Overlay overlay={o} durationInFrames={dur} fps={fps} />
@@ -92,7 +102,7 @@ export function GlobalTimelineOverlays({ timelineOverlays }) {
 }
 
 export function ImageOverlays({ imageOverlays }) {
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames: dureeMontage } = useVideoConfig();
   if (!imageOverlays || imageOverlays.length === 0) return null;
   const OVERLAY_POS = {
     tl: { left: '34px', top: '34px' },
@@ -107,7 +117,7 @@ export function ImageOverlays({ imageOverlays }) {
       <Stage>
         {imageOverlays.map((o, i) => {
           const start = Math.max(0, secToFrames(o.startTime || 0, fps));
-          const dur = o.duration ? Math.max(1, secToFrames(o.duration, fps)) : 99999;
+          const dur = dureeHabillage(o.duration && secToFrames(o.duration, fps), dureeMontage, start);
           const scale = Math.min(1, Math.max(0.05, Number(o.scale) || 0.25));
           const posStyle = (o.position && typeof o.position === 'object')
             ? { left: `${Math.round(Number(o.position.x) || 0)}px`, top: `${Math.round(Number(o.position.y) || 0)}px` }

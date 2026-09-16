@@ -1,0 +1,176 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Sora', ui-sans-serif, system-ui, sans-serif; background: oklch(0.145 0.022 245); }
+    a { color: #51b5e7; } a:hover { color: #7cc7ee; }
+    .lbl { font-size: 11px; font-weight: 700; color: oklch(0.72 0.02 235); text-transform: uppercase; letter-spacing: .06em; }
+    .sub { font-size: 10px; font-weight: 700; color: oklch(0.72 0.02 235); text-transform: uppercase; letter-spacing: .06em; }
+    .sel { width: 100%; padding: 8px 12px; background: oklch(0.19 0.024 245); border: 1px solid oklch(0.36 0.025 245);
+           border-radius: 8px; font-size: 14px; font-weight: 500; color: oklch(0.93 0.01 225); box-sizing: border-box;
+           display: flex; align-items: center; justify-content: space-between; }
+    .card { padding: 12px; background: oklch(0.145 0.022 245); border: 1px solid oklch(0.36 0.025 245); border-radius: 12px; }
+    .rng { height: 4px; border-radius: 999px; background: oklch(0.36 0.025 245); position: relative; }
+    .rng::after { content: ''; position: absolute; left: 34%; top: -4px; width: 12px; height: 12px; border-radius: 999px; background: #51b5e7; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 700; color: oklch(0.93 0.01 225); }
+    .flag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px;
+            background: oklch(0.68 0.18 28 / .16); border: 1px solid oklch(0.68 0.18 28 / .5);
+            color: oklch(0.78 0.16 28); font-size: 10px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+  </style>
+</helmet>
+
+<div style="width: 760px; background: oklch(0.145 0.022 245); color: oklch(0.93 0.01 225); padding: 28px; box-sizing: border-box;">
+
+  <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px;">
+    <div style="font-size: 22px; font-weight: 700;">Aujourd'hui</div>
+    <div style="font-size: 13px; color: oklch(0.72 0.02 235);">Panneau « Animations &amp; Habillage », un seul clip</div>
+  </div>
+  <div style="font-size: 13px; color: oklch(0.72 0.02 235); line-height: 1.55; margin-bottom: 20px; max-width: 640px;">
+    Seize réglages dans une seule colonne qui défile, sans repli ni regroupement. Les mentions en rouge sont
+    vérifiées dans le code&nbsp;: ces commandes n'ont aucun effet sur l'image rendue.
+  </div>
+
+  <div style="display: flex; gap: 20px;">
+    <!-- le panneau tel qu'il est -->
+    <div style="width: 380px; background: oklch(0.19 0.024 245); border: 1px solid oklch(0.36 0.025 245);
+                border-radius: 14px; overflow: hidden; flex: none;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px;
+                  border-bottom: 1px solid oklch(0.36 0.025 245);">
+        <div style="font-size: 14px; font-weight: 700;">Animations &amp; Habillage</div>
+        <div style="font-size: 11px; color: oklch(0.72 0.02 235);">rush-douala.mp4</div>
+      </div>
+
+      <div style="padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+        <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="lbl">Titre principal</div>
+          <div class="sel">Le marché de Douala</div>
+          <div class="lbl">Sous-titre</div>
+          <div class="sel">Cameroun</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div class="sub">Entrée</div><div class="sel" style="font-size: 12px;">Glitch In</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div class="sub">Continue</div><div class="sel" style="font-size: 12px;">Néon</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div class="sub">Sortie</div><div class="sel" style="font-size: 12px;">Blur Out</div>
+          </div>
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="lbl">Police de caractères</div>
+          <div class="sel">Par défaut (Système)</div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between;"><span class="sub">Taille</span><span class="mono">100%</span></div>
+              <div class="rng"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between;"><span class="sub">Interligne</span><span class="mono">120%</span></div>
+              <div class="rng"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="lbl">Thèmes de couleurs TV</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <div style="padding: 4px 10px; border-radius: 999px; background: #dc2626; font-size: 11px; font-weight: 600;">Urgent</div>
+            <div style="padding: 4px 10px; border-radius: 999px; background: #1e3a8a; font-size: 11px; font-weight: 600;">Info JT</div>
+            <div style="padding: 4px 10px; border-radius: 999px; background: #0f172a; font-size: 11px; font-weight: 600;">ALWM</div>
+            <div style="padding: 4px 10px; border-radius: 999px; background: #064e3b; font-size: 11px; font-weight: 600;">Éco</div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 5px;"><span class="sub">Texte</span><div style="height: 26px; border-radius: 6px; background: #ffffff; border: 1px solid oklch(0.36 0.025 245);"></div></div>
+            <div style="display: flex; flex-direction: column; gap: 5px;"><span class="sub">Fond</span><div style="height: 26px; border-radius: 6px; background: #0d4d8b; border: 1px solid oklch(0.36 0.025 245);"></div></div>
+            <div style="display: flex; flex-direction: column; gap: 5px;"><span class="sub">Accent</span><div style="height: 26px; border-radius: 6px; background: #51b5e7; border: 1px solid oklch(0.36 0.025 245);"></div></div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between;"><span class="sub">Contour</span><span class="mono">0</span></div><div class="rng"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between;"><span class="sub">Halo</span><span class="mono">0</span></div><div class="rng"></div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;"><span class="sub">Position X</span><div class="rng"></div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px;"><span class="sub">Position Y</span><div class="rng"></div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px;"><span class="sub">Échelle</span><div class="rng"></div></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+          <div style="display: flex; flex-direction: column; gap: 5px;"><span class="sub">Début (s)</span><div class="sel" style="font-size: 12px;">0</div></div>
+          <div style="display: flex; flex-direction: column; gap: 5px;"><span class="sub">Durée (s)</span><div class="sel" style="font-size: 12px;">∞</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- les constats -->
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; padding-top: 44px;">
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <span class="flag">Sans effet</span>
+        <div style="font-size: 13px; line-height: 1.5; color: oklch(0.93 0.01 225);">
+          <b>Les trois menus d'animation.</b> Aucun habillage vivant ne lit ces valeurs&nbsp;: le moteur qui les
+          implémente n'est appelé par personne.
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <span class="flag">Export en échec</span>
+        <div style="font-size: 13px; line-height: 1.5;">
+          <b>Trois entrées du menu «&nbsp;Entrée&nbsp;».</b> «&nbsp;Slide Left&nbsp;», «&nbsp;Slide Right&nbsp;» et
+          «&nbsp;Allumage Néon&nbsp;» sont refusées par le serveur&nbsp;: le master ne se génère pas.
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <span class="flag">Sans effet</span>
+        <div style="font-size: 13px; line-height: 1.5;">
+          <b>Contour et Halo.</b> Inertes pour la même raison que les animations.
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <span class="flag">Sans effet</span>
+        <div style="font-size: 13px; line-height: 1.5;">
+          <b>Interligne.</b> Le curseur écrit la valeur, le serveur la valide, aucun moteur ne l'applique.
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <span class="flag">Police ignorée</span>
+        <div style="font-size: 13px; line-height: 1.5;">
+          <b>«&nbsp;Par défaut (Système)&nbsp;».</b> Tant qu'aucune police n'est choisie, quinze habillages
+          s'affichent dans la police du navigateur, pas dans celle du JT.
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <span class="flag">18 choix</span>
+        <div style="font-size: 13px; line-height: 1.5;">
+          <b>Le menu de police.</b> Dix-huit familles, sans hiérarchie&nbsp;: ce n'est pas une identité, c'est un menu.
+        </div>
+      </div>
+      <div style="margin-top: 6px; padding: 12px 14px; border-radius: 12px; background: oklch(0.19 0.024 245);
+                  border: 1px solid oklch(0.36 0.025 245);">
+        <div style="font-size: 12px; line-height: 1.55; color: oklch(0.72 0.02 235);">
+          Quinze animations d'entrée, cinq de boucle, six de sortie, dix-huit polices&nbsp;:
+          <b style="color: oklch(0.93 0.01 225);">450 combinaisons</b> offertes par bloc de texte,
+          sans aperçu ni valeur recommandée.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

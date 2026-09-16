@@ -3,6 +3,8 @@ import { X, Captions, Wand2, Trash2, Plus } from 'lucide-react';
 import { API_BASE } from '../../api/index.js';
 import { FONT_FAMILIES } from '../../data/overlayTemplates.js';
 import { transcribe } from '../../lib/transcribe.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
+import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 function fmt(s) {
   const m = Math.floor(s / 60);
@@ -12,6 +14,12 @@ function fmt(s) {
 
 // Sous-titrage auto (Whisper navigateur) + édition + style, par clip.
 export default function SubtitlePanel({ clip, onClose, onSave, inline = false }) {
+  // Ce panneau annonçait `role="dialog" aria-modal="true"` sans en être un :
+  // la tabulation repartait derrière le voile, sur les boutons de la page
+  // qu'on croyait avoir quittée, et Échap ne fermait rien. En mode `inline` il
+  // n'est pas modal — il vit dans la mise en page —, donc le piège s'y tait.
+  const boiteModale = usePiegeFocus(!inline, onClose);
+  const { t } = useI18n();
   const [segs, setSegs] = useState(clip.subtitles || []);
   const [style, setStyle] = useState(clip.subtitleStyle || { position: 'bottom', size: 'M', font: '' });
   const [busy, setBusy] = useState(false);
@@ -27,7 +35,7 @@ export default function SubtitlePanel({ clip, onClose, onSave, inline = false })
       const url = `${API_BASE}/uploads/${clip.filename}?proxy=true`;
       const out = await transcribe(url, { onStatus: setStatus, onProgress: setProgress });
       setSegs(out);
-      setStatus(out.length ? `${out.length} segments générés` : 'Aucune parole détectée');
+      setStatus(out.length ? `${out.length} segments générés` : t.studio.panneaux.sousTitreAucune);
     } catch (e) {
       setError(e.message || 'Échec de la transcription');
     } finally {
@@ -75,14 +83,14 @@ export default function SubtitlePanel({ clip, onClose, onSave, inline = false })
               <option value="L">Grand</option>
             </select>
             <select className={field} value={style.font || ''} onChange={(e) => setStyle({ ...style, font: e.target.value || undefined })}>
-              <option value="">Police déf.</option>
+              <option value="">{t.studio.panneaux.sousTitrePolice}</option>
               {FONT_FAMILIES.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
 
           {/* Transcription auto */}
           <button onClick={run} disabled={busy} className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[var(--accent)] text-white font-semibold text-sm disabled:opacity-60">
-            <Wand2 size={16} /> {busy ? 'Transcription…' : 'Générer automatiquement (FR)'}
+            <Wand2 size={16} /> {busy ? 'Transcription…' : t.studio.panneaux.sousTitreGenerer}
           </button>
           {busy && (
             <div className="flex flex-col gap-1">
@@ -102,15 +110,15 @@ export default function SubtitlePanel({ clip, onClose, onSave, inline = false })
             {segs.map((s, i) => (
               <div key={i} className="flex items-start gap-2 border border-[var(--border)] rounded-lg p-2">
                 <div className="flex flex-col gap-1 w-20 shrink-0">
-                  <input className={`${field} py-1 text-xs`} type="number" step="0.1" value={s.start} onChange={(e) => upd(i, { start: parseFloat(e.target.value) || 0 })} title="Début (s)" />
-                  <input className={`${field} py-1 text-xs`} type="number" step="0.1" value={s.end} onChange={(e) => upd(i, { end: parseFloat(e.target.value) || 0 })} title="Fin (s)" />
+                  <input className={`${field} py-1 text-xs`} type="number" step="0.1" value={s.start} onChange={(e) => upd(i, { start: parseFloat(e.target.value) || 0 })} title={t.studio.panneaux.sousTitreDebut} />
+                  <input className={`${field} py-1 text-xs`} type="number" step="0.1" value={s.end} onChange={(e) => upd(i, { end: parseFloat(e.target.value) || 0 })} title={t.studio.panneaux.finSec} />
                 </div>
                 <textarea className={`${field} flex-1 resize-none`} rows={2} value={s.text} onChange={(e) => upd(i, { text: e.target.value })} />
                 <button onClick={() => rm(i)} className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)]"><Trash2 size={14} /></button>
               </div>
             ))}
             <button onClick={add} className="flex items-center justify-center gap-2 py-2 border-2 border-dashed border-[var(--border)] rounded-lg text-sm text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
-              <Plus size={15} /> Ajouter une ligne
+              <Plus size={15} /> {t.studio.panneaux.sousTitreAjouter}
             </button>
           </div>
         </div>
@@ -127,7 +135,8 @@ export default function SubtitlePanel({ clip, onClose, onSave, inline = false })
   if (inline) return content;
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+    <div
+      ref={boiteModale} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
       {content}
     </div>
   );

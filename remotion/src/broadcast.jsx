@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, Easing } from 'remotion';
 import { COL } from './theme.js';
+import { COULEURS } from './identite.js';
 import { WorldMap } from './worldmap.jsx';
 
 // ===========================================================================
@@ -23,9 +24,11 @@ export function eo(frame, input, output) {
 // à droite (rotation lente, loop) + lignes lumineuses horizontales lentes.
 export function BackdropALWM({ globe = true, lines = true, globeOpacity = 0.12, darker = false }) {
   const frame = useCurrentFrame();
+  // Quatre bleus codés en dur ici, tous différents de la palette de theme.js.
+  // Le fond du JT vient maintenant de la charte, comme ses bandeaux.
   const grad = darker
-    ? 'linear-gradient(180deg, #02132B 0%, #04132A 100%)'
-    : 'linear-gradient(180deg, #031A3A 0%, #071A33 100%)';
+    ? `linear-gradient(180deg, ${COULEURS.encre} 0%, ${COULEURS.fond} 100%)`
+    : `linear-gradient(180deg, ${COULEURS.fond} 0%, ${COULEURS.structure} 100%)`;
   return (
     <AbsoluteFill style={{ background: grad, overflow: 'hidden' }}>
       {globe && (

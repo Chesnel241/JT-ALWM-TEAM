@@ -30,11 +30,23 @@ import TrimModal from './editor/TrimModal.jsx';
 import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
+import ExportStatus from './editor/ExportStatus.jsx';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
+import {
+  annuler as annulerHistorique,
+  creerHistorique,
+  enregistrer,
+  peutAnnuler,
+  peutRetablir,
+  etiquetteSaisie,
+  reinitialiser,
+  retablir as retablirHistorique,
+} from './editor/historiqueMontage.js';
 import ActionSheet from './ActionSheet.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
 import ReporterLinkDialog from './ReporterLinkDialog.jsx';
+import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
 // Clés localStorage : la timeline et le job de montage en cours survivent au
 // refresh/changement d'onglet (le rendu continue côté serveur).
@@ -255,55 +267,17 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, o
 }
 
 function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword, onContentChange }) {
-  const dialogRef = useRef(null);
-
-  useEffect(() => {
-    if (!file) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-      if (e.key === 'Tab') {
-        if (!dialogRef.current) return;
-        const focusableElements = dialogRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) return;
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    if (dialogRef.current) {
-      const closeBtn = dialogRef.current.querySelector('button');
-      if (closeBtn) closeBtn.focus();
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [file, onClose]);
+  // Troisième copie du même piège de focus, après `ConfirmDialog` et
+  // `AdminUploadDialog`. Trois copies de quarante lignes pour un geste que
+  // sept autres panneaux n'avaient pas du tout : c'est exactement ce que le
+  // hook commun corrige.
+  const dialogRef = usePiegeFocus(Boolean(file), onClose);
 
   if (!file) return null;
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
-      <div ref={dialogRef} className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
+    <div ref={dialogRef} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
+      <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] motion-boite">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
           <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
             {file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i) ? (
@@ -389,6 +363,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [timelineClips, setTimelineClips] = useState([]);
   const [timelineOverlays, setTimelineOverlays] = useState([]);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  // L'annulation porte sur le montage entier — clips, titres de la piste T1 et
+  // habillage global — et elle vit ici parce que c'est le seul endroit qui
+  // détienne les trois. Elle vivait dans la timeline et ne connaissait que les
+  // clips : supprimer un titre était définitif, et taper une lettre dans
+  // l'inspecteur effaçait toute la pile.
+  const [historique, setHistorique] = useState(creerHistorique);
+  const montageRef = useRef({ clips: [], overlays: [], branding: DEFAULT_BRANDING });
   const [showGlobalPanel, setShowGlobalPanel] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [subtitleTarget, setSubtitleTarget] = useState(null);
@@ -439,17 +420,85 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   useEffect(() => { adminPasswordRef.current = authenticatedAdminPassword; }, [authenticatedAdminPassword]);
   useEffect(() => { isGeneratingVideoRef.current = isGeneratingVideo; }, [isGeneratingVideo]);
 
+  // Miroir de rendu : `modifierMontage` lit cette référence de façon
+  // synchrone, avant le rendu suivant. Même convention que `clipsRef` dans la
+  // timeline.
+  montageRef.current = { clips: timelineClips, overlays: timelineOverlays, branding };
+
+  /** Pose un état de montage complet, sans rien enregistrer dans l'historique. */
+  const poserMontage = useCallback((etat) => {
+    montageRef.current = etat;
+    setTimelineClips(etat.clips);
+    setTimelineOverlays(etat.overlays);
+    setBranding(etat.branding);
+  }, []);
+
+  /**
+   * Le seul chemin par lequel une modification LOCALE passe.
+   *
+   * `etiquette` dit de quel geste il s'agit : deux frappes successives dans le
+   * même champ n'en font qu'une, mais couper puis taper restent deux gestes.
+   * Sans cela, taper un titre de quarante caractères demanderait quarante
+   * « Annuler ».
+   */
+  const ajusterSansHistorique = useCallback((maj) => {
+    const apres = maj(montageRef.current);
+    if (apres && apres !== montageRef.current) poserMontage(apres);
+  }, [poserMontage]);
+
+  const modifierMontage = useCallback((maj, etiquette = null, fenetre = undefined) => {
+    const avant = montageRef.current;
+    const apres = typeof maj === 'function' ? maj(avant) : { ...avant, ...maj };
+    if (!apres || apres === avant) return;
+    setHistorique((h) => enregistrer(h, avant, { etiquette, maintenant: Date.now(), ...(fenetre !== undefined ? { fenetre } : {}) }));
+    poserMontage(apres);
+  }, [poserMontage]);
+
+  /**
+   * Ce que l'inspecteur écrit, qu'il s'agisse d'un habillage de clip ou des
+   * titres de la piste T1.
+   */
+  const appliquerInspecteur = useCallback((updatedClip) => {
+    if (updatedClip.isTimelineOverlays) {
+      modifierMontage((m) => ({ ...m, overlays: updatedClip.overlays || [] }), etiquetteSaisie('T1', 'inspecteur'));
+      return;
+    }
+    modifierMontage(
+      (m) => ({ ...m, clips: m.clips.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)) }),
+      etiquetteSaisie(updatedClip.instanceId, 'inspecteur'),
+    );
+  }, [modifierMontage]);
+
+  const annulerMontage = useCallback(() => {
+    setHistorique((h) => {
+      const recul = annulerHistorique(h, montageRef.current);
+      if (recul.etat) poserMontage(recul.etat);
+      return recul.historique;
+    });
+  }, [poserMontage]);
+
+  const retablirMontage = useCallback(() => {
+    setHistorique((h) => {
+      const avance = retablirHistorique(h, montageRef.current);
+      if (avance.etat) poserMontage(avance.etat);
+      return avance.historique;
+    });
+  }, [poserMontage]);
+
   // Charge un workspace serveur dans l'état local. markSynced=false marque le
   // montage comme non synchronisé (mode hors ligne) sans toucher à l'affichage.
+  //
+  // C'est le SEUL chemin qui efface l'historique : hydratation d'une semaine,
+  // notification socket d'un collègue, adoption de la copie serveur après un
+  // 409. Annuler l'arrivée d'un collègue réécraserait son travail en silence.
   const applyWorkspace = useCallback((workspace, { markSynced = true } = {}) => {
     const next = normalizeWorkspace(workspace);
-    setTimelineClips(next.clips);
-    setTimelineOverlays(next.overlays);
-    setBranding(next.branding);
+    poserMontage({ clips: next.clips, overlays: next.overlays, branding: next.branding });
+    setHistorique(reinitialiser());
     timelineRevisionRef.current = next.revision;
     lastSyncedTimelineRef.current = markSynced ? JSON.stringify(next.payload) : '';
     return next;
-  }, []);
+  }, [poserMontage]);
 
   const countriesWithUploads = useMemo(() => {
     const uploaded = Object.keys(dashboard).filter(
@@ -555,7 +604,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       instanceId: generateId(),
       overlays: file.overlays || [],
     };
-    setTimelineClips((prev) => [...prev, newClip]);
+    modifierMontage((m) => ({ ...m, clips: [...m.clips, newClip] }));
     addToast(`"${file.name || file.filename}" ajouté à la timeline`, 'success', 2000);
   };
 
@@ -609,7 +658,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         : {}),
     };
 
-    setTimelineClips((previous) => [...previous, newClip]);
+    modifierMontage((m) => ({ ...m, clips: [...m.clips, newClip] }));
     setTrimTarget(null);
     setOverlayTarget(null);
     setSubtitleTarget(null);
@@ -623,7 +672,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (knownDuration <= 0) {
       probeVideoDuration(url).then((duration) => {
         if (duration <= 0) return;
-        setTimelineClips((previous) => previous.map((clip) => {
+        ajusterSansHistorique((m) => ({ ...m, clips: m.clips.map((clip) => {
           if (clip.instanceId !== instanceId) return clip;
           const hasBeenTrimmed = clip.outPoint != null || Number(clip.durationSec) > 0;
           return {
@@ -631,7 +680,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             sourceDurationSec: duration,
             ...(!hasBeenTrimmed ? { durationSec: duration } : {}),
           };
-        }));
+        }) }));
       });
     }
   };
@@ -1292,7 +1341,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const newOverlays = [...timelineOverlays];
     newOverlays.splice(overlayIndex, 1, o1, o2);
 
-    setTimelineOverlays(newOverlays);
+    modifierMontage((m) => ({ ...m, overlays: newOverlays }));
 
     addToast('Texte coupé en deux !', 'success');
   };
@@ -1344,9 +1393,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (e.dataTransfer.files?.[0]) handleDeliveryFiles(e.dataTransfer.files);
   };
   
-  const handleDeleteDelivery = async (fileId, fileName) => {
-    if(!window.confirm(`Supprimer ${fileName} ?`)) return;
-    
+  // Le `window.confirm()` natif bloquait le fil, ignorait le thème sombre et
+  // se contentait de « Supprimer machin.mp4 ? » — sans dire que c'est
+  // irréversible. La suppression d'un fichier de chutier, juste à côté,
+  // passait déjà par `ConfirmDialog` : les deux gestes se ressemblent trop
+  // pour se comporter différemment.
+  const [montageASupprimer, setMontageASupprimer] = useState(null);
+
+  const handleDeleteDelivery = (fileId, fileName) => setMontageASupprimer({ id: fileId, name: fileName });
+
+  const confirmerSuppressionMontage = async () => {
+    const cible = montageASupprimer;
+    setMontageASupprimer(null);
+    if (!cible) return;
+    const { id: fileId, name: fileName } = cible;
+
     let previousDeliveries = [];
     setDeliveries((prev) => {
       previousDeliveries = prev;
@@ -1856,7 +1917,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               onClick={() => setSelectedBin('studio')}
               className="flex items-center gap-2 border-b-2 border-transparent px-5 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)] transition-colors whitespace-nowrap hover:text-[color:var(--ink)]"
             >
-              <Video size={18} /> Studio de Montage
+              <Video size={18} /> {t.studio.timeline.ongletStudio}
             </button>
           )}
           <button 
@@ -1996,7 +2057,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
               {/* MODAL / DRAWER BIBLIOTHÈQUE DE RUSHS DU STUDIO */}
               {showRushesDrawer && (
-                <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm motion-voile">
                   <div className="bg-[var(--paper)] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
                     {/* Header */}
                     <div className="px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex items-center justify-between">
@@ -2150,6 +2211,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     branding={branding} 
                     onClose={() => {}} 
                   />
+                  {/* Depuis le studio, « Générer le master » ne donnait aucun
+                      retour : progression, résultat et téléchargement ne
+                      vivaient que dans la branche « chutiers ». */}
+                  <ExportStatus
+                    enCours={isGeneratingVideo}
+                    progression={exportProgress}
+                    phase={exportPhase}
+                    secondes={exportElapsed}
+                    erreur={exportError}
+                    urlVideo={generatedVideoUrl}
+                    semaine={selectedWeek}
+                    onReessayer={() => { setExportError(null); handleGenerateVideo(); }}
+                  />
                 </div>
 
                 {/* INSPECTOR RIGHT */}
@@ -2160,26 +2234,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       clip={overlayTarget}
                       onClose={() => setOverlayTarget(null)}
                       onSave={(updatedClip) => {
-                        if (updatedClip.isTimelineOverlays) {
-                          setTimelineOverlays(updatedClip.overlays || []);
-                        } else {
-                          setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
-                        }
+                        appliquerInspecteur(updatedClip);
                         addToast('Animations mises à jour', 'success', 2000);
                       }}
-                      onChangePreview={(updatedClip) => {
-                        if (updatedClip.isTimelineOverlays) {
-                          setTimelineOverlays(updatedClip.overlays || []);
-                        } else {
-                          setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
-                        }
-                      }}
+                      // Appelé à CHAQUE frappe : c'est lui qui pilote l'aperçu
+                      // en direct, et c'est lui qui effaçait toute la pile
+                      // d'annulation. L'étiquette porte la cible, donc une
+                      // salve de frappes dans le même habillage ne fait qu'une
+                      // entrée — mais couper puis taper restent deux gestes.
+                      onChangePreview={appliquerInspecteur}
                     />
                   ) : showGlobalPanel ? (
                     <GlobalLayerPanel
                       inline={true}
                       value={branding}
-                      onChange={setBranding}
+                      onChange={(suivant) => modifierMontage((m) => ({ ...m, branding: suivant }), 'habillage')}
                       onClose={() => setShowGlobalPanel(false)}
                       audioFiles={weekAudioFiles}
                       imageFiles={weekImageFiles}
@@ -2192,7 +2261,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       clip={subtitleTarget}
                       onClose={() => setSubtitleTarget(null)}
                       onSave={(updatedClip) => {
-                        setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                        modifierMontage(
+                          (m) => ({ ...m, clips: m.clips.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)) }),
+                        );
                         addToast('Sous-titres appliqués', 'success', 2000);
                       }}
                     />
@@ -2202,16 +2273,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       file={trimTarget}
                       onClose={() => setTrimTarget(null)}
                       onConfirm={(trimmedClip) => {
-                        setTimelineClips((prev) => {
-                          const index = prev.findIndex((c) => c.instanceId === trimmedClip.instanceId);
+                        modifierMontage((m) => {
+                          const index = m.clips.findIndex((c) => c.instanceId === trimmedClip.instanceId);
                           if (index >= 0) {
-                            return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
+                            return { ...m, clips: m.clips.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c)) };
                           }
                           const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
                           const isExternal = trimmedClip.filename?.startsWith('http') || trimmedClip.filename?.startsWith('blob:');
                           const url = isExternal ? trimmedClip.filename : `${API_BASE}/uploads/${trimmedClip.filename || trimmedClip.name}?cors=2`;
                           const newClip = { ...trimmedClip, url, instanceId: trimmedClip.instanceId || generateId() };
-                          return [...prev, newClip];
+                          return { ...m, clips: [...m.clips, newClip] };
                         });
                         addToast('Clip ajouté à la timeline', 'success', 2000);
                         setTrimTarget(null);
@@ -2221,13 +2292,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <div className="flex min-h-full flex-1 flex-col text-[color:var(--muted)]">
                       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
                         <Scissors size={16} className="text-[var(--accent)]" />
-                        <p className="text-sm font-semibold text-[color:var(--ink)]">Inspecteur</p>
+                        <p className="text-sm font-semibold text-[color:var(--ink)]">{t.studio.timeline.inspecteur}</p>
                       </div>
                       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
                         <Scissors size={26} className="opacity-35" />
                         <div>
-                          <p className="mb-1 text-sm font-semibold text-[color:var(--ink)]">Aucun clip sélectionné</p>
-                          <p className="mx-auto max-w-[34ch] text-xs leading-5">Sélectionnez un clip dans la timeline ou ouvrez Habillage JT.</p>
+                          <p className="mb-1 text-sm font-semibold text-[color:var(--ink)]">{t.studio.timeline.inspecteurVide}</p>
+                          <p className="mx-auto max-w-[34ch] text-xs leading-5">{t.studio.timeline.inspecteurVideAide}</p>
                         </div>
                       </div>
                     </div>
@@ -2255,14 +2326,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--editor-border)] group-hover:bg-[var(--accent)]" aria-hidden="true" />
                 <span className="relative flex h-4 items-center gap-1 rounded border border-[var(--editor-border)] bg-[var(--editor-panel)] px-2 text-[9px] font-semibold text-[color:var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[color:var(--accent)]">
                   <GripHorizontal size={12} aria-hidden="true" />
-                  Timeline · {Math.round(studioTimelineHeight)} px · {
+                  {t.studio.timeline.poigneeTimeline} · {Math.round(studioTimelineHeight)} px · {
                     timelineSyncState === 'saving'
-                      ? 'Sauvegarde…'
+                      ? t.studio.timeline.etatSauvegarde
                       : timelineSyncState === 'error'
-                        ? 'Hors ligne'
+                        ? t.studio.timeline.etatHorsLigne
                         : timelineSyncState === 'loading'
-                          ? 'Chargement…'
-                          : 'Enregistrée en ligne'
+                          ? t.studio.timeline.etatChargement
+                          : t.studio.timeline.etatEnregistree
                   }
                 </span>
               </div>
@@ -2287,6 +2358,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   playerRef={playerRef}
                   onSplitText={handleSplitTextAtPlayhead}
                   onBrowseRushes={openRushes}
+                  modifierMontage={modifierMontage}
+                  annulerMontage={annulerMontage}
+                  retablirMontage={retablirMontage}
+                  annulationPossible={peutAnnuler(historique)}
+                  retablissementPossible={peutRetablir(historique)}
                   syncState={timelineSyncState}
                   presenceCount={editorPresenceCount}
                 />
@@ -2571,7 +2647,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               download={file.name}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 md:p-2 rounded-lg text-gray-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+                              className="p-1.5 md:p-2 rounded-lg text-[color:var(--muted)] hover:text-[color:var(--accent)] hover:bg-[var(--accent)]/10 motion-tap"
                               title={t.delivery.download}
                             >
                               <Download size={16} />
@@ -2853,7 +2929,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
             {/* GENERATED VIDEO PREVIEW */}
             {generatedVideoUrl && (
-              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm motion-boite">
                 <h3 className="text-lg font-bold text-[color:var(--ink)] mb-3 flex items-center gap-2">
                   <CheckCircle className="text-[var(--accent)]" /> Vidéo Assemblée
                 </h3>
@@ -2908,6 +2984,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   setSelectedBin('studio');
                   openSubtitleInspector(clip);
                 }}
+                modifierMontage={modifierMontage}
+                annulerMontage={annulerMontage}
+                retablirMontage={retablirMontage}
+                annulationPossible={peutAnnuler(historique)}
+                retablissementPossible={peutRetablir(historique)}
                 syncState={timelineSyncState}
                 presenceCount={editorPresenceCount}
                 compact
@@ -2936,6 +3017,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           setDeleteDialogOpen(false);
           setFileToDelete(null);
         }}
+      />
+
+      <ConfirmDialog
+        isOpen={!!montageASupprimer}
+        title={t.delivery.deleteTitle}
+        message={t.delivery.deleteMsg(montageASupprimer?.name || '')}
+        confirmText={t.uploader.deleteConfirm}
+        cancelText={t.uploader.cancel}
+        variant="danger"
+        onConfirm={confirmerSuppressionMontage}
+        onCancel={() => setMontageASupprimer(null)}
       />
 
       <ConfirmDialog

@@ -2,246 +2,290 @@
  * Shared overlay template definitions for the frontend.
  * ALWM TV Graphic Templates
  */
+/**
+ * Ce qu'est un habillage, indépendamment de la langue dans laquelle on le lit.
+ *
+ * Identifiant, moment du JT, pictogramme, portée, et les clés de ses champs.
+ * Pas un mot de texte : libellés, descriptions et intitulés de champ vivent
+ * dans le dictionnaire (`i18n/translations.js`, bloc `studio`), en français et
+ * en anglais. Le studio était intégralement en français codé en dur — un
+ * monteur anglophone disposait d'une station entièrement française — et une
+ * chaîne écrite à deux endroits finit toujours par diverger.
+ */
 export const OVERLAY_TEMPLATES = [
   {
     id: 'intro_jt',
-    label: 'Intro du JT (générique)',
+    moment: 'ouverture',
     emoji: '🌍',
     scope: 'global',
-    preview: 'Générique 10 s : réseau, globe, mots-clés, colombe + logo + LE JOURNAL.',
     fields: [
-      { key: 'titre', label: 'Titre final', placeholder: 'LE JOURNAL' },
-      { key: 'mots', label: 'Mots-clés (séparés par •)', placeholder: 'ACTUALITÉ • POLITIQUE • ÉCONOMIE • SPORT • CULTURE • MONDE' }
+      { key: 'titre' },
+      { key: 'mots' }
     ]
   },
   {
     id: 'titre_reportage',
-    label: 'Titre Reportage',
+    moment: 'titrage',
     emoji: '📰',
-    preview: 'Barre bleue glissante, titre avec flou de mouvement.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Un sous-titre ou précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'transition_reportage',
-    label: 'Transition Reportage',
+    moment: 'liaison',
     emoji: '🎬',
     scope: 'global',
-    preview: 'Plein écran, globe lent, texte avec tracking très serré.',
     fields: [
-      { key: 'titre', label: 'Texte Transition', placeholder: 'REPORTAGE' }
+      { key: 'titre' }
     ]
   },
   {
     id: 'envato_presenter',
-    label: 'Présentateur (Envato Premium)',
+    moment: 'identification',
     emoji: '🎙️',
-    preview: 'Bandeau 3 lignes élégant avec masques de révélation.',
     fields: [
-      { key: 'context', label: 'Contexte (Surtitre)', placeholder: 'TONY NIGHT SHOW' },
-      { key: 'name', label: 'Prénom & Nom', placeholder: 'MARINA FORESTER' },
-      { key: 'title', label: 'Fonction (Sous-titre)', placeholder: 'ADMINISTRATOR' }
+      { key: 'context' },
+      { key: 'name' },
+      { key: 'title' }
     ]
   },
   {
     id: 'envato_news',
-    label: 'Alerte News (Envato Premium)',
+    moment: 'alerte',
     emoji: '🔥',
-    preview: 'Bandeau bicolore à glissement pour les titres chauds.',
     fields: [
-      { key: 'tag', label: 'Label (ex: BREAKING NEWS)', placeholder: 'BREAKING NEWS' },
-      { key: 'headline', label: 'Gros titre', placeholder: 'LE GROS TITRE DE L\'ACTUALITÉ' }
+      { key: 'tag' },
+      { key: 'headline' }
     ]
   },
   {
     id: 'envato_big_title',
-    label: 'Grand Titre (Envato Premium)',
+    moment: 'ouverture',
     emoji: '💥',
-    preview: 'Titre massif plein écran avec animation élastique biseautée.',
     fields: [
-      { key: 'titre', label: 'Gros Titre', placeholder: 'WHAT IS GOING ON IN THE WORLD?' }
+      { key: 'titre' }
     ]
   },
   {
     id: 'envato_ticker',
-    label: 'Barre Défilante (Envato Premium)',
+    moment: 'liaison',
     emoji: '📜',
     scope: 'global',
-    preview: 'Bandeau d\'information continu en bas de l\'écran.',
     fields: [
-      { key: 'tag', label: 'Label (ex: LIVE)', placeholder: 'LIVE' },
-      { key: 'text1', label: 'Info 1', placeholder: 'Texte défilant...' },
-      { key: 'text2', label: 'Info 2', placeholder: 'Texte défilant...' }
+      { key: 'tag' },
+      { key: 'text1' },
+      { key: 'text2' }
     ]
   },
   {
     id: 'envato_split_screen',
-    label: 'Écran Scindé (Envato Premium)',
+    moment: 'liaison',
     emoji: '✂️',
-    preview: 'Séparation diagonale animée avec labels géographiques.',
     fields: [
-      { key: 'leftLocation', label: 'Titre Gauche', placeholder: 'NEW YORK' },
-      { key: 'leftSub', label: 'Sous-titre Gauche', placeholder: 'USA' },
-      { key: 'rightLocation', label: 'Titre Droit', placeholder: 'CALIFORNIA' },
-      { key: 'rightSub', label: 'Sous-titre Droit', placeholder: 'USA' }
+      { key: 'leftLocation' },
+      { key: 'leftSub' },
+      { key: 'rightLocation' },
+      { key: 'rightSub' }
     ]
   },
   {
     id: 'nom_interview',
-    label: 'Nom Personne (Lower Third)',
+    moment: 'identification',
     emoji: '🗣️',
-    preview: 'Style France 24 : le cartouche glisse, nom apparaît en fondu.',
     fields: [
-      { key: 'nom', label: 'Prénom & Nom', placeholder: 'PRÉNOM NOM' },
-      { key: 'fonction', label: 'Fonction / Qualité', placeholder: 'FONCTION / QUALITÉ' }
+      { key: 'nom' },
+      { key: 'fonction' }
     ]
   },
   {
     id: 'flash_info',
-    label: 'Flash Info',
+    moment: 'alerte',
     emoji: '🔴',
     scope: 'global',
-    preview: 'Flash rouge/bleu lumineux, tremblement, texte.',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'FLASH INFO' },
-      { key: 'texte', label: 'Texte', placeholder: 'Sujet du flash' }
+      { key: 'titre' },
+      { key: 'texte' }
     ]
   },
   {
     id: 'breaking_news',
-    label: 'Breaking News',
+    moment: 'alerte',
     emoji: '🚨',
     scope: 'global',
-    preview: 'Pulsation rouge, bandeau urgent.',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'BREAKING NEWS' },
-      { key: 'texte', label: 'Texte urgent', placeholder: 'Sujet urgent' }
+      { key: 'titre' },
+      { key: 'texte' }
     ]
   },
   {
     id: 'rappel_titres',
-    label: 'Rappel des Titres',
+    moment: 'cloture',
     emoji: '📑',
-    preview: 'Titres glissant séquentiellement en cascade.',
     fields: [
-      { key: 'titre1', label: 'Titre 1', placeholder: 'TITRE DU SUJET À LA UNE' },
-      { key: 'titre2', label: 'Titre 2', placeholder: 'AUTRE TITRE DU SUJET' },
-      { key: 'titre3', label: 'Titre 3', placeholder: 'DERNIER TITRE DU JOURNAL' }
+      { key: 'titre1' },
+      { key: 'titre2' },
+      { key: 'titre3' }
     ]
   },
   {
     id: 'fin_merci',
-    label: 'Fin / Merci',
+    moment: 'cloture',
     emoji: '👋',
-    preview: 'Bandeau glisse doucement, texte fondu, logo ALWM.',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_minimal',
-    label: 'Titre Reportage - Minimal Line',
+    moment: 'titrage',
     emoji: '📏',
-    preview: 'Une fine ligne s\'étire et révèle le texte.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_skew',
-    label: 'Titre Reportage - Double Skew',
+    moment: 'titrage',
     emoji: '💥',
-    preview: 'Deux blocs obliques qui se croisent pour former le titre.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_swipe',
-    label: 'Titre Reportage - Gradient Swipe',
+    moment: 'titrage',
     emoji: '🌈',
-    preview: 'Un balayage lumineux avec un dégradé.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_glass',
-    label: 'Titre Reportage - Glassmorphism',
+    moment: 'titrage',
     emoji: '🪟',
-    preview: 'Un effet verre dépoli très élégant.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_massif',
-    label: 'Titre Reportage - Bloc Massif',
+    moment: 'titrage',
     emoji: '⬛',
-    preview: 'Un titre lourd et impactant avec Drop Shadow profond.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_lt_compact',
-    label: 'Lower Third - Compact 1 Ligne',
+    moment: 'identification',
     emoji: '🏷️',
-    preview: 'Prénom/nom très rapide, pour les micro-trottoirs.',
     fields: [
-      { key: 'nom', label: 'Nom', placeholder: 'PRÉNOM NOM' }
+      { key: 'nom' }
     ]
   },
   {
     id: 'envato_lt_corporate',
-    label: 'Lower Third - Duo Corporate',
+    moment: 'identification',
     emoji: '🏢',
-    preview: 'Affichage nom/fonction très carré.',
     fields: [
-      { key: 'nom', label: 'Nom', placeholder: 'PRÉNOM NOM' },
-      { key: 'fonction', label: 'Fonction', placeholder: 'FONCTION / QUALITÉ' }
+      { key: 'nom' },
+      { key: 'fonction' }
     ]
   },
   {
     id: 'envato_lt_interview',
-    label: 'Lower Third - Interview',
+    moment: 'identification',
     emoji: '💬',
-    preview: 'Bandeau double pour afficher qui parle face à qui.',
     fields: [
-      { key: 'leftName', label: 'Nom Gauche', placeholder: 'JOURNALISTE' },
-      { key: 'leftRole', label: 'Rôle Gauche', placeholder: 'HÔTE' },
-      { key: 'rightName', label: 'Nom Droit', placeholder: 'INVITÉ' },
-      { key: 'rightRole', label: 'Rôle Droit', placeholder: 'EXPERT' }
+      { key: 'leftName' },
+      { key: 'leftRole' },
+      { key: 'rightName' },
+      { key: 'rightRole' }
     ]
   },
   {
     id: 'envato_loc_pin',
-    label: 'Location Pin (Lieu)',
+    moment: 'identification',
     emoji: '📌',
-    preview: 'Petite animation de géolocalisation.',
     fields: [
-      { key: 'location', label: 'Lieu', placeholder: 'Paris, France' }
+      { key: 'location' }
     ]
   },
   {
     id: 'envato_quote',
-    label: 'Quote Block (Citation)',
+    moment: 'identification',
     emoji: '❝',
-    preview: 'Magnifique pavé avec des guillemets animés.',
     fields: [
-      { key: 'quote', label: 'Citation', placeholder: 'Texte de la citation ici...' },
-      { key: 'author', label: 'Auteur', placeholder: 'Nom de l\'auteur' }
+      { key: 'quote' },
+      { key: 'author' }
     ]
   }
 ];
+
+/**
+ * Les six moments d'un JT, dans l'ordre où ils arrivent à l'antenne.
+ *
+ * Le catalogue était rangé par portée technique — « clip » ou « global » —
+ * c'est-à-dire par un détail d'implémentation que le monteur n'a aucune raison
+ * de connaître. Vingt-trois vignettes en une seule liste, et il fallait les
+ * parcourir toutes pour retrouver le bandeau nom.
+ *
+ * Un moment, lui, se cherche comme on pense : « j'ouvre un sujet »,
+ * « je nomme quelqu'un », « j'alerte ». La portée technique reste dans les
+ * données, elle sert au rendu ; elle ne sert plus de rangement.
+ */
+export const MOMENTS_IDS = [
+  'ouverture', 'titrage', 'identification', 'alerte', 'liaison', 'cloture',
+];
+
+/**
+ * Le mouvement de texte qui va par défaut avec chaque moment.
+ *
+ * Tout habillage naissait en « Fondu », quel qu'il soit. Le défaut n'était pas
+ * mauvais, il était simplement le même partout : le monteur devait corriger à
+ * chaque fois, ou ne rien corriger et livrer vingt-trois fondus.
+ *
+ * Ces valeurs ne sont pas des règles : le menu reste entier juste à côté.
+ */
+const RECOMMANDE_PAR_MOMENT = {
+  ouverture: 'scale',
+  titrage: 'slide',
+  identification: 'fade',
+  alerte: 'glitch_in',
+  liaison: 'fade',
+  cloture: 'fade',
+};
+
+/**
+ * Trois habillages dérogent, parce que leur dessin porte déjà le mouvement.
+ * Le générique et l'alerte plein écran ont leur propre chorégraphie ; leur
+ * ajouter une entrée marquée ferait deux gestes qui se contrarient.
+ */
+const RECOMMANDE_PAR_HABILLAGE = {
+  intro_jt: 'fade',
+  breaking_news: 'fade',
+  flash_info: 'fade',
+};
+
+/** Le mouvement d'entrée proposé d'emblée pour un habillage donné. */
+export function animationRecommandee(templateId) {
+  if (RECOMMANDE_PAR_HABILLAGE[templateId]) return RECOMMANDE_PAR_HABILLAGE[templateId];
+  const modele = OVERLAY_TEMPLATES.find((t) => t.id === templateId);
+  return RECOMMANDE_PAR_MOMENT[modele && modele.moment] || 'fade';
+}
+
+/** Les habillages d'un moment, dans l'ordre du catalogue. */
+export function habillagesDuMoment(moment, liste = OVERLAY_TEMPLATES) {
+  return liste.filter((t) => t.moment === moment);
+}
 
 export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'global');
 export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'global');
@@ -254,39 +298,47 @@ export const FONT_FAMILIES = [
   'IBM Plex Sans', 'JetBrains Mono',
 ];
 
+// Rien ici ne doit sortir de TEXT_ANIMATIONS_IDS côté serveur : le
+// validateur de `/editor/concat` refuse le reste avec un 400, et c'est tout
+// le master qui ne se génère pas. `animations-offertes.test.js` garde les deux
+// listes d'accord.
+//
+// Et rien ici ne doit sortir de ce que `remotion/src/mouvement.js` implémente
+// réellement : ces menus ont proposé vingt-quatre mouvements dont aucun ne
+// changeait l'image, parce que le moteur qui les portait n'était appelé par
+// personne. `mouvement.test.js` compare désormais les deux sens.
+//
+// Les mouvements sont groupés par intention : sobre pour le corps du journal,
+// affirmée pour l'ouverture d'un sujet, marquée pour les alertes.
 export const TEXT_ANIMATIONS_IN = [
-  { id: 'fade', label: 'Fondu' },
-  { id: 'scale', label: 'Scale' },
-  { id: 'slide_left', label: 'Slide Left' },
-  { id: 'slide_right', label: 'Slide Right' },
-  { id: 'pop', label: 'Pop' },
-  { id: 'bounce', label: 'Bounce' },
-  { id: 'blurin', label: 'Blur In' },
-  { id: 'mask_reveal', label: 'Mask Reveal' },
-  { id: 'neon_on', label: 'Allumage Néon' },
-  { id: 'glitch_in', label: 'Glitch In' },
-  { id: 'rotate', label: 'Rotate' },
-  { id: 'flip3d', label: 'Flip 3D' },
-  { id: 'letterspread', label: 'Letter Spread' },
-  { id: 'typewriter', label: 'Machine à écrire' },
-  { id: 'cascade', label: 'Cascade' },
+  // Sobre
+  { id: 'fade', famille: 'sobre' },
+  { id: 'slide', famille: 'sobre' },
+  { id: 'mask_reveal', famille: 'sobre' },
+  // Affirmée
+  { id: 'pop', famille: 'affirmee' },
+  { id: 'scale', famille: 'affirmee' },
+  { id: 'cascade', famille: 'affirmee' },
+  // Marquée
+  { id: 'typewriter', famille: 'marquee' },
+  { id: 'glitch_in', famille: 'marquee' },
+  { id: 'blurin', famille: 'marquee' },
 ];
 
 export const TEXT_ANIMATIONS_LOOP = [
-  { id: 'none', label: 'Aucun (statique)' },
-  { id: 'float', label: 'Flottement (Float)' },
-  { id: 'pulse', label: 'Pulsation (Pulse)' },
-  { id: 'kerning_shake', label: 'Vibration tendue' },
-  { id: 'neon_flicker', label: 'Grésillement Néon' },
+  { id: 'none' },
+  { id: 'float' },
+  { id: 'pulse' },
 ];
 
+// « auto » reprend l'entrée : un texte entré en glissant repart en glissant.
+// C'est ce qui ramène le choix courant à un seul geste au lieu de trois.
 export const TEXT_ANIMATIONS_OUT = [
-  { id: 'fade', label: 'Fondu out' },
-  { id: 'scale_down', label: 'Scale Down' },
-  { id: 'slide_out', label: 'Slide Out (Left)' },
-  { id: 'blurout', label: 'Blur Out' },
-  { id: 'glitch_out', label: 'Glitch Out' },
-  { id: 'typewriter_out', label: 'Machine à écrire (retour)' },
+  { id: 'auto' },
+  { id: 'fade' },
+  { id: 'scale_down' },
+  { id: 'slide_out' },
+  { id: 'blurout' },
 ];
 
 export const TEXT_ANIMATIONS = TEXT_ANIMATIONS_IN;

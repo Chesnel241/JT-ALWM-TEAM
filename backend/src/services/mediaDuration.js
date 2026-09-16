@@ -92,7 +92,12 @@ export function planifierMesure(weekId, countryId, fileId, nomFichier, onMesure)
 
   attente.push(async () => {
     try {
-      const duree = await mesurerDuree(path.join(uploadsDir, nomFichier));
+      // `uploadsDir` est une fonction : la référencer donne « The "path"
+      // argument must be of type string. Received function uploadsDir », et
+      // toute mesure échouait en silence — les monteurs lisaient « durée
+      // inconnue » sur chaque rush. Même famille d'erreur que celle gardée par
+      // `editor-libass-paths.test.js`.
+      const duree = await mesurerDuree(path.join(uploadsDir(), nomFichier));
       if (duree === null) return;
       if (setFileDuration(weekId, countryId, fileId, duree)) {
         onMesure?.(duree);

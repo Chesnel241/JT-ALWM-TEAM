@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { X, Scissors, SkipBack, SkipForward, Play, Pause } from 'lucide-react';
 import { previewUrl } from '../../lib/mediaSource.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
+import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 function formatTime(seconds) {
   if (seconds == null || isNaN(seconds)) return '0:00.0';
@@ -11,6 +13,12 @@ function formatTime(seconds) {
 }
 
 export default function TrimModal({ file, onClose, onConfirm, inline = false }) {
+  // Ce panneau annonçait `role="dialog" aria-modal="true"` sans en être un :
+  // la tabulation repartait derrière le voile, sur les boutons de la page
+  // qu'on croyait avoir quittée, et Échap ne fermait rien. En mode `inline` il
+  // n'est pas modal — il vit dans la mise en page —, donc le piège s'y tait.
+  const boiteModale = usePiegeFocus(!inline, onClose);
+  const { t } = useI18n();
   const videoRef = useRef(null);
   const progressRef = useRef(null);
 
@@ -224,13 +232,13 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
   if (!file) return null;
 
   const content = (
-    <div data-trim-editor className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-2xl shadow-2xl border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200'}`}>
+    <div data-trim-editor className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-2xl shadow-2xl border border-[var(--border)] motion-boite'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
           <h2 className="font-bold text-[color:var(--ink)] flex items-center gap-2">
             <Scissors className="text-[var(--accent)]" size={18} />
-            Trim du clip
+            {t.studio.panneaux.trimTitre}
           </h2>
           <p className="text-xs text-[color:var(--muted)] truncate max-w-[200px]">{file.name}</p>
           <button
@@ -286,7 +294,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
                 onKeyDown={handleMarkerKeyDown('in')}
                 role="slider"
                 tabIndex={0}
-                aria-label="Déplacer le point IN"
+                aria-label={t.studio.panneaux.trimIn}
                 aria-valuemin={0}
                 aria-valuemax={Math.max(0, (outPoint ?? duration) - 0.3)}
                 aria-valuenow={Number(inPoint.toFixed(2))}
@@ -302,7 +310,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
                 onKeyDown={handleMarkerKeyDown('out')}
                 role="slider"
                 tabIndex={0}
-                aria-label="Déplacer le point OUT"
+                aria-label={t.studio.panneaux.trimOut}
                 aria-valuemin={Math.min(duration, inPoint + 0.3)}
                 aria-valuemax={duration}
                 aria-valuenow={Number((outPoint ?? duration).toFixed(2))}
@@ -356,7 +364,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
             <button
               onClick={() => seekTo(inPoint)}
               className="p-2 rounded-lg text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--paper-2)] border border-[var(--border)] transition-colors"
-              title="Aller au point IN"
+              title={t.studio.panneaux.allerIn}
             >
               <SkipBack size={16} />
             </button>
@@ -371,7 +379,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
             <button
               onClick={() => seekTo(outPoint ?? duration)}
               className="p-2 rounded-lg text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--paper-2)] border border-[var(--border)] transition-colors"
-              title="Aller au point OUT"
+              title={t.studio.panneaux.allerOut}
             >
               <SkipForward size={16} />
             </button>
@@ -414,7 +422,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
             }`}
           >
             <Scissors size={15} />
-            {file.instanceId ? 'Appliquer le trim' : 'Ajouter à la Timeline'}
+            {file.instanceId ? 'Appliquer le trim' : t.studio.panneaux.trimAjouter}
           </button>
         </div>
     </div>
@@ -424,6 +432,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
 
   return (
     <div
+      ref={boiteModale}
       className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
