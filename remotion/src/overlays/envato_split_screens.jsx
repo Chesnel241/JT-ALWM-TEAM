@@ -2,6 +2,7 @@ import React from 'react';
 import { COULEURS } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
+import TexteJT from '../TexteJT.jsx';
 
 const baseFontConfig = {
   fontFamily: 'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif',
@@ -18,18 +19,18 @@ function LocationLabel({ frame, delay, location, sub, colorMain, colorAccent, co
          <EnvatoMaskReveal frame={frame} delay={delay} direction={isRight ? 'left' : 'right'} duration={25}>
             <div style={{ backgroundColor: colorAccent, padding: '16px 24px', display: 'flex', alignItems: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
                <EnvatoMaskReveal frame={frame} delay={delay + 10} direction="bottom" duration={20}>
-                 <div style={{ ...baseFontConfig, fontSize: '36px', color: colorTextAccent, letterSpacing: '1px' }}>
+                 <TexteJT role="titrage" delai={delay + 10} style={{ ...baseFontConfig, fontSize: '36px', color: colorTextAccent, letterSpacing: '1px' }}>
                     {location}
-                 </div>
+                 </TexteJT>
                </EnvatoMaskReveal>
             </div>
          </EnvatoMaskReveal>
          <EnvatoMaskReveal frame={frame} delay={delay + 8} direction={isRight ? 'left' : 'right'} duration={25} style={{ marginTop: '-4px', zIndex: 10 }}>
             <div style={{ backgroundColor: colorMain, padding: '10px 24px', boxShadow: '0 5px 20px rgba(0,0,0,0.2)' }}>
                <EnvatoMaskReveal frame={frame} delay={delay + 18} direction="bottom" duration={20}>
-                 <div style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, fontWeight: '700', letterSpacing: '2px' }}>
+                 <TexteJT role="courant" delai={delay + 18} style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, fontWeight: '700', letterSpacing: '2px' }}>
                     {sub}
-                 </div>
+                 </TexteJT>
                </EnvatoMaskReveal>
             </div>
          </EnvatoMaskReveal>

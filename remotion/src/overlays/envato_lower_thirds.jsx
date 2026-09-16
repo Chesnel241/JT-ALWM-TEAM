@@ -2,6 +2,7 @@ import React from 'react';
 import { COULEURS } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
+import TexteJT from '../TexteJT.jsx';
 
 const baseFontConfig = {
   fontFamily: 'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif',
@@ -54,9 +55,9 @@ export function EnvatoPresenterLowerThird({ overlay, durationInFrames }) {
         <EnvatoMaskReveal frame={frame} delay={contextDelay} direction="right" duration={25}>
           <div style={{ backgroundColor: colorMain, padding: '8px 14px' }}>
             <EnvatoMaskReveal frame={frame} delay={contextDelay + 10} direction="bottom" duration={20}>
-              <div style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, fontWeight: '700', letterSpacing: '1px' }}>
+              <TexteJT role="courant" delai={contextDelay + 10} style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, fontWeight: '700', letterSpacing: '1px' }}>
                 {context}
-              </div>
+              </TexteJT>
             </EnvatoMaskReveal>
           </div>
         </EnvatoMaskReveal>
@@ -67,9 +68,9 @@ export function EnvatoPresenterLowerThird({ overlay, durationInFrames }) {
         <EnvatoMaskReveal frame={frame} delay={nameDelay} direction="right" duration={25}>
           <div style={{ backgroundColor: colorAccent, padding: '14px 28px' }}>
             <EnvatoMaskReveal frame={frame} delay={nameDelay + 10} direction="bottom" duration={20}>
-              <div style={{ ...baseFontConfig, fontSize: '54px', color: colorTextAccent, letterSpacing: '-0.5px' }}>
+              <TexteJT role="titrage" delai={nameDelay + 10} style={{ ...baseFontConfig, fontSize: '54px', color: colorTextAccent, letterSpacing: '-0.5px' }}>
                 {name}
-              </div>
+              </TexteJT>
             </EnvatoMaskReveal>
           </div>
         </EnvatoMaskReveal>
@@ -80,9 +81,9 @@ export function EnvatoPresenterLowerThird({ overlay, durationInFrames }) {
         <EnvatoMaskReveal frame={frame} delay={titleDelay} direction="right" duration={25}>
           <div style={{ backgroundColor: colorMain, padding: '10px 20px' }}>
             <EnvatoMaskReveal frame={frame} delay={titleDelay + 10} direction="bottom" duration={20}>
-              <div style={{ ...baseFontConfig, fontSize: '26px', color: colorTextMain, fontWeight: '600', letterSpacing: '0.5px' }}>
+              <TexteJT role="courant" delai={titleDelay + 10} style={{ ...baseFontConfig, fontSize: '26px', color: colorTextMain, fontWeight: '600', letterSpacing: '0.5px' }}>
                 {title}
-              </div>
+              </TexteJT>
             </EnvatoMaskReveal>
           </div>
         </EnvatoMaskReveal>
@@ -137,9 +138,9 @@ export function EnvatoNewsLowerThird({ overlay, durationInFrames }) {
             boxShadow: '4px 0 24px rgba(0,0,0,0.15)' // Depth from Emil's notes
           }}>
             <EnvatoMaskReveal frame={frame} delay={tagDelay + 10} direction="bottom" duration={20}>
-              <div style={{ ...baseFontConfig, fontSize: '42px', color: colorTextMain, letterSpacing: '0px' }}>
+              <TexteJT role="titrage" delai={tagDelay + 10} style={{ ...baseFontConfig, fontSize: '42px', color: colorTextMain, letterSpacing: '0px' }}>
                 {tag}
-              </div>
+              </TexteJT>
             </EnvatoMaskReveal>
           </div>
         </EnvatoMaskReveal>
@@ -156,9 +157,9 @@ export function EnvatoNewsLowerThird({ overlay, durationInFrames }) {
             height: '100%'
           }}>
             <EnvatoMaskReveal frame={frame} delay={headlineDelay + 15} direction="bottom" duration={25}>
-              <div style={{ ...baseFontConfig, fontSize: '32px', color: colorTextAccent, fontWeight: '700', letterSpacing: '0.5px' }}>
+              <TexteJT role="titrage" delai={headlineDelay + 15} style={{ ...baseFontConfig, fontSize: '32px', color: colorTextAccent, fontWeight: '700', letterSpacing: '0.5px' }}>
                 {headline}
-              </div>
+              </TexteJT>
             </EnvatoMaskReveal>
           </div>
         </EnvatoMaskReveal>

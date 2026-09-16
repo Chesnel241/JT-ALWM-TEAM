@@ -2,6 +2,7 @@ import React from 'react';
 import { COULEURS } from '../identite.js';
 import { useCurrentFrame } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
+import TexteJT from '../TexteJT.jsx';
 
 const baseFontConfig = {
   fontFamily: 'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif',
@@ -49,14 +50,14 @@ export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
           boxShadow: '4px 8px 24px rgba(0,0,0,0.1)'
         }}>
           <EnvatoMaskReveal frame={frame} delay={15} direction="bottom" duration={20}>
-            <div style={{ ...baseFontConfig, fontSize: '48px', color: colorTextFirst, fontWeight: '900', letterSpacing: '-1px' }}>
+            <TexteJT role="titrage" delai={15} style={{ ...baseFontConfig, fontSize: '48px', color: colorTextFirst, fontWeight: '900', letterSpacing: '-1px' }}>
               {firstName}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
           <EnvatoMaskReveal frame={frame} delay={18} direction="bottom" duration={20}>
-            <div style={{ ...baseFontConfig, fontSize: '48px', color: colorTextLast, fontWeight: '400', letterSpacing: '-0.5px' }}>
+            <TexteJT role="titrage" delai={18} style={{ ...baseFontConfig, fontSize: '48px', color: colorTextLast, fontWeight: '400', letterSpacing: '-0.5px' }}>
               {lastName}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
@@ -101,9 +102,9 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
           boxShadow: '4px 4px 16px rgba(0,0,0,0.2)'
         }}>
           <EnvatoMaskReveal frame={frame} delay={15} direction="bottom" duration={20}>
-            <div style={{ ...baseFontConfig, fontSize: '42px', color: colorTextTop, fontWeight: '800', letterSpacing: '0px' }}>
+            <TexteJT role="titrage" delai={15} style={{ ...baseFontConfig, fontSize: '42px', color: colorTextTop, fontWeight: '800', letterSpacing: '0px' }}>
               {name}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
@@ -116,9 +117,9 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
           boxShadow: '4px 4px 16px rgba(0,0,0,0.1)'
         }}>
           <EnvatoMaskReveal frame={frame} delay={22} direction="top" duration={20}>
-            <div style={{ ...baseFontConfig, fontSize: '24px', color: colorTextBottom, fontWeight: '600', letterSpacing: '2px' }}>
+            <TexteJT role="courant" delai={22} style={{ ...baseFontConfig, fontSize: '24px', color: colorTextBottom, fontWeight: '600', letterSpacing: '2px' }}>
               {title}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
@@ -165,12 +166,12 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <div style={{ backgroundColor: colorBg, padding: '12px 24px', boxShadow: '4px 4px 12px rgba(0,0,0,0.3)' }}>
             <EnvatoMaskReveal frame={frame} delay={15} direction="bottom" duration={20}>
-               <div style={{ ...baseFontConfig, fontSize: '36px', color: colorTextMain }}>{leftName}</div>
+               <TexteJT role="titrage" delai={15} style={{ ...baseFontConfig, fontSize: '36px', color: colorTextMain }}>{leftName}</TexteJT>
             </EnvatoMaskReveal>
           </div>
           <div style={{ backgroundColor: colorAccent, padding: '8px 24px', marginTop: '-2px', boxShadow: '2px 2px 8px rgba(0,0,0,0.1)' }}>
             <EnvatoMaskReveal frame={frame} delay={20} direction="bottom" duration={20}>
-               <div style={{ ...baseFontConfig, fontSize: '18px', color: colorTextAccent, letterSpacing: '2px' }}>{leftRole}</div>
+               <TexteJT role="courant" delai={20} style={{ ...baseFontConfig, fontSize: '18px', color: colorTextAccent, letterSpacing: '2px' }}>{leftRole}</TexteJT>
             </EnvatoMaskReveal>
           </div>
         </div>
@@ -181,12 +182,12 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
           <div style={{ backgroundColor: colorMain, padding: '12px 24px', boxShadow: '-4px 4px 12px rgba(0,0,0,0.3)' }}>
             <EnvatoMaskReveal frame={frame} delay={20} direction="bottom" duration={20}>
-               <div style={{ ...baseFontConfig, fontSize: '36px', color: colorTextMain }}>{rightName}</div>
+               <TexteJT role="titrage" delai={20} style={{ ...baseFontConfig, fontSize: '36px', color: colorTextMain }}>{rightName}</TexteJT>
             </EnvatoMaskReveal>
           </div>
           <div style={{ backgroundColor: colorAccent, padding: '8px 24px', marginTop: '-2px', boxShadow: '-2px 2px 8px rgba(0,0,0,0.1)' }}>
             <EnvatoMaskReveal frame={frame} delay={25} direction="bottom" duration={20}>
-               <div style={{ ...baseFontConfig, fontSize: '18px', color: colorTextAccent, letterSpacing: '2px' }}>{rightRole}</div>
+               <TexteJT role="courant" delai={25} style={{ ...baseFontConfig, fontSize: '18px', color: colorTextAccent, letterSpacing: '2px' }}>{rightRole}</TexteJT>
             </EnvatoMaskReveal>
           </div>
         </div>
@@ -249,9 +250,9 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
           boxShadow: '4px 4px 12px rgba(0,0,0,0.2)'
         }}>
           <EnvatoMaskReveal frame={frame} delay={25} direction="bottom" duration={20}>
-            <div style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, letterSpacing: '1px' }}>
+            <TexteJT role="courant" delai={25} style={{ ...baseFontConfig, fontSize: '20px', color: colorTextMain, letterSpacing: '1px' }}>
               {location}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
@@ -315,15 +316,15 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
           
           <div style={{ position: 'relative', zIndex: 1 }}>
             <EnvatoMaskReveal frame={frame} delay={15} direction="right" duration={35}>
-              <div style={{ ...baseFontConfig, fontSize: '50px', color: colorTextMain, lineHeight: '1.2', textTransform: 'none', fontWeight: '700' }}>
+              <TexteJT role="titrage" delai={15} style={{ ...baseFontConfig, fontSize: '50px', color: colorTextMain, lineHeight: '1.2', textTransform: 'none', fontWeight: '700' }}>
                 "{quote}"
-              </div>
+              </TexteJT>
             </EnvatoMaskReveal>
             
             <EnvatoMaskReveal frame={frame} delay={30} direction="right" duration={25}>
-              <div style={{ ...baseFontConfig, fontSize: '24px', color: colorMain, letterSpacing: '4px', marginTop: '30px' }}>
+              <TexteJT role="courant" delai={30} style={{ ...baseFontConfig, fontSize: '24px', color: colorMain, letterSpacing: '4px', marginTop: '30px' }}>
                 — {author}
-              </div>
+              </TexteJT>
             </EnvatoMaskReveal>
           </div>
         </div>

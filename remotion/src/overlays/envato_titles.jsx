@@ -2,6 +2,7 @@ import React from 'react';
 import { COULEURS } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
+import TexteJT from '../TexteJT.jsx';
 
 const baseFontConfig = {
   fontFamily: 'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif',
@@ -87,9 +88,9 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
               <div style={{ backgroundColor: colorAccent, padding: '24px 64px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', marginBottom: '4px' }}>
                 <div style={{ transform: 'skewX(10deg)' }}> {/* Unskew text so only box is skewed */}
                     <EnvatoMaskReveal frame={frame} delay={20} direction="bottom" duration={25}>
-                      <div style={{ ...baseFontConfig, fontSize: '90px', color: colorTextAccent, letterSpacing: '-2px' }}>
+                      <TexteJT role="titrage" delai={20} style={{ ...baseFontConfig, fontSize: '90px', color: colorTextAccent, letterSpacing: '-2px' }}>
                         {line1}
-                      </div>
+                      </TexteJT>
                     </EnvatoMaskReveal>
                 </div>
               </div>
@@ -102,9 +103,9 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
               <div style={{ backgroundColor: colorAccent, padding: '24px 64px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
                 <div style={{ transform: 'skewX(10deg)' }}>
                     <EnvatoMaskReveal frame={frame} delay={27} direction="bottom" duration={25}>
-                      <div style={{ ...baseFontConfig, fontSize: '90px', color: colorTextAccent, letterSpacing: '-2px' }}>
+                      <TexteJT role="titrage" delai={27} style={{ ...baseFontConfig, fontSize: '90px', color: colorTextAccent, letterSpacing: '-2px' }}>
                         {line2}
-                      </div>
+                      </TexteJT>
                     </EnvatoMaskReveal>
                 </div>
               </div>
@@ -116,9 +117,9 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
                   <div style={{ backgroundColor: colorMain, padding: '16px 48px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
                     <div style={{ transform: 'skewX(10deg)' }}>
                         <EnvatoMaskReveal frame={frame} delay={39} direction="top" duration={25}>
-                          <div style={{ ...baseFontConfig, fontSize: '36px', color: colorTextMain, letterSpacing: '4px' }}>
+                          <TexteJT role="courant" delai={39} style={{ ...baseFontConfig, fontSize: '36px', color: colorTextMain, letterSpacing: '4px' }}>
                             {subtitle}
-                          </div>
+                          </TexteJT>
                         </EnvatoMaskReveal>
                     </div>
                   </div>
@@ -169,6 +170,10 @@ export function EnvatoTicker({ overlay, durationInFrames }) {
       {/* Ticker Tape */}
       <EnvatoMaskReveal frame={frame} delay={0} direction="right" duration={25} style={{ flex: 1, width: '100%' }}>
         <div style={{ backgroundColor: colorAccent, height: '100%', width: '100%', display: 'flex', alignItems: 'center', overflow: 'hidden', position: 'relative' }}>
+            {/* La bande reste hors du moteur d'animation : son mouvement EST
+                son animation, et la decouper lettre par lettre reviendrait a
+                produire plusieurs centaines de <span> pour un texte repete
+                cinq fois. */}
             <div style={{
                 position: 'absolute',
                 left: '200px', // Starts just behind the LIVE tag
@@ -189,9 +194,9 @@ export function EnvatoTicker({ overlay, durationInFrames }) {
       <EnvatoMaskReveal frame={frame} delay={10} direction="right" duration={20} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 10 }}>
         <div style={{ backgroundColor: colorMain, height: '100%', padding: '0 48px', display: 'flex', alignItems: 'center', boxShadow: '10px 0 30px rgba(0,0,0,0.5)' }}>
            <EnvatoMaskReveal frame={frame} delay={20} direction="bottom" duration={20}>
-             <div style={{ ...baseFontConfig, fontSize: '32px', color: colorTextMain, fontWeight: '800' }}>
+             <TexteJT role="titrage" delai={20} style={{ ...baseFontConfig, fontSize: '32px', color: colorTextMain, fontWeight: '800' }}>
                {tag}
-             </div>
+             </TexteJT>
            </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>

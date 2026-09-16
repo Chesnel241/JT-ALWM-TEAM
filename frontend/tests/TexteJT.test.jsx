@@ -67,6 +67,20 @@ describe('le texte porte le mouvement choisi', () => {
     expect(opaciteDe(screen.getByTestId('texte'))).toBeGreaterThan(0);
   });
 
+  it('multiplie l’opacité du gabarit au lieu de l’écraser', () => {
+    // Plusieurs habillages portent leur arrivée ET leur sortie sur l'élément
+    // de texte lui-même, sans conteneur intermédiaire : « Breaking News »,
+    // « Transition Reportage », le générique. Écraser cette opacité y
+    // supprimerait la sortie — un titre plein écran qui ne s'efface plus.
+    render(
+      <FournitureHabillage overlay={{ animation: 'fade' }} durationInFrames={90} frame={40} fps={FPS}>
+        <TexteJT data-testid="moitie" style={{ opacity: 0.5 }}>Alerte info</TexteJT>
+      </FournitureHabillage>
+    );
+    // L'entrée est terminée (le mouvement vaut 1) : il ne reste que le gabarit.
+    expect(opaciteDe(screen.getByTestId('moitie'))).toBeCloseTo(0.5, 3);
+  });
+
   it('conserve le style que le gabarit lui donne', () => {
     // Le composant rend le même élément, avec le style fusionné : c'est ce qui
     // garantit qu'aucune mise en page ne bouge.

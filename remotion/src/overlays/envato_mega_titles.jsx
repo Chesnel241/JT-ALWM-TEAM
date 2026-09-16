@@ -2,6 +2,7 @@ import React from 'react';
 import { COULEURS } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
+import TexteJT from '../TexteJT.jsx';
 
 const baseFontConfig = {
   fontFamily: 'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif',
@@ -42,9 +43,9 @@ export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
         {/* Title (reveals up) */}
         <div style={{ overflow: 'hidden', paddingBottom: '16px' }}>
           <EnvatoMaskReveal frame={frame} delay={20} direction="top" duration={25}>
-            <div style={{ ...baseFontConfig, fontSize: '80px', color: colorTextMain, textShadow: '0px 4px 12px rgba(0,0,0,0.5)' }}>
+            <TexteJT role="titrage" delai={20} style={{ ...baseFontConfig, fontSize: '80px', color: colorTextMain, textShadow: '0px 4px 12px rgba(0,0,0,0.5)' }}>
               {title}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
 
@@ -59,9 +60,9 @@ export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
         {/* Subtitle (reveals down) */}
         <div style={{ overflow: 'hidden', paddingTop: '16px' }}>
           <EnvatoMaskReveal frame={frame} delay={25} direction="bottom" duration={25}>
-            <div style={{ ...baseFontConfig, fontSize: '32px', color: colorTextMain, fontWeight: '700', letterSpacing: '4px', textShadow: '0px 4px 12px rgba(0,0,0,0.5)' }}>
+            <TexteJT role="courant" delai={25} style={{ ...baseFontConfig, fontSize: '32px', color: colorTextMain, fontWeight: '700', letterSpacing: '4px', textShadow: '0px 4px 12px rgba(0,0,0,0.5)' }}>
               {subtitle}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
         
@@ -106,9 +107,9 @@ export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
           boxShadow: '0 20px 40px rgba(0,0,0,0.3)', zIndex: 2
         }}>
           <EnvatoMaskReveal frame={frame} delay={15} direction="right" duration={20}>
-             <div style={{ transform: 'skewX(15deg)', ...baseFontConfig, fontSize: '90px', color: '#fff' }}>
+             <TexteJT role="titrage" delai={15} style={{ transform: 'skewX(15deg)', ...baseFontConfig, fontSize: '90px', color: '#fff' }}>
                {line1}
-             </div>
+             </TexteJT>
           </EnvatoMaskReveal>
         </div>
         
@@ -118,9 +119,9 @@ export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
           boxShadow: '0 20px 40px rgba(0,0,0,0.3)', zIndex: 1, marginLeft: '-10px'
         }}>
           <EnvatoMaskReveal frame={frame} delay={20} direction="left" duration={20}>
-             <div style={{ transform: 'skewX(15deg)', ...baseFontConfig, fontSize: '90px', color: '#111' }}>
+             <TexteJT role="titrage" delai={20} style={{ transform: 'skewX(15deg)', ...baseFontConfig, fontSize: '90px', color: '#111' }}>
                {line2}
-             </div>
+             </TexteJT>
           </EnvatoMaskReveal>
         </div>
       </div>
@@ -167,15 +168,15 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
 
         <div style={{ zIndex: 2, position: 'relative' }}>
           <EnvatoMaskReveal frame={frame} delay={10} direction="right" duration={35}>
-            <div style={{ ...baseFontConfig, fontSize: '70px', color: colorTextMain, textShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
+            <TexteJT role="titrage" delai={10} style={{ ...baseFontConfig, fontSize: '70px', color: colorTextMain, textShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
               {text}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
           
           <EnvatoMaskReveal frame={frame} delay={20} direction="right" duration={35}>
-            <div style={{ ...baseFontConfig, fontSize: '40px', color: colorMain, fontWeight: '800', textShadow: '0 4px 10px rgba(0,0,0,0.5)', marginTop: '10px' }}>
+            <TexteJT role="titrage" delai={20} style={{ ...baseFontConfig, fontSize: '40px', color: colorMain, fontWeight: '800', textShadow: '0 4px 10px rgba(0,0,0,0.5)', marginTop: '10px' }}>
               {subtitle}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
       </div>
@@ -218,9 +219,9 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
           display: 'flex', flexDirection: 'column', alignItems: 'center'
         }}>
           <EnvatoMaskReveal frame={frame} delay={15} direction="right" duration={30}>
-            <div style={{ ...baseFontConfig, fontSize: '100px', color: colorTextMain, letterSpacing: '4px' }}>
+            <TexteJT role="titrage" delai={15} style={{ ...baseFontConfig, fontSize: '100px', color: colorTextMain, letterSpacing: '4px' }}>
               {title}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
           
           <div style={{ width: '100%', height: '2px', background: colorAccent, margin: '20px 0' }}>
@@ -230,9 +231,9 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
           </div>
           
           <EnvatoMaskReveal frame={frame} delay={35} direction="left" duration={30}>
-            <div style={{ ...baseFontConfig, fontSize: '30px', color: colorTextMain, letterSpacing: '8px', fontWeight: '500' }}>
+            <TexteJT role="courant" delai={35} style={{ ...baseFontConfig, fontSize: '30px', color: colorTextMain, letterSpacing: '8px', fontWeight: '500' }}>
               {subtitle}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
       </EnvatoMaskReveal>
@@ -277,15 +278,15 @@ export function EnvatoReportageMassif({ overlay, durationInFrames }) {
           borderLeft: `16px solid ${colorHighlight}`
         }}>
           <EnvatoMaskReveal frame={frame} delay={20} direction="bottom" duration={25}>
-            <div style={{ ...baseFontConfig, fontSize: '110px', color: colorText, letterSpacing: '-2px' }}>
+            <TexteJT role="titrage" delai={20} style={{ ...baseFontConfig, fontSize: '110px', color: colorText, letterSpacing: '-2px' }}>
               {line1}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
           
           <EnvatoMaskReveal frame={frame} delay={28} direction="bottom" duration={25}>
-            <div style={{ ...baseFontConfig, fontSize: '110px', color: colorHighlight, letterSpacing: '-2px', marginTop: '-10px' }}>
+            <TexteJT role="titrage" delai={28} style={{ ...baseFontConfig, fontSize: '110px', color: colorHighlight, letterSpacing: '-2px', marginTop: '-10px' }}>
               {line2}
-            </div>
+            </TexteJT>
           </EnvatoMaskReveal>
         </div>
       </div>

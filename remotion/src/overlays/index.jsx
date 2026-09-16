@@ -510,11 +510,11 @@ function RappelTitres({ overlay, durationInFrames }) {
         position: 'absolute', left: 0, right: 0, top: 120, textAlign: 'center', zIndex: 2,
         opacity: eo(frame, [listStart - 6, listStart + 8], [0, 1]),
       }}>
-        <span style={{
+        <TexteJT as="span" role="titrage" delai={listStart - 6} style={{
           fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 64, color: C.text(COL.white),
           textTransform: 'uppercase', letterSpacing: '0.06em',
           borderBottom: `4px solid ${C.accent(COL.blue)}`, paddingBottom: 14,
-        }}>{f.titre || 'RAPPEL DES TITRES'}</span>
+        }}>{f.titre || 'RAPPEL DES TITRES'}</TexteJT>
       </div>
 
       <div style={{ position: 'absolute', left: 400, right: 400, top: 320, zIndex: 2 }}>
@@ -530,9 +530,9 @@ function RappelTitres({ overlay, durationInFrames }) {
               padding: '24px 0', borderBottom: `1px solid ${C.accent('rgba(74,163,255,0.18)')}`,
             }}>
               <span style={{ width: 16, height: 16, background: C.accent(COL.blue), transform: 'rotate(45deg)', flexShrink: 0 }} />
-              <span style={{
+              <TexteJT as="span" role="courant" delai={delay} style={{
                 color: C.text(COL.white), fontSize: 42, fontFamily: ff(null, "'Inter', sans-serif"), fontWeight: 500, lineHeight: 1.2,
-              }}>{titre}</span>
+              }}>{titre}</TexteJT>
             </div>
           );
         })}
@@ -601,8 +601,8 @@ function FlashInfo({ overlay, durationInFrames }) {
   return (
     <Box overlay={overlay} style={{ left: 80, top: 80, opacity: op, transform: `translateY(${y}px)` }}>
       <div style={{ width: 340, height: 80, display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{ background: C.bg(COL.blue), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.white), fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.titre || 'FLASH'}</div>
-        <div style={{ background: C.accent(COL.white), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.black), fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.texte || 'INFO'}</div>
+        <TexteJT role="titrage" style={{ background: C.bg(COL.blue), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.white), fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.titre || 'FLASH'}</TexteJT>
+        <TexteJT role="courant" delai={6} style={{ background: C.accent(COL.white), flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text(COL.black), fontFamily: ff(null, "'Montserrat ExtraBold', sans-serif"), fontWeight: 800, fontSize: 24, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{f.texte || 'INFO'}</TexteJT>
       </div>
     </Box>
   );
@@ -631,12 +631,15 @@ function BreakingNews({ overlay, durationInFrames }) {
       <BackdropALWM globeOpacity={0.16} />
       {/* Lueur centrale */}
       <div style={{ position: 'absolute', width: 1100, height: 360, background: 'radial-gradient(ellipse, rgba(0,87,217,0.45) 0%, transparent 70%)', filter: 'blur(50px)' }} />
-      <div style={{
+      <TexteJT role="titrage" delai={Math.round(fps * 0.1)} style={{
         position: 'relative', zIndex: 3, transform: `scale(${titleScale})`, opacity: titleOp,
         fontFamily: fontB, fontWeight: 800, fontSize: `${fs * 130}px`, color: C.text(COL.white),
         textTransform: 'uppercase', letterSpacing: '0.02em', textShadow: '0 14px 40px rgba(0,0,0,0.6)',
-      }}>{title}</div>
-      {/* Bandeau marquee bas */}
+      }}>{title}</TexteJT>
+      {/* Bandeau marquee bas. Il reste hors du moteur d'animation : son
+          défilement EST son mouvement, et le découper lettre par lettre
+          produirait plusieurs centaines de <span> pour un texte répété seize
+          fois. Le titre au-dessus porte le mouvement choisi par le monteur. */}
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 60, height: 64, background: C.bg(COL.blue), display: 'flex', alignItems: 'center', overflow: 'hidden', zIndex: 3 }}>
         <div style={{ position: 'absolute', whiteSpace: 'nowrap', transform: `translateX(${mx}px)`, color: C.text(COL.white), fontFamily: fontB, fontWeight: 700, fontSize: 30, letterSpacing: '0.06em' }}>
           {marqueeText}{marqueeText}
@@ -907,22 +910,22 @@ function FinMerci({ overlay, durationInFrames }) {
       <BackdropALWM />
       <DoveFlyThrough fromF={doveFrom} toF={doveTo} y={30} size={240} />
       <AbsoluteFill style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 50 }}>
-        <div style={{
+        <TexteJT role="titrage" delai={Math.round(fps * 1.0)} style={{
           opacity: textOp,
           fontSize: `${fs * 56}px`, fontFamily: fontM, fontWeight: 500,
           color: C.colorTextMain || COL.white, letterSpacing: '0.02em',
           textShadow: '0 10px 24px rgba(0,0,0,0.5)',
         }}>
           {f.titre || f.texte || 'Merci de votre fidélité'}
-        </div>
+        </TexteJT>
         <div style={{ width: 2, height: 90, background: C.colorAccent || 'rgba(74,163,255,0.5)', opacity: logoOp }} />
         <div style={{ opacity: logoOp, transform: `scale(${logoScale})`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           {/* Version fond sombre : le bloc-marque officiel est dessine pour
               un fond clair et arriverait ici dans sa carte blanche. */}
           <Img src={staticFile('images/alwm-logo-sombre.png')} style={{ width: 320, objectFit: 'contain', filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.6))' }} />
-          <div style={{ fontFamily: fontM, fontWeight: 500, fontSize: `${fs * 22}px`, color: C.colorTextAccent || COL.light, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+          <TexteJT role="courant" delai={Math.round(fps * 2.4)} style={{ fontFamily: fontM, fontWeight: 500, fontSize: `${fs * 22}px`, color: C.colorTextAccent || COL.light, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
             {f.sous_titre || "L'ACTUALITÉ EN CONTINU"}
-          </div>
+          </TexteJT>
         </div>
       </AbsoluteFill>
     </Box>
@@ -996,7 +999,7 @@ function IntroJT({ overlay, durationInFrames }) {
                 : interpolate(wf, [0, step / 2, step], [0, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
               if (op <= 0) return null;
               const y = eo(wf, [0, 8], [40, 0]);
-              return <div key={i} style={{ position: 'absolute', inset: 0, textAlign: 'center', opacity: op, transform: `translateY(${y}px)`, fontFamily: fontXB, fontWeight: 800, fontSize: 88, color: C.text(COL.white), letterSpacing: '0.04em', lineHeight: '120px', textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>{w}</div>;
+              return <TexteJT key={i} role="titrage" delai={s2 + i * step} style={{ position: 'absolute', inset: 0, textAlign: 'center', opacity: op, transform: `translateY(${y}px)`, fontFamily: fontXB, fontWeight: 800, fontSize: 88, color: C.text(COL.white), letterSpacing: '0.04em', lineHeight: '120px', textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>{w}</TexteJT>;
             })}
           </div>
         </AbsoluteFill>
@@ -1007,9 +1010,9 @@ function IntroJT({ overlay, durationInFrames }) {
       {frame >= s3 && (
         <AbsoluteFill style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
           <Img src={staticFile('images/alwm-logo-sombre.png')} style={{ width: 460, objectFit: 'contain', opacity: logoOp, transform: `scale(${logoScale})`, filter: 'drop-shadow(0 14px 30px rgba(0,0,0,0.6))' }} />
-          <div style={{ opacity: jtOp, transform: `scale(${jtScale})`, fontFamily: fontXB, fontWeight: 800, fontSize: 84, color: C.text(COL.white), letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <TexteJT role="titrage" delai={jtOpStart} style={{ opacity: jtOp, transform: `scale(${jtScale})`, fontFamily: fontXB, fontWeight: 800, fontSize: 84, color: C.text(COL.white), letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {f.titre || 'LE JOURNAL'}
-          </div>
+          </TexteJT>
         </AbsoluteFill>
       )}
     </Box>
@@ -1043,7 +1046,7 @@ function TransitionReportage({ overlay, durationInFrames }) {
       </div>
       
       <AbsoluteFill style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ 
+        <TexteJT role="titrage" style={{ 
           opacity: titleOpacity, 
           transform: `scale(${titleScale})`,
           fontFamily: ff(overlay.font, "'Montserrat ExtraBold', sans-serif"),
@@ -1055,7 +1058,7 @@ function TransitionReportage({ overlay, durationInFrames }) {
           textShadow: '0 10px 30px rgba(0,0,0,0.8)'
         }}>
           {f.titre || f.texte || 'REPORTAGE'}
-        </div>
+        </TexteJT>
       </AbsoluteFill>
     </Box>
   );

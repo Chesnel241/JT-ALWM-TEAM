@@ -128,16 +128,23 @@ export default function TexteJT({
     sortie: overlay.animationOut || 'auto',
   });
 
-  // La transformation se compose au lieu d'écraser : quelques éléments de
-  // texte portent déjà un `skewX` qui contre celui de leur parent.
+  // Tout se compose au lieu d'écraser. La transformation d'abord : quelques
+  // éléments de texte portent déjà un `skewX` qui contre celui de leur parent.
   const transform = [style.transform, mouvement.transform].filter(Boolean).join(' ') || undefined;
   const filter = [style.filter, mouvement.filter].filter(Boolean).join(' ') || undefined;
+  // L'opacité ensuite, et c'est la plus importante : plusieurs gabarits
+  // portent leur arrivée et leur sortie sur l'élément de texte lui-même, sans
+  // conteneur intermédiaire. Écraser cette opacité y supprimerait la sortie —
+  // un titre qui ne s'efface plus. On multiplie : là où le gabarit n'en
+  // déclare pas, le facteur vaut 1 et rien ne change.
+  const porteuse = style.opacity == null ? 1 : Number(style.opacity);
+  const opacity = Number((mouvement.opacity * (Number.isFinite(porteuse) ? porteuse : 1)).toFixed(4));
 
   return (
     <Element
       {...reste}
       data-role={role}
-      style={{ ...style, ...effets, ...mouvement, transform, filter }}
+      style={{ ...style, ...effets, ...mouvement, transform, filter, opacity }}
     >
       {children}
     </Element>
