@@ -4,6 +4,7 @@ import GlobalLayerPanel from '../src/components/editor/GlobalLayerPanel.jsx';
 import { OverlayEditor } from '../src/components/editor/OverlayPanel.jsx';
 import { DEFAULT_BRANDING } from '../src/components/editor/timelineWorkspace.js';
 import { COULEURS } from '../../remotion/src/identite.js';
+import { I18nProvider } from '../src/i18n/I18nContext.jsx';
 
 /**
  * L'habillage global du JT.
@@ -26,6 +27,7 @@ vi.mock('../src/api/index.js', () => ({
 function poser(surcharge = {}) {
   const onChange = vi.fn();
   const utils = render(
+    <I18nProvider>
     <GlobalLayerPanel
       value={{ ...DEFAULT_BRANDING, ...(surcharge.value || {}) }}
       onChange={onChange}
@@ -34,12 +36,16 @@ function poser(surcharge = {}) {
       adminPassword="mot-de-passe"
       {...surcharge}
     />
+    </I18nProvider>
   );
   return { ...utils, onChange };
 }
 
 beforeEach(() => {
   localStorage.clear();
+  // jsdom annonce `navigator.language = 'en-US'` : sans ce choix explicite,
+  // le panneau monterait en anglais. Même convention que Nav.test.jsx.
+  localStorage.setItem('jt-alwm-lang', 'fr');
   vi.clearAllMocks();
 });
 
@@ -82,11 +88,13 @@ describe('les couleurs proposées au monteur', () => {
     // libass lisent maintenant le même fichier.
     const onChange = vi.fn();
     render(
-      <OverlayEditor
-        overlay={{ id: 'o1', templateId: 'titre_reportage', fields: {} }}
-        onChange={onChange}
-        onRemove={() => {}}
-      />
+      <I18nProvider>
+        <OverlayEditor
+          overlay={{ id: 'o1', templateId: 'titre_reportage', fields: {} }}
+          onChange={onChange}
+          onRemove={() => {}}
+        />
+      </I18nProvider>
     );
 
     fireEvent.click(screen.getByRole('button', { name: /JT ALWM/i }));
@@ -100,11 +108,13 @@ describe('les couleurs proposées au monteur', () => {
   it('ne nomme plus une palette par un emoji seul', () => {
     // « 🔴 Urgent » n'a pas de nom accessible une fois l'emoji retiré.
     render(
-      <OverlayEditor
-        overlay={{ id: 'o1', templateId: 'titre_reportage', fields: {} }}
-        onChange={() => {}}
-        onRemove={() => {}}
-      />
+      <I18nProvider>
+        <OverlayEditor
+          overlay={{ id: 'o1', templateId: 'titre_reportage', fields: {} }}
+          onChange={() => {}}
+          onRemove={() => {}}
+        />
+      </I18nProvider>
     );
     ['JT ALWM', 'Alerte', 'Sobre'].forEach((nom) => {
       expect(screen.getByRole('button', { name: new RegExp(nom, 'i') })).toBeInTheDocument();

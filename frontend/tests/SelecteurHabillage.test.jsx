@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 import { SelecteurHabillage } from '../src/components/editor/OverlayPanel.jsx';
-import { CLIP_TEMPLATES, MOMENTS, habillagesDuMoment } from '../src/data/overlayTemplates.js';
+import { I18nProvider } from '../src/i18n/I18nContext.jsx';
+import { translations } from '../src/i18n/translations.js';
+import { CLIP_TEMPLATES, MOMENTS_IDS, habillagesDuMoment } from '../src/data/overlayTemplates.js';
 
 /**
  * Trouver la bonne option : la première des trois douleurs remontées.
@@ -12,14 +14,25 @@ import { CLIP_TEMPLATES, MOMENTS, habillagesDuMoment } from '../src/data/overlay
  * vingt-trois pour retrouver le bandeau nom.
  */
 
+const dit = translations.fr.studio;
+
+beforeEach(() => {
+  // jsdom annonce `navigator.language = 'en-US'` : sans ce choix explicite, le
+  // sélecteur monterait en anglais. Même convention que Nav.test.jsx.
+  localStorage.clear();
+  localStorage.setItem('jt-alwm-lang', 'fr');
+});
+
 const poser = (props = {}) =>
   render(
-    <SelecteurHabillage
-      modeles={CLIP_TEMPLATES}
-      onChoisir={vi.fn()}
-      onAnnuler={vi.fn()}
-      {...props}
-    />
+    <I18nProvider>
+      <SelecteurHabillage
+        modeles={CLIP_TEMPLATES}
+        onChoisir={vi.fn()}
+        onAnnuler={vi.fn()}
+        {...props}
+      />
+    </I18nProvider>
   );
 
 // `queryAll` et non `getAll` : quand la recherche ne trouve rien, l'absence
@@ -30,9 +43,9 @@ const titresDeMoment = () =>
 describe('le sélecteur range par moment du JT', () => {
   it('n’affiche que les moments qui ont des habillages pour ce contexte', () => {
     poser();
-    const attendus = MOMENTS
-      .filter((m) => habillagesDuMoment(m.id, CLIP_TEMPLATES).length > 0)
-      .map((m) => m.label);
+    const attendus = MOMENTS_IDS
+      .filter((id) => habillagesDuMoment(id, CLIP_TEMPLATES).length > 0)
+      .map((id) => dit.moments[id].label);
     expect(titresDeMoment()).toEqual(attendus);
   });
 
@@ -56,7 +69,7 @@ describe('la recherche', () => {
     poser();
     fireEvent.change(screen.getByLabelText('Chercher un habillage'), { target: { value: 'citation' } });
     expect(titresDeMoment()).toEqual(['Identification']);
-    expect(screen.getByText('Citation')).toBeInTheDocument();
+    expect(screen.getByText(dit.habillages.envato_quote.label)).toBeInTheDocument();
   });
 
   it('filtre aussi sur ce que l’habillage fait, pas seulement sur son nom', () => {
@@ -80,7 +93,17 @@ describe('le choix', () => {
     const onChoisir = vi.fn();
     poser({ onChoisir });
     const groupe = screen.getByRole('heading', { name: 'Identification' }).closest('div').parentElement;
-    fireEvent.click(within(groupe).getByText('Citation'));
+    fireEvent.click(within(groupe).getByText(dit.habillages.envato_quote.label));
     expect(onChoisir).toHaveBeenCalledWith('envato_quote');
+  });
+});
+
+describe('un monteur anglophone lit son catalogue', () => {
+  it('voit les moments et les habillages dans sa langue', () => {
+    localStorage.setItem('jt-alwm-lang', 'en');
+    poser();
+    expect(titresDeMoment()).toContain(translations.en.studio.moments.identification.label);
+    expect(screen.getByText(translations.en.studio.habillages.envato_quote.label)).toBeInTheDocument();
+    expect(screen.queryByText(dit.habillages.envato_quote.label)).not.toBeInTheDocument();
   });
 });

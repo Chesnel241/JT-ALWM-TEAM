@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload, Sparkles, Layers } from 'lucide-react';
-import { GLOBAL_TEMPLATES, MOMENTS, animationRecommandee, habillagesDuMoment } from '../../data/overlayTemplates.js';
+import { GLOBAL_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment } from '../../data/overlayTemplates.js';
 import { OverlayEditor } from './OverlayPanel.jsx';
 import { api } from '../../api/index.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 
 // Bouton d'upload d'un asset (musique/voix-off/image) → uploadAsset → {filename,name}.
 function UploadBtn({ accept, label, uploadAsset, onUploaded }) {
@@ -40,6 +41,7 @@ const POSITIONS = [
  * semaine (props audioFiles / imageFiles : [{filename, name}]).
  */
 export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [], uploadAsset, inline = false, adminPassword }) {
+  const { t } = useI18n();
   const v = value;
   const setTicker = (p) => onChange({ ...v, ticker: { ...v.ticker, ...p } });
   const setLive = (p) => onChange({ ...v, live: { ...v.live, ...p } });
@@ -413,16 +415,18 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                   la barre défilante. */}
               <select
                 className={field}
-                aria-label="Ajouter un habillage global"
+                aria-label={t.studio.interface.ajouterGlobal}
                 onChange={(e) => { if (e.target.value) { addOverlay(e.target.value); e.target.value = ''; } }}
               >
-                <option value="">— Ajouter un habillage global —</option>
-                {MOMENTS.map((moment) => {
-                  const liste = habillagesDuMoment(moment.id, GLOBAL_TEMPLATES);
+                <option value="">{t.studio.interface.ajouterGlobalChoix}</option>
+                {MOMENTS_IDS.map((idMoment) => {
+                  const liste = habillagesDuMoment(idMoment, GLOBAL_TEMPLATES);
                   if (liste.length === 0) return null;
                   return (
-                    <optgroup key={moment.id} label={moment.label}>
-                      {liste.map((t) => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+                    <optgroup key={idMoment} label={t.studio.moments[idMoment].label}>
+                      {liste.map((m) => (
+                        <option key={m.id} value={m.id}>{m.emoji} {t.studio.habillages[m.id].label}</option>
+                      ))}
                     </optgroup>
                   );
                 })}

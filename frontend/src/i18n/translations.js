@@ -496,6 +496,250 @@ export const translations = {
         q5: "Comment ajouter un script texte ?"
       }
     },
+    // Le studio de montage était intégralement en français codé en dur :
+    // un monteur anglophone disposait d’une station entièrement française.
+    // Les libellés du catalogue vivent ici, et plus dans les données : une
+    // chaîne écrite à deux endroits finit toujours par diverger.
+    studio: {
+      moments: {
+        ouverture: { label: 'Ouverture', aide: 'Lancer le journal ou un sujet.' },
+        titrage: { label: 'Titrage', aide: 'Donner son titre à un reportage.' },
+        identification: { label: 'Identification', aide: 'Dire qui parle, d’où, et ce qu’il a dit.' },
+        alerte: { label: 'Alerte', aide: 'Interrompre pour une information urgente.' },
+        liaison: { label: 'Liaison', aide: 'Passer d’un sujet au suivant, ou faire courir une info.' },
+        cloture: { label: 'Clôture', aide: 'Récapituler et refermer le journal.' },
+      },
+      familles: {
+        sobre: { label: 'Sobre', aide: 'Le corps du journal.' },
+        affirmee: { label: 'Affirmée', aide: 'L’ouverture d’un sujet.' },
+        marquee: { label: 'Marquée', aide: 'Les alertes.' },
+      },
+      entrees: {
+        fade: 'Fondu',
+        slide: 'Glissé',
+        mask_reveal: 'Révélation',
+        pop: 'Ressort',
+        scale: 'Rapproché',
+        cascade: 'Cascade',
+        typewriter: 'Machine à écrire',
+        glitch_in: 'Saccade',
+        blurin: 'Flou',
+      },
+      boucles: {
+        none: 'Immobile',
+        float: 'Flottement',
+        pulse: 'Pulsation',
+      },
+      sorties: {
+        auto: 'Comme l\'entrée',
+        fade: 'Fondu',
+        scale_down: 'Rétréci',
+        slide_out: 'Glissé',
+        blurout: 'Flou',
+      },
+      interface: {
+        motApercu: 'Texte',
+        mouvementTitre: 'Mouvement du texte',
+        apercuReel: 'Aperçu réel',
+        conseille: 'conseillé',
+        chercher: 'Chercher un habillage',
+        chercherExemple: 'Chercher un habillage…',
+        aucunResultat: 'Aucun habillage ne correspond à',
+        ajouterGlobal: 'Ajouter un habillage global',
+        ajouterGlobalChoix: '— Ajouter un habillage global —',
+        continue: 'Continue',
+        sortie: 'Sortie',
+      },
+      habillages: {
+        intro_jt: {
+          label: 'Générique d’ouverture',
+          apercu: 'Générique de 10 s : réseau mondial, globe, mots-clés, colombe et logo.',
+          champs: {
+            titre: { label: 'Titre final', exemple: 'LE JOURNAL' },
+            mots: { label: 'Mots-clés (séparés par •)', exemple: 'ACTUALITÉ • POLITIQUE • ÉCONOMIE • SPORT' },
+          },
+        },
+        titre_reportage: {
+          label: 'Titre de reportage',
+          apercu: 'Bandeau bleu qui s’ouvre en bas de l’image, avec un sous-titre.',
+          champs: {
+            titre: { label: 'Titre principal', exemple: 'Le marché de Douala' },
+            sous_titre: { label: 'Sous-titre', exemple: 'Cameroun — reportage' },
+          },
+        },
+        transition_reportage: {
+          label: 'Transition',
+          apercu: 'Plein écran, globe en rotation lente, un mot très espacé.',
+          champs: {
+            titre: { label: 'Mot affiché', exemple: 'REPORTAGE' },
+          },
+        },
+        envato_presenter: {
+          label: 'Présentateur',
+          apercu: 'Trois lignes qui se découvrent l’une après l’autre.',
+          champs: {
+            context: { label: 'Surtitre', exemple: 'JT ALWM' },
+            name: { label: 'Prénom et nom', exemple: 'MARIE NGOMA' },
+            title: { label: 'Fonction', exemple: 'CORRESPONDANTE' },
+          },
+        },
+        envato_news: {
+          label: 'Alerte en bandeau',
+          apercu: 'Bandeau bicolore qui glisse, pour une information chaude.',
+          champs: {
+            tag: { label: 'Mention', exemple: 'DIRECT' },
+            headline: { label: 'Gros titre', exemple: 'LE SÉNAT VOTE LE BUDGET' },
+          },
+        },
+        envato_big_title: {
+          label: 'Grand titre',
+          apercu: 'Titre massif plein écran, sur deux lignes biseautées.',
+          champs: {
+            titre: { label: 'Titre', exemple: 'LE JOURNAL DU SOIR' },
+          },
+        },
+        envato_ticker: {
+          label: 'Barre défilante',
+          apercu: 'Bandeau continu en bas de l’image, avec une mention fixe.',
+          champs: {
+            tag: { label: 'Mention', exemple: 'DIRECT' },
+            text1: { label: 'Information 1', exemple: 'Élections au Bénin' },
+            text2: { label: 'Information 2', exemple: 'Le Maroc tenu en échec' },
+          },
+        },
+        envato_split_screen: {
+          label: 'Écran scindé',
+          apercu: 'Séparation diagonale, un cartouche de lieu de chaque côté.',
+          champs: {
+            leftLocation: { label: 'Lieu — gauche', exemple: 'DOUALA' },
+            leftSub: { label: 'Pays — gauche', exemple: 'CAMEROUN' },
+            rightLocation: { label: 'Lieu — droite', exemple: 'DAKAR' },
+            rightSub: { label: 'Pays — droite', exemple: 'SÉNÉGAL' },
+          },
+        },
+        nom_interview: {
+          label: 'Nom et fonction',
+          apercu: 'Le cartouche glisse, le nom apparaît en fondu.',
+          champs: {
+            nom: { label: 'Prénom et nom', exemple: 'Aminata Diallo' },
+            fonction: { label: 'Fonction', exemple: 'MINISTRE' },
+          },
+        },
+        flash_info: {
+          label: 'Flash info',
+          apercu: 'Petit bloc en haut à gauche, en deux moitiés.',
+          champs: {
+            titre: { label: 'Mention', exemple: 'FLASH' },
+            texte: { label: 'Sujet', exemple: 'SÉNAT' },
+          },
+        },
+        breaking_news: {
+          label: 'Alerte plein écran',
+          apercu: 'Flash bleu, titre massif, bandeau défilant en bas.',
+          champs: {
+            titre: { label: 'Titre', exemple: 'ALERTE' },
+            texte: { label: 'Sujet', exemple: 'Sommet à Libreville' },
+          },
+        },
+        rappel_titres: {
+          label: 'Rappel des titres',
+          apercu: 'Les titres arrivent l’un après l’autre, plein écran.',
+          champs: {
+            titre1: { label: 'Titre 1', exemple: 'Crise au Sahel' },
+            titre2: { label: 'Titre 2', exemple: 'Sommet économique' },
+            titre3: { label: 'Titre 3', exemple: 'Élections' },
+          },
+        },
+        fin_merci: {
+          label: 'Carte de clôture',
+          apercu: 'Formule de fin, colombe qui traverse, logo ALWM.',
+          champs: {
+            titre: { label: 'Formule', exemple: 'Merci de votre fidélité' },
+            sous_titre: { label: 'Signature', exemple: 'L’ACTUALITÉ EN CONTINU' },
+          },
+        },
+        envato_rep_minimal: {
+          label: 'Titre — filet fin',
+          apercu: 'Un filet s’étire et découvre le titre.',
+          champs: {
+            titre: { label: 'Titre principal', exemple: 'Enquête' },
+            sous_titre: { label: 'Sous-titre', exemple: 'AU CŒUR DU PORT' },
+          },
+        },
+        envato_rep_skew: {
+          label: 'Titre — double biseau',
+          apercu: 'Deux blocs obliques se croisent pour former le titre.',
+          champs: {
+            titre: { label: 'Titre principal', exemple: 'ALERTE' },
+            sous_titre: { label: 'Sous-titre', exemple: 'INFO DU JOUR' },
+          },
+        },
+        envato_rep_swipe: {
+          label: 'Titre — balayage lumineux',
+          apercu: 'Une lueur balaie le titre de gauche à droite.',
+          champs: {
+            titre: { label: 'Titre principal', exemple: 'Entretien' },
+            sous_titre: { label: 'Sous-titre', exemple: 'AVEC LA PRÉSIDENTE' },
+          },
+        },
+        envato_rep_glass: {
+          label: 'Titre — verre dépoli',
+          apercu: 'Panneau translucide qui laisse deviner l’image.',
+          champs: {
+            titre: { label: 'Titre principal', exemple: 'Immersion' },
+            sous_titre: { label: 'Sous-titre', exemple: 'DANS LES COULISSES' },
+          },
+        },
+        envato_rep_massif: {
+          label: 'Titre — bloc massif',
+          apercu: 'Bloc plein qui monte, ombre portée profonde.',
+          champs: {
+            titre: { label: 'Titre principal', exemple: 'ÉTAT' },
+            sous_titre: { label: 'Sous-titre', exemple: 'D’URGENCE' },
+          },
+        },
+        envato_lt_compact: {
+          label: 'Nom — une ligne',
+          apercu: 'Le plus rapide : prénom et nom sur une seule ligne.',
+          champs: {
+            nom: { label: 'Prénom et nom', exemple: 'Émile Kouassi' },
+          },
+        },
+        envato_lt_corporate: {
+          label: 'Nom — deux blocs',
+          apercu: 'Nom et fonction dans deux blocs décalés.',
+          champs: {
+            nom: { label: 'Prénom et nom', exemple: 'MICHEL SAWADOGO' },
+            fonction: { label: 'Fonction', exemple: 'DIRECTEUR' },
+          },
+        },
+        envato_lt_interview: {
+          label: 'Nom — interview à deux',
+          apercu: 'Deux cartouches, pour dire qui parle face à qui.',
+          champs: {
+            leftName: { label: 'Nom — gauche', exemple: 'FATOU SOW' },
+            leftRole: { label: 'Fonction — gauche', exemple: 'ÉCONOMISTE' },
+            rightName: { label: 'Nom — droite', exemple: 'JEAN OBAME' },
+            rightRole: { label: 'Fonction — droite', exemple: 'JOURNALISTE' },
+          },
+        },
+        envato_loc_pin: {
+          label: 'Lieu',
+          apercu: 'Petite pastille de géolocalisation, en haut de l’image.',
+          champs: {
+            location: { label: 'Lieu', exemple: 'Libreville, Gabon' },
+          },
+        },
+        envato_quote: {
+          label: 'Citation',
+          apercu: 'Pavé à guillemets, pour une phrase et son auteur.',
+          champs: {
+            quote: { label: 'Citation', exemple: 'Nous bâtirons ce pont' },
+            author: { label: 'Auteur', exemple: 'La présidente' },
+          },
+        },
+      },
+    },
   },
 
   en: {
@@ -974,6 +1218,250 @@ export const translations = {
         q4: "Where to see the final newscast?",
         q5: "How to add a text script?"
       }
+    },
+    // Le studio de montage était intégralement en français codé en dur :
+    // un monteur anglophone disposait d’une station entièrement française.
+    // Les libellés du catalogue vivent ici, et plus dans les données : une
+    // chaîne écrite à deux endroits finit toujours par diverger.
+    studio: {
+      moments: {
+        ouverture: { label: 'Opening', aide: 'Start the newscast or a story.' },
+        titrage: { label: 'Titles', aide: 'Name a report.' },
+        identification: { label: 'Identification', aide: 'Say who is speaking, from where, and what they said.' },
+        alerte: { label: 'Alert', aide: 'Break in with urgent news.' },
+        liaison: { label: 'Linking', aide: 'Move between stories, or run news along the screen.' },
+        cloture: { label: 'Closing', aide: 'Recap and close the newscast.' },
+      },
+      familles: {
+        sobre: { label: 'Plain', aide: 'The body of the newscast.' },
+        affirmee: { label: 'Assertive', aide: 'Opening a story.' },
+        marquee: { label: 'Striking', aide: 'Alerts.' },
+      },
+      entrees: {
+        fade: 'Fade',
+        slide: 'Slide',
+        mask_reveal: 'Reveal',
+        pop: 'Spring',
+        scale: 'Zoom in',
+        cascade: 'Cascade',
+        typewriter: 'Typewriter',
+        glitch_in: 'Glitch',
+        blurin: 'Blur',
+      },
+      boucles: {
+        none: 'Still',
+        float: 'Float',
+        pulse: 'Pulse',
+      },
+      sorties: {
+        auto: 'Mirror the entrance',
+        fade: 'Fade',
+        scale_down: 'Zoom out',
+        slide_out: 'Slide',
+        blurout: 'Blur',
+      },
+      interface: {
+        motApercu: 'Text',
+        mouvementTitre: 'Text motion',
+        apercuReel: 'True preview',
+        conseille: 'suggested',
+        chercher: 'Search for a graphic',
+        chercherExemple: 'Search for a graphic…',
+        aucunResultat: 'No graphic matches',
+        ajouterGlobal: 'Add a full-screen graphic',
+        ajouterGlobalChoix: '— Add a full-screen graphic —',
+        continue: 'Ongoing',
+        sortie: 'Exit',
+      },
+      habillages: {
+        intro_jt: {
+          label: 'Opening titles',
+          apercu: '10-second opening: global network, globe, keywords, dove and logo.',
+          champs: {
+            titre: { label: 'Closing word', exemple: 'THE NEWSCAST' },
+            mots: { label: 'Keywords (separated by •)', exemple: 'NEWS • POLITICS • ECONOMY • SPORT' },
+          },
+        },
+        titre_reportage: {
+          label: 'Report title',
+          apercu: 'Blue band opening at the bottom of the frame, with a subtitle.',
+          champs: {
+            titre: { label: 'Main title', exemple: 'The Douala market' },
+            sous_titre: { label: 'Subtitle', exemple: 'Cameroon — report' },
+          },
+        },
+        transition_reportage: {
+          label: 'Transition',
+          apercu: 'Full screen, slowly turning globe, one widely spaced word.',
+          champs: {
+            titre: { label: 'Word shown', exemple: 'REPORT' },
+          },
+        },
+        envato_presenter: {
+          label: 'Presenter',
+          apercu: 'Three lines revealed one after the other.',
+          champs: {
+            context: { label: 'Kicker', exemple: 'JT ALWM' },
+            name: { label: 'First and last name', exemple: 'MARIE NGOMA' },
+            title: { label: 'Role', exemple: 'CORRESPONDENT' },
+          },
+        },
+        envato_news: {
+          label: 'Alert band',
+          apercu: 'Two-tone band sliding in, for breaking news.',
+          champs: {
+            tag: { label: 'Tag', exemple: 'LIVE' },
+            headline: { label: 'Headline', exemple: 'THE SENATE VOTES THE BUDGET' },
+          },
+        },
+        envato_big_title: {
+          label: 'Big title',
+          apercu: 'Massive full-screen title, on two slanted lines.',
+          champs: {
+            titre: { label: 'Title', exemple: 'THE EVENING NEWSCAST' },
+          },
+        },
+        envato_ticker: {
+          label: 'News ticker',
+          apercu: 'Continuous band at the bottom of the frame, with a fixed tag.',
+          champs: {
+            tag: { label: 'Tag', exemple: 'LIVE' },
+            text1: { label: 'Item 1', exemple: 'Elections in Benin' },
+            text2: { label: 'Item 2', exemple: 'Morocco held to a draw' },
+          },
+        },
+        envato_split_screen: {
+          label: 'Split screen',
+          apercu: 'Diagonal split, one location caption on each side.',
+          champs: {
+            leftLocation: { label: 'Location — left', exemple: 'DOUALA' },
+            leftSub: { label: 'Country — left', exemple: 'CAMEROON' },
+            rightLocation: { label: 'Location — right', exemple: 'DAKAR' },
+            rightSub: { label: 'Country — right', exemple: 'SENEGAL' },
+          },
+        },
+        nom_interview: {
+          label: 'Name and role',
+          apercu: 'The caption slides in, the name fades up.',
+          champs: {
+            nom: { label: 'First and last name', exemple: 'Aminata Diallo' },
+            fonction: { label: 'Role', exemple: 'MINISTER' },
+          },
+        },
+        flash_info: {
+          label: 'News flash',
+          apercu: 'Small block at the top left, in two halves.',
+          champs: {
+            titre: { label: 'Tag', exemple: 'FLASH' },
+            texte: { label: 'Subject', exemple: 'SENATE' },
+          },
+        },
+        breaking_news: {
+          label: 'Full-screen alert',
+          apercu: 'Blue flash, massive title, scrolling band below.',
+          champs: {
+            titre: { label: 'Title', exemple: 'ALERT' },
+            texte: { label: 'Subject', exemple: 'Summit in Libreville' },
+          },
+        },
+        rappel_titres: {
+          label: 'Headline recap',
+          apercu: 'Headlines arrive one after the other, full screen.',
+          champs: {
+            titre1: { label: 'Headline 1', exemple: 'Crisis in the Sahel' },
+            titre2: { label: 'Headline 2', exemple: 'Economic summit' },
+            titre3: { label: 'Headline 3', exemple: 'Elections' },
+          },
+        },
+        fin_merci: {
+          label: 'Closing card',
+          apercu: 'Sign-off line, dove flying across, ALWM logo.',
+          champs: {
+            titre: { label: 'Sign-off', exemple: 'Thank you for watching' },
+            sous_titre: { label: 'Strapline', exemple: 'NEWS AROUND THE CLOCK' },
+          },
+        },
+        envato_rep_minimal: {
+          label: 'Title — thin rule',
+          apercu: 'A thin rule stretches out and reveals the title.',
+          champs: {
+            titre: { label: 'Main title', exemple: 'Investigation' },
+            sous_titre: { label: 'Subtitle', exemple: 'INSIDE THE PORT' },
+          },
+        },
+        envato_rep_skew: {
+          label: 'Title — double slant',
+          apercu: 'Two slanted blocks meet to form the title.',
+          champs: {
+            titre: { label: 'Main title', exemple: 'ALERT' },
+            sous_titre: { label: 'Subtitle', exemple: 'TODAY’S NEWS' },
+          },
+        },
+        envato_rep_swipe: {
+          label: 'Title — light sweep',
+          apercu: 'A glow sweeps across the title from left to right.',
+          champs: {
+            titre: { label: 'Main title', exemple: 'Interview' },
+            sous_titre: { label: 'Subtitle', exemple: 'WITH THE PRESIDENT' },
+          },
+        },
+        envato_rep_glass: {
+          label: 'Title — frosted glass',
+          apercu: 'Translucent panel with the picture showing through.',
+          champs: {
+            titre: { label: 'Main title', exemple: 'Immersion' },
+            sous_titre: { label: 'Subtitle', exemple: 'BEHIND THE SCENES' },
+          },
+        },
+        envato_rep_massif: {
+          label: 'Title — solid block',
+          apercu: 'Solid block rising up, with a deep drop shadow.',
+          champs: {
+            titre: { label: 'Main title', exemple: 'STATE' },
+            sous_titre: { label: 'Subtitle', exemple: 'OF EMERGENCY' },
+          },
+        },
+        envato_lt_compact: {
+          label: 'Name — one line',
+          apercu: 'The quickest: first and last name on a single line.',
+          champs: {
+            nom: { label: 'First and last name', exemple: 'Émile Kouassi' },
+          },
+        },
+        envato_lt_corporate: {
+          label: 'Name — two blocks',
+          apercu: 'Name and role in two offset blocks.',
+          champs: {
+            nom: { label: 'First and last name', exemple: 'MICHEL SAWADOGO' },
+            fonction: { label: 'Role', exemple: 'DIRECTOR' },
+          },
+        },
+        envato_lt_interview: {
+          label: 'Name — two-way interview',
+          apercu: 'Two captions, showing who is talking to whom.',
+          champs: {
+            leftName: { label: 'Name — left', exemple: 'FATOU SOW' },
+            leftRole: { label: 'Role — left', exemple: 'ECONOMIST' },
+            rightName: { label: 'Name — right', exemple: 'JEAN OBAME' },
+            rightRole: { label: 'Role — right', exemple: 'REPORTER' },
+          },
+        },
+        envato_loc_pin: {
+          label: 'Location',
+          apercu: 'Small location pin at the top of the frame.',
+          champs: {
+            location: { label: 'Location', exemple: 'Libreville, Gabon' },
+          },
+        },
+        envato_quote: {
+          label: 'Quote',
+          apercu: 'Quotation panel, for a sentence and who said it.',
+          champs: {
+            quote: { label: 'Quote', exemple: 'We will build this bridge' },
+            author: { label: 'Author', exemple: 'The president' },
+          },
+        },
+      },
     },
   },
 };

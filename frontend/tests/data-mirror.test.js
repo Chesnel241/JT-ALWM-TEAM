@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   OVERLAY_TEMPLATES as BACK_TEMPLATES,
 } from '../../backend/src/data/overlayTemplates.js';
+import { translations } from '../src/i18n/translations.js';
 import {
-  MOMENTS,
   MOMENTS_IDS,
   animationRecommandee,
   habillagesDuMoment,
@@ -72,10 +72,12 @@ describe('TEXT_ANIMATIONS (front)', () => {
     expect(TEXT_ANIMATIONS_OUT.map((a) => a.id)).toContain('fade');
   });
 
-  it('chaque animation a un label non vide', () => {
+  it('ne porte plus que des identifiants, jamais de texte', () => {
+    // Les libellés vivaient ici ET dans l'interface. Ils vivent maintenant
+    // dans le dictionnaire seul : une chaîne écrite à deux endroits finit
+    // toujours par diverger.
     [...TEXT_ANIMATIONS_IN, ...TEXT_ANIMATIONS_LOOP, ...TEXT_ANIMATIONS_OUT].forEach((a) => {
-      expect(typeof a.label).toBe('string');
-      expect(a.label.length).toBeGreaterThan(0);
+      expect(Object.keys(a).sort(), a.id).toEqual(a.famille ? ['famille', 'id'] : ['id']);
     });
   });
 });
@@ -106,13 +108,13 @@ describe('le catalogue est rangé par moment du JT', () => {
 
   it('aucun moment n’est vide', () => {
     // Un onglet vide dans le sélecteur est une promesse non tenue.
-    MOMENTS.forEach((m) => {
-      expect(habillagesDuMoment(m.id).length, m.id).toBeGreaterThan(0);
+    MOMENTS_IDS.forEach((id) => {
+      expect(habillagesDuMoment(id).length, id).toBeGreaterThan(0);
     });
   });
 
   it('les six moments couvrent tout le catalogue, sans doublon', () => {
-    const repartis = MOMENTS.flatMap((m) => habillagesDuMoment(m.id));
+    const repartis = MOMENTS_IDS.flatMap((id) => habillagesDuMoment(id));
     expect(repartis.length).toBe(OVERLAY_TEMPLATES.length);
     expect(new Set(repartis.map((t) => t.id)).size).toBe(OVERLAY_TEMPLATES.length);
   });
@@ -120,8 +122,64 @@ describe('le catalogue est rangé par moment du JT', () => {
   it('ne nomme plus un fournisseur ni une mode graphique', () => {
     // « (Envato Premium) » nommait un fournisseur, « Glassmorphism » une mode.
     // Ni l'un ni l'autre n'aide un monteur à choisir sous la pression.
-    OVERLAY_TEMPLATES.forEach((t) => {
-      expect(t.label, t.id).not.toMatch(/envato|glassmorphism|lower third|skew/i);
+    ['fr', 'en'].forEach((langue) => {
+      Object.entries(translations[langue].studio.habillages).forEach(([id, h]) => {
+        expect(h.label, `${langue}.${id}`).not.toMatch(/envato|glassmorphism|lower third|skew/i);
+      });
+    });
+  });
+});
+
+describe('le catalogue se lit dans les deux langues', () => {
+  const LANGUES = ['fr', 'en'];
+
+  it('chaque habillage a un nom, une description et ses champs, en FR et en EN', () => {
+    // Le studio était intégralement en français codé en dur : un monteur
+    // anglophone disposait d'une station entièrement française. Sans ce test,
+    // un habillage ajouté demain rouvrirait le trou en silence.
+    LANGUES.forEach((langue) => {
+      const dit = translations[langue].studio.habillages;
+      OVERLAY_TEMPLATES.forEach((t) => {
+        const h = dit[t.id];
+        expect(h, `${langue} : habillage « ${t.id} » non traduit`).toBeTypeOf('object');
+        expect(h.label.length, `${langue}.${t.id}.label`).toBeGreaterThan(0);
+        expect(h.apercu.length, `${langue}.${t.id}.apercu`).toBeGreaterThan(0);
+        t.fields.forEach((f) => {
+          const c = h.champs[f.key];
+          expect(c, `${langue} : champ « ${t.id}.${f.key} » non traduit`).toBeTypeOf('object');
+          expect(c.label.length).toBeGreaterThan(0);
+          expect(c.exemple.length).toBeGreaterThan(0);
+        });
+      });
+    });
+  });
+
+  it('ne traduit aucun habillage ni champ qui n’existe plus', () => {
+    // L'inverse compte autant : une entrée orpheline fait croire qu'un
+    // habillage existe encore.
+    const cles = new Map(OVERLAY_TEMPLATES.map((t) => [t.id, t.fields.map((f) => f.key)]));
+    LANGUES.forEach((langue) => {
+      Object.entries(translations[langue].studio.habillages).forEach(([id, h]) => {
+        expect(cles.has(id), `${langue} : « ${id} » traduit mais absent du catalogue`).toBe(true);
+        expect(Object.keys(h.champs).sort(), `${langue}.${id}`).toEqual([...cles.get(id)].sort());
+      });
+    });
+  });
+
+  it('chaque moment, chaque intention et chaque mouvement est traduit', () => {
+    LANGUES.forEach((langue) => {
+      const dit = translations[langue].studio;
+      MOMENTS_IDS.forEach((id) => {
+        expect(dit.moments[id], `${langue}.moments.${id}`).toBeTypeOf('object');
+        expect(dit.moments[id].label.length).toBeGreaterThan(0);
+        expect(dit.moments[id].aide.length).toBeGreaterThan(0);
+      });
+      TEXT_ANIMATIONS_IN.forEach((a) => {
+        expect(dit.entrees[a.id], `${langue}.entrees.${a.id}`).toBeTypeOf('string');
+        expect(dit.familles[a.famille], `${langue}.familles.${a.famille}`).toBeTypeOf('object');
+      });
+      TEXT_ANIMATIONS_LOOP.forEach((a) => expect(dit.boucles[a.id], `${langue}.boucles.${a.id}`).toBeTypeOf('string'));
+      TEXT_ANIMATIONS_OUT.forEach((a) => expect(dit.sorties[a.id], `${langue}.sorties.${a.id}`).toBeTypeOf('string'));
     });
   });
 });

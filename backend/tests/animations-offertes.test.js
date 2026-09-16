@@ -123,11 +123,15 @@ describe('les menus non validés', () => {
     // Le serveur ne valide que l'animation d'entrée : boucle et sortie
     // voyagent en texte libre et ne peuvent pas faire échouer un export.
     // Rien ne garantit en revanche leur cohérence interne.
+    //
+    // Les libellés ne sont plus vérifiés ici : ils ont quitté les données pour
+    // le dictionnaire du studio, qui les tient dans les deux langues. Une
+    // chaîne écrite à deux endroits finit toujours par diverger.
     [TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT].forEach((liste) => {
       const ids = liste.map((a) => a.id);
       expect(ids.length).toBeGreaterThan(0);
       expect(new Set(ids).size).toBe(ids.length);
-      liste.forEach((a) => expect(a.label.trim()).not.toBe(''));
+      liste.forEach((a) => expect(typeof a.id).toBe('string'));
     });
   });
 });

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import TexteJT, { FournitureHabillage } from '../../../../remotion/src/TexteJT.jsx';
 import { COULEURS } from '../../../../remotion/src/identite.js';
 import { TEXT_ANIMATIONS_IN } from '../../data/overlayTemplates.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 
 /**
  * Choisir un mouvement en le voyant, et non en lisant son nom.
@@ -147,11 +148,7 @@ export function ApercuCombinaison({ animation, boucle, sortie, mot }) {
 }
 
 /** Les trois intentions, dans l'ordre où elles se justifient à l'antenne. */
-const FAMILLES = [
-  { id: 'sobre', label: 'Sobre', aide: 'Le corps du journal.' },
-  { id: 'affirmee', label: 'Affirmée', aide: 'L’ouverture d’un sujet.' },
-  { id: 'marquee', label: 'Marquée', aide: 'Les alertes.' },
-];
+const FAMILLES = ['sobre', 'affirmee', 'marquee'];
 
 /**
  * Le choix de l'entrée : neuf vignettes qui jouent, groupées par intention.
@@ -161,15 +158,17 @@ const FAMILLES = [
  * sobre ou marquant avant de savoir s'il veut un flou ou une saccade.
  */
 export function ChoixEntree({ valeur, onChange, recommandee }) {
+  const { t } = useI18n();
   const frame = useImageAnimee(CYCLE_VIGNETTE);
 
   return (
     <div className="flex flex-col gap-2.5">
-      {FAMILLES.map((famille) => {
-        const liste = TEXT_ANIMATIONS_IN.filter((a) => a.famille === famille.id);
+      {FAMILLES.map((idFamille) => {
+        const famille = t.studio.familles[idFamille];
+        const liste = TEXT_ANIMATIONS_IN.filter((a) => a.famille === idFamille);
         if (liste.length === 0) return null;
         return (
-          <div key={famille.id} className="flex flex-col gap-1.5">
+          <div key={idFamille} className="flex flex-col gap-1.5">
             <div className="flex items-baseline gap-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--muted)]">{famille.label}</span>
               <span className="text-[10px] text-[color:var(--muted)] opacity-70">{famille.aide}</span>
@@ -190,12 +189,12 @@ export function ChoixEntree({ valeur, onChange, recommandee }) {
                     }`}
                   >
                     <Scene>
-                      <ApercuMouvement frame={frame} animation={a.id} mot="Texte" taille={13} />
+                      <ApercuMouvement frame={frame} animation={a.id} mot={t.studio.interface.motApercu} taille={13} />
                     </Scene>
                     <span className="text-[10px] font-semibold text-[color:var(--ink)] leading-tight truncate">
-                      {a.label}
+                      {t.studio.entrees[a.id]}
                       {recommandee === a.id && (
-                        <span className="text-[color:var(--accent)] font-normal"> · conseillé</span>
+                        <span className="text-[color:var(--accent)] font-normal"> · {t.studio.interface.conseille}</span>
                       )}
                     </span>
                   </button>

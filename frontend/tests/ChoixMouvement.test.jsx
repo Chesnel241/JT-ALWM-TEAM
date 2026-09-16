@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ApercuMouvement, ChoixEntree } from '../src/components/editor/ChoixMouvement.jsx';
 import { TEXT_ANIMATIONS_IN } from '../src/data/overlayTemplates.js';
+import { I18nProvider } from '../src/i18n/I18nContext.jsx';
+import { translations } from '../src/i18n/translations.js';
 import { MOUVEMENT, images } from '../../remotion/src/identite.js';
 
 /**
@@ -18,10 +20,18 @@ import { MOUVEMENT, images } from '../../remotion/src/identite.js';
  */
 
 const FPS = 30;
+const dit = translations.fr.studio;
+const poserChoix = (props) => render(<I18nProvider><ChoixEntree {...props} /></I18nProvider>);
 const styleDe = (el) => el.getAttribute('style') || '';
 const opaciteDe = (el) => Number(/opacity:\s*([\d.]+)/.exec(styleDe(el))?.[1]);
 
 beforeEach(() => {
+  // jsdom annonce `navigator.language = 'en-US'` : sans ce choix explicite,
+  // le fournisseur monterait l'interface en anglais et les libellés attendus
+  // ne correspondraient pas. Même convention que Nav.test.jsx.
+  localStorage.clear();
+  localStorage.setItem('jt-alwm-lang', 'fr');
+
   // jsdom n'implémente pas matchMedia : sans ce doublet, l'horloge croit que
   // le mouvement réduit est demandé et fige tous les aperçus.
   if (!window.matchMedia) {
@@ -63,29 +73,41 @@ describe('l’aperçu joue le mouvement, pas une imitation', () => {
 
 describe('le choix de l’entrée', () => {
   it('propose les neuf mouvements, groupés par intention', () => {
-    render(<ChoixEntree valeur="fade" onChange={vi.fn()} />);
+    poserChoix({ valeur: 'fade', onChange: vi.fn() });
     TEXT_ANIMATIONS_IN.forEach((a) => {
-      expect(screen.getByText(new RegExp(`^${a.label}`)), a.id).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`^${dit.entrees[a.id]}`)), a.id).toBeInTheDocument();
     });
-    ['Sobre', 'Affirmée', 'Marquée'].forEach((f) => expect(screen.getByText(f)).toBeInTheDocument());
+    Object.values(dit.familles).forEach((f) => expect(screen.getByText(f.label)).toBeInTheDocument());
   });
 
   it('marque le mouvement courant, et un seul', () => {
-    render(<ChoixEntree valeur="glitch_in" onChange={vi.fn()} />);
+    poserChoix({ valeur: 'glitch_in', onChange: vi.fn() });
     const presses = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true');
     expect(presses.length).toBe(1);
-    expect(presses[0]).toHaveTextContent('Saccade');
+    expect(presses[0]).toHaveTextContent(dit.entrees.glitch_in);
   });
 
   it('signale celui que le gabarit conseille', () => {
-    render(<ChoixEntree valeur="fade" onChange={vi.fn()} recommandee="slide" />);
-    expect(screen.getByText(/conseillé/)).toBeInTheDocument();
+    poserChoix({ valeur: 'fade', onChange: vi.fn(), recommandee: 'slide' });
+    expect(screen.getByText(new RegExp(dit.interface.conseille))).toBeInTheDocument();
   });
 
   it('remonte l’identifiant du mouvement, pas son libellé', () => {
     const onChange = vi.fn();
-    render(<ChoixEntree valeur="fade" onChange={onChange} />);
-    fireEvent.click(screen.getByText(/^Machine à écrire/));
+    poserChoix({ valeur: 'fade', onChange });
+    fireEvent.click(screen.getByText(new RegExp(`^${dit.entrees.typewriter}`)));
     expect(onChange).toHaveBeenCalledWith('typewriter');
+  });
+});
+
+describe('un monteur anglophone lit son studio', () => {
+  it('voit les mouvements dans sa langue', () => {
+    // Le studio était intégralement en français codé en dur : un monteur au
+    // Ghana ou au Nigeria disposait d'une station entièrement française.
+    localStorage.setItem('jt-alwm-lang', 'en');
+    poserChoix({ valeur: 'fade', onChange: vi.fn() });
+    expect(screen.getByText(/^Typewriter/)).toBeInTheDocument();
+    expect(screen.getByText(translations.en.studio.familles.marquee.label)).toBeInTheDocument();
+    expect(screen.queryByText(/^Machine à écrire/)).not.toBeInTheDocument();
   });
 });

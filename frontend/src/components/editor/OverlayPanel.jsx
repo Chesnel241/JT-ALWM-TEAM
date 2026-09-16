@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Trash2, Layers, Clock, Search } from 'lucide-react';
 import { COULEURS } from '../../../../remotion/src/identite.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 import { ApercuCombinaison, ChoixEntree } from './ChoixMouvement.jsx';
-import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
+import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -44,22 +45,24 @@ const PALETTES = [
  * n'est pas la même chose que sur six. À défaut, l'exemple du gabarit, puis
  * un mot neutre.
  */
-function apercuTexte(overlay, template) {
+function apercuTexte(overlay, dit) {
   const saisis = Object.values(overlay.fields || {}).map((v) => String(v || '').trim()).filter(Boolean);
   if (saisis.length) return saisis[0].slice(0, 40);
-  const premier = (template.fields || [])[0];
-  return (premier && premier.placeholder) || 'Texte';
+  const premier = Object.values(dit.champs || {})[0];
+  return (premier && premier.exemple) || 'Texte';
 }
 
 export function OverlayEditor({ overlay, onChange, onRemove }) {
-  const template = OVERLAY_TEMPLATES.find((t) => t.id === overlay.templateId);
+  const { t } = useI18n();
+  const template = OVERLAY_TEMPLATES.find((x) => x.id === overlay.templateId);
   if (!template) return null;
+  const dit = t.studio.habillages[template.id] || { label: template.id, champs: {} };
 
   return (
     <div className="border border-[var(--border)] rounded-xl p-4 bg-[var(--paper)] flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="font-semibold text-[color:var(--ink)] flex items-center gap-2 text-sm">
-          <span>{template.emoji}</span> {template.label}
+          <span aria-hidden="true">{template.emoji}</span> {dit.label}
         </span>
         <button
           onClick={onRemove}
@@ -70,12 +73,14 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       </div>
 
       {/* Text fields */}
-      {template.fields.map((field) => (
+      {template.fields.map((field) => {
+        const champ = dit.champs[field.key] || { label: field.key, exemple: '' };
+        return (
         <div key={field.key} className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">{field.label}</label>
+          <label className="text-xs font-medium text-[color:var(--muted)]">{champ.label}</label>
           <input
             type="text"
-            placeholder={field.placeholder}
+            placeholder={champ.exemple}
             value={overlay.fields?.[field.key] || ''}
             onChange={(e) =>
               onChange({
@@ -86,13 +91,14 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
             className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
           />
         </div>
-      ))}
+        );
+      })}
 
       {/* Mouvement du texte : l'aperçu d'abord, le choix ensuite. */}
       <div className="space-y-3 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Mouvement du texte</label>
-          <span className="text-[10px] text-[color:var(--muted)]">Aperçu réel</span>
+          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.studio.interface.mouvementTitre}</label>
+          <span className="text-[10px] text-[color:var(--muted)]">{t.studio.interface.apercuReel}</span>
         </div>
 
         {/* La combinaison telle qu'elle sortira : entrée, boucle et sortie sur
@@ -103,7 +109,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           animation={overlay.animation || 'fade'}
           boucle={overlay.animationLoop || 'none'}
           sortie={overlay.animationOut || 'auto'}
-          mot={apercuTexte(overlay, template)}
+          mot={apercuTexte(overlay, dit)}
         />
 
         <ChoixEntree
@@ -117,26 +123,26 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           leur effet se voit dans l'aperçu ci-dessus. */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Continue</label>
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.interface.continue}</label>
           <select
             value={overlay.animationLoop || 'none'}
             onChange={(e) => onChange({ ...overlay, animationLoop: e.target.value })}
             className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
           >
             {TEXT_ANIMATIONS_LOOP.map((a) => (
-              <option key={a.id} value={a.id}>{a.label}</option>
+              <option key={a.id} value={a.id}>{t.studio.boucles[a.id]}</option>
             ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Sortie</label>
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.interface.sortie}</label>
           <select
             value={overlay.animationOut || 'auto'}
             onChange={(e) => onChange({ ...overlay, animationOut: e.target.value })}
             className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
           >
             {TEXT_ANIMATIONS_OUT.map((a) => (
-              <option key={a.id} value={a.id}>{a.label}</option>
+              <option key={a.id} value={a.id}>{t.studio.sorties[a.id]}</option>
             ))}
           </select>
         </div>
@@ -323,21 +329,23 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
  * monteur qui tape « alerte » ou « citation » arrive en un geste.
  */
 export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
+  const { t } = useI18n();
   const [recherche, setRecherche] = useState('');
 
   const groupes = useMemo(() => {
     const q = recherche.trim().toLowerCase();
-    const correspond = (t, moment) =>
-      !q
-      || (t.label || '').toLowerCase().includes(q)
-      || (t.preview || '').toLowerCase().includes(q)
-      || moment.label.toLowerCase().includes(q)
-      || moment.aide.toLowerCase().includes(q);
+    const correspond = (modele, moment) => {
+      if (!q) return true;
+      const dit = t.studio.habillages[modele.id] || {};
+      return [dit.label, dit.apercu, moment.label, moment.aide]
+        .some((v) => (v || '').toLowerCase().includes(q));
+    };
 
-    return MOMENTS
-      .map((moment) => ({ moment, liste: habillagesDuMoment(moment.id, modeles).filter((t) => correspond(t, moment)) }))
+    return MOMENTS_IDS
+      .map((id) => ({ id, ...t.studio.moments[id] }))
+      .map((moment) => ({ moment, liste: habillagesDuMoment(moment.id, modeles).filter((m) => correspond(m, moment)) }))
       .filter((g) => g.liste.length > 0);
-  }, [recherche, modeles]);
+  }, [recherche, modeles, t]);
 
   const total = groupes.reduce((n, g) => n + g.liste.length, 0);
 
@@ -351,15 +359,15 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
           autoFocus
           value={recherche}
           onChange={(e) => setRecherche(e.target.value)}
-          placeholder="Chercher un habillage…"
-          aria-label="Chercher un habillage"
+          placeholder={t.studio.interface.chercherExemple}
+          aria-label={t.studio.interface.chercher}
           className="w-full bg-transparent text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none"
         />
       </div>
 
       {total === 0 && (
         <p className="text-xs text-[color:var(--muted)] text-center py-4">
-          Aucun habillage ne correspond à « {recherche} ».
+          {t.studio.interface.aucunResultat} « {recherche} ».
         </p>
       )}
 
@@ -369,20 +377,23 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{moment.label}</h3>
             <p className="text-[10px] text-[color:var(--muted)] truncate">{moment.aide}</p>
           </div>
-          {liste.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => onChoisir(t.id)}
-              className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 motion-tap text-left"
-            >
-              <span className="text-2xl" aria-hidden="true">{t.emoji}</span>
-              <div className="min-w-0">
-                <p className="font-semibold text-sm text-[color:var(--ink)]">{t.label}</p>
-                <p className="text-xs text-[color:var(--muted)]">{t.preview}</p>
-              </div>
-            </button>
-          ))}
+          {liste.map((modele) => {
+            const dit = t.studio.habillages[modele.id] || { label: modele.id, apercu: '' };
+            return (
+              <button
+                key={modele.id}
+                type="button"
+                onClick={() => onChoisir(modele.id)}
+                className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 motion-tap text-left"
+              >
+                <span className="text-2xl" aria-hidden="true">{modele.emoji}</span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-[color:var(--ink)]">{dit.label}</p>
+                  <p className="text-xs text-[color:var(--muted)]">{dit.apercu}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       ))}
 
