@@ -3,7 +3,6 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Img
 import { COULEURS, varPolice } from '../identite.js';
 import TexteJT, { FournisseurHabillage } from '../TexteJT.jsx';
 import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
-import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
 import { WorldMap } from '../worldmap.jsx';
 import { BackdropALWM, Dove, DoveFlyThrough, eo } from '../broadcast.jsx';
 import { EnvatoPresenterLowerThird, EnvatoNewsLowerThird } from './envato_lower_thirds';
@@ -39,27 +38,6 @@ function Watermark({ mode = 'overlay', opacity = 0.06 }) {
       backgroundPosition: `${frame * 0.5}px ${frame * 0.5}px`
     }} />
   );
-}
-// Text with entrance animation (per-char or block) + outline/halo + font.
-function Tx({ children, overlay, durationInFrames, fontFamily, baseStyle }) {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const animIn = overlay.animation || 'mask_reveal';
-  const animOut = overlay.animationOut || 'slide_out';
-  const fx = fxStyle(overlay.outline, overlay.glow);
-  const wrapperStyle = { fontFamily: ff(overlay.font, fontFamily), ...baseStyle, ...fx, ...entranceStyle(overlay, frame, fps, durationInFrames) };
-  const text = children == null ? '' : String(children);
-  
-  if (PER_CHAR.has(animIn) || PER_CHAR.has(animOut)) {
-    return (
-      <span style={wrapperStyle}>
-        {[...text].map((c, i) => (
-          <span key={i} style={{ ...charStyle(overlay, frame, fps, durationInFrames, i, text.length), whiteSpace: 'pre' }}>{c}</span>
-        ))}
-      </span>
-    );
-  }
-  return <span style={wrapperStyle}>{text}</span>;
 }
 
 // Position of an overlay: default anchor + drag delta.
@@ -385,7 +363,7 @@ function TitreKaraoke({ overlay, durationInFrames }) {
         boxShadow: '0 0 40px rgba(0,0,0,0.5)',
         textTransform: 'uppercase'
       }}>
-        <Tx overlay={o} durationInFrames={durationInFrames} fontFamily="Anton">{f.title}</Tx>
+        <TexteJT as="span" role="titrage" style={{ fontFamily: ff(o.font, 'Anton') }}>{f.title}</TexteJT>
       </div>
     </Box>
   );
@@ -556,7 +534,7 @@ function SousTitre({ overlay, durationInFrames }) {
         letterSpacing: '0.02em',
         textShadow: '0 4px 10px rgba(0,0,0,0.8)'
       }}>
-        <Tx overlay={overlay} durationInFrames={durationInFrames}>{f.texte}</Tx>
+        <TexteJT as="span" role="courant">{f.texte}</TexteJT>
       </div>
     </Box>
   );

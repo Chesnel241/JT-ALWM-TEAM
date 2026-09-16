@@ -12,7 +12,7 @@
  * des constantes locales dans overlays/index.jsx (navy #14143C), et la charte
  * web de index.css (#0d4d8b, relevé sur le logo et dont les contrastes sont
  * mesurés). La typographie n'allait pas mieux : 31 tailles ad hoc, un
- * interlettrage en `em` d'un côté et en `px` de l'autre, et neuf réglages de
+ * interlettrage en `em` d'un côté et en `px` de l'autre, et huit réglages de
  * ressort différents sans raison documentée.
  *
  * L'identité n'était pas à inventer : elle existait côté web et s'arrêtait à
@@ -176,8 +176,11 @@ export const MOUVEMENT = {
 /**
  * Un seul réglage de ressort.
  *
- * Neuf coexistaient — damping de 14 à 20, stiffness de 80 à 150 — sans qu'une
- * ligne n'explique pourquoi tel bandeau rebondissait plus que son voisin.
+ * Huit réglages distincts coexistaient sur onze appels — damping de 14 à 20,
+ * stiffness de 80 à 150 — sans qu'une ligne n'explique pourquoi tel bandeau
+ * rebondissait plus que son voisin. Trois seulement servaient à un habillage
+ * vivant ; les autres étaient dans du code mort, ce qui n'arrange rien : on
+ * hérite d'un désordre dont la moitié ne se voyait même pas à l'image.
  * Celui-ci arrive vite et s'arrête net, sans rebond : la règle de la maison
  * est « pas de rebond » (voir l'en-tête de broadcast.jsx).
  */

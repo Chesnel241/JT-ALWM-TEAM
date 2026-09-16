@@ -1,25 +1,5 @@
-import { spring, interpolate } from 'remotion';
+import { interpolate } from 'remotion';
 import React from 'react';
-
-// Premium spring configurations based on Emil's design engineering philosophy
-export const SPRINGS = {
-  snappy: { damping: 15, stiffness: 150, mass: 0.8 },
-  smooth: { damping: 20, stiffness: 80, mass: 1 },
-  bouncy: { damping: 12, stiffness: 130, mass: 1 },
-};
-
-/**
- * Reusable math primitive for standard Envato broadcast ease-out dynamics.
- * We want a fast, snappy entrance that settles nicely without oscillating.
- */
-export function getEnvatoSpring(frame, fps, delay = 0, type = 'snappy') {
-  const f = Math.max(0, frame - delay);
-  return spring({
-    frame: f,
-    fps,
-    config: SPRINGS[type] || SPRINGS.snappy,
-  });
-}
 
 /**
  * Get an exponential ease-out value for clip-paths (Emil recommends no bounce for mask wipes).
