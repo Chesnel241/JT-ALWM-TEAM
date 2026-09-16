@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload, Sparkles, Layers } from 'lucide-react';
 import { GLOBAL_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment } from '../../data/overlayTemplates.js';
 import { OverlayEditor } from './OverlayPanel.jsx';
@@ -42,6 +42,10 @@ const POSITIONS = [
  * semaine (props audioFiles / imageFiles : [{filename, name}]).
  */
 export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [], uploadAsset, inline = false, adminPassword }) {
+  // Un préfixe par instance : le panneau peut être monté deux fois dans la
+  // page, et un identifiant partagé ferait donner le focus au curseur du
+  // voisin quand on clique un libellé.
+  const idc = useId();
   // Ce panneau annonçait `role="dialog" aria-modal="true"` sans en être un :
   // la tabulation repartait derrière le voile, sur les boutons de la page
   // qu'on croyait avoir quittée, et Échap ne fermait rien. En mode `inline` il
@@ -197,13 +201,18 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                 <input className={field} placeholder={t.studio.panneaux.tickerCategorie} value={v.ticker.categorie} onChange={(e) => setTicker({ categorie: e.target.value })} />
                 <input className={field} placeholder={t.studio.panneaux.tickerTexte} value={v.ticker.texte} onChange={(e) => setTicker({ texte: e.target.value })} />
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
-                    <span>{t.studio.panneaux.tickerVitesse}</span>
+                  {/* La valeur sort du libellé : associé tel quel, le nom du
+                      curseur deviendrait « Vitesse de défilement Rapide » et
+                      changerait à chaque cran, alors que la valeur est déjà
+                      annoncée par `aria-valuenow`. */}
+                  <div className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
+                    <label htmlFor={`${idc}-vitesse`}>{t.studio.panneaux.tickerVitesse}</label>
                     <span className="text-[color:var(--ink)]">
                       {t.studio.panneaux.vitesses[(v.ticker.speed || 1) - 1]}
                     </span>
-                  </label>
+                  </div>
                   <input
+                    id={`${idc}-vitesse`}
                     type="range"
                     min="1"
                     max="5"
@@ -217,16 +226,25 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                 {/* Sliders Position / Scale Ticker */}
                 <div className="grid grid-cols-3 gap-3 mt-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position X</label>
-                    <input type="range" min="-1920" max="1920" step="10" value={v.ticker.posX ?? 0} onChange={(e) => setTicker({ posX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-positionX-1`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionX}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.ticker.posX ?? 0}</span>
+                    </div>
+                    <input id={`${idc}-positionX-1`} type="range" min="-1920" max="1920" step="10" value={v.ticker.posX ?? 0} onChange={(e) => setTicker({ posX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position Y</label>
-                    <input type="range" min="-1080" max="1080" step="10" value={v.ticker.posY ?? 0} onChange={(e) => setTicker({ posY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-positionY-1`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionY}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.ticker.posY ?? 0}</span>
+                    </div>
+                    <input id={`${idc}-positionY-1`} type="range" min="-1080" max="1080" step="10" value={v.ticker.posY ?? 0} onChange={(e) => setTicker({ posY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille (%)</label>
-                    <input type="range" min="10" max="300" step="5" value={v.ticker.scale ?? 100} onChange={(e) => setTicker({ scale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-taille-1`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.taille}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.ticker.scale ?? 100}%</span>
+                    </div>
+                    <input id={`${idc}-taille-1`} type="range" min="10" max="300" step="5" value={v.ticker.scale ?? 100} onChange={(e) => setTicker({ scale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-2">
@@ -234,8 +252,8 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                       valeur était écrite et validée, mais lue par aucun moteur
                       de rendu. Elle revient avec l'échelle typographique. */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.tickerTailleTexte}</label>
-                    <input type="range" min="50" max="250" step="5" value={v.ticker.fontSize ?? 100} onChange={(e) => setTicker({ fontSize: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                    <label htmlFor={`${idc}-texte-1`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.tickerTailleTexte}</label>
+                    <input id={`${idc}-texte-1`} type="range" min="50" max="250" step="5" value={v.ticker.fontSize ?? 100} onChange={(e) => setTicker({ fontSize: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
               </>
@@ -254,22 +272,31 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                 </div>
                 <div className="grid grid-cols-3 gap-3 mt-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position X</label>
-                    <input type="range" min="-1920" max="1920" step="10" value={v.live.posX ?? 0} onChange={(e) => setLive({ posX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-positionX-2`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionX}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.live.posX ?? 0}</span>
+                    </div>
+                    <input id={`${idc}-positionX-2`} type="range" min="-1920" max="1920" step="10" value={v.live.posX ?? 0} onChange={(e) => setLive({ posX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position Y</label>
-                    <input type="range" min="-1080" max="1080" step="10" value={v.live.posY ?? 0} onChange={(e) => setLive({ posY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-positionY-2`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionY}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.live.posY ?? 0}</span>
+                    </div>
+                    <input id={`${idc}-positionY-2`} type="range" min="-1080" max="1080" step="10" value={v.live.posY ?? 0} onChange={(e) => setLive({ posY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille (%)</label>
-                    <input type="range" min="10" max="300" step="5" value={v.live.scale ?? 100} onChange={(e) => setLive({ scale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-taille-2`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.taille}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.live.scale ?? 100}%</span>
+                    </div>
+                    <input id={`${idc}-taille-2`} type="range" min="10" max="300" step="5" value={v.live.scale ?? 100} onChange={(e) => setLive({ scale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.tickerTailleTexte}</label>
-                    <input type="range" min="50" max="250" step="5" value={v.live.fontSize ?? 100} onChange={(e) => setLive({ fontSize: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                    <label htmlFor={`${idc}-texte-2`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.tickerTailleTexte}</label>
+                    <input id={`${idc}-texte-2`} type="range" min="50" max="250" step="5" value={v.live.fontSize ?? 100} onChange={(e) => setLive({ fontSize: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
               </>
@@ -289,16 +316,25 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                 </select>
                 <div className="grid grid-cols-3 gap-3 mt-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position X</label>
-                    <input type="range" min="-1920" max="1920" step="10" value={v.logoPosX ?? 0} onChange={(e) => onChange({ ...v, logoPosX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-positionX-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionX}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoPosX ?? 0}</span>
+                    </div>
+                    <input id={`${idc}-positionX-3`} type="range" min="-1920" max="1920" step="10" value={v.logoPosX ?? 0} onChange={(e) => onChange({ ...v, logoPosX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Position Y</label>
-                    <input type="range" min="-1080" max="1080" step="10" value={v.logoPosY ?? 0} onChange={(e) => onChange({ ...v, logoPosY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-positionY-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionY}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoPosY ?? 0}</span>
+                    </div>
+                    <input id={`${idc}-positionY-3`} type="range" min="-1080" max="1080" step="10" value={v.logoPosY ?? 0} onChange={(e) => onChange({ ...v, logoPosY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille (%)</label>
-                    <input type="range" min="10" max="300" step="5" value={v.logoScale ?? 100} onChange={(e) => onChange({ ...v, logoScale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-taille-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.taille}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoScale ?? 100}%</span>
+                    </div>
+                    <input id={`${idc}-taille-3`} type="range" min="10" max="300" step="5" value={v.logoScale ?? 100} onChange={(e) => onChange({ ...v, logoScale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
               </>
@@ -311,18 +347,19 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
               <Sparkles size={15} /> {t.studio.panneaux.atmosphere}
             </label>
             {[
-              ['vignette', 'Vignettage'],
-              ['grain', 'Grain (film)'],
-              ['sweep', 'Sweep lumineux'],
+              ['vignette', t.studio.panneaux.vignettage],
+              ['grain', t.studio.panneaux.grain],
+              ['sweep', t.studio.panneaux.balayage],
             ].map(([k, lab]) => {
               const val = (v.atmosphere && v.atmosphere[k]) || 0;
               return (
                 <div key={k} className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
-                    <span>{lab}</span>
+                  <div className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
+                    <label htmlFor={`${idc}-${k}`}>{lab}</label>
                     <span className="text-[color:var(--ink)]">{Math.round(val * 100)}%</span>
-                  </label>
+                  </div>
                   <input
+                    id={`${idc}-${k}`}
                     type="range"
                     min="0"
                     max="1"
@@ -348,8 +385,11 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                   </select>
                   <UploadBtn envoiLabel={t.studio.panneaux.envoi} accept="audio/*" label="Uploader" uploadAsset={uploadAsset} onUploaded={(r) => setMusic({ filename: r.filename })} />
                 </div>
-                <label className="text-xs text-[color:var(--muted)]">Volume : {Math.round((v.music.volume ?? 0.2) * 100)}%</label>
-                <input type="range" min="0" max="1" step="0.05" value={v.music.volume ?? 0.2} onChange={(e) => setMusic({ volume: parseFloat(e.target.value) })} className="w-full accent-[var(--accent)]" />
+                <div className="text-xs text-[color:var(--muted)] flex items-center justify-between">
+                  <label htmlFor={`${idc}-volume`}>{t.studio.panneaux.volume}</label>
+                  <span className="text-[color:var(--ink)]">{Math.round((v.music.volume ?? 0.2) * 100)}%</span>
+                </div>
+                <input id={`${idc}-volume`} type="range" min="0" max="1" step="0.05" value={v.music.volume ?? 0.2} onChange={(e) => setMusic({ volume: parseFloat(e.target.value) })} className="w-full accent-[var(--accent)]" />
                 <label className="flex items-center gap-2 text-sm text-[color:var(--ink)]">
                   <input type="checkbox" checked={v.music.duck} onChange={(e) => setMusic({ duck: e.target.checked })} className="w-4 h-4 accent-[var(--accent)]" />
                   Baisser sous la voix (ducking)

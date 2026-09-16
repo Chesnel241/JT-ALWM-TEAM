@@ -522,6 +522,14 @@ export const translations = {
         halo: 'Halo',
         positionX: 'Position X',
         positionY: 'Position Y',
+        // Les trois réglages d'atmosphère et le volume de la musique étaient
+        // écrits en français dans le code : ce sont des libellés de curseur, et
+        // relier un curseur à un libellé que le monteur anglophone ne comprend
+        // pas ne l'avance pas beaucoup.
+        vignettage: 'Vignettage',
+        grain: 'Grain (film)',
+        balayage: 'Balayage lumineux',
+        volume: 'Volume',
         debutSec: 'Début (s)',
         dureeSec: 'Durée (s, vide = toute la vidéo)',
         modeles: 'Modèles & Préférences',
@@ -1450,6 +1458,10 @@ export const translations = {
         halo: 'Glow',
         positionX: 'Position X',
         positionY: 'Position Y',
+        vignettage: 'Vignette',
+        grain: 'Film grain',
+        balayage: 'Light sweep',
+        volume: 'Volume',
         debutSec: 'Start (s)',
         dureeSec: 'Duration (s, empty = whole video)',
         modeles: 'Presets & preferences',

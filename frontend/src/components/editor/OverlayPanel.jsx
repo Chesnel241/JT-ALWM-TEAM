@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { X, Plus, Trash2, Layers, Clock, Search } from 'lucide-react';
 import { COULEURS } from '../../../../remotion/src/identite.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
@@ -54,6 +54,10 @@ function apercuTexte(overlay, dit) {
 }
 
 export function OverlayEditor({ overlay, onChange, onRemove }) {
+  // Un préfixe par instance : plusieurs habillages sont édités dans la même
+  // page, et un identifiant partagé ferait donner le focus au curseur du
+  // voisin quand on clique un libellé.
+  const idc = useId();
   const { t } = useI18n();
   const template = OVERLAY_TEMPLATES.find((x) => x.id === overlay.templateId);
   if (!template) return null;
@@ -247,14 +251,28 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {/* Contour + halo (gravés par libass \bord + \blur) */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.contour} : {overlay.outline ?? 0}</label>
-          <input type="range" min="0" max="6" step="1" value={overlay.outline ?? 0}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « contour : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-contour`} className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.contour}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.outline ?? 0}</span>
+          </div>
+          <input id={`${idc}-contour`} type="range" min="0" max="6" step="1" value={overlay.outline ?? 0}
             onChange={(e) => onChange({ ...overlay, outline: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.halo} : {overlay.glow ?? 0}</label>
-          <input type="range" min="0" max="10" step="1" value={overlay.glow ?? 0}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « halo : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-halo`} className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.halo}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.glow ?? 0}</span>
+          </div>
+          <input id={`${idc}-halo`} type="range" min="0" max="10" step="1" value={overlay.glow ?? 0}
             onChange={(e) => onChange({ ...overlay, glow: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
@@ -263,20 +281,41 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {/* Transform controls */}
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.positionX} : {overlay.posX ?? 0}</label>
-          <input type="range" min="-1920" max="1920" step="10" value={overlay.posX ?? 0}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « positionX : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-posx`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.positionX}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.posX ?? 0}</span>
+          </div>
+          <input id={`${idc}-posx`} type="range" min="-1920" max="1920" step="10" value={overlay.posX ?? 0}
             onChange={(e) => onChange({ ...overlay, posX: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.positionY} : {overlay.posY ?? 0}</label>
-          <input type="range" min="-1080" max="1080" step="10" value={overlay.posY ?? 0}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « positionY : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-posy`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.positionY}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.posY ?? 0}</span>
+          </div>
+          <input id={`${idc}-posy`} type="range" min="-1080" max="1080" step="10" value={overlay.posY ?? 0}
             onChange={(e) => onChange({ ...overlay, posY: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.taille} : {overlay.scale ?? 100}%</label>
-          <input type="range" min="10" max="300" step="5" value={overlay.scale ?? 100}
+          {/* Le libellé porte le terme seul et la valeur vit à côté : associé tel
+              quel, le nom du curseur serait « taille : 4 » et changerait à chaque
+              cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
+              C'est la forme que « Taille » suivait déjà plus haut. */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`${idc}-echelle`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.taille}</label>
+            <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.scale ?? 100}%</span>
+          </div>
+          <input id={`${idc}-echelle`} type="range" min="10" max="300" step="5" value={overlay.scale ?? 100}
             onChange={(e) => onChange({ ...overlay, scale: parseInt(e.target.value, 10) || 100 })}
             className="w-full accent-[var(--accent)]" />
         </div>
