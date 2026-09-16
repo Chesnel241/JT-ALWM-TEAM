@@ -139,6 +139,11 @@ app.post('/render', async (req, res) => {
       outputLocation: outPath,
       inputProps,
       concurrency: 1,
+      // Plafonne le cache d'images vidéo du compositor. Par défaut, Remotion le
+      // dimensionne sur la RAM de l'hôte, pas sur la limite du conteneur
+      // (mem_limit 2g) : le compositor dépassait et était tué (SIGKILL).
+      offthreadVideoCacheSizeInBytes: (Number(process.env.REMOTION_VIDEO_CACHE_MB) || 512) * 1024 * 1024,
+      offthreadVideoThreads: 1,
       chromiumOptions: sharedChromiumOptions,
       timeoutInMilliseconds: RENDER_TIMEOUT_MS,
       onProgress: ({ progress }) => {
