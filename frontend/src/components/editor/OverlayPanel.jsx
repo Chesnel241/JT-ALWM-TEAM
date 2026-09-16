@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Trash2, Layers, Clock, Search } from 'lucide-react';
 import { COULEURS } from '../../../../remotion/src/identite.js';
-import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_IN, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
+import { ApercuCombinaison, ChoixEntree } from './ChoixMouvement.jsx';
+import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -34,6 +35,21 @@ const PALETTES = [
     colors: { bg: COULEURS.encre, text: COULEURS.papier, accent: COULEURS.accent },
   },
 ];
+
+/**
+ * Le texte que l'aperçu fait jouer.
+ *
+ * Celui que le monteur a tapé, parce qu'un titre long ne se comporte pas
+ * comme un mot court — une machine à écrire sur quatre-vingts caractères
+ * n'est pas la même chose que sur six. À défaut, l'exemple du gabarit, puis
+ * un mot neutre.
+ */
+function apercuTexte(overlay, template) {
+  const saisis = Object.values(overlay.fields || {}).map((v) => String(v || '').trim()).filter(Boolean);
+  if (saisis.length) return saisis[0].slice(0, 40);
+  const premier = (template.fields || [])[0];
+  return (premier && premier.placeholder) || 'Texte';
+}
 
 export function OverlayEditor({ overlay, onChange, onRemove }) {
   const template = OVERLAY_TEMPLATES.find((t) => t.id === overlay.templateId);
@@ -72,20 +88,34 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
         </div>
       ))}
 
-      {/* Animations : In / Loop / Out */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Entrée</label>
-          <select
-            value={overlay.animation || 'fade'}
-            onChange={(e) => onChange({ ...overlay, animation: e.target.value })}
-            className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
-          >
-            {TEXT_ANIMATIONS_IN.map((a) => (
-              <option key={a.id} value={a.id}>{a.label}</option>
-            ))}
-          </select>
+      {/* Mouvement du texte : l'aperçu d'abord, le choix ensuite. */}
+      <div className="space-y-3 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
+        <div className="flex items-center justify-between">
+          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Mouvement du texte</label>
+          <span className="text-[10px] text-[color:var(--muted)]">Aperçu réel</span>
         </div>
+
+        {/* La combinaison telle qu'elle sortira : entrée, boucle et sortie sur
+            le texte réellement saisi. Trois listes déroulantes ne disent pas
+            qu'une machine à écrire suivie d'un flou sortant ne va pas
+            ensemble ; cet aperçu, si. */}
+        <ApercuCombinaison
+          animation={overlay.animation || 'fade'}
+          boucle={overlay.animationLoop || 'none'}
+          sortie={overlay.animationOut || 'auto'}
+          mot={apercuTexte(overlay, template)}
+        />
+
+        <ChoixEntree
+          valeur={overlay.animation}
+          onChange={(id) => onChange({ ...overlay, animation: id })}
+          recommandee={animationRecommandee(overlay.templateId)}
+        />
+      </div>
+
+      {/* Boucle et sortie : peu d'options, des noms qui se comprennent, et
+          leur effet se voit dans l'aperçu ci-dessus. */}
+      <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Continue</label>
           <select
@@ -101,7 +131,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Sortie</label>
           <select
-            value={overlay.animationOut || 'fade'}
+            value={overlay.animationOut || 'auto'}
             onChange={(e) => onChange({ ...overlay, animationOut: e.target.value })}
             className="w-full px-2 py-1.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-md text-[11px] text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)]"
           >
