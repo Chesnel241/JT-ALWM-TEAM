@@ -94,3 +94,42 @@ describe('la barre défilante', () => {
     expect(ticker).toMatch(/cycleImages[^\n]*fps/);
   });
 });
+
+describe('la charte typographique est lue, et non décorative', () => {
+  const NATIFS = join(dirname(fileURLToPath(import.meta.url)), '../../remotion/src/overlays/index.jsx');
+  const source = readFileSync(NATIFS, 'utf8');
+
+  it('ne nomme plus aucune police en clair dans les gabarits', () => {
+    // `CARACTERES` existait depuis le lot 2 — et **aucun gabarit ne le
+    // lisait** : trente-deux déclarations nommaient Montserrat ou Inter en
+    // clair. La charte était donc décorative pour la typographie, et la
+    // bascule « d'une seule ligne » annoncée n'aurait rien changé à l'image.
+    // Le rendu avant / après l'a montré : deux plans identiques.
+    const enClair = source
+      .split('\n')
+      .map((l, i) => [i + 1, l])
+      .filter(([, l]) => /['"]Montserrat|['"]Inter['"]/.test(l) && !l.trimStart().startsWith('//'))
+      .map(([n, l]) => `${n}: ${l.trim().slice(0, 70)}`);
+    expect(enClair).toEqual([]);
+  });
+
+  it('pose bien les deux piles de la charte', () => {
+    // Un test qui ne voit rien passe toujours : si les substitutions
+    // disparaissaient, le test précédent serait vert pour la mauvaise raison.
+    expect((source.match(/PILES\.titrage/g) || []).length).toBeGreaterThanOrEqual(15);
+    expect((source.match(/PILES\.courant/g) || []).length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('garde Montserrat en second, pour ne pas retomber sur la police système', () => {
+    // La leçon du lot 3 : une déclaration invalide avait fait retomber quinze
+    // habillages en serif sans que personne ne s'en aperçoive. Si un fichier
+    // de fonte manque côté worker, le JT doit sortir dans la police d'avant.
+    const charte = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../remotion/src/identite.js'), 'utf8');
+    const debut = charte.indexOf('export const PILES');
+    const piles = charte.slice(debut, charte.indexOf('};', debut));
+    expect(piles).toMatch(/Montserrat ExtraBold/);
+    expect(piles).toMatch(/Montserrat Medium/);
+    // Et aucune famille vide entre deux virgules — le défaut exact du lot 3.
+    expect(piles).not.toMatch(/,\s*,/);
+  });
+});

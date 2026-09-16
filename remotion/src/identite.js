@@ -72,10 +72,38 @@ export const COULEURS = {
  * restent disponibles, mais derrière un dépliant, jamais par défaut.
  */
 export const CARACTERES = {
-  /** Titres, bandeaux, tout ce qui se lit de loin. */
-  titrage: 'Montserrat ExtraBold',
+  /**
+   * Titres, bandeaux, tout ce qui se lit de loin.
+   *
+   * Une condensée d'information gagne environ un tiers de caractères à
+   * hauteur égale. C'est ce qui permet à « Le marché de Douala, un an après
+   * la crue » de tenir sur une ligne au lieu d'être coupé — et les titres de
+   * reportage du JT sont écrits pour être lus, pas pour être courts.
+   *
+   * La bascule tient en cette ligne, et s'annule en cette ligne : les
+   * gabarits ne nomment plus aucune police, ils lisent tous cette charte.
+   */
+  titrage: 'Roboto Condensed',
   /** Noms, fonctions, sous-titres, textes courants. */
   courant: 'Inter',
+};
+
+/**
+ * Les deux familles, prêtes à poser dans un `fontFamily`.
+ *
+ * `CARACTERES` existait depuis le lot 2 mais **aucun gabarit ne le lisait** :
+ * les vingt-huit déclarations de police des habillages natifs nommaient
+ * Montserrat en clair. La charte était donc décorative pour la typographie, et
+ * la bascule « d'une seule ligne » annoncée n'aurait rien changé à l'image.
+ *
+ * Montserrat reste en second : si un fichier de fonte manque à l'appel côté
+ * worker, le JT sort dans la police d'avant plutôt que dans celle du système.
+ * C'est la leçon du lot 3, où une déclaration invalide avait fait retomber
+ * quinze habillages en serif sans que personne ne s'en aperçoive.
+ */
+export const PILES = {
+  titrage: `'${CARACTERES.titrage}', 'Montserrat ExtraBold', system-ui, sans-serif`,
+  courant: `'${CARACTERES.courant}', 'Montserrat Medium', system-ui, sans-serif`,
 };
 
 /**
@@ -91,7 +119,7 @@ export const CARACTERES = {
  * natifs étaient en Montserrat, et rien ne le signalait.
  */
 export const POLICE_HABILLAGE =
-  'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif';
+  `var(--ov-font, "${CARACTERES.titrage}"), "${CARACTERES.titrage}", "Montserrat ExtraBold", system-ui, sans-serif`;
 
 /**
  * La variable de police à poser sur le conteneur d'un habillage importé.
