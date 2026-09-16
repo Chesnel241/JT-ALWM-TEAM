@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertCircle, CheckCircle, Download, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertCircle, CheckCircle, Download, Loader2, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 
 /**
@@ -12,6 +12,10 @@ import { useI18n } from '../../i18n/I18nContext.jsx';
  * changer d'onglet pour découvrir que le rendu tournait, ou qu'il était fini.
  *
  * Volontairement compact : c'est une incrustation sur l'image, pas un écran.
+ * Elle se pose en HAUT du lecteur : en bas, elle recouvrait lecture, son et
+ * plein écran, et la carte « Master assemblé » restait là sans pouvoir être
+ * fermée. Le résultat et l'échec se masquent donc d'un clic ; ils reviennent
+ * au rendu suivant.
  * Le panneau détaillé des chutiers reste la vue complète, avec le lecteur du
  * master assemblé.
  */
@@ -44,10 +48,28 @@ export default function ExportStatus({
   onReessayer,
 }) {
   const { t } = useI18n();
+  const [masquee, setMasquee] = useState(false);
+  // Un nouveau rendu, un nouveau résultat ou une nouvelle erreur doit se voir,
+  // même si la carte précédente avait été masquée.
+  useEffect(() => { setMasquee(false); }, [enCours, urlVideo, erreur]);
+
   // Rien à dire tant que personne n'a lancé de rendu.
   if (!enCours && !erreur && !urlVideo) return null;
+  if (masquee && !enCours) return null;
 
-  const cadre = 'absolute inset-x-4 bottom-4 z-20 rounded-2xl border px-4 py-3 '
+  const fermer = (
+    <button
+      type="button"
+      onClick={() => setMasquee(true)}
+      aria-label={t.studio.panneaux.exportMasquer}
+      title={t.studio.panneaux.exportMasquer}
+      className="shrink-0 rounded-lg p-1 text-[color:var(--editor-muted)] hover:bg-[var(--editor-border)] hover:text-[color:var(--editor-text)]"
+    >
+      <X size={16} />
+    </button>
+  );
+
+  const cadre = 'absolute inset-x-4 top-4 z-20 rounded-2xl border px-4 py-3 '
     + 'bg-[oklch(0.16_0.02_245/0.94)] backdrop-blur-sm shadow-[0_12px_32px_-12px_oklch(0.05_0.02_245/0.8)]';
 
   if (erreur && !enCours) {
@@ -64,6 +86,7 @@ export default function ExportStatus({
               {t.studio.panneaux.exportReessayer}
             </button>
           )}
+          {fermer}
         </div>
       </div>
     );
@@ -86,6 +109,7 @@ export default function ExportStatus({
           >
             <Download size={15} /> {t.studio.panneaux.exportTelecharger}
           </a>
+          {fermer}
         </div>
       </div>
     );

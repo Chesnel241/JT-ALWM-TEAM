@@ -15,9 +15,9 @@ const baseFontConfig = {
 export function EnvatoPresenterLowerThird({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const context = fields.context || 'TONY NIGHT SHOW';
-  const name = fields.name || 'MARINA FORESTER';
-  const title = fields.title || 'ADMINISTRATOR';
+  const context = fields.context || '';
+  const name = fields.name || '';
+  const title = fields.title || '';
   const colorMain = fields.colorMain || COULEURS.structure;
   const colorAccent = fields.colorAccent || COULEURS.papier;
   const colorTextMain = fields.colorTextMain || COULEURS.papier;
@@ -96,7 +96,7 @@ export function EnvatoNewsLowerThird({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
   const tag = fields.tag || 'BREAKING NEWS';
-  const headline = fields.headline || 'ENVATO - THE WORLD\'S LEADING MARKETPLACE';
+  const headline = fields.headline || '';
   const colorMain = fields.colorMain || COULEURS.structure;
   const colorAccent = fields.colorAccent || COULEURS.papier;
   const colorTextMain = fields.colorTextMain || COULEURS.papier;

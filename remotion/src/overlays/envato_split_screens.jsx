@@ -41,10 +41,10 @@ function LocationLabel({ frame, delay, location, sub, colorMain, colorAccent, co
 export function EnvatoSplitScreen({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const leftLocation = fields.leftLocation || 'CALIFORNIA';
-  const leftSub = fields.leftSub || 'USA';
-  const rightLocation = fields.rightLocation || 'NEW YORK';
-  const rightSub = fields.rightSub || 'USA';
+  const leftLocation = fields.leftLocation || '';
+  const leftSub = fields.leftSub || '';
+  const rightLocation = fields.rightLocation || '';
+  const rightSub = fields.rightSub || '';
   const colorMain = fields.colorMain || COULEURS.structure;
   const colorAccent = fields.colorAccent || COULEURS.papier;
   const colorTextMain = fields.colorTextMain || COULEURS.papier;

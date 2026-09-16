@@ -16,9 +16,9 @@ const baseFontConfig = {
 export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const fullNom = fields.nom || 'EMIL KOWALSKI';
+  const fullNom = fields.nom || '';
   const parts = fullNom.split(' ');
-  const firstName = parts[0] || 'EMIL';
+  const firstName = parts[0] || '';
   const lastName = parts.slice(1).join(' ') || '';
   const colorMain = fields.colorMain || COULEURS.papier;
   const colorTextFirst = fields.colorTextFirst || COULEURS.encre;
@@ -69,8 +69,8 @@ export function EnvatoLowerThirdCompact({ overlay, durationInFrames }) {
 export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const name = fields.nom || 'MICHAEL SCOTT';
-  const title = fields.fonction || 'REGIONAL MANAGER';
+  const name = fields.nom || '';
+  const title = fields.fonction || '';
   const colorTop = fields.colorMain || COULEURS.accentSoutenu; // Corporate Blue
   const colorBottom = fields.colorBg || COULEURS.papier;
   const colorTextTop = fields.colorTextMain || COULEURS.papier;
@@ -131,10 +131,10 @@ export function EnvatoLowerThirdDuoCorporate({ overlay, durationInFrames }) {
 export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const leftName = fields.leftName || 'JANE DOE';
-  const leftRole = fields.leftRole || 'HOST';
-  const rightName = fields.rightName || 'JOHN SMITH';
-  const rightRole = fields.rightRole || 'GUEST';
+  const leftName = fields.leftName || '';
+  const leftRole = fields.leftRole || '';
+  const rightName = fields.rightName || '';
+  const rightRole = fields.rightRole || '';
   const colorBg = fields.colorBg || COULEURS.encre;
   const colorMain = fields.colorMain || COULEURS.structure;
   const colorAccent = fields.colorAccent || COULEURS.papier;
@@ -200,7 +200,7 @@ export function EnvatoLowerThirdInterview({ overlay, durationInFrames }) {
 export function EnvatoLocationPin({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const location = fields.location || 'PARIS, FRANCE';
+  const location = fields.location || '';
   const colorBg = fields.colorBg || COULEURS.encre;
   const colorMain = fields.colorMain || COULEURS.papier;
   const colorTextMain = fields.colorTextMain || COULEURS.papier;
@@ -264,8 +264,8 @@ export function EnvatoLocationPin({ overlay, durationInFrames }) {
 export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const quote = fields.quote || 'DESIGN IS NOT JUST WHAT IT LOOKS LIKE. DESIGN IS HOW IT WORKS.';
-  const author = fields.author || 'STEVE JOBS';
+  const quote = fields.quote || '';
+  const author = fields.author || '';
   const colorBg = fields.colorBg || COULEURS.encre;
   const colorMain = fields.colorMain || COULEURS.structure;
   const colorTextMain = fields.colorTextMain || COULEURS.papier;
@@ -315,17 +315,22 @@ export function EnvatoQuoteBlock({ overlay, durationInFrames }) {
           </div>
           
           <div style={{ position: 'relative', zIndex: 1 }}>
+            {/* Champs vides : ni guillemets orphelins, ni tiret sans auteur. */}
+            {quote && (
             <EnvatoMaskReveal frame={frame} delay={15} direction="right" duration={35}>
               <TexteJT role="titrage" delai={15} style={{ ...baseFontConfig, fontSize: '50px', color: colorTextMain, lineHeight: '1.2', textTransform: 'none', fontWeight: '700' }}>
                 "{quote}"
               </TexteJT>
             </EnvatoMaskReveal>
+            )}
             
+            {author && (
             <EnvatoMaskReveal frame={frame} delay={30} direction="right" duration={25}>
               <TexteJT role="courant" delai={30} style={{ ...baseFontConfig, fontSize: '24px', color: colorMain, letterSpacing: '4px', marginTop: '30px' }}>
                 — {author}
               </TexteJT>
             </EnvatoMaskReveal>
+            )}
           </div>
         </div>
       </EnvatoMaskReveal>

@@ -593,6 +593,7 @@ export const translations = {
         exportEchec: 'L’assemblage a échoué',
         exportReessayer: 'Réessayer',
         exportPret: 'Master assemblé',
+        exportMasquer: 'Masquer',
         exportTelecharger: 'Télécharger le MP4',
         exportContinue: 'L’assemblage se poursuit sur le serveur — vous pouvez continuer à monter.',
         exportRecuperation: 'Récupération des rushes…',
@@ -739,6 +740,7 @@ export const translations = {
         inspecteur: 'Inspecteur',
         inspecteurVide: 'Aucun clip sélectionné',
         inspecteurVideAide: 'Sélectionnez un clip dans la timeline ou ouvrez Habillage JT.',
+        inspecteurDuree: 'Durée',
       },
       moments: {
         ouverture: { label: 'Ouverture', aide: 'Lancer le journal ou un sujet.' },
@@ -1543,6 +1545,7 @@ export const translations = {
         exportEchec: 'The build failed',
         exportReessayer: 'Try again',
         exportPret: 'Master built',
+        exportMasquer: 'Dismiss',
         exportTelecharger: 'Download the MP4',
         exportContinue: 'The build carries on server-side — you can keep editing.',
         exportRecuperation: 'Fetching the footage…',
@@ -1681,6 +1684,7 @@ export const translations = {
         inspecteur: 'Inspector',
         inspecteurVide: 'No clip selected',
         inspecteurVideAide: 'Select a clip in the timeline, or open the newscast graphics.',
+        inspecteurDuree: 'Duration',
       },
       moments: {
         ouverture: { label: 'Opening', aide: 'Start the newscast or a story.' },

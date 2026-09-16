@@ -533,6 +533,9 @@ export default function Timeline({
   syncState = 'saved',
   presenceCount = 1,
   compact = false,
+  // Prévient le tableau de bord du clip sélectionné : l'inspecteur, à droite,
+  // affichait « Aucun clip sélectionné » pendant qu'un clip l'était ici.
+  onSelectionChange,
 }) {
   const { t } = useI18n();
   const rootRef = useRef(null);
@@ -563,6 +566,10 @@ export default function Timeline({
     [clips, selectedClipId],
   );
   const selectedIndex = selectedClip ? clips.indexOf(selectedClip) : -1;
+
+  useEffect(() => {
+    onSelectionChange?.(selectedClip);
+  }, [onSelectionChange, selectedClip]);
   // Deux jeux de repères, parce que les deux gestes n'ont pas les mêmes points
   // fixes : un titre se pose sur un bord de plan, un rognage vise un bord de
   // titre — les bords de plan, eux, suivent le rognage au lieu de l'arrêter.
