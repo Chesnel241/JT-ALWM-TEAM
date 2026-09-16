@@ -4,6 +4,7 @@ import { COULEURS } from '../../../../remotion/src/identite.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 import { ApercuCombinaison, ChoixEntree } from './ChoixMouvement.jsx';
 import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
+import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -409,6 +410,11 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
 }
 
 export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, inline = false }) {
+  // Ce panneau annonçait `role="dialog" aria-modal="true"` sans en être un :
+  // la tabulation repartait derrière le voile, sur les boutons de la page
+  // qu'on croyait avoir quittée, et Échap ne fermait rien. En mode `inline` il
+  // n'est pas modal — il vit dans la mise en page —, donc le piège s'y tait.
+  const boiteModale = usePiegeFocus(!inline, onClose);
   const { t } = useI18n();
   const [overlays, setOverlays] = useState(clip.overlays || []);
   const [picking, setPicking] = useState(false);
@@ -528,6 +534,7 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
 
   return (
     <div
+      ref={boiteModale}
       className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"

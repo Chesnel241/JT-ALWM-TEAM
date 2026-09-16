@@ -4,6 +4,7 @@ import { API_BASE } from '../../api/index.js';
 import { FONT_FAMILIES } from '../../data/overlayTemplates.js';
 import { transcribe } from '../../lib/transcribe.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
+import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 function fmt(s) {
   const m = Math.floor(s / 60);
@@ -13,6 +14,11 @@ function fmt(s) {
 
 // Sous-titrage auto (Whisper navigateur) + édition + style, par clip.
 export default function SubtitlePanel({ clip, onClose, onSave, inline = false }) {
+  // Ce panneau annonçait `role="dialog" aria-modal="true"` sans en être un :
+  // la tabulation repartait derrière le voile, sur les boutons de la page
+  // qu'on croyait avoir quittée, et Échap ne fermait rien. En mode `inline` il
+  // n'est pas modal — il vit dans la mise en page —, donc le piège s'y tait.
+  const boiteModale = usePiegeFocus(!inline, onClose);
   const { t } = useI18n();
   const [segs, setSegs] = useState(clip.subtitles || []);
   const [style, setStyle] = useState(clip.subtitleStyle || { position: 'bottom', size: 'M', font: '' });
@@ -129,7 +135,8 @@ export default function SubtitlePanel({ clip, onClose, onSave, inline = false })
   if (inline) return content;
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+    <div
+      ref={boiteModale} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
       {content}
     </div>
   );

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { X, Scissors, SkipBack, SkipForward, Play, Pause } from 'lucide-react';
 import { previewUrl } from '../../lib/mediaSource.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
+import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 function formatTime(seconds) {
   if (seconds == null || isNaN(seconds)) return '0:00.0';
@@ -12,6 +13,11 @@ function formatTime(seconds) {
 }
 
 export default function TrimModal({ file, onClose, onConfirm, inline = false }) {
+  // Ce panneau annonçait `role="dialog" aria-modal="true"` sans en être un :
+  // la tabulation repartait derrière le voile, sur les boutons de la page
+  // qu'on croyait avoir quittée, et Échap ne fermait rien. En mode `inline` il
+  // n'est pas modal — il vit dans la mise en page —, donc le piège s'y tait.
+  const boiteModale = usePiegeFocus(!inline, onClose);
   const { t } = useI18n();
   const videoRef = useRef(null);
   const progressRef = useRef(null);
@@ -426,6 +432,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
 
   return (
     <div
+      ref={boiteModale}
       className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"

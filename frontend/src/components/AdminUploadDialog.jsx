@@ -1,63 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { UploadCloud, X, Lock } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
+import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
 export default function AdminUploadDialog({ isOpen, onClose, onUpload, isLoading, countryName }) {
   const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [file, setFile] = useState(null);
   const fileInputRef = useRef(null);
-  const dialogRef = useRef(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-      if (e.key === 'Tab') {
-        if (!dialogRef.current) return;
-        const focusableElements = dialogRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) return;
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    if (dialogRef.current) {
-      const focusableElements = dialogRef.current.querySelectorAll('input, button');
-      if (focusableElements.length > 0) {
-        // Find first input, else first button
-        const firstInput = Array.from(focusableElements).find(el => el.tagName === 'INPUT' && !el.classList.contains('hidden'));
-        if (firstInput) {
-          firstInput.focus();
-        } else {
-          focusableElements[0].focus();
-        }
-      }
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  // Deuxième copie du même piège de focus, remplacée par le hook commun. Son
+  // garde `!classList.contains('hidden')` visait le champ de fichier caché,
+  // qui porte en réalité `sr-only` : il ne l'écartait donc pas. Le hook s'en
+  // remet à `tabIndex={-1}`, que ce champ déclare déjà.
+  const dialogRef = usePiegeFocus(isOpen, onClose);
 
   if (!isOpen) return null;
 

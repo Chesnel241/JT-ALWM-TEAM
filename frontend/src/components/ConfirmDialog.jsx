@@ -1,5 +1,5 @@
 import { AlertCircle } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
 export default function ConfirmDialog({
   isOpen,
@@ -13,56 +13,11 @@ export default function ConfirmDialog({
   isLoading = false,
   extraActions = null,
 }) {
-  const dialogRef = useRef(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onCancel();
-      }
-      if (e.key === 'Tab') {
-        if (!dialogRef.current) return;
-        const focusableElements = dialogRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    
-    // Focus input if present, otherwise first button
-    if (dialogRef.current) {
-      const input = dialogRef.current.querySelector('input, textarea');
-      if (input) {
-        input.focus();
-      } else {
-        const focusableElements = dialogRef.current.querySelectorAll('button');
-        if (focusableElements.length > 0) {
-          focusableElements[0].focus();
-        }
-      }
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onCancel]);
+  // Le piège de focus vivait ici, en quarante-cinq lignes, et une deuxième
+  // copie presque identique vivait dans `AdminUploadDialog`. Deux copies
+  // divergent toujours. Le hook les remplace et ajoute ce qui manquait aux
+  // deux : rendre le focus au bouton qui a ouvert la boîte.
+  const dialogRef = usePiegeFocus(isOpen, onCancel);
 
   if (!isOpen) return null;
 

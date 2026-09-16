@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
+import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
 const ID_RE = /^[a-z0-9-]{2,12}$/;
 const CODE_RE = /^[A-Z0-9]{2,5}$/;
@@ -24,6 +25,10 @@ export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
   useEffect(() => {
     if (!idTouched) setId(code.toLowerCase().slice(0, 12));
   }, [code, idTouched]);
+
+  // Il annonçait `role="dialog" aria-modal="true"` sans retenir le clavier :
+  // la tabulation repartait derrière le voile et Échap ne fermait rien.
+  const boiteModale = usePiegeFocus(isOpen, onCancel);
 
   if (!isOpen) return null;
 
@@ -51,6 +56,7 @@ export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
 
   return (
     <div
+      ref={boiteModale}
       className="fixed inset-0 bg-black/30 flex items-center justify-center z-[10001] p-4"
       role="dialog"
       aria-modal="true"

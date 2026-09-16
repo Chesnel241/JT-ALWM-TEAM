@@ -4,6 +4,7 @@ import { GLOBAL_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment
 import { OverlayEditor } from './OverlayPanel.jsx';
 import { api } from '../../api/index.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
+import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 // Bouton d'upload d'un asset (musique/voix-off/image) → uploadAsset → {filename,name}.
 function UploadBtn({ accept, label, envoiLabel, uploadAsset, onUploaded }) {
@@ -41,6 +42,11 @@ const POSITIONS = [
  * semaine (props audioFiles / imageFiles : [{filename, name}]).
  */
 export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles = [], imageFiles = [], uploadAsset, inline = false, adminPassword }) {
+  // Ce panneau annonçait `role="dialog" aria-modal="true"` sans en être un :
+  // la tabulation repartait derrière le voile, sur les boutons de la page
+  // qu'on croyait avoir quittée, et Échap ne fermait rien. En mode `inline` il
+  // n'est pas modal — il vit dans la mise en page —, donc le piège s'y tait.
+  const boiteModale = usePiegeFocus(!inline, onClose);
   const { t } = useI18n();
   const v = value;
   const setTicker = (p) => onChange({ ...v, ticker: { ...v.ticker, ...p } });
@@ -453,7 +459,8 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
   if (inline) return content;
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+    <div
+      ref={boiteModale} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
       {content}
     </div>
   );

@@ -46,6 +46,7 @@ import {
 import ActionSheet from './ActionSheet.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
 import ReporterLinkDialog from './ReporterLinkDialog.jsx';
+import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
 // Clés localStorage : la timeline et le job de montage en cours survivent au
 // refresh/changement d'onglet (le rendu continue côté serveur).
@@ -266,55 +267,17 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, o
 }
 
 function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword, onContentChange }) {
-  const dialogRef = useRef(null);
-
-  useEffect(() => {
-    if (!file) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-      if (e.key === 'Tab') {
-        if (!dialogRef.current) return;
-        const focusableElements = dialogRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) return;
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    if (dialogRef.current) {
-      const closeBtn = dialogRef.current.querySelector('button');
-      if (closeBtn) closeBtn.focus();
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [file, onClose]);
+  // Troisième copie du même piège de focus, après `ConfirmDialog` et
+  // `AdminUploadDialog`. Trois copies de quarante lignes pour un geste que
+  // sept autres panneaux n'avaient pas du tout : c'est exactement ce que le
+  // hook commun corrige.
+  const dialogRef = usePiegeFocus(Boolean(file), onClose);
 
   if (!file) return null;
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
-      <div ref={dialogRef} className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
+    <div ref={dialogRef} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
+      <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
           <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
             {file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i) ? (
