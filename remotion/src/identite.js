@@ -103,7 +103,7 @@ export const CARACTERES = {
  */
 export const PILES = {
   titrage: `'${CARACTERES.titrage}', 'Montserrat ExtraBold', system-ui, sans-serif`,
-  courant: `'${CARACTERES.courant}', 'Montserrat Medium', system-ui, sans-serif`,
+  courant: `'${CARACTERES.courant}', system-ui, sans-serif`,
 };
 
 /**

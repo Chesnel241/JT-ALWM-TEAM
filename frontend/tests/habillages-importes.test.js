@@ -141,8 +141,14 @@ describe('la charte typographique est lue, et non décorative', () => {
     const charte = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../remotion/src/identite.js'), 'utf8');
     const debut = charte.indexOf('export const PILES');
     const piles = charte.slice(debut, charte.indexOf('};', debut));
+    // Le titrage garde son filet : « Montserrat ExtraBold » existe vraiment.
     expect(piles).toMatch(/Montserrat ExtraBold/);
-    expect(piles).toMatch(/Montserrat Medium/);
+    // Le courant n'en a plus, et c'est la vérité : le seul Montserrat de cette
+    // graisse livré dans le dépôt — « Montserrat Medium » — n'était pas une
+    // police mais une page HTML. Nommer un repli qui n'existe pas donnerait
+    // l'illusion d'un filet là où il n'y en a jamais eu.
+    expect(piles).not.toMatch(/Montserrat Medium/);
+    expect(piles).toMatch(/system-ui/);
     // Et aucune famille vide entre deux virgules — le défaut exact du lot 3.
     expect(piles).not.toMatch(/,\s*,/);
   });

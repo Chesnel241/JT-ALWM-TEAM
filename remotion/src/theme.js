@@ -52,8 +52,14 @@ export const FONT_FILES = {
   'IBM Plex Sans': 'IBMPlexSans-SemiBold.ttf',
   'JetBrains Mono': 'JetBrainsMono-Medium.ttf',
   'Montserrat ExtraBold': 'Montserrat-ExtraBold.ttf',
-  'Montserrat Bold': 'Montserrat-Bold.ttf',
-  'Montserrat Medium': 'Montserrat-Medium.ttf',
+  // « Montserrat Bold » et « Montserrat Medium » ont été retirés : les
+  // fichiers livrés sous ces noms n'étaient pas des polices, mais deux pages
+  // d'erreur GitHub de 307 Ko enregistrées avec une extension `.ttf`, dans les
+  // trois dossiers à la fois. Ces deux familles ne se sont donc jamais
+  // chargées — ni à l'antenne, ni dans le studio — alors que le catalogue les
+  // proposait au monteur. Les reproposer suppose de récupérer les vraies
+  // graisses ; le dépôt ne porte qu'une ExtraBold statique, dont rien ne se
+  // dérive honnêtement.
 };
 
 export const FONT_FAMILIES = Object.keys(FONT_FILES);

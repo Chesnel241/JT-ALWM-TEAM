@@ -291,7 +291,10 @@ export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'globa
 export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'global');
 
 export const FONT_FAMILIES = [
-  'Montserrat ExtraBold', 'Montserrat Bold', 'Montserrat Medium',
+  // Deux graisses Montserrat ont été retirées : les fichiers livrés sous
+  // ces noms étaient des pages HTML, pas des polices. Les proposer était
+  // promettre ce qui n'existe pas.
+  'Montserrat ExtraBold',
   'Inter', 'Bebas Neue', 'Anton', 'Archivo Black', 'Barlow',
   'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
   'Oswald', 'Roboto Condensed', 'Russo One', 'Playfair Display',
