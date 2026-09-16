@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, CheckCircle, Download, Loader2 } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 
 /**
  * L'état du rendu, posé au-dessus du lecteur du studio.
@@ -15,15 +16,21 @@ import { AlertCircle, CheckCircle, Download, Loader2 } from 'lucide-react';
  * master assemblé.
  */
 
-const PHASES = {
-  downloading: 'Récupération des rushes…',
-  encoding: 'Encodage en cours…',
-  uploading: 'Finalisation…',
-  done: 'Terminé',
-};
-
-export function libellePhase(phase) {
-  return PHASES[phase] || 'Préparation du master…';
+/**
+ * Le libellé d'une phase d'assemblage.
+ *
+ * Le dictionnaire est passé en argument plutôt que lu par un hook : cette
+ * fonction est appelée depuis le rendu mais reste une fonction pure, et c'est
+ * ce qui la rend testable sans monter de composant.
+ */
+export function libellePhase(phase, t) {
+  const dit = t.studio.panneaux;
+  return {
+    downloading: dit.exportRecuperation,
+    encoding: dit.exportEncodage,
+    uploading: dit.exportFinalisation,
+    done: dit.exportTermine,
+  }[phase] || dit.exportPreparation;
 }
 
 export default function ExportStatus({
@@ -36,6 +43,7 @@ export default function ExportStatus({
   semaine = '',
   onReessayer,
 }) {
+  const { t } = useI18n();
   // Rien à dire tant que personne n'a lancé de rendu.
   if (!enCours && !erreur && !urlVideo) return null;
 
@@ -48,12 +56,12 @@ export default function ExportStatus({
         <div className="flex items-center gap-3">
           <AlertCircle className="shrink-0 text-[var(--editor-danger)]" size={20} />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[color:var(--editor-text)]">L'assemblage a échoué</p>
+            <p className="text-sm font-semibold text-[color:var(--editor-text)]">{t.studio.panneaux.exportEchec}</p>
             <p className="truncate text-xs text-[color:var(--editor-muted)]">{erreur}</p>
           </div>
           {onReessayer && (
             <button type="button" onClick={onReessayer} className="btn btn-primary shrink-0 px-3 py-1.5 text-xs">
-              Réessayer
+              {t.studio.panneaux.exportReessayer}
             </button>
           )}
         </div>
@@ -67,7 +75,7 @@ export default function ExportStatus({
         <div className="flex items-center gap-3">
           <CheckCircle className="shrink-0 text-[var(--action)]" size={20} />
           <p className="min-w-0 flex-1 text-sm font-semibold text-[color:var(--editor-text)]">
-            Master assemblé
+            {t.studio.panneaux.exportPret}
           </p>
           <a
             href={urlVideo}
@@ -76,7 +84,7 @@ export default function ExportStatus({
             rel="noopener noreferrer"
             className="btn btn-primary flex shrink-0 items-center gap-2 px-3 py-1.5 text-xs"
           >
-            <Download size={15} /> Télécharger le MP4
+            <Download size={15} /> {t.studio.panneaux.exportTelecharger}
           </a>
         </div>
       </div>
@@ -92,14 +100,14 @@ export default function ExportStatus({
       className={`${cadre} border-[var(--editor-accent-strong)]`}
       role="status"
       aria-live="polite"
-      aria-label={`Assemblage du master : ${libellePhase(phase)}, ${pourcent} %`}
+      aria-label={`Assemblage du master : ${libellePhase(phase, t)}, ${pourcent} %`}
     >
       <div className="flex items-center gap-3">
         <Loader2 className="shrink-0 animate-spin text-[var(--editor-accent)]" size={20} />
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-baseline justify-between gap-3">
             <span className="truncate text-xs font-semibold text-[color:var(--editor-text)]">
-              {libellePhase(phase)}
+              {libellePhase(phase, t)}
             </span>
             <span className="shrink-0 font-mono text-[11px] text-[color:var(--editor-muted)]">
               {minutes}:{reste}
@@ -119,7 +127,7 @@ export default function ExportStatus({
         </span>
       </div>
       <p className="mt-1.5 text-[11px] text-[color:var(--editor-muted)]">
-        L'assemblage se poursuit sur le serveur — vous pouvez continuer à monter.
+        {t.studio.panneaux.exportContinue}
       </p>
     </div>
   );

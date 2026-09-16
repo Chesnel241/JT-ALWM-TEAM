@@ -6,11 +6,11 @@ import { api } from '../../api/index.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 
 // Bouton d'upload d'un asset (musique/voix-off/image) → uploadAsset → {filename,name}.
-function UploadBtn({ accept, label, uploadAsset, onUploaded }) {
+function UploadBtn({ accept, label, envoiLabel, uploadAsset, onUploaded }) {
   const [busy, setBusy] = useState(false);
   return (
     <label className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-dashed border-[var(--border)] text-xs cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] ${busy ? 'opacity-60 pointer-events-none' : 'text-[color:var(--muted)]'}`}>
-      <Upload size={14} /> {busy ? 'Envoi…' : label}
+      <Upload size={14} /> {busy ? envoiLabel : label}
       <input
         type="file"
         accept={accept}
@@ -146,12 +146,12 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
           {/* Section Modèles / Préférences */}
           <section className={sectionCls}>
-            {head(<Layers size={15} />, 'Modèles & Préférences', null)}
+            {head(<Layers size={15} />, t.studio.panneaux.modeles, null)}
             <div className="flex flex-col gap-3">
               <div className="flex gap-2">
                 <input 
                   className={field} 
-                  placeholder="Nom du nouveau modèle..." 
+                  placeholder={t.studio.panneaux.modeleNom} 
                   value={themeName} 
                   onChange={(e) => setThemeName(e.target.value)} 
                 />
@@ -165,10 +165,10 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
               
               <div className="flex flex-col gap-2 mt-2">
                 <button onClick={loadThemes} className="text-xs text-[var(--accent)] font-medium text-left underline w-fit">
-                  Rafraîchir les modèles sauvegardés
+                  {t.studio.panneaux.modelesRafraichir}
                 </button>
                 {themes.length === 0 && !loadingThemes && (
-                  <p className="text-xs text-[var(--muted)]">Aucun modèle sauvegardé.</p>
+                  <p className="text-xs text-[var(--muted)]">{t.studio.panneaux.modelesAucun}</p>
                 )}
                 {themes.map(t => (
                   <div key={t.id} className="flex items-center justify-between p-2 border border-[var(--border)] rounded-lg bg-[var(--paper-2)]">
@@ -185,16 +185,16 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
 
           {/* Ticker */}
           <section className={sectionCls}>
-            {head(<Newspaper size={15} />, 'Bande défilante (ticker)', v.ticker.enabled, (c) => setTicker({ enabled: c }))}
+            {head(<Newspaper size={15} />, t.studio.panneaux.ticker, v.ticker.enabled, (c) => setTicker({ enabled: c }))}
             {v.ticker.enabled && (
               <>
-                <input className={field} placeholder="Catégorie (ex: ALERTE)" value={v.ticker.categorie} onChange={(e) => setTicker({ categorie: e.target.value })} />
-                <input className={field} placeholder="Texte défilant (séparez par •)" value={v.ticker.texte} onChange={(e) => setTicker({ texte: e.target.value })} />
+                <input className={field} placeholder={t.studio.panneaux.tickerCategorie} value={v.ticker.categorie} onChange={(e) => setTicker({ categorie: e.target.value })} />
+                <input className={field} placeholder={t.studio.panneaux.tickerTexte} value={v.ticker.texte} onChange={(e) => setTicker({ texte: e.target.value })} />
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
-                    <span>Vitesse de défilement</span>
+                    <span>{t.studio.panneaux.tickerVitesse}</span>
                     <span className="text-[color:var(--ink)]">
-                      {['Pro (60 px/s)', 'Lent', 'Standard', 'Rapide', 'Très rapide'][(v.ticker.speed || 1) - 1]}
+                      {t.studio.panneaux.vitesses[(v.ticker.speed || 1) - 1]}
                     </span>
                   </label>
                   <input
@@ -228,7 +228,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                       valeur était écrite et validée, mais lue par aucun moteur
                       de rendu. Elle revient avec l'échelle typographique. */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille Texte (%)</label>
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.tickerTailleTexte}</label>
                     <input type="range" min="50" max="250" step="5" value={v.ticker.fontSize ?? 100} onChange={(e) => setTicker({ fontSize: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
@@ -238,7 +238,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
 
           {/* LIVE */}
           <section className={sectionCls}>
-            {head(<Radio size={15} />, 'Badge LIVE / DIRECT', v.live.enabled, (c) => setLive({ enabled: c }))}
+            {head(<Radio size={15} />, t.studio.panneaux.badgeLive, v.live.enabled, (c) => setLive({ enabled: c }))}
             {v.live.enabled && (
               <>
                 <div className="flex gap-2">
@@ -262,7 +262,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">Taille Texte (%)</label>
+                    <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.tickerTailleTexte}</label>
                     <input type="range" min="50" max="250" step="5" value={v.live.fontSize ?? 100} onChange={(e) => setLive({ fontSize: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
                   </div>
                 </div>
@@ -273,7 +273,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
           {/* Logo */}
           <section className={sectionCls}>
             <label className="flex items-center justify-between font-semibold text-sm text-[color:var(--ink)]">
-              <span className="flex items-center gap-2"><ImageIcon size={15} /> Logo chaîne</span>
+              <span className="flex items-center gap-2"><ImageIcon size={15} /> {t.studio.panneaux.logoChaine}</span>
               <input type="checkbox" checked={v.logo} onChange={(e) => onChange({ ...v, logo: e.target.checked })} className="w-4 h-4 accent-[var(--accent)]" />
             </label>
             {v.logo && (
@@ -302,7 +302,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
           {/* Atmosphère cinéma : vignette + grain + sweep lumineux */}
           <section className={sectionCls}>
             <label className="flex items-center gap-2 font-semibold text-sm text-[color:var(--ink)]">
-              <Sparkles size={15} /> Atmosphère cinéma
+              <Sparkles size={15} /> {t.studio.panneaux.atmosphere}
             </label>
             {[
               ['vignette', 'Vignettage'],
@@ -332,15 +332,15 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
 
           {/* Musique */}
           <section className={sectionCls}>
-            {head(<Music size={15} />, 'Fond sonore (musique)', v.music.enabled, (c) => setMusic({ enabled: c }))}
+            {head(<Music size={15} />, t.studio.panneaux.musique, v.music.enabled, (c) => setMusic({ enabled: c }))}
             {v.music.enabled && (
               <>
                 <div className="flex gap-2">
                   <select className={field} value={v.music.filename} onChange={(e) => setMusic({ filename: e.target.value })}>
-                    <option value="">— Choisir un fichier audio —</option>
+                    <option value="">{t.studio.panneaux.choisirAudio}</option>
                     {audioFiles.map((f) => <option key={f.filename} value={f.filename}>{f.name}</option>)}
                   </select>
-                  <UploadBtn accept="audio/*" label="Uploader" uploadAsset={uploadAsset} onUploaded={(r) => setMusic({ filename: r.filename })} />
+                  <UploadBtn envoiLabel={t.studio.panneaux.envoi} accept="audio/*" label="Uploader" uploadAsset={uploadAsset} onUploaded={(r) => setMusic({ filename: r.filename })} />
                 </div>
                 <label className="text-xs text-[color:var(--muted)]">Volume : {Math.round((v.music.volume ?? 0.2) * 100)}%</label>
                 <input type="range" min="0" max="1" step="0.05" value={v.music.volume ?? 0.2} onChange={(e) => setMusic({ volume: parseFloat(e.target.value) })} className="w-full accent-[var(--accent)]" />
@@ -354,17 +354,17 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
 
           {/* Voix-off */}
           <section className={sectionCls}>
-            {head(<Mic size={15} />, 'Voix-off', v.voiceover.enabled, (c) => setVoice({ enabled: c }))}
+            {head(<Mic size={15} />, t.studio.panneaux.voixOff, v.voiceover.enabled, (c) => setVoice({ enabled: c }))}
             {v.voiceover.enabled && (
               <>
                 <div className="flex gap-2">
                   <select className={field} value={v.voiceover.filename} onChange={(e) => setVoice({ filename: e.target.value })}>
-                    <option value="">— Choisir un fichier audio —</option>
+                    <option value="">{t.studio.panneaux.choisirAudio}</option>
                     {audioFiles.map((f) => <option key={f.filename} value={f.filename}>{f.name}</option>)}
                   </select>
-                  <UploadBtn accept="audio/*" label="Uploader" uploadAsset={uploadAsset} onUploaded={(r) => setVoice({ filename: r.filename })} />
+                  <UploadBtn envoiLabel={t.studio.panneaux.envoi} accept="audio/*" label="Uploader" uploadAsset={uploadAsset} onUploaded={(r) => setVoice({ filename: r.filename })} />
                 </div>
-                <label className="text-xs text-[color:var(--muted)]">Départ (s)</label>
+                <label className="text-xs text-[color:var(--muted)]">{t.studio.panneaux.depart}</label>
                 <input className={field} type="number" min="0" step="0.5" value={v.voiceover.startTime ?? 0} onChange={(e) => setVoice({ startTime: parseFloat(e.target.value) || 0 })} />
               </>
             )}
@@ -372,12 +372,12 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
 
           {/* Images */}
           <section className={sectionCls}>
-            {head(<ImageIcon size={15} />, 'Incrustations images', null)}
+            {head(<ImageIcon size={15} />, t.studio.panneaux.incrustations, null)}
             {(v.imageOverlays || []).map((im, i) => (
               <div key={i} className="border border-[var(--border)] rounded-lg p-3 flex flex-col gap-2">
                 <div className="flex gap-2">
                   <select className={field} value={im.filename} onChange={(e) => updImage(i, { filename: e.target.value })}>
-                    <option value="">— Image —</option>
+                    <option value="">{t.studio.panneaux.choisirImage}</option>
                     {imageFiles.map((f) => <option key={f.filename} value={f.filename}>{f.name}</option>)}
                   </select>
                   <button onClick={() => rmImage(i)} className="p-2 text-[color:var(--muted)] hover:text-[var(--signal)]"><Trash2 size={14} /></button>
@@ -386,14 +386,14 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
                   <select className={field} value={im.position} onChange={(e) => updImage(i, { position: e.target.value })}>
                     {POSITIONS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                   </select>
-                  <input className={field} type="number" min="0.05" max="1" step="0.05" value={im.scale} onChange={(e) => updImage(i, { scale: parseFloat(e.target.value) })} title="Taille (0–1)" />
+                  <input className={field} type="number" min="0.05" max="1" step="0.05" value={im.scale} onChange={(e) => updImage(i, { scale: parseFloat(e.target.value) })} title={t.studio.panneaux.tailleZeroUn} />
                 </div>
               </div>
             ))}
             <div className="flex gap-2">
               {imageFiles.length > 0 && (
                 <button onClick={addImage} className="flex-1 flex items-center justify-center gap-2 py-2 border-2 border-dashed border-[var(--border)] rounded-lg text-sm text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                  <Plus size={15} /> Image existante
+                  <Plus size={15} /> {t.studio.panneaux.imageExistante}
                 </button>
               )}
               <UploadBtn
@@ -407,7 +407,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
 
           {/* Animations & Habillages Globaux (Alerte, Flash...) */}
           <section className={sectionCls}>
-            {head(<Layers size={15} />, 'Animations & Habillages Globaux', null)}
+            {head(<Layers size={15} />, t.studio.panneaux.habillagesGlobaux, null)}
             
             <div className="flex gap-2">
               {/* Groupé par moment du JT, comme le sélecteur des clips : une
@@ -445,7 +445,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
         </div>
 
         <div className="flex gap-3 p-5 border-t border-[var(--border)] bg-[var(--paper-2)]">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-[var(--ink)] text-[var(--paper)] font-semibold text-sm hover:opacity-90">Terminé</button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-[var(--ink)] text-[var(--paper)] font-semibold text-sm hover:opacity-90">{t.studio.panneaux.termine}</button>
         </div>
       </div>
   );

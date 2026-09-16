@@ -151,13 +151,13 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {/* Police, Taille et Interligne */}
       <div className="space-y-3 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Police de caractères</label>
+          <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.police}</label>
           <select
             value={overlay.font || ''}
             onChange={(e) => onChange({ ...overlay, font: e.target.value || undefined })}
             className="w-full px-3 py-2 bg-[var(--paper)] border border-[var(--border)] rounded-lg text-sm font-medium text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
           >
-            <option value="">Par défaut (Système)</option>
+            <option value="">{t.studio.panneaux.policeDefaut}</option>
             {FONT_FAMILIES.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
@@ -171,7 +171,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
             du JT, appliquée à tous les habillages. */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label htmlFor="overlay-taille" className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">Taille</label>
+            <label htmlFor="overlay-taille" className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.taille}</label>
             <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.fontSize || 100}%</span>
           </div>
           <input
@@ -189,7 +189,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
 
       {/* Palettes Thématiques TV & Couleurs personnalisées */}
       <div className="space-y-2.5 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
-        <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider block">Couleurs</label>
+        <label className="text-[11px] font-bold text-[color:var(--muted)] uppercase tracking-wider block">{t.studio.panneaux.couleurs}</label>
         {/* Cinq thèmes inventés vivaient ici — « ALWM Signature » était un or
             sur ardoise, sans rapport avec la marque. Les trois qui restent
             viennent de la charte du JT (remotion/src/identite.js), la même
@@ -216,9 +216,9 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
         {/* 3 slots manuels : texte / fond / accent */}
         <div className="grid grid-cols-3 gap-2 pt-1">
           {[
-            ['text', 'Texte'],
-            ['bg', 'Fond'],
-            ['accent', 'Accent'],
+            ['text', t.studio.panneaux.couleurTexte],
+            ['bg', t.studio.panneaux.couleurFond],
+            ['accent', t.studio.panneaux.couleurAccent],
           ].map(([k, lab]) => (
             <div key={k} className="flex items-center justify-between gap-1 border border-[var(--border)] rounded-lg px-2 py-1 bg-[var(--paper)]">
               <span className="text-[11px] font-medium text-[color:var(--muted)]">{lab}</span>
@@ -228,13 +228,13 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
                   value={(overlay.colors && overlay.colors[k]) || '#000000'}
                   onChange={(e) => onChange({ ...overlay, colors: { ...(overlay.colors || {}), [k]: e.target.value } })}
                   className="w-6 h-6 rounded cursor-pointer border-0 p-0 bg-transparent"
-                  title={`Couleur ${lab}`}
+                  title={lab}
                 />
                 {overlay.colors && overlay.colors[k] && (
                   <button
                     onClick={() => { const c = { ...(overlay.colors || {}) }; delete c[k]; onChange({ ...overlay, colors: c }); }}
                     className="text-[10px] text-[color:var(--muted)] hover:text-[var(--signal)] font-bold"
-                    title="Réinitialiser"
+                    title={t.studio.panneaux.reinitialiser}
                   >×</button>
                 )}
               </div>
@@ -246,13 +246,13 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {/* Contour + halo (gravés par libass \bord + \blur) */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">Contour : {overlay.outline ?? 0}</label>
+          <label className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.contour} : {overlay.outline ?? 0}</label>
           <input type="range" min="0" max="6" step="1" value={overlay.outline ?? 0}
             onChange={(e) => onChange({ ...overlay, outline: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">Halo : {overlay.glow ?? 0}</label>
+          <label className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.halo} : {overlay.glow ?? 0}</label>
           <input type="range" min="0" max="10" step="1" value={overlay.glow ?? 0}
             onChange={(e) => onChange({ ...overlay, glow: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
@@ -262,19 +262,19 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {/* Transform controls */}
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Position X : {overlay.posX ?? 0}</label>
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.positionX} : {overlay.posX ?? 0}</label>
           <input type="range" min="-1920" max="1920" step="10" value={overlay.posX ?? 0}
             onChange={(e) => onChange({ ...overlay, posX: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Position Y : {overlay.posY ?? 0}</label>
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.positionY} : {overlay.posY ?? 0}</label>
           <input type="range" min="-1080" max="1080" step="10" value={overlay.posY ?? 0}
             onChange={(e) => onChange({ ...overlay, posY: parseInt(e.target.value, 10) || 0 })}
             className="w-full accent-[var(--accent)]" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">Taille : {overlay.scale ?? 100}%</label>
+          <label className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.taille} : {overlay.scale ?? 100}%</label>
           <input type="range" min="10" max="300" step="5" value={overlay.scale ?? 100}
             onChange={(e) => onChange({ ...overlay, scale: parseInt(e.target.value, 10) || 100 })}
             className="w-full accent-[var(--accent)]" />
@@ -285,7 +285,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-[color:var(--muted)] flex items-center gap-1">
-            <Clock size={11} /> Début (s)
+            <Clock size={11} /> {t.studio.panneaux.debutSec}
           </label>
           <input
             type="number"
@@ -297,7 +297,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">Durée (s, vide = toute la vidéo)</label>
+          <label className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.dureeSec}</label>
           <input
             type="number"
             min="0.5"
@@ -402,13 +402,14 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
         onClick={onAnnuler}
         className="text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)] text-center mt-1 transition-colors"
       >
-        Annuler
+        {t.studio.panneaux.annuler}
       </button>
     </div>
   );
 }
 
 export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, inline = false }) {
+  const { t } = useI18n();
   const [overlays, setOverlays] = useState(clip.overlays || []);
   const [picking, setPicking] = useState(false);
 
@@ -460,7 +461,7 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
           <h2 className="font-bold text-[color:var(--ink)] flex items-center gap-2 text-base">
             <Layers className="text-[var(--accent)]" size={18} />
-            Animations & Habillage
+            {t.studio.panneaux.titre}
           </h2>
           <p className="text-xs text-[color:var(--muted)] truncate max-w-[150px]">{clip.name}</p>
           <button
@@ -477,8 +478,8 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
           {overlays.length === 0 && !picking && (
             <div className="text-center py-8 text-[color:var(--muted)]">
               <Layers size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Aucune animation pour ce clip.</p>
-              <p className="text-xs mt-1">Cliquez sur "Ajouter une animation" ci-dessous.</p>
+              <p className="text-sm">{t.studio.panneaux.aucuneAnimation}</p>
+              <p className="text-xs mt-1">{t.studio.panneaux.aucuneAnimationAide}</p>
             </div>
           )}
 
@@ -500,7 +501,7 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
               className="flex items-center justify-center gap-2 py-2.5 px-4 border-2 border-dashed border-[var(--border)] rounded-xl text-sm text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent)] transition-colors"
             >
               <Plus size={16} />
-              Ajouter une animation
+              {t.studio.panneaux.ajouterAnimation}
             </button>
           )}
         </div>
@@ -511,14 +512,14 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)] text-sm transition-colors"
           >
-            Annuler
+            {t.studio.panneaux.annuler}
           </button>
           <button
             onClick={handleSave}
             className="flex-1 py-2.5 rounded-xl bg-[var(--ink)] text-[color:var(--paper)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
           >
             <Layers size={15} />
-            Appliquer ({overlays.length} animation{overlays.length !== 1 ? 's' : ''})
+            {t.studio.panneaux.appliquer} ({overlays.length} {overlays.length !== 1 ? t.studio.panneaux.animationPlusieurs : t.studio.panneaux.animationUne})
           </button>
         </div>
     </div>

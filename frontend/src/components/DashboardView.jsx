@@ -1857,7 +1857,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               onClick={() => setSelectedBin('studio')}
               className="flex items-center gap-2 border-b-2 border-transparent px-5 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)] transition-colors whitespace-nowrap hover:text-[color:var(--ink)]"
             >
-              <Video size={18} /> Studio de Montage
+              <Video size={18} /> {t.studio.timeline.ongletStudio}
             </button>
           )}
           <button 
@@ -2235,13 +2235,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <div className="flex min-h-full flex-1 flex-col text-[color:var(--muted)]">
                       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
                         <Scissors size={16} className="text-[var(--accent)]" />
-                        <p className="text-sm font-semibold text-[color:var(--ink)]">Inspecteur</p>
+                        <p className="text-sm font-semibold text-[color:var(--ink)]">{t.studio.timeline.inspecteur}</p>
                       </div>
                       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
                         <Scissors size={26} className="opacity-35" />
                         <div>
-                          <p className="mb-1 text-sm font-semibold text-[color:var(--ink)]">Aucun clip sélectionné</p>
-                          <p className="mx-auto max-w-[34ch] text-xs leading-5">Sélectionnez un clip dans la timeline ou ouvrez Habillage JT.</p>
+                          <p className="mb-1 text-sm font-semibold text-[color:var(--ink)]">{t.studio.timeline.inspecteurVide}</p>
+                          <p className="mx-auto max-w-[34ch] text-xs leading-5">{t.studio.timeline.inspecteurVideAide}</p>
                         </div>
                       </div>
                     </div>
@@ -2269,14 +2269,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--editor-border)] group-hover:bg-[var(--accent)]" aria-hidden="true" />
                 <span className="relative flex h-4 items-center gap-1 rounded border border-[var(--editor-border)] bg-[var(--editor-panel)] px-2 text-[9px] font-semibold text-[color:var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[color:var(--accent)]">
                   <GripHorizontal size={12} aria-hidden="true" />
-                  Timeline · {Math.round(studioTimelineHeight)} px · {
+                  {t.studio.timeline.poigneeTimeline} · {Math.round(studioTimelineHeight)} px · {
                     timelineSyncState === 'saving'
-                      ? 'Sauvegarde…'
+                      ? t.studio.timeline.etatSauvegarde
                       : timelineSyncState === 'error'
-                        ? 'Hors ligne'
+                        ? t.studio.timeline.etatHorsLigne
                         : timelineSyncState === 'loading'
-                          ? 'Chargement…'
-                          : 'Enregistrée en ligne'
+                          ? t.studio.timeline.etatChargement
+                          : t.studio.timeline.etatEnregistree
                   }
                 </span>
               </div>

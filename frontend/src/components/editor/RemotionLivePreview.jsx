@@ -4,11 +4,13 @@ import { X } from 'lucide-react';
 import { JTMaster, totalDurationInFrames } from '../../../../remotion/src/JTMaster.jsx';
 import { API_BASE } from '../../api/index.js';
 import { previewUrl } from '../../lib/mediaSource.js';
+import { useI18n } from '../../i18n/I18nContext.jsx';
 
 // Le mot de passe admin ne transite plus par l'URL des médias : /uploads est
 // servi sans authentification, et un secret en query string finissait dans les
 // journaux d'accès (Caddy, nginx) et l'historique du navigateur.
 export default function RemotionLivePreview({ clips, branding, timelineOverlays, onClose, inline = false, playerRef = null }) {
+  const { t } = useI18n();
   // Prépare les données pour le Player (exactement comme pour le backend)
   const inputProps = useMemo(() => {
     // On résout les URLs relatives pour que Remotion puisse lire les vidéos depuis l'API locale.
@@ -90,7 +92,7 @@ export default function RemotionLivePreview({ clips, branding, timelineOverlays,
       <div className="bg-[var(--paper)] rounded-2xl w-full max-w-5xl flex flex-col shadow-2xl border border-[var(--border)] max-h-[95vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
-          <h2 className="font-bold text-[color:var(--ink)]">Aperçu Temps Réel (Remotion Player)</h2>
+          <h2 className="font-bold text-[color:var(--ink)]">{t.studio.panneaux.apercuTitre}</h2>
           <button onClick={onClose} className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] rounded-lg transition-colors bg-[var(--border)] hover:bg-[var(--muted)]/30">
             <X size={20} />
           </button>
@@ -112,9 +114,7 @@ export default function RemotionLivePreview({ clips, branding, timelineOverlays,
           />
         </div>
         <div className="px-5 py-3 text-[11px] text-[color:var(--muted)] text-center bg-[var(--paper-2)] border-t border-[var(--border)]">
-          Aperçu par le même moteur que le master. Les polices et le rendu
-          final peuvent différer légèrement de l'encodage sur le serveur.
-        </div>
+          {t.studio.panneaux.apercuAide}</div>
       </div>
     </div>
   );
