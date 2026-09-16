@@ -419,242 +419,189 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   return absoluteAssPath;
 }
 
+/**
+ * Le catalogue cote serveur.
+ *
+ * Il ne sert qu'a deux choses : valider l'identifiant d'un habillage recu du
+ * studio, et retrouver son gabarit pour le repli ASS. Il ne porte donc que ce
+ * que le rendu lit — identifiant, portee, cles de champ — et plus aucune
+ * donnee d'affichage.
+ *
+ * Il en portait : libelles, emojis, apercus, intitules et exemples de champ,
+ * recopies du studio et deja divergents. Une donnee d'affichage que rien
+ * n'affiche ne peut que pourrir, et c'est cette famille de derive qui avait
+ * laisse deux habillages lire des champs que le catalogue ne declarait pas.
+ * `data-mirror.test.js` compare maintenant les deux catalogues sur ce qui
+ * compte : les identifiants, la portee et les cles de champ.
+ */
 export const OVERLAY_TEMPLATES = [
   {
     id: 'intro_jt',
-    label: 'Intro du JT (Générique)',
-    emoji: '🌍',
     scope: 'global',
-    preview: 'Générique d\'ouverture officiel ALWM TV.',
     fields: [
-      { key: 'titre', label: 'Titre final', placeholder: 'LE JOURNAL' },
-      { key: 'mots', label: 'Mots-clés', placeholder: 'ACTUALITÉ • MONDE' }
+      { key: 'titre' },
+      { key: 'mots' }
     ]
   },
   {
     id: 'titre_reportage',
-    label: 'Titre Reportage (Lower Third)',
-    emoji: '📰',
-    preview: 'Bandeau inférieur bleu pour le nom du reportage.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'transition_reportage',
-    label: 'Transition Reportage (Plein Écran)',
-    emoji: '🎬',
-    preview: 'Transition plein écran avec Globe et titre.',
+    scope: 'global',
     fields: [
-      { key: 'titre', label: 'Texte Transition', placeholder: 'REPORTAGE' }
+      { key: 'titre' }
     ]
   },
   {
     id: 'envato_presenter',
-    label: 'Présentateur (Envato Premium)',
-    emoji: '🎙️',
-    preview: 'Bandeau 3 lignes élégant avec masques de révélation.',
     fields: [
-      { key: 'context', label: 'Contexte (Surtitre)', placeholder: 'TONY NIGHT SHOW' },
-      { key: 'name', label: 'Prénom & Nom', placeholder: 'MARINA FORESTER' },
-      { key: 'title', label: 'Fonction (Sous-titre)', placeholder: 'ADMINISTRATOR' }
+      { key: 'context' },
+      { key: 'name' },
+      { key: 'title' }
     ]
   },
   {
     id: 'envato_news',
-    label: 'Alerte News (Envato Premium)',
-    emoji: '🔥',
-    preview: 'Bandeau bicolore à glissement pour les titres chauds.',
     fields: [
-      { key: 'tag', label: 'Label (ex: BREAKING NEWS)', placeholder: 'BREAKING NEWS' },
-      { key: 'headline', label: 'Gros titre', placeholder: 'LE GROS TITRE DE L\'ACTUALITÉ' }
+      { key: 'tag' },
+      { key: 'headline' }
     ]
   },
   {
     id: 'envato_big_title',
-    label: 'Grand Titre (Envato Premium)',
-    emoji: '💥',
-    preview: 'Titre massif plein écran avec animation élastique biseautée.',
     fields: [
-      { key: 'titre', label: 'Gros Titre', placeholder: 'WHAT IS GOING ON IN THE WORLD?' }
+      { key: 'titre' }
     ]
   },
   {
     id: 'envato_ticker',
-    label: 'Barre Défilante (Envato Premium)',
-    emoji: '📜',
     scope: 'global',
-    preview: 'Bandeau d\'information continu en bas de l\'écran.',
     fields: [
-      { key: 'tag', label: 'Label (ex: LIVE)', placeholder: 'LIVE' },
-      { key: 'text1', label: 'Info 1', placeholder: 'Texte défilant...' },
-      { key: 'text2', label: 'Info 2', placeholder: 'Texte défilant...' }
+      { key: 'tag' },
+      { key: 'text1' },
+      { key: 'text2' }
     ]
   },
   {
     id: 'envato_split_screen',
-    label: 'Écran Scindé (Envato Premium)',
-    emoji: '✂️',
-    preview: 'Séparation diagonale animée avec labels géographiques.',
     fields: [
-      { key: 'leftLocation', label: 'Titre Gauche', placeholder: 'NEW YORK' },
-      { key: 'leftSub', label: 'Sous-titre Gauche', placeholder: 'USA' },
-      { key: 'rightLocation', label: 'Titre Droit', placeholder: 'CALIFORNIA' },
-      { key: 'rightSub', label: 'Sous-titre Droit', placeholder: 'USA' }
+      { key: 'leftLocation' },
+      { key: 'leftSub' },
+      { key: 'rightLocation' },
+      { key: 'rightSub' }
     ]
   },
   {
     id: 'nom_interview',
-    label: 'Nom Personne (Lower Third)',
-    emoji: '🗣️',
-    preview: 'Bandeau pour présenter un invité ou journaliste.',
     fields: [
-      { key: 'nom', label: 'Prénom & Nom', placeholder: 'PRÉNOM NOM' },
-      { key: 'fonction', label: 'Fonction / Qualité', placeholder: 'FONCTION' }
+      { key: 'nom' },
+      { key: 'fonction' }
     ]
   },
   {
     id: 'flash_info',
-    label: 'Flash Info',
-    emoji: '🔴',
-    scope: 'clip',
-    preview: 'Bandeau info dynamique rouge/bleu.',
+    scope: 'global',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'FLASH INFO' },
-      { key: 'texte', label: 'Texte', placeholder: 'Sujet du flash' }
+      { key: 'titre' },
+      { key: 'texte' }
     ]
   },
   {
     id: 'breaking_news',
-    label: 'Breaking News',
-    emoji: '🚨',
-    scope: 'clip',
-    preview: 'Alerte Breaking News premium avec glitch.',
+    scope: 'global',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'BREAKING NEWS' },
-      { key: 'texte', label: 'Texte urgent', placeholder: 'Texte de l\'alerte' }
+      { key: 'titre' },
+      { key: 'texte' }
     ]
   },
   {
     id: 'rappel_titres',
-    label: 'Rappel des Titres',
-    emoji: '📑',
-    preview: 'Sommaire avec cascade de titres.',
     fields: [
-      { key: 'titre1', label: 'Titre 1', placeholder: 'Sujet 1' },
-      { key: 'titre2', label: 'Titre 2', placeholder: 'Sujet 2' },
-      { key: 'titre3', label: 'Titre 3', placeholder: 'Sujet 3' }
+      { key: 'titre1' },
+      { key: 'titre2' },
+      { key: 'titre3' }
     ]
   },
   {
     id: 'fin_merci',
-    label: 'Générique de Fin',
-    emoji: '👋',
-    preview: 'Générique de conclusion de journal.',
     fields: [
-      { key: 'titre', label: 'Titre', placeholder: 'MERCI' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'DE NOUS AVOIR SUIVIS' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_minimal',
-    label: 'Titre Reportage - Minimal Line',
-    emoji: '📏',
-    preview: 'Une fine ligne s\'étire et révèle le texte.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_skew',
-    label: 'Titre Reportage - Double Skew',
-    emoji: '💥',
-    preview: 'Deux blocs obliques qui se croisent pour former le titre.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_swipe',
-    label: 'Titre Reportage - Gradient Swipe',
-    emoji: '🌈',
-    preview: 'Un balayage lumineux avec un dégradé.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_glass',
-    label: 'Titre Reportage - Glassmorphism',
-    emoji: '🪟',
-    preview: 'Un effet verre dépoli très élégant.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_rep_massif',
-    label: 'Titre Reportage - Bloc Massif',
-    emoji: '⬛',
-    preview: 'Un titre lourd et impactant avec Drop Shadow profond.',
     fields: [
-      { key: 'titre', label: 'Titre principal', placeholder: 'Titre du reportage' },
-      { key: 'sous_titre', label: 'Sous-titre', placeholder: 'Précision' }
+      { key: 'titre' },
+      { key: 'sous_titre' }
     ]
   },
   {
     id: 'envato_lt_compact',
-    label: 'Lower Third - Compact 1 Ligne',
-    emoji: '🏷️',
-    preview: 'Prénom/nom très rapide, pour les micro-trottoirs.',
     fields: [
-      { key: 'nom', label: 'Nom', placeholder: 'PRÉNOM NOM' }
+      { key: 'nom' }
     ]
   },
   {
     id: 'envato_lt_corporate',
-    label: 'Lower Third - Duo Corporate',
-    emoji: '🏢',
-    preview: 'Affichage nom/fonction très carré.',
     fields: [
-      { key: 'nom', label: 'Nom', placeholder: 'PRÉNOM NOM' },
-      { key: 'fonction', label: 'Fonction', placeholder: 'FONCTION / QUALITÉ' }
+      { key: 'nom' },
+      { key: 'fonction' }
     ]
   },
   {
     id: 'envato_lt_interview',
-    label: 'Lower Third - Interview',
-    emoji: '💬',
-    preview: 'Bandeau double pour afficher qui parle face à qui.',
     fields: [
-      { key: 'leftName', label: 'Nom Gauche', placeholder: 'JOURNALISTE' },
-      { key: 'leftRole', label: 'Rôle Gauche', placeholder: 'HÔTE' },
-      { key: 'rightName', label: 'Nom Droit', placeholder: 'INVITÉ' },
-      { key: 'rightRole', label: 'Rôle Droit', placeholder: 'EXPERT' }
+      { key: 'leftName' },
+      { key: 'leftRole' },
+      { key: 'rightName' },
+      { key: 'rightRole' }
     ]
   },
   {
     id: 'envato_loc_pin',
-    label: 'Location Pin (Lieu)',
-    emoji: '📌',
-    preview: 'Petite animation de géolocalisation.',
     fields: [
-      { key: 'location', label: 'Lieu', placeholder: 'Paris, France' }
+      { key: 'location' }
     ]
   },
   {
     id: 'envato_quote',
-    label: 'Quote Block (Citation)',
-    emoji: '❝',
-    preview: 'Magnifique pavé avec des guillemets animés.',
     fields: [
-      { key: 'quote', label: 'Citation', placeholder: 'Texte de la citation ici...' },
-      { key: 'author', label: 'Auteur', placeholder: 'Nom de l\'auteur' }
+      { key: 'quote' },
+      { key: 'author' }
     ]
   }
 ];

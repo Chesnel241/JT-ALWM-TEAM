@@ -5,7 +5,8 @@
 export const OVERLAY_TEMPLATES = [
   {
     id: 'intro_jt',
-    label: 'Intro du JT (générique)',
+    moment: 'ouverture',
+    label: 'Générique d’ouverture',
     emoji: '🌍',
     scope: 'global',
     preview: 'Générique 10 s : réseau, globe, mots-clés, colombe + logo + LE JOURNAL.',
@@ -16,7 +17,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'titre_reportage',
-    label: 'Titre Reportage',
+    moment: 'titrage',
+    label: 'Titre de reportage',
     emoji: '📰',
     preview: 'Barre bleue glissante, titre avec flou de mouvement.',
     fields: [
@@ -26,7 +28,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'transition_reportage',
-    label: 'Transition Reportage',
+    moment: 'liaison',
+    label: 'Transition',
     emoji: '🎬',
     scope: 'global',
     preview: 'Plein écran, globe lent, texte avec tracking très serré.',
@@ -36,7 +39,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_presenter',
-    label: 'Présentateur (Envato Premium)',
+    moment: 'identification',
+    label: 'Présentateur',
     emoji: '🎙️',
     preview: 'Bandeau 3 lignes élégant avec masques de révélation.',
     fields: [
@@ -47,7 +51,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_news',
-    label: 'Alerte News (Envato Premium)',
+    moment: 'alerte',
+    label: 'Alerte en bandeau',
     emoji: '🔥',
     preview: 'Bandeau bicolore à glissement pour les titres chauds.',
     fields: [
@@ -57,7 +62,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_big_title',
-    label: 'Grand Titre (Envato Premium)',
+    moment: 'ouverture',
+    label: 'Grand titre',
     emoji: '💥',
     preview: 'Titre massif plein écran avec animation élastique biseautée.',
     fields: [
@@ -66,7 +72,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_ticker',
-    label: 'Barre Défilante (Envato Premium)',
+    moment: 'liaison',
+    label: 'Barre défilante',
     emoji: '📜',
     scope: 'global',
     preview: 'Bandeau d\'information continu en bas de l\'écran.',
@@ -78,7 +85,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_split_screen',
-    label: 'Écran Scindé (Envato Premium)',
+    moment: 'liaison',
+    label: 'Écran scindé',
     emoji: '✂️',
     preview: 'Séparation diagonale animée avec labels géographiques.',
     fields: [
@@ -90,7 +98,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'nom_interview',
-    label: 'Nom Personne (Lower Third)',
+    moment: 'identification',
+    label: 'Nom et fonction',
     emoji: '🗣️',
     preview: 'Style France 24 : le cartouche glisse, nom apparaît en fondu.',
     fields: [
@@ -100,7 +109,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'flash_info',
-    label: 'Flash Info',
+    moment: 'alerte',
+    label: 'Flash info',
     emoji: '🔴',
     scope: 'global',
     preview: 'Flash rouge/bleu lumineux, tremblement, texte.',
@@ -111,7 +121,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'breaking_news',
-    label: 'Breaking News',
+    moment: 'alerte',
+    label: 'Alerte plein écran',
     emoji: '🚨',
     scope: 'global',
     preview: 'Pulsation rouge, bandeau urgent.',
@@ -122,7 +133,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'rappel_titres',
-    label: 'Rappel des Titres',
+    moment: 'cloture',
+    label: 'Rappel des titres',
     emoji: '📑',
     preview: 'Titres glissant séquentiellement en cascade.',
     fields: [
@@ -133,7 +145,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'fin_merci',
-    label: 'Fin / Merci',
+    moment: 'cloture',
+    label: 'Carte de clôture',
     emoji: '👋',
     preview: 'Bandeau glisse doucement, texte fondu, logo ALWM.',
     fields: [
@@ -143,7 +156,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_rep_minimal',
-    label: 'Titre Reportage - Minimal Line',
+    moment: 'titrage',
+    label: 'Titre — filet fin',
     emoji: '📏',
     preview: 'Une fine ligne s\'étire et révèle le texte.',
     fields: [
@@ -153,7 +167,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_rep_skew',
-    label: 'Titre Reportage - Double Skew',
+    moment: 'titrage',
+    label: 'Titre — double biseau',
     emoji: '💥',
     preview: 'Deux blocs obliques qui se croisent pour former le titre.',
     fields: [
@@ -163,7 +178,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_rep_swipe',
-    label: 'Titre Reportage - Gradient Swipe',
+    moment: 'titrage',
+    label: 'Titre — balayage lumineux',
     emoji: '🌈',
     preview: 'Un balayage lumineux avec un dégradé.',
     fields: [
@@ -173,7 +189,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_rep_glass',
-    label: 'Titre Reportage - Glassmorphism',
+    moment: 'titrage',
+    label: 'Titre — verre dépoli',
     emoji: '🪟',
     preview: 'Un effet verre dépoli très élégant.',
     fields: [
@@ -183,7 +200,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_rep_massif',
-    label: 'Titre Reportage - Bloc Massif',
+    moment: 'titrage',
+    label: 'Titre — bloc massif',
     emoji: '⬛',
     preview: 'Un titre lourd et impactant avec Drop Shadow profond.',
     fields: [
@@ -193,7 +211,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_lt_compact',
-    label: 'Lower Third - Compact 1 Ligne',
+    moment: 'identification',
+    label: 'Nom — une ligne',
     emoji: '🏷️',
     preview: 'Prénom/nom très rapide, pour les micro-trottoirs.',
     fields: [
@@ -202,7 +221,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_lt_corporate',
-    label: 'Lower Third - Duo Corporate',
+    moment: 'identification',
+    label: 'Nom — deux blocs',
     emoji: '🏢',
     preview: 'Affichage nom/fonction très carré.',
     fields: [
@@ -212,7 +232,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_lt_interview',
-    label: 'Lower Third - Interview',
+    moment: 'identification',
+    label: 'Nom — interview à deux',
     emoji: '💬',
     preview: 'Bandeau double pour afficher qui parle face à qui.',
     fields: [
@@ -224,7 +245,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_loc_pin',
-    label: 'Location Pin (Lieu)',
+    moment: 'identification',
+    label: 'Lieu',
     emoji: '📌',
     preview: 'Petite animation de géolocalisation.',
     fields: [
@@ -233,7 +255,8 @@ export const OVERLAY_TEMPLATES = [
   },
   {
     id: 'envato_quote',
-    label: 'Quote Block (Citation)',
+    moment: 'identification',
+    label: 'Citation',
     emoji: '❝',
     preview: 'Magnifique pavé avec des guillemets animés.',
     fields: [
@@ -242,6 +265,71 @@ export const OVERLAY_TEMPLATES = [
     ]
   }
 ];
+
+/**
+ * Les six moments d'un JT, dans l'ordre où ils arrivent à l'antenne.
+ *
+ * Le catalogue était rangé par portée technique — « clip » ou « global » —
+ * c'est-à-dire par un détail d'implémentation que le monteur n'a aucune raison
+ * de connaître. Vingt-trois vignettes en une seule liste, et il fallait les
+ * parcourir toutes pour retrouver le bandeau nom.
+ *
+ * Un moment, lui, se cherche comme on pense : « j'ouvre un sujet »,
+ * « je nomme quelqu'un », « j'alerte ». La portée technique reste dans les
+ * données, elle sert au rendu ; elle ne sert plus de rangement.
+ */
+export const MOMENTS = [
+  { id: 'ouverture', label: 'Ouverture', aide: 'Lancer le journal ou un sujet.' },
+  { id: 'titrage', label: 'Titrage', aide: 'Donner son titre à un reportage.' },
+  { id: 'identification', label: 'Identification', aide: 'Dire qui parle, d’où, et ce qu’il a dit.' },
+  { id: 'alerte', label: 'Alerte', aide: 'Interrompre pour une information urgente.' },
+  { id: 'liaison', label: 'Liaison', aide: 'Passer d’un sujet au suivant, ou faire courir une info.' },
+  { id: 'cloture', label: 'Clôture', aide: 'Récapituler et refermer le journal.' },
+];
+
+/** Les identifiants des moments, pour les tests et les garde-fous. */
+export const MOMENTS_IDS = MOMENTS.map((m) => m.id);
+
+/**
+ * Le mouvement de texte qui va par défaut avec chaque moment.
+ *
+ * Tout habillage naissait en « Fondu », quel qu'il soit. Le défaut n'était pas
+ * mauvais, il était simplement le même partout : le monteur devait corriger à
+ * chaque fois, ou ne rien corriger et livrer vingt-trois fondus.
+ *
+ * Ces valeurs ne sont pas des règles : le menu reste entier juste à côté.
+ */
+const RECOMMANDE_PAR_MOMENT = {
+  ouverture: 'scale',
+  titrage: 'slide',
+  identification: 'fade',
+  alerte: 'glitch_in',
+  liaison: 'fade',
+  cloture: 'fade',
+};
+
+/**
+ * Trois habillages dérogent, parce que leur dessin porte déjà le mouvement.
+ * Le générique et l'alerte plein écran ont leur propre chorégraphie ; leur
+ * ajouter une entrée marquée ferait deux gestes qui se contrarient.
+ */
+const RECOMMANDE_PAR_HABILLAGE = {
+  intro_jt: 'fade',
+  breaking_news: 'fade',
+  flash_info: 'fade',
+};
+
+/** Le mouvement d'entrée proposé d'emblée pour un habillage donné. */
+export function animationRecommandee(templateId) {
+  if (RECOMMANDE_PAR_HABILLAGE[templateId]) return RECOMMANDE_PAR_HABILLAGE[templateId];
+  const modele = OVERLAY_TEMPLATES.find((t) => t.id === templateId);
+  return RECOMMANDE_PAR_MOMENT[modele && modele.moment] || 'fade';
+}
+
+/** Les habillages d'un moment, dans l'ordre du catalogue. */
+export function habillagesDuMoment(moment, liste = OVERLAY_TEMPLATES) {
+  return liste.filter((t) => t.moment === moment);
+}
 
 export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'global');
 export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'global');

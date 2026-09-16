@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Layers, Clock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Plus, Trash2, Layers, Clock, Search } from 'lucide-react';
 import { COULEURS } from '../../../../remotion/src/identite.js';
-import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, TEXT_ANIMATIONS_IN, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
+import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_IN, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -280,6 +280,93 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
   );
 }
 
+/**
+ * Choisir un habillage parmi vingt-trois, sous la pression du bouclage.
+ *
+ * Ils s'affichaient en une seule liste rangée par portée technique — « clip »
+ * ou « global » —, c'est-à-dire par un détail d'implémentation que le monteur
+ * n'a aucune raison de connaître. Il fallait parcourir les vingt-trois pour
+ * retrouver le bandeau nom.
+ *
+ * Ici ils sont rangés par moment du JT, dans l'ordre où ces moments arrivent à
+ * l'antenne, et une recherche filtre sur le nom comme sur la description : un
+ * monteur qui tape « alerte » ou « citation » arrive en un geste.
+ */
+export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
+  const [recherche, setRecherche] = useState('');
+
+  const groupes = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    const correspond = (t, moment) =>
+      !q
+      || (t.label || '').toLowerCase().includes(q)
+      || (t.preview || '').toLowerCase().includes(q)
+      || moment.label.toLowerCase().includes(q)
+      || moment.aide.toLowerCase().includes(q);
+
+    return MOMENTS
+      .map((moment) => ({ moment, liste: habillagesDuMoment(moment.id, modeles).filter((t) => correspond(t, moment)) }))
+      .filter((g) => g.liste.length > 0);
+  }, [recherche, modeles]);
+
+  const total = groupes.reduce((n, g) => n + g.liste.length, 0);
+
+  return (
+    <div className="border border-[var(--accent)]/40 rounded-xl p-4 bg-[var(--accent)]/5 flex flex-col gap-3">
+      <div className="flex items-center gap-2 px-3 py-2 bg-[var(--paper)] border border-[var(--border)] rounded-lg">
+        <Search size={14} className="text-[color:var(--muted)] shrink-0" aria-hidden="true" />
+        <input
+          id="recherche-habillage"
+          type="search"
+          autoFocus
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="Chercher un habillage…"
+          aria-label="Chercher un habillage"
+          className="w-full bg-transparent text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none"
+        />
+      </div>
+
+      {total === 0 && (
+        <p className="text-xs text-[color:var(--muted)] text-center py-4">
+          Aucun habillage ne correspond à « {recherche} ».
+        </p>
+      )}
+
+      {groupes.map(({ moment, liste }) => (
+        <div key={moment.id} className="flex flex-col gap-1.5">
+          <div className="flex items-baseline gap-2 px-0.5">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{moment.label}</h3>
+            <p className="text-[10px] text-[color:var(--muted)] truncate">{moment.aide}</p>
+          </div>
+          {liste.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onChoisir(t.id)}
+              className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 motion-tap text-left"
+            >
+              <span className="text-2xl" aria-hidden="true">{t.emoji}</span>
+              <div className="min-w-0">
+                <p className="font-semibold text-sm text-[color:var(--ink)]">{t.label}</p>
+                <p className="text-xs text-[color:var(--muted)]">{t.preview}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={onAnnuler}
+        className="text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)] text-center mt-1 transition-colors"
+      >
+        Annuler
+      </button>
+    </div>
+  );
+}
+
 export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, inline = false }) {
   const [overlays, setOverlays] = useState(clip.overlays || []);
   const [picking, setPicking] = useState(false);
@@ -299,7 +386,10 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
         id: `${templateId}-${Date.now()}`,
         templateId,
         fields: {},
-        animation: 'fade',
+        // Tout habillage naissait en « Fondu », quel qu'il soit : le monteur
+        // corrigeait à chaque fois, ou livrait vingt-trois fondus. Le défaut
+        // dépend maintenant du moment du JT, et le menu reste entier.
+        animation: animationRecommandee(templateId),
         startTime: 0,
         duration: null,
       },
@@ -360,30 +450,9 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
             />
           ))}
 
-          {/* Template picker */}
+          {/* Sélecteur d'habillage */}
           {picking ? (
-            <div className="border border-[var(--accent)]/40 rounded-xl p-4 bg-[var(--accent)]/5 flex flex-col gap-2">
-              <p className="text-xs font-semibold text-[color:var(--accent)] mb-1">Choisissez un modèle :</p>
-              {CLIP_TEMPLATES.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => addOverlay(t.id)}
-                  className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 motion-tap text-left"
-                >
-                  <span className="text-2xl">{t.emoji}</span>
-                  <div>
-                    <p className="font-semibold text-sm text-[color:var(--ink)]">{t.label}</p>
-                    <p className="text-xs text-[color:var(--muted)]">{t.preview}</p>
-                  </div>
-                </button>
-              ))}
-              <button
-                onClick={() => setPicking(false)}
-                className="text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)] text-center mt-1 transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
+            <SelecteurHabillage modeles={CLIP_TEMPLATES} onChoisir={addOverlay} onAnnuler={() => setPicking(false)} />
           ) : (
             <button
               onClick={() => setPicking(true)}

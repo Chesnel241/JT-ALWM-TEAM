@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Newspaper, Radio, Image as ImageIcon, Music, Mic, Plus, Trash2, Upload, Sparkles, Layers } from 'lucide-react';
-import { GLOBAL_TEMPLATES } from '../../data/overlayTemplates.js';
+import { GLOBAL_TEMPLATES, MOMENTS, animationRecommandee, habillagesDuMoment } from '../../data/overlayTemplates.js';
 import { OverlayEditor } from './OverlayPanel.jsx';
 import { api } from '../../api/index.js';
 
@@ -56,7 +56,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
         id: `${templateId}-${Date.now()}`,
         templateId,
         fields: {},
-        animation: 'fade',
+        animation: animationRecommandee(templateId),
         startTime: 0,
         duration: null,
       },
@@ -408,9 +408,24 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
             {head(<Layers size={15} />, 'Animations & Habillages Globaux', null)}
             
             <div className="flex gap-2">
-              <select className={field} onChange={(e) => { if(e.target.value) { addOverlay(e.target.value); e.target.value = ''; } }}>
+              {/* Groupé par moment du JT, comme le sélecteur des clips : une
+                  liste à plat obligeait à parcourir les huit pour retrouver
+                  la barre défilante. */}
+              <select
+                className={field}
+                aria-label="Ajouter un habillage global"
+                onChange={(e) => { if (e.target.value) { addOverlay(e.target.value); e.target.value = ''; } }}
+              >
                 <option value="">— Ajouter un habillage global —</option>
-                {GLOBAL_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+                {MOMENTS.map((moment) => {
+                  const liste = habillagesDuMoment(moment.id, GLOBAL_TEMPLATES);
+                  if (liste.length === 0) return null;
+                  return (
+                    <optgroup key={moment.id} label={moment.label}>
+                      {liste.map((t) => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+                    </optgroup>
+                  );
+                })}
               </select>
             </div>
 
