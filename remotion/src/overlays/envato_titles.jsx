@@ -1,11 +1,11 @@
 import React from 'react';
-import { COULEURS } from '../identite.js';
+import { COULEURS, POLICE_HABILLAGE } from '../identite.js';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { EnvatoMaskReveal, getExpEaseOut } from '../anim_envato.jsx';
 import TexteJT from '../TexteJT.jsx';
 
 const baseFontConfig = {
-  fontFamily: 'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif',
+  fontFamily: POLICE_HABILLAGE,
   textTransform: 'uppercase',
   fontWeight: '900',
   lineHeight: 1,

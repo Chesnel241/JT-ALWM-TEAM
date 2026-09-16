@@ -79,6 +79,39 @@ export const CARACTERES = {
 };
 
 /**
+ * La déclaration `font-family` des quinze habillages importés.
+ *
+ * Écrite ici, et plus dans chacun des cinq fichiers, parce que c'est
+ * exactement le genre de déclaration qu'on ne peut pas laisser diverger.
+ * Elle commence par une variable CSS que le répartiteur pose — c'est ce qui
+ * rend la police choisissable depuis le studio — et **une variable mal formée
+ * suffit à invalider toute la déclaration**. Le navigateur la jette alors et
+ * retombe sur sa police par défaut, une serif : les quinze habillages
+ * sortaient dans une police qui n'est pas celle du JT pendant que les huit
+ * natifs étaient en Montserrat, et rien ne le signalait.
+ */
+export const POLICE_HABILLAGE =
+  'var(--ov-font, "Montserrat ExtraBold"), "Montserrat ExtraBold", system-ui, sans-serif';
+
+/**
+ * La variable de police à poser sur le conteneur d'un habillage importé.
+ *
+ * **Sans virgule finale.** Elle en portait une, et la déclaration ci-dessus
+ * devenait `font-family: 'Montserrat ExtraBold', , "Montserrat ExtraBold", …`
+ * — une famille vide entre deux virgules, donc une déclaration invalide, donc
+ * la serif par défaut. La virgule existait depuis longtemps mais la variable
+ * n'était posée que si le monteur choisissait une police : le défaut ne
+ * frappait que ce cas. La rendre toujours définie l'a rendu permanent.
+ *
+ * Un test compose les deux et vérifie qu'aucune famille de la liste n'est
+ * vide, quelle que soit la police choisie.
+ */
+export function varPolice(overlay) {
+  const choisie = (overlay && overlay.font) || CARACTERES.titrage;
+  return { '--ov-font': `'${choisie}'` };
+}
+
+/**
  * L'échelle, en pixels sur une image de 1920 × 1080.
  *
  * Trente et une tailles circulaient dans `remotion/src`, de 16 à 180, sans

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Img, staticFile } from 'remotion';
-import { COULEURS } from '../identite.js';
+import { COULEURS, varPolice } from '../identite.js';
 import TexteJT, { FournisseurHabillage } from '../TexteJT.jsx';
 import { COL, ff, pickColors, fxStyle, DEFAULT_ANCHOR } from '../theme.js';
 import { entranceStyle, charStyle, PER_CHAR } from '../anim.js';
@@ -1126,13 +1126,13 @@ export function Overlay({ overlay, durationInFrames }) {
   // les couleurs UI + la police via variable CSS héritée par les enfants.
   if (ENVATO_IDS.has(overlay.templateId)) {
     const merged = injectColors(overlay);
-    // La variable est TOUJOURS définie, même sans choix de police.
-    // Quand elle ne l'était pas, `font-family: var(--ov-font) "Montserrat
-    // ExtraBold", …` devenait invalide au calcul — une variable absente sans
-    // valeur de repli invalide toute la déclaration — et les quinze habillages
-    // s'affichaient dans la police par défaut du navigateur au lieu de celle
-    // du JT. Les `baseFontConfig` portent en plus leur propre repli.
-    const fontVar = { '--ov-font': `'${overlay.font || 'Montserrat ExtraBold'}', ` };
+    // La variable est TOUJOURS définie, même sans choix de police, et sa
+    // valeur ne porte pas de virgule finale : elle en portait une, ce qui
+    // insérait une famille vide dans la déclaration des gabarits et la rendait
+    // invalide — les quinze habillages sortaient alors dans la serif par
+    // défaut du navigateur. Les deux moitiés vivent maintenant dans
+    // `identite.js`, côte à côte, et un test les compose.
+    const fontVar = varPolice(overlay);
     return (
       <FournisseurHabillage overlay={overlay} durationInFrames={durationInFrames}>
         <Box overlay={overlay} style={{ left: 0, top: 0, width: 1920, height: 1080, ...fontVar }}>
