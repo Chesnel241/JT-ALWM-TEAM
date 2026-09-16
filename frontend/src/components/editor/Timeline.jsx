@@ -39,6 +39,8 @@ import {
 } from 'lucide-react';
 import { generateThumbnails } from '../../utils/thumbnails.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
+import { etiquetteGeste } from './historiqueMontage.js';
+import { animationRecommandee } from '../../data/overlayTemplates.js';
 import {
   FPS,
   MIN_CLIP_DURATION,
@@ -52,7 +54,6 @@ import {
 const PX_PER_SEC_DEFAULT = 60;
 const PX_PER_SEC_MIN = 18;
 const PX_PER_SEC_MAX = 220;
-const HISTORY_LIMIT = 50;
 
 // Les libellés vivent dans le dictionnaire : ce tableau est au niveau du
 // module, hors de portée du fournisseur i18n, et une liste de noms français
@@ -163,6 +164,10 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
   const beginDrag = (mode) => (event) => {
     event.preventDefault();
     event.stopPropagation();
+    // Une étiquette par geste, tirée au moment où le doigt se pose : un glissé
+    // émet une modification par mouvement de souris, et sans elle « Annuler »
+    // reculerait d'un pixel à la fois.
+    const geste = etiquetteGeste(`titre-${mode}`);
     const startX = event.clientX;
     const original = { start: startTime, duration };
     let moved = false;
@@ -185,7 +190,7 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
           duration: clamp(roundToFrame(original.duration + delta), MIN_CLIP_DURATION, Math.max(MIN_CLIP_DURATION, totalSec - original.start)),
         };
       });
-      onChange(nextOverlays);
+      onChange(nextOverlays, geste, Infinity);
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
@@ -503,6 +508,15 @@ export default function Timeline({
   onSubtitleClip,
   onSplitText,
   onBrowseRushes,
+  // L'historique vit dans le tableau de bord : il porte le montage entier —
+  // clips, titres et habillage — et non les seuls clips. Ici il n'était pas
+  // seulement incomplet : l'effet qui le vidait se déclenchait à chaque frappe
+  // dans l'inspecteur, parce que l'aperçu en direct réécrit les clips.
+  modifierMontage,
+  annulerMontage,
+  retablirMontage,
+  annulationPossible = false,
+  retablissementPossible = false,
   playerRef,
   syncState = 'saved',
   presenceCount = 1,
@@ -512,13 +526,11 @@ export default function Timeline({
   const rootRef = useRef(null);
   const scrollRef = useRef(null);
   const clipsRef = useRef(clips);
-  const expectedClipsRef = useRef(null);
   const [toolMode, setToolMode] = useState('select');
   const [selectedClipId, setSelectedClipId] = useState(null);
   const [snapping, setSnapping] = useState(true);
   const [playheadSec, setPlayheadSec] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
-  const [history, setHistory] = useState({ past: [], future: [] });
   const [statusMessage, setStatusMessage] = useState(null);
   const [pxPerSec, setPxPerSec] = useState(() => {
     try {
@@ -545,16 +557,6 @@ export default function Timeline({
   const titleTrackHeight = compact ? 0 : 64;
 
   clipsRef.current = clips;
-
-  useEffect(() => {
-    if (expectedClipsRef.current === clips) {
-      expectedClipsRef.current = null;
-      return;
-    }
-    // Une modification venue de l'inspecteur ou un changement de semaine
-    // démarre une nouvelle pile d'historique locale.
-    setHistory({ past: [], future: [] });
-  }, [clips]);
 
   useEffect(() => {
     if (clips.length === 0) {
@@ -604,40 +606,42 @@ export default function Timeline({
     return () => cancelAnimationFrame(animationFrame);
   }, [layout.total, playerRef]);
 
-  const commitClips = useCallback((update) => {
+  /**
+   * Toute modification de la piste vidéo, enregistrée dans l'historique.
+   *
+   * `etiquette` nomme le geste : deux gestes de même nature faits coup sur
+   * coup n'en font qu'un, ce qui évite qu'un glissé produise cinquante
+   * entrées. Sans `modifierMontage` — la mini-timeline des chutiers — on
+   * retombe sur l'écriture directe, sans annulation : mieux vaut un montage
+   * non annulable qu'un montage bloqué.
+   */
+  const commitClips = useCallback((update, etiquette = null, fenetre = undefined) => {
     const current = clipsRef.current;
     const next = typeof update === 'function' ? update(current) : update;
     if (!Array.isArray(next) || next === current) return;
-    setHistory((previous) => ({
-      past: [...previous.past, current].slice(-HISTORY_LIMIT),
-      future: [],
-    }));
-    expectedClipsRef.current = next;
     clipsRef.current = next;
-    setClips(next);
-  }, [setClips]);
+    if (modifierMontage) modifierMontage((m) => ({ ...m, clips: next }), etiquette, fenetre);
+    else setClips(next);
+  }, [modifierMontage, setClips]);
+
+  /** Idem pour la piste des titres, qui n'était pas annulable du tout. */
+  const commitOverlays = useCallback((next, etiquette = null, fenetre = undefined) => {
+    if (!Array.isArray(next)) return;
+    if (modifierMontage) modifierMontage((m) => ({ ...m, overlays: next }), etiquette, fenetre);
+    else setTimelineOverlays?.(next);
+  }, [modifierMontage, setTimelineOverlays]);
 
   const undo = useCallback(() => {
-    if (history.past.length === 0) return;
-    const previousClips = history.past[history.past.length - 1];
-    const current = clipsRef.current;
-    setHistory({ past: history.past.slice(0, -1), future: [current, ...history.future].slice(0, HISTORY_LIMIT) });
-    expectedClipsRef.current = previousClips;
-    clipsRef.current = previousClips;
-    setClips(previousClips);
+    if (!annulationPossible) return;
+    annulerMontage?.();
     setStatusMessage(t.studio.timeline.msgAnnule);
-  }, [history, setClips]);
+  }, [annulationPossible, annulerMontage, t]);
 
   const redo = useCallback(() => {
-    if (history.future.length === 0) return;
-    const nextClips = history.future[0];
-    const current = clipsRef.current;
-    setHistory({ past: [...history.past, current].slice(-HISTORY_LIMIT), future: history.future.slice(1) });
-    expectedClipsRef.current = nextClips;
-    clipsRef.current = nextClips;
-    setClips(nextClips);
+    if (!retablissementPossible) return;
+    retablirMontage?.();
     setStatusMessage(t.studio.timeline.msgRetabli);
-  }, [history, setClips]);
+  }, [retablissementPossible, retablirMontage, t]);
 
   const seekToTime = useCallback((time) => {
     const next = clamp(roundToFrame(time), 0, layout.total);
@@ -672,6 +676,8 @@ export default function Timeline({
 
   const commitRange = useCallback((clip, range) => {
     const id = clipId(clip);
+    // Un rognage est un geste continu : sans étiquette unique et sans fenêtre
+    // ouverte, il se découperait en autant d'entrées que de mouvements.
     commitClips((current) => current.map((item) => {
       if (String(clipId(item)) !== String(id)) return item;
       return {
@@ -682,7 +688,7 @@ export default function Timeline({
         sourceDurationSec: range.sourceDurationSec ?? item.sourceDurationSec,
         trimLabel: `${formatTimecode(range.inPoint)} → ${formatTimecode(range.outPoint)}`,
       };
-    }));
+    }), `rognage:${id}`, Infinity);
     setStatusMessage(t.studio.timeline.msgTrim(formatTimecode(range.durationSec)));
   }, [commitClips]);
 
@@ -737,16 +743,16 @@ export default function Timeline({
       id: createId('overlay'),
       templateId: 'titre_reportage',
       fields: {},
-      animation: 'fade',
+      animation: animationRecommandee('titre_reportage'),
       startTime: debut,
       duration: duree,
     };
 
     const suivants = [...timelineOverlays, titre];
-    setTimelineOverlays?.(suivants);
+    commitOverlays(suivants);
     setStatusMessage(t.studio.timeline.msgTitreAjoute(formatTimecode(debut)));
     onOverlayClip?.({ isTimelineOverlays: true, overlays: suivants });
-  }, [playheadSec, layout.total, timelineOverlays, setTimelineOverlays, onOverlayClip]);
+  }, [playheadSec, layout.total, timelineOverlays, commitOverlays, onOverlayClip]);
 
   const razorSplit = useCallback((item, event) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -885,8 +891,8 @@ export default function Timeline({
             <ToolButton icon={<Scissors size={16} />} label={t.studio.timeline.couperCurseur} shortcut="⌘K" disabled={clips.length === 0} onClick={() => splitAt(playheadSec)} />
             <span className="mx-0.5 h-7 w-px shrink-0 bg-[var(--editor-border)]" aria-hidden="true" />
             <ToolButton icon={<Magnet size={16} />} label={t.studio.timeline.magnetisme} shortcut="M" active={snapping} onClick={() => setSnapping((value) => !value)} />
-            <ToolButton icon={<Undo2 size={16} />} label={t.studio.timeline.annuler} disabled={history.past.length === 0} onClick={undo} compact title="Annuler" />
-            <ToolButton icon={<Redo2 size={16} />} label={t.studio.timeline.retablir} disabled={history.future.length === 0} onClick={redo} compact title={t.studio.timeline.retablir} />
+            <ToolButton icon={<Undo2 size={16} />} label={t.studio.timeline.annuler} disabled={!annulationPossible} onClick={undo} compact title="Annuler" />
+            <ToolButton icon={<Redo2 size={16} />} label={t.studio.timeline.retablir} disabled={!retablissementPossible} onClick={redo} compact title={t.studio.timeline.retablir} />
             {onSplitText && <ToolButton icon={<Type size={16} />} label={t.studio.timeline.couperTitre} disabled={timelineOverlays.length === 0} onClick={onSplitText} title={t.studio.timeline.couperTitreTitre} responsiveCompact />}
             {onGlobalLayer && <ToolButton icon={<Newspaper size={16} />} label={t.studio.timeline.habillageJT} active={!!brandingActive} onClick={onGlobalLayer} responsiveCompact />}
             
@@ -1058,7 +1064,7 @@ export default function Timeline({
                       totalSec={layout.total}
                       pxPerSec={pxPerSec}
                       overlays={timelineOverlays}
-                      onChange={(next) => setTimelineOverlays?.(next)}
+                      onChange={commitOverlays}
                       onOpen={() => onOverlayClip?.({ isTimelineOverlays: true, overlays: timelineOverlays })}
                     />
                   ))}

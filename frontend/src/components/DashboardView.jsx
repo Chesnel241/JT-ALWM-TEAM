@@ -33,6 +33,16 @@ import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
+import {
+  annuler as annulerHistorique,
+  creerHistorique,
+  enregistrer,
+  peutAnnuler,
+  peutRetablir,
+  etiquetteSaisie,
+  reinitialiser,
+  retablir as retablirHistorique,
+} from './editor/historiqueMontage.js';
 import ActionSheet from './ActionSheet.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
 import ReporterLinkDialog from './ReporterLinkDialog.jsx';
@@ -390,6 +400,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [timelineClips, setTimelineClips] = useState([]);
   const [timelineOverlays, setTimelineOverlays] = useState([]);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  // L'annulation porte sur le montage entier — clips, titres de la piste T1 et
+  // habillage global — et elle vit ici parce que c'est le seul endroit qui
+  // détienne les trois. Elle vivait dans la timeline et ne connaissait que les
+  // clips : supprimer un titre était définitif, et taper une lettre dans
+  // l'inspecteur effaçait toute la pile.
+  const [historique, setHistorique] = useState(creerHistorique);
+  const montageRef = useRef({ clips: [], overlays: [], branding: DEFAULT_BRANDING });
   const [showGlobalPanel, setShowGlobalPanel] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [subtitleTarget, setSubtitleTarget] = useState(null);
@@ -440,17 +457,85 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   useEffect(() => { adminPasswordRef.current = authenticatedAdminPassword; }, [authenticatedAdminPassword]);
   useEffect(() => { isGeneratingVideoRef.current = isGeneratingVideo; }, [isGeneratingVideo]);
 
+  // Miroir de rendu : `modifierMontage` lit cette référence de façon
+  // synchrone, avant le rendu suivant. Même convention que `clipsRef` dans la
+  // timeline.
+  montageRef.current = { clips: timelineClips, overlays: timelineOverlays, branding };
+
+  /** Pose un état de montage complet, sans rien enregistrer dans l'historique. */
+  const poserMontage = useCallback((etat) => {
+    montageRef.current = etat;
+    setTimelineClips(etat.clips);
+    setTimelineOverlays(etat.overlays);
+    setBranding(etat.branding);
+  }, []);
+
+  /**
+   * Le seul chemin par lequel une modification LOCALE passe.
+   *
+   * `etiquette` dit de quel geste il s'agit : deux frappes successives dans le
+   * même champ n'en font qu'une, mais couper puis taper restent deux gestes.
+   * Sans cela, taper un titre de quarante caractères demanderait quarante
+   * « Annuler ».
+   */
+  const ajusterSansHistorique = useCallback((maj) => {
+    const apres = maj(montageRef.current);
+    if (apres && apres !== montageRef.current) poserMontage(apres);
+  }, [poserMontage]);
+
+  const modifierMontage = useCallback((maj, etiquette = null, fenetre = undefined) => {
+    const avant = montageRef.current;
+    const apres = typeof maj === 'function' ? maj(avant) : { ...avant, ...maj };
+    if (!apres || apres === avant) return;
+    setHistorique((h) => enregistrer(h, avant, { etiquette, maintenant: Date.now(), ...(fenetre !== undefined ? { fenetre } : {}) }));
+    poserMontage(apres);
+  }, [poserMontage]);
+
+  /**
+   * Ce que l'inspecteur écrit, qu'il s'agisse d'un habillage de clip ou des
+   * titres de la piste T1.
+   */
+  const appliquerInspecteur = useCallback((updatedClip) => {
+    if (updatedClip.isTimelineOverlays) {
+      modifierMontage((m) => ({ ...m, overlays: updatedClip.overlays || [] }), etiquetteSaisie('T1', 'inspecteur'));
+      return;
+    }
+    modifierMontage(
+      (m) => ({ ...m, clips: m.clips.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)) }),
+      etiquetteSaisie(updatedClip.instanceId, 'inspecteur'),
+    );
+  }, [modifierMontage]);
+
+  const annulerMontage = useCallback(() => {
+    setHistorique((h) => {
+      const recul = annulerHistorique(h, montageRef.current);
+      if (recul.etat) poserMontage(recul.etat);
+      return recul.historique;
+    });
+  }, [poserMontage]);
+
+  const retablirMontage = useCallback(() => {
+    setHistorique((h) => {
+      const avance = retablirHistorique(h, montageRef.current);
+      if (avance.etat) poserMontage(avance.etat);
+      return avance.historique;
+    });
+  }, [poserMontage]);
+
   // Charge un workspace serveur dans l'état local. markSynced=false marque le
   // montage comme non synchronisé (mode hors ligne) sans toucher à l'affichage.
+  //
+  // C'est le SEUL chemin qui efface l'historique : hydratation d'une semaine,
+  // notification socket d'un collègue, adoption de la copie serveur après un
+  // 409. Annuler l'arrivée d'un collègue réécraserait son travail en silence.
   const applyWorkspace = useCallback((workspace, { markSynced = true } = {}) => {
     const next = normalizeWorkspace(workspace);
-    setTimelineClips(next.clips);
-    setTimelineOverlays(next.overlays);
-    setBranding(next.branding);
+    poserMontage({ clips: next.clips, overlays: next.overlays, branding: next.branding });
+    setHistorique(reinitialiser());
     timelineRevisionRef.current = next.revision;
     lastSyncedTimelineRef.current = markSynced ? JSON.stringify(next.payload) : '';
     return next;
-  }, []);
+  }, [poserMontage]);
 
   const countriesWithUploads = useMemo(() => {
     const uploaded = Object.keys(dashboard).filter(
@@ -556,7 +641,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       instanceId: generateId(),
       overlays: file.overlays || [],
     };
-    setTimelineClips((prev) => [...prev, newClip]);
+    modifierMontage((m) => ({ ...m, clips: [...m.clips, newClip] }));
     addToast(`"${file.name || file.filename}" ajouté à la timeline`, 'success', 2000);
   };
 
@@ -610,7 +695,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         : {}),
     };
 
-    setTimelineClips((previous) => [...previous, newClip]);
+    modifierMontage((m) => ({ ...m, clips: [...m.clips, newClip] }));
     setTrimTarget(null);
     setOverlayTarget(null);
     setSubtitleTarget(null);
@@ -624,7 +709,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (knownDuration <= 0) {
       probeVideoDuration(url).then((duration) => {
         if (duration <= 0) return;
-        setTimelineClips((previous) => previous.map((clip) => {
+        ajusterSansHistorique((m) => ({ ...m, clips: m.clips.map((clip) => {
           if (clip.instanceId !== instanceId) return clip;
           const hasBeenTrimmed = clip.outPoint != null || Number(clip.durationSec) > 0;
           return {
@@ -632,7 +717,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             sourceDurationSec: duration,
             ...(!hasBeenTrimmed ? { durationSec: duration } : {}),
           };
-        }));
+        }) }));
       });
     }
   };
@@ -1293,7 +1378,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const newOverlays = [...timelineOverlays];
     newOverlays.splice(overlayIndex, 1, o1, o2);
 
-    setTimelineOverlays(newOverlays);
+    modifierMontage((m) => ({ ...m, overlays: newOverlays }));
 
     addToast('Texte coupé en deux !', 'success');
   };
@@ -2174,26 +2259,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       clip={overlayTarget}
                       onClose={() => setOverlayTarget(null)}
                       onSave={(updatedClip) => {
-                        if (updatedClip.isTimelineOverlays) {
-                          setTimelineOverlays(updatedClip.overlays || []);
-                        } else {
-                          setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
-                        }
+                        appliquerInspecteur(updatedClip);
                         addToast('Animations mises à jour', 'success', 2000);
                       }}
-                      onChangePreview={(updatedClip) => {
-                        if (updatedClip.isTimelineOverlays) {
-                          setTimelineOverlays(updatedClip.overlays || []);
-                        } else {
-                          setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
-                        }
-                      }}
+                      // Appelé à CHAQUE frappe : c'est lui qui pilote l'aperçu
+                      // en direct, et c'est lui qui effaçait toute la pile
+                      // d'annulation. L'étiquette porte la cible, donc une
+                      // salve de frappes dans le même habillage ne fait qu'une
+                      // entrée — mais couper puis taper restent deux gestes.
+                      onChangePreview={appliquerInspecteur}
                     />
                   ) : showGlobalPanel ? (
                     <GlobalLayerPanel
                       inline={true}
                       value={branding}
-                      onChange={setBranding}
+                      onChange={(suivant) => modifierMontage((m) => ({ ...m, branding: suivant }), 'habillage')}
                       onClose={() => setShowGlobalPanel(false)}
                       audioFiles={weekAudioFiles}
                       imageFiles={weekImageFiles}
@@ -2206,7 +2286,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       clip={subtitleTarget}
                       onClose={() => setSubtitleTarget(null)}
                       onSave={(updatedClip) => {
-                        setTimelineClips((prev) => prev.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)));
+                        modifierMontage(
+                          (m) => ({ ...m, clips: m.clips.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)) }),
+                        );
                         addToast('Sous-titres appliqués', 'success', 2000);
                       }}
                     />
@@ -2216,16 +2298,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       file={trimTarget}
                       onClose={() => setTrimTarget(null)}
                       onConfirm={(trimmedClip) => {
-                        setTimelineClips((prev) => {
-                          const index = prev.findIndex((c) => c.instanceId === trimmedClip.instanceId);
+                        modifierMontage((m) => {
+                          const index = m.clips.findIndex((c) => c.instanceId === trimmedClip.instanceId);
                           if (index >= 0) {
-                            return prev.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c));
+                            return { ...m, clips: m.clips.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c)) };
                           }
                           const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
                           const isExternal = trimmedClip.filename?.startsWith('http') || trimmedClip.filename?.startsWith('blob:');
                           const url = isExternal ? trimmedClip.filename : `${API_BASE}/uploads/${trimmedClip.filename || trimmedClip.name}?cors=2`;
                           const newClip = { ...trimmedClip, url, instanceId: trimmedClip.instanceId || generateId() };
-                          return [...prev, newClip];
+                          return { ...m, clips: [...m.clips, newClip] };
                         });
                         addToast('Clip ajouté à la timeline', 'success', 2000);
                         setTrimTarget(null);
@@ -2301,6 +2383,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   playerRef={playerRef}
                   onSplitText={handleSplitTextAtPlayhead}
                   onBrowseRushes={openRushes}
+                  modifierMontage={modifierMontage}
+                  annulerMontage={annulerMontage}
+                  retablirMontage={retablirMontage}
+                  annulationPossible={peutAnnuler(historique)}
+                  retablissementPossible={peutRetablir(historique)}
                   syncState={timelineSyncState}
                   presenceCount={editorPresenceCount}
                 />
@@ -2922,6 +3009,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   setSelectedBin('studio');
                   openSubtitleInspector(clip);
                 }}
+                modifierMontage={modifierMontage}
+                annulerMontage={annulerMontage}
+                retablirMontage={retablirMontage}
+                annulationPossible={peutAnnuler(historique)}
+                retablissementPossible={peutRetablir(historique)}
                 syncState={timelineSyncState}
                 presenceCount={editorPresenceCount}
                 compact
