@@ -277,7 +277,7 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
 
   return (
     <div ref={dialogRef} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
-      <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] motion-boite">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
           <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
             {file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i) ? (
@@ -2057,7 +2057,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
               {/* MODAL / DRAWER BIBLIOTHÈQUE DE RUSHS DU STUDIO */}
               {showRushesDrawer && (
-                <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm motion-voile">
                   <div className="bg-[var(--paper)] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
                     {/* Header */}
                     <div className="px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex items-center justify-between">
@@ -2647,7 +2647,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               download={file.name}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 md:p-2 rounded-lg text-gray-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+                              className="p-1.5 md:p-2 rounded-lg text-[color:var(--muted)] hover:text-[color:var(--accent)] hover:bg-[var(--accent)]/10 motion-tap"
                               title={t.delivery.download}
                             >
                               <Download size={16} />
@@ -2929,7 +2929,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
             {/* GENERATED VIDEO PREVIEW */}
             {generatedVideoUrl && (
-              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm motion-boite">
                 <h3 className="text-lg font-bold text-[color:var(--ink)] mb-3 flex items-center gap-2">
                   <CheckCircle className="text-[var(--accent)]" /> Vidéo Assemblée
                 </h3>

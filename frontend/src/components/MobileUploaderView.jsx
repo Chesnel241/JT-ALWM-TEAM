@@ -674,7 +674,7 @@ export default function MobileUploaderView({
             className="fixed inset-0" 
             onClick={() => setScriptModalOpen(false)} 
           />
-          <div className="relative w-full max-h-[85vh] bg-[var(--paper)] rounded-t-3xl shadow-2xl border-t border-[var(--border)] p-5 flex flex-col space-y-3 z-10 animate-in slide-in-from-bottom duration-300">
+          <div className="relative w-full max-h-[85vh] bg-[var(--paper)] rounded-t-3xl shadow-2xl border-t border-[var(--border)] p-5 flex flex-col space-y-3 z-10 motion-boite">
             <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mx-auto mb-1" />
 
             <div className="flex items-center justify-between">

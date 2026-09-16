@@ -1007,7 +1007,7 @@ export default function Timeline({
             {/* Indicateur de présence & synchro cloud */}
             <div className="hidden min-[1280px]:flex items-center gap-2 px-1">
               {presenceCount > 1 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold shadow-xs animate-in fade-in" title={`${presenceCount} collaborateurs sont connectés sur cette semaine`}>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold shadow-xs motion-voile" title={`${presenceCount} collaborateurs sont connectés sur cette semaine`}>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>{presenceCount} monteurs</span>
                 </div>

@@ -500,7 +500,7 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
   };
 
   const content = (
-    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-lg shadow-2xl border border-[var(--border)] max-h-[90vh] animate-in fade-in zoom-in-95 duration-200'}`}>
+    <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-lg shadow-2xl border border-[var(--border)] max-h-[90vh] motion-boite'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">

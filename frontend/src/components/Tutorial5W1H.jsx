@@ -57,7 +57,7 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
         className="fixed inset-0" 
         onClick={handleDismiss} 
       />
-      <div className="relative w-full max-w-5xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto bg-[var(--paper)] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[var(--border)] animate-in fade-in slide-in-from-bottom-6 sm:zoom-in duration-300 z-10 custom-scrollbar">
+      <div className="relative w-full max-w-5xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto bg-[var(--paper)] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[var(--border)] motion-boite z-10 custom-scrollbar">
         <div className="p-5 sm:p-8 border-l-4 border-l-[color:var(--accent)] bg-gradient-to-br from-[var(--paper)] to-[var(--paper-2)] relative">
           
           {/* Mobile swipe notch */}

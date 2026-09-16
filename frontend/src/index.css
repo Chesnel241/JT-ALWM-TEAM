@@ -403,6 +403,35 @@ body {
 		animation: fadeIn 200ms var(--ease-out) forwards;
 	}
 
+	/* L'arrivée d'une boîte modale et de son voile.
+
+	   Dix composants portaient `animate-in fade-in zoom-in-95 duration-200` et
+	   consorts — la syntaxe du greffon `tailwindcss-animate`, qui n'est ni dans
+	   `package.json` ni dans `tailwind.config.js`. Ces classes ne produisaient
+	   donc rien : les panneaux et les boîtes apparaissaient d'un coup.
+
+	   Plutôt qu'une dépendance de plus pour dix usages, deux classes bâties sur
+	   l'échelle et les courbes que la maison a déjà. Le garde global
+	   `prefers-reduced-motion` plus haut les couvre sans rien à écrire ici. */
+	@keyframes boite-entre {
+		from {
+			opacity: 0;
+			transform: scale(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	.motion-boite {
+		animation: boite-entre var(--motion-enter) var(--ease-emphasis) both;
+	}
+
+	.motion-voile {
+		animation: fadeIn var(--motion-enter) var(--ease-out) both;
+	}
+
 	@keyframes rise {
 		from {
 			opacity: 0;
