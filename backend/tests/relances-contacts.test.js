@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { TEST_UPLOADS_DIR } from './setup.js';
+import { semaineActive, semaineSuivante } from './semaine.js';
 
 /**
  * Les deux corvées hebdomadaires de l'équipe montage, outillées.
@@ -14,7 +15,13 @@ import { TEST_UPLOADS_DIR } from './setup.js';
  */
 
 const ADMIN = 'mot-de-passe-montage';
-const SEMAINE = '2026-w37';
+// Calculées, pas figées. La semaine active le jour où ce fichier a été écrit
+// y était inscrite en dur : la suite a recommencé à échouer dès qu'elle est
+// sortie de la fenêtre glissante, avec des 400 et des 404 sans rapport avec ce
+// qu'elle vérifie. Le passage qui a retiré la semaine figée des huit autres
+// fichiers avait manqué celui-ci.
+const SEMAINE = semaineActive();
+const SEMAINE_SUIVANTE = semaineSuivante();
 
 let app;
 let store;
@@ -49,7 +56,7 @@ describe('le carnet de contacts', () => {
   });
 
   it('ressort le numéro sur une semaine où personne ne l’a reconfirmé', async () => {
-    const res = await admin(request(app).get('/api/notifications/2026-w38'));
+    const res = await admin(request(app).get(`/api/notifications/${SEMAINE_SUIVANTE}`));
     const cameroun = res.body.find((s) => s.countryId === 'cm');
     expect(cameroun.phone).toBe('+237699001122');
     // Marqué comme repris : il n'a pas été reconfirmé cette semaine-là, et
