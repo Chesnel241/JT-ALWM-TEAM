@@ -291,7 +291,15 @@ docker compose exec worker sh
 
 ---
 
-## 11. Sauvegarde (automatique)
+## 11. Sauvegarde locale (automatique)
+
+> **Ce que cette sauvegarde-ci protège, et ce qu'elle ne protège pas.** Elle
+> archive le volume vers `/var/backups`, **sur le même disque**. Elle vous sauve
+> d'une fausse manœuvre ou d'un conteneur perdu, et elle restaure vite parce
+> qu'il n'y a rien à retélécharger. Elle ne vous sauve **pas** de la perte du
+> VPS : panne disque, incident hébergeur, suspension de compte. Pour cela, voir
+> la **§11 bis**, qui est celle qui compte pour les rushes.
+
 
 ```bash
 # Créer le script de sauvegarde
@@ -334,7 +342,109 @@ chmod +x /usr/local/bin/backup-jt-alwm.sh
 
 ---
 
-## 12. Restauration (si besoin)
+## 11 bis. Sauvegarde hors machine (celle qui compte)
+
+Les métadonnées se répliquent déjà vers Upstash. Les **rushes**, non : ils
+arrivent une fois par semaine, depuis sept pays, souvent sur de mauvaises
+connexions. Un correspondant ne réenvoie pas facilement ce qu'il a envoyé
+samedi. C'est la seule donnée du système qui soit vraiment irremplaçable.
+
+### Choisir un stockage objet
+
+Trois options tiennent la route pour une association. La différence qui compte
+n'est pas le prix du stockage — quelques euros par mois dans tous les cas —
+mais **le prix de la sortie**, c'est-à-dire ce que coûtera la restauration le
+jour où elle servira :
+
+| | Stockage | Sortie (restauration) |
+|---|---|---|
+| **Cloudflare R2** *(recommandé)* | ~0,015 $/Go/mois | **gratuite** |
+| Backblaze B2 | ~0,006 $/Go/mois | gratuite jusqu'à 3× le volume stocké |
+| Scaleway Object Storage | ~0,012 €/Go/mois, hébergé en Europe | facturée |
+
+R2 est recommandé pour une raison simple : le jour où vous restaurez, vous
+téléchargez tout, et c'est exactement le jour où une facture de sortie est le
+plus mal venue.
+
+### Configurer rclone (une fois)
+
+```bash
+# rclone tourne dans son image Docker : rien à installer sur l'hôte.
+docker run --rm -it -v rclone_config:/config/rclone rclone/rclone config
+```
+
+Répondre : `n` (nouveau remote) → nom **`r2`** → type `s3` → fournisseur
+`Cloudflare` → vos clés → endpoint `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+
+Puis rendre cette configuration lisible par les scripts :
+
+```bash
+mkdir -p ~/.config/rclone
+docker run --rm -v rclone_config:/config/rclone alpine \
+  cat /config/rclone/rclone.conf > ~/.config/rclone/rclone.conf
+chmod 600 ~/.config/rclone/rclone.conf
+```
+
+> Ce fichier contient vos clés d'accès. `chmod 600` n'est pas une politesse.
+
+### Essayer, puis installer
+
+```bash
+cd /opt/jt-alwm
+
+# 1. À blanc : rien n'est écrit, on vérifie que la destination répond.
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/sauvegarde-hors-site.sh --essai
+
+# 2. Pour de vrai. La première fois envoie tout : comptez du temps.
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/sauvegarde-hors-site.sh
+
+# 3. Tous les jours à 4h (une heure après la sauvegarde locale).
+(crontab -l 2>/dev/null; echo "0 4 * * * cd /opt/jt-alwm && REMOTE=r2:jt-alwm-sauvegarde ./scripts/sauvegarde-hors-site.sh >> /var/log/jt-alwm-hors-site.log 2>&1") | crontab -
+```
+
+**Le script refuse de partir si la source paraît vide** — si le volume ne se
+monte pas, il s'arrête au lieu de vider le coffre. Et les fichiers supprimés ou
+modifiés sont écartés dans `versions/<date>/` plutôt que détruits : une
+suppression accidentelle reste récupérable.
+
+### L'essai de restauration — à faire une fois, vraiment
+
+Une sauvegarde qu'on n'a jamais restaurée n'est pas une sauvegarde, c'est une
+intention. L'essai ne touche pas la production :
+
+```bash
+# Ce que contient le coffre
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/restaurer-sauvegarde.sh --lister
+
+# Restaurer dans un volume jetable (la production n'est pas touchée)
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/restaurer-sauvegarde.sh
+
+# Regarder ce qui est arrivé
+docker run --rm -v jt-alwm_restauration_essai:/data alpine \
+  sh -c 'ls /data | head -20; echo; du -sh /data'
+
+# Puis jeter le volume d'essai
+docker volume rm jt-alwm_restauration_essai
+```
+
+**Ce qu'il faut vérifier**, et pas seulement que des fichiers sont arrivés :
+ouvrir un rush restauré et le lire, et vérifier que `store.json` est là. Une
+archive qui se décompresse mais dont les vidéos sont tronquées est un piège.
+
+### Le jour où ça arrive pour de bon
+
+```bash
+docker compose down            # sans quoi le backend écrit pendant la copie
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/restaurer-sauvegarde.sh --sur-la-production
+docker compose up -d
+```
+
+Le script demande de taper `restaurer la production` en toutes lettres. C'est
+volontaire : cette commande-là s'exécute un jour de stress.
+
+---
+
+## 12. Restauration locale (si besoin)
 
 ```bash
 # Arrêter les services
@@ -407,7 +517,11 @@ ufw status verbose
 - [ ] Studio de Montage charge les clips
 - [ ] Voix Off enregistre et traite l'audio
 - [ ] Certificat TLS valide (pas d'avertissement navigateur)
-- [ ] Sauvegarde cron configurée
+- [ ] Sauvegarde locale cron configurée (§11)
+- [ ] **Sauvegarde hors machine cron configurée (§11 bis)** — la seule qui
+      protège les rushes de la perte du VPS
+- [ ] **Une restauration réellement essayée**, dans le volume jetable, avec un
+      rush ouvert et lu — pas seulement une commande lancée
 - [ ] SSH par clé uniquement (optionnel mais recommandé)
 
 ---
