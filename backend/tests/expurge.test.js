@@ -185,3 +185,39 @@ describe('les jetons ailleurs que dans la query string', () => {
     expect(evenement.contexts.response.headers['X-Admin-Password']).toBe(REMPLACEMENT);
   });
 });
+
+describe('le coût de l’expurgation', () => {
+  it('reste linéaire sur une longue chaîne sans adresse', () => {
+    // L'INCIDENT, attrapé par l'intégration continue et non par moi : écrite
+    // avec un `+` gourmand, la classe du début de l'expression reprenait son
+    // analyse depuis chaque position. 50 000 caractères sans arobase coûtaient
+    // 2,3 s, et le coût croît avec le carré de la longueur.
+    //
+    // Ce n'était pas qu'un test lent. `POST /api/client-error` est un chemin
+    // **non authentifié** qui accepte un corps de 2 Mo : une seule requête
+    // aurait gelé la boucle d'événements de Node pendant des minutes — un
+    // samedi soir d'envois, le serveur entier.
+    //
+    // Bornée (RFC 5321 : 64 pour la partie locale, 63 par étiquette), la même
+    // chaîne passe en quelques millisecondes. Le seuil ci-dessous est large à
+    // dessein : la version gourmande mettrait des dizaines de secondes.
+    const debut = Date.now();
+    masquerAdresses('y'.repeat(200000));
+    expect(Date.now() - debut, 'l’expression régulière est redevenue quadratique').toBeLessThan(1000);
+  });
+
+  it('reste linéaire sur une chaîne pleine de points et de tirets', () => {
+    // Le pire cas de l'expression : des caractères qui appartiennent à la fois
+    // à la partie locale et au domaine, sans jamais d'arobase.
+    const debut = Date.now();
+    masquerAdresses('a.b-c.'.repeat(30000));
+    expect(Date.now() - debut).toBeLessThan(1000);
+  });
+
+  it('trouve toujours ce qu’elle doit trouver', () => {
+    // Un test de vitesse qui n'aurait pas son pendant laisserait passer une
+    // expression rapide parce qu'elle ne reconnaît plus rien.
+    expect(masquerAdresses('écrire à marie.douala@example.org')).toMatch(/\[adresse expurgée\]/);
+    expect(masquerAdresses("o'brien+jt@sous.domaine.example.cm")).toBe('[adresse expurgée]');
+  });
+});

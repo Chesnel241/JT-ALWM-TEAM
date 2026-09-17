@@ -33,7 +33,24 @@ import { contexteRequete, masquerAdresses } from '../monitoring/expurge.js';
 const BORNES = { message: 500, pile: 4000, composant: 200, chemin: 300 };
 const LANGUES = new Set(['fr', 'en']);
 
-const borner = (valeur, max) => (typeof valeur === 'string' ? masquerAdresses(valeur).slice(0, max) : '');
+// Marge de découpe avant expurgation. Une adresse RFC 5321 fait au plus 254
+// caractères : en coupant un peu plus loin que la borne, une adresse à cheval
+// sur celle-ci est présente en entier au moment du masquage, et ne peut donc
+// pas survivre en morceaux.
+const MARGE = 320;
+
+/**
+ * On tronque **avant** d'expurger, pas après.
+ *
+ * L'ordre inverse faisait parcourir les deux mégaoctets que le corps peut
+ * porter pour n'en garder que quatre kilo-octets. C'est le travail inutile qui
+ * a fait expirer un test en intégration continue, et c'est surtout un chemin
+ * non authentifié : le coût doit être borné par ce qu'on garde, pas par ce
+ * qu'on reçoit.
+ */
+const borner = (valeur, max) => (typeof valeur === 'string'
+  ? masquerAdresses(valeur.slice(0, max + MARGE)).slice(0, max)
+  : '');
 
 /**
  * Normalise un signalement reçu du navigateur. Fonction pure : elle se teste
