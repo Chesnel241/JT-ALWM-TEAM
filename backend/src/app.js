@@ -137,7 +137,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.set('trust proxy', process.env.TRUST_PROXY || 1);
 
   if (enableMonitoring) {
-    initSentry(app);
+    initSentry();
     initMetrics(app);
   }
 
