@@ -136,3 +136,23 @@ describe('le débit de la route', () => {
     expect(source.indexOf("'/api/client-error'")).toBeLessThan(source.indexOf("app.use('/api', requireAuth)"));
   });
 });
+
+describe('le coût d’un signalement', () => {
+  it('est borné par ce qu’on garde, pas par ce qu’on reçoit', () => {
+    // On tronque **avant** d'expurger. L'ordre inverse faisait parcourir les
+    // deux mégaoctets que le corps peut porter pour n'en garder que quatre
+    // kilo-octets — et c'est ce travail inutile qui a fait expirer ce fichier
+    // en intégration continue.
+    const debut = Date.now();
+    nettoyerSignalement({ message: 'x'.repeat(2_000_000), stack: 'y'.repeat(2_000_000) });
+    expect(Date.now() - debut, 'le signalement est parcouru en entier avant d’être tronqué').toBeLessThan(300);
+  });
+
+  it('ne laisse pas survivre une adresse à cheval sur la troncature', () => {
+    // Le piège de l'ordre « tronquer puis expurger » : coupée en deux, une
+    // adresse n'est plus reconnue et son début reste lisible. D'où la marge de
+    // découpe, qui vaut la longueur maximale d'une adresse.
+    const s = nettoyerSignalement({ message: `${'z'.repeat(490)}marie.douala@example.org${'w'.repeat(100)}` });
+    expect(s.message).not.toMatch(/marie|douala|example/);
+  });
+});

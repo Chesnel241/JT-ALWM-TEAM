@@ -34,8 +34,17 @@ export const PARAMS_SENSIBLES = /(adminPassword|appPassword|pwd|password|dl_toke
 /**
  * Forme d'une adresse électronique. Volontairement large du côté gauche : on
  * préfère masquer un peu trop qu'une adresse de trop.
+ *
+ * **Les quantificateurs sont bornés, et ce n'est pas cosmétique.** Écrite avec
+ * un `+` gourmand, la classe du début reprenait son analyse depuis chaque
+ * position de la chaîne : 50 000 caractères sans arobase coûtaient 2,3 s, et
+ * le coût croît avec le carré de la longueur. Or `POST /api/client-error`
+ * accepte un corps de 2 Mo : une seule requête aurait gelé la boucle
+ * d'événements de Node pendant des minutes — un samedi soir d'envois, le
+ * serveur entier. Les bornes (64 pour la partie locale, 63 par étiquette de
+ * domaine) sont celles de la RFC 5321, et elles rendent le coût linéaire.
  */
-export const EXPRESSION_ADRESSE = /[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g;
+export const EXPRESSION_ADRESSE = /[A-Za-z0-9._%+'-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,8}/g;
 
 /** Masque les adresses électroniques d'un texte. */
 export function masquerAdresses(texte) {
