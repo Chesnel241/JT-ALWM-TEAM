@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # =========================================================================
   # Caddy Reverse Proxy (Gère les domaines, SSL, et route le trafic)
@@ -32,8 +30,9 @@ services:
     mem_limit: 512m
     cpus: 1.0
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # Racine du dépôt : le backend embarque remotion/src/identite.js.
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       - NODE_ENV=production
       - PORT=3010

@@ -135,7 +135,10 @@ jobs:
       - name: 🐳 Build & push Backend image
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          # Racine du dépôt : le Dockerfile du backend copie aussi
+          # remotion/src/identite.js (charte partagée), hors de backend/.
+          context: .
+          file: ./backend/Dockerfile
           push: true
           tags: ${{ steps.backend-meta.outputs.tags }}
           labels: ${{ steps.backend-meta.outputs.labels }}
