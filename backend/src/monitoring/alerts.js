@@ -1,13 +1,22 @@
 import logger from '../logger/index.js';
 import * as Sentry from '@sentry/node';
-import { getMetrics, metricsData } from './metrics.js';
+import { getMetrics, metricsData, tauxRecent } from './metrics.js';
+import { FENETRE_PAR_DEFAUT_MS } from './fenetreErreurs.js';
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
 // Alert configuration thresholds
 const ALERT_CONFIG = {
   ERROR_RATE_THRESHOLD: 0.05, // 5% errors
-  ERROR_RATE_WINDOW: 5 * 60 * 1000, // 5 minutes
+  // La fenêtre est celle de `fenetreErreurs.js` : une seule valeur, pas deux
+  // qui divergent. Elle était déclarée ici et utilisée nulle part — le taux se
+  // calculait sur les cumuls depuis le démarrage, donc l'alerte ne pouvait pas
+  // se déclencher sur un serveur qui tourne depuis des jours.
+  ERROR_RATE_WINDOW: FENETRE_PAR_DEFAUT_MS,
+  // En dessous, il n'y a rien à conclure : une erreur sur trois requêtes à
+  // 3 h du matin fait 33 % et n'est pas un incident. Une alerte qui crie pour
+  // rien finit coupée, et c'est une panne de supervision de plus.
+  ERROR_RATE_MIN_SAMPLE: 20,
   DISK_USAGE_THRESHOLD: 0.8, // 80%
   MEMORY_USAGE_THRESHOLD: 0.9, // 90%
   // Capacité disque de référence pour l'alerte HIGH_DISK_USAGE. Ancienne
@@ -29,23 +38,41 @@ let alertState = {
 /**
  * Check error rate over time window
  */
-function checkErrorRate() {
-  const totalRequests = metricsData.request_count;
-  const totalErrors = metricsData.errors_total;
+/**
+ * @param {{requetes: number, erreurs: number, taux: number}} [lecture]
+ *   La lecture de la fenêtre. Passée en argument — comme le temps l'est dans
+ *   `fenetreErreurs.js` — pour que la politique d'alerte se teste sans avoir à
+ *   fabriquer du trafic.
+ */
+export function checkErrorRate(lecture = tauxRecent()) {
+  // Sur la fenêtre, pas sur les cumuls depuis le démarrage : c'est toute la
+  // différence entre une alerte qui part et une alerte qui ne part jamais.
+  const { requetes, erreurs, taux } = lecture;
+  const minutes = Math.round(ALERT_CONFIG.ERROR_RATE_WINDOW / 60000);
 
-  if (totalRequests === 0) return false;
+  if (requetes < ALERT_CONFIG.ERROR_RATE_MIN_SAMPLE) {
+    // Trop peu de trafic pour conclure. On éteint quand même une alerte
+    // encore levée : la nuit passée, elle n'a plus lieu d'être.
+    if (alertState.errorRateAlert) {
+      clearAlert('HIGH_ERROR_RATE');
+      alertState.errorRateAlert = false;
+    }
+    return false;
+  }
 
-  const errorRate = totalErrors / totalRequests;
-  const isAlert = errorRate > ALERT_CONFIG.ERROR_RATE_THRESHOLD;
+  const isAlert = taux > ALERT_CONFIG.ERROR_RATE_THRESHOLD;
 
   if (isAlert && !alertState.errorRateAlert) {
     triggerAlert(
       'HIGH_ERROR_RATE',
-      `Error rate: ${(errorRate * 100).toFixed(2)}% (threshold: ${(ALERT_CONFIG.ERROR_RATE_THRESHOLD * 100).toFixed(2)}%)`,
+      `Error rate: ${(taux * 100).toFixed(2)}% sur ${minutes} min (threshold: ${(ALERT_CONFIG.ERROR_RATE_THRESHOLD * 100).toFixed(2)}%)`,
       {
-        error_rate: (errorRate * 100).toFixed(2),
-        total_errors: totalErrors,
-        total_requests: totalRequests,
+        error_rate: (taux * 100).toFixed(2),
+        window_minutes: minutes,
+        errors_in_window: erreurs,
+        requests_in_window: requetes,
+        total_errors: metricsData.errors_total,
+        total_requests: metricsData.request_count,
       }
     );
     alertState.errorRateAlert = true;
