@@ -55,7 +55,10 @@ export function masquerParams(chaine) {
  * Les cycles sont gardés : un événement Sentry en contient.
  */
 export function expurgerProfond(valeur, vus = new WeakSet()) {
-  if (typeof valeur === 'string') return masquerAdresses(valeur);
+  // Les deux masques sur **toute** chaîne : un jeton ne se trouve pas
+  // seulement dans le champ nommé « query_string ». Il arrive recopié dans un
+  // corps de requête, une miette de navigation, un message d'erreur.
+  if (typeof valeur === 'string') return masquerParams(masquerAdresses(valeur));
   if (!valeur || typeof valeur !== 'object') return valeur;
   if (vus.has(valeur)) return valeur;
   vus.add(valeur);
@@ -65,7 +68,9 @@ export function expurgerProfond(valeur, vus = new WeakSet()) {
     return valeur;
   }
   for (const cle of Object.keys(valeur)) {
-    valeur[cle] = expurgerProfond(valeur[cle], vus);
+    // Un en-tête sensible reste un en-tête sensible où qu'il apparaisse :
+    // `request.headers`, mais aussi une réponse, une miette, un contexte.
+    valeur[cle] = EN_TETES_SENSIBLES.test(cle) ? REMPLACEMENT : expurgerProfond(valeur[cle], vus);
   }
   return valeur;
 }
@@ -82,16 +87,25 @@ export function expurgerProfond(valeur, vus = new WeakSet()) {
 export function expurgerEvenement(evenement) {
   if (!evenement || typeof evenement !== 'object') return evenement;
 
+  // `event.request` est **réduit à une liste blanche**, pas nettoyé.
+  //
+  // L'INCIDENT : le SDK y attache `data`, c'est-à-dire le **corps brut de la
+  // requête**. Trouvé au banc — un jeton de téléchargement recopié dans un
+  // signalement du studio était parti entier. Et ce n'est pas le pire cas :
+  // n'importe quel POST y passerait, les coordonnées d'un correspondant comme
+  // le texte d'un conducteur.
+  //
+  // Expurger champ par champ suppose de connaître d'avance tout ce que le SDK
+  // ajoutera. On garde donc ce qu'on a choisi, et on jette le reste — même
+  // discipline que `contexteRequete`. Ce qu'il y avait d'utile dans la requête
+  // est de toute façon joint par `contexts.requete`.
   const requete = evenement.request;
   if (requete && typeof requete === 'object') {
-    const entetes = requete.headers;
-    if (entetes && typeof entetes === 'object') {
-      for (const cle of Object.keys(entetes)) {
-        if (EN_TETES_SENSIBLES.test(cle)) entetes[cle] = REMPLACEMENT;
-      }
-    }
-    requete.query_string = masquerParams(requete.query_string);
-    requete.url = masquerParams(requete.url);
+    const methode = typeof requete.method === 'string' ? requete.method : '';
+    const url = typeof requete.url === 'string' ? requete.url.split('?')[0] : '';
+    for (const cle of Object.keys(requete)) delete requete[cle];
+    if (methode) requete.method = methode;
+    if (url) requete.url = url;
   }
 
   return expurgerProfond(evenement);
