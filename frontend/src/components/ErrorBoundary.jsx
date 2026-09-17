@@ -1,6 +1,7 @@
 import { Component } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { tStatic } from '../i18n/runtime.js';
+import { signalerPlantage } from '../lib/signalerPlantage.js';
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -14,6 +15,11 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('Error caught by ErrorBoundary:', error, errorInfo);
+    // Le signalement part vers le backend, qui relaie à Sentry. Sans lui, un
+    // monteur voit l'écran rouge à Douala un samedi soir et personne ne
+    // l'apprend. `signalerPlantage` ne lève jamais : l'écran d'erreur doit
+    // s'afficher même si l'envoi échoue.
+    signalerPlantage(error, errorInfo);
   }
 
   render() {

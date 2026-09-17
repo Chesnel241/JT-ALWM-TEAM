@@ -178,12 +178,34 @@ describe('le mouvement', () => {
 });
 
 describe('les polices livrées au repli libass', () => {
-  it('le serveur dispose des mêmes fichiers que le moteur de rendu', () => {
+  it('le serveur dispose des mêmes familles que le moteur de rendu', () => {
     // Il manquait deux graisses Montserrat : libass y substituait
     // silencieusement une autre police, et le repli ne ressemblait plus au
     // master même de loin.
-    const cote = (p) => fs.readdirSync(path.join(RACINE, p)).sort();
-    const manquantes = cote('remotion/public/fonts').filter((f) => !cote('backend/fonts').includes(f));
+    //
+    // La comparaison porte sur le **nom de base**, plus sur le fichier : les
+    // deux côtés servent désormais des formats différents, et c'est voulu. Le
+    // navigateur reçoit du woff2 — 64 % plus léger, et ces polices voyagent
+    // jusqu'à des monteurs qui n'ont pas tous la fibre. libass, lui, ne lit
+    // pas le woff2 : `backend/fonts/` garde le TTF.
+    const familles = (p) => new Set(
+      fs.readdirSync(path.join(RACINE, p))
+        .filter((f) => /\.(ttf|otf|woff2?)$/i.test(f))
+        .map((f) => f.replace(/\.(ttf|otf|woff2?)$/i, '')),
+    );
+    const cote = familles('backend/fonts');
+    const manquantes = [...familles('remotion/public/fonts')].filter((f) => !cote.has(f));
     expect(manquantes, `absentes de backend/fonts : ${manquantes.join(', ')}`).toEqual([]);
+  });
+
+  it('garde bien du TTF côté serveur, et du woff2 côté navigateur', () => {
+    // L'inverse du défaut ci-dessus : si `backend/fonts/` passait au woff2,
+    // libass ne chargerait plus rien et les titres du repli disparaîtraient
+    // sans un message. Et si le navigateur revenait au TTF, la charge
+    // quadruplerait sans que rien ne le signale.
+    const ext = (p, r) => fs.readdirSync(path.join(RACINE, p)).filter((f) => r.test(f)).length;
+    expect(ext('backend/fonts', /\.ttf$/i), 'libass n’a plus de TTF').toBeGreaterThan(10);
+    expect(ext('backend/fonts', /\.woff2?$/i), 'libass ne lit pas le woff2').toBe(0);
+    expect(ext('remotion/public/fonts', /\.ttf$/i), 'le navigateur reçoit encore du TTF').toBe(0);
   });
 });

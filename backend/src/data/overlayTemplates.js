@@ -43,8 +43,9 @@ export const FONT_FAMILIES = [
   'Fjalla One', 'PT Serif', 'PT Sans', 'Titillium Web',
   'Oswald', 'Roboto Condensed', 'Russo One', 'Playfair Display',
   'IBM Plex Sans', 'JetBrains Mono',
-  // Pack Montserrat (charte ALWM TV).
-  'Montserrat ExtraBold', 'Montserrat Bold', 'Montserrat Medium',
+  // Pack Montserrat (charte ALWM TV). Les graisses Bold et Medium ont été
+  // retirées : les fichiers livrés sous ces noms n'étaient pas des polices.
+  'Montserrat ExtraBold',
 ];
 
 // Tag \fn si la police demandée est valide, sinon vide (garde le défaut du modèle).

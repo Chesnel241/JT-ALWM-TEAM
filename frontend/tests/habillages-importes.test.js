@@ -113,11 +113,25 @@ describe('la charte typographique est lue, et non décorative', () => {
     expect(enClair).toEqual([]);
   });
 
-  it('pose bien les deux piles de la charte', () => {
+  it('fait passer chaque déclaration de police par la charte', () => {
     // Un test qui ne voit rien passe toujours : si les substitutions
     // disparaissaient, le test précédent serait vert pour la mauvaise raison.
-    expect((source.match(/PILES\.titrage/g) || []).length).toBeGreaterThanOrEqual(15);
-    expect((source.match(/PILES\.courant/g) || []).length).toBeGreaterThanOrEqual(8);
+    //
+    // L'invariant plutôt qu'un compte : le lot 7 a retiré vingt composants
+    // morts, dont un tiers des usages de la charte, et un seuil chiffré aurait
+    // simplement demandé d'être rebaissé. Ce qui compte n'est pas combien de
+    // fois la charte est lue, c'est qu'aucune police ne vienne d'ailleurs.
+    const declarations = [...source.matchAll(/fontFamily:\s*([^,\n]+)/g)].map((m) => m[1].trim());
+    expect(declarations.length, 'plus aucune police déclarée : le fichier a fondu').toBeGreaterThan(5);
+
+    // `ff(...)` résout une police choisie par le monteur sur une pile de la
+    // charte ; `fontB` / `fontM` / `fontXB` sont ces mêmes appels, nommés.
+    const horsCharte = declarations.filter((d) => !/^ff\(|^font(B|M|XB)$|^PILES\./.test(d));
+    expect(horsCharte, 'ces polices ne viennent pas de la charte').toEqual([]);
+
+    // Et les piles restent bien posées quelque part.
+    expect(source).toMatch(/PILES\.titrage/);
+    expect(source).toMatch(/PILES\.courant/);
   });
 
   it('garde Montserrat en second, pour ne pas retomber sur la police système', () => {
@@ -127,8 +141,14 @@ describe('la charte typographique est lue, et non décorative', () => {
     const charte = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../remotion/src/identite.js'), 'utf8');
     const debut = charte.indexOf('export const PILES');
     const piles = charte.slice(debut, charte.indexOf('};', debut));
+    // Le titrage garde son filet : « Montserrat ExtraBold » existe vraiment.
     expect(piles).toMatch(/Montserrat ExtraBold/);
-    expect(piles).toMatch(/Montserrat Medium/);
+    // Le courant n'en a plus, et c'est la vérité : le seul Montserrat de cette
+    // graisse livré dans le dépôt — « Montserrat Medium » — n'était pas une
+    // police mais une page HTML. Nommer un repli qui n'existe pas donnerait
+    // l'illusion d'un filet là où il n'y en a jamais eu.
+    expect(piles).not.toMatch(/Montserrat Medium/);
+    expect(piles).toMatch(/system-ui/);
     // Et aucune famille vide entre deux virgules — le défaut exact du lot 3.
     expect(piles).not.toMatch(/,\s*,/);
   });

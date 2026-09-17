@@ -85,9 +85,19 @@ describe('TEXT_ANIMATIONS (front)', () => {
 describe('FONT_FAMILIES (front)', () => {
   it('contient les polices brand (Montserrat) + iconiques broadcast', () => {
     [
-      'Montserrat Bold', 'Montserrat Medium',
+      'Montserrat ExtraBold', 'Roboto Condensed',
       'Inter', 'Anton', 'Bebas Neue', 'Archivo Black', 'Oswald',
     ].forEach((f) => expect(FONT_FAMILIES).toContain(f));
+  });
+
+  it('ne propose plus les deux graisses Montserrat qui n’existaient pas', () => {
+    // Les fichiers livrés sous ces noms étaient deux pages d'erreur GitHub de
+    // 307 Ko, dans les trois dossiers à la fois. Les familles ne se chargeaient
+    // donc jamais — mais le menu les proposait et le serveur validait le choix.
+    // `polices-reelles.test.js` interdit désormais le fichier lui-même ; ici on
+    // garde la contrepartie : ne pas reproposer ce qu'on ne sait pas rendre.
+    expect(FONT_FAMILIES).not.toContain('Montserrat Bold');
+    expect(FONT_FAMILIES).not.toContain('Montserrat Medium');
   });
 
   it('aucune entrée dupliquée', () => {

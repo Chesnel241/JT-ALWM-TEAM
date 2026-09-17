@@ -121,4 +121,30 @@ export const archiveLimiter = rateLimit({
   },
 });
 
-export default { uploadLimiter, globalLimiter, createLimiter, archiveLimiter };
+/**
+ * Rate limiter pour les signalements de plantage du studio.
+ *
+ * C'est un chemin d'écriture **non authentifié** — il doit l'être : le studio
+ * peut planter avant la connexion — et ce qu'il reçoit est relayé à un tiers.
+ * Un navigateur coincé dans une boucle de plantage remplirait à lui seul le
+ * quota Sentry, et les vraies pannes seraient jetées faute de place.
+ * Limite : 5 signalements / IP / 10 min.
+ */
+export const signalementLimiter = rateLimit({
+  windowMs: parseInt(process.env.CLIENT_ERROR_RATE_LIMIT_WINDOW_MS || 600000),
+  max: parseInt(process.env.CLIENT_ERROR_RATE_LIMIT_MAX || 5),
+  message: 'Trop de signalements depuis cette IP.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false },
+  handler: (req, res, options) => {
+    noteRefus('signalements', req);
+    res.status(options.statusCode || 429).json({
+      code: 'CLIENT_ERROR_RATE_LIMIT_EXCEEDED',
+      message: options.message,
+      details: { retryAfter: req.rateLimit ? req.rateLimit.resetTime : null },
+    });
+  },
+});
+
+export default { uploadLimiter, globalLimiter, createLimiter, archiveLimiter, signalementLimiter };

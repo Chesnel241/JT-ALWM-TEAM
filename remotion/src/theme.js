@@ -34,31 +34,42 @@ export const COL = {
 
 // Polices bundlées → familles CSS. Chargées via @font-face injecté (loadFonts).
 export const FONT_FILES = {
-  Inter: 'Inter.ttf',
-  'Bebas Neue': 'BebasNeue-Regular.ttf',
-  Anton: 'Anton-Regular.ttf',
-  'Archivo Black': 'ArchivoBlack-Regular.ttf',
-  Barlow: 'Barlow-SemiBold.ttf',
-  'Fjalla One': 'FjallaOne-Regular.ttf',
-  'PT Serif': 'PTSerif-Bold.ttf',
-  'PT Sans': 'PTSans-Bold.ttf',
-  'Titillium Web': 'TitilliumWeb-Bold.ttf',
+  Inter: 'Inter.woff2',
+  'Bebas Neue': 'BebasNeue-Regular.woff2',
+  Anton: 'Anton-Regular.woff2',
+  'Archivo Black': 'ArchivoBlack-Regular.woff2',
+  Barlow: 'Barlow-SemiBold.woff2',
+  'Fjalla One': 'FjallaOne-Regular.woff2',
+  'PT Serif': 'PTSerif-Bold.woff2',
+  'PT Sans': 'PTSans-Bold.woff2',
+  'Titillium Web': 'TitilliumWeb-Bold.woff2',
   // Pack broadcast 2026 : condensé display, monospace ticker, serif éditorial,
   // sport, breaking urgent, body neutre.
-  Oswald: 'Oswald-SemiBold.ttf',
-  'Roboto Condensed': 'RobotoCondensed-Bold.ttf',
-  'Russo One': 'RussoOne-Regular.ttf',
-  'Playfair Display': 'PlayfairDisplay-ExtraBold.ttf',
-  'IBM Plex Sans': 'IBMPlexSans-SemiBold.ttf',
-  'JetBrains Mono': 'JetBrainsMono-Medium.ttf',
-  'Montserrat ExtraBold': 'Montserrat-ExtraBold.ttf',
-  'Montserrat Bold': 'Montserrat-Bold.ttf',
-  'Montserrat Medium': 'Montserrat-Medium.ttf',
+  Oswald: 'Oswald-SemiBold.woff2',
+  'Roboto Condensed': 'RobotoCondensed-Bold.woff2',
+  'Russo One': 'RussoOne-Regular.woff2',
+  'Playfair Display': 'PlayfairDisplay-ExtraBold.woff2',
+  'IBM Plex Sans': 'IBMPlexSans-SemiBold.woff2',
+  'JetBrains Mono': 'JetBrainsMono-Medium.woff2',
+  'Montserrat ExtraBold': 'Montserrat-ExtraBold.woff2',
+  // « Montserrat Bold » et « Montserrat Medium » ont été retirés : les
+  // fichiers livrés sous ces noms n'étaient pas des polices, mais deux pages
+  // d'erreur GitHub de 307 Ko enregistrées avec une extension `.ttf`, dans les
+  // trois dossiers à la fois. Ces deux familles ne se sont donc jamais
+  // chargées — ni à l'antenne, ni dans le studio — alors que le catalogue les
+  // proposait au monteur. Les reproposer suppose de récupérer les vraies
+  // graisses ; le dépôt ne porte qu'une ExtraBold statique, dont rien ne se
+  // dérive honnêtement.
 };
 
 export const FONT_FAMILIES = Object.keys(FONT_FILES);
 
 // Injecte les @font-face une seule fois (worker + studio + player).
+//
+// Les fichiers servis ici sont en **woff2** : 6,2 Mo de TTF deviennent 2,2 Mo,
+// et ces polices voyagent jusqu'à des monteurs qui n'ont pas tous la fibre.
+// `backend/fonts/` garde le TTF — libass, le moteur de repli, ne lit pas le
+// woff2 et le chargement échouerait sans un mot.
 let injected = false;
 export function loadFonts() {
   if (injected || typeof document === 'undefined') return;
@@ -66,7 +77,7 @@ export function loadFonts() {
   const css = Object.entries(FONT_FILES)
     .map(
       ([family, file]) =>
-        `@font-face{font-family:'${family}';src:url('${staticFile('fonts/' + file)}') format('truetype');font-display:block;}`
+        `@font-face{font-family:'${family}';src:url('${staticFile('fonts/' + file)}') format('woff2');font-display:block;}`
     )
     .join('\n');
   const style = document.createElement('style');

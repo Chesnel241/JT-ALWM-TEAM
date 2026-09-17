@@ -291,7 +291,15 @@ docker compose exec worker sh
 
 ---
 
-## 11. Sauvegarde (automatique)
+## 11. Sauvegarde locale (automatique)
+
+> **Ce que cette sauvegarde-ci protège, et ce qu'elle ne protège pas.** Elle
+> archive le volume vers `/var/backups`, **sur le même disque**. Elle vous sauve
+> d'une fausse manœuvre ou d'un conteneur perdu, et elle restaure vite parce
+> qu'il n'y a rien à retélécharger. Elle ne vous sauve **pas** de la perte du
+> VPS : panne disque, incident hébergeur, suspension de compte. Pour cela, voir
+> la **§11 bis**, qui est celle qui compte pour les rushes.
+
 
 ```bash
 # Créer le script de sauvegarde
@@ -334,7 +342,109 @@ chmod +x /usr/local/bin/backup-jt-alwm.sh
 
 ---
 
-## 12. Restauration (si besoin)
+## 11 bis. Sauvegarde hors machine (celle qui compte)
+
+Les métadonnées se répliquent déjà vers Upstash. Les **rushes**, non : ils
+arrivent une fois par semaine, depuis sept pays, souvent sur de mauvaises
+connexions. Un correspondant ne réenvoie pas facilement ce qu'il a envoyé
+samedi. C'est la seule donnée du système qui soit vraiment irremplaçable.
+
+### Choisir un stockage objet
+
+Trois options tiennent la route pour une association. La différence qui compte
+n'est pas le prix du stockage — quelques euros par mois dans tous les cas —
+mais **le prix de la sortie**, c'est-à-dire ce que coûtera la restauration le
+jour où elle servira :
+
+| | Stockage | Sortie (restauration) |
+|---|---|---|
+| **Cloudflare R2** *(recommandé)* | ~0,015 $/Go/mois | **gratuite** |
+| Backblaze B2 | ~0,006 $/Go/mois | gratuite jusqu'à 3× le volume stocké |
+| Scaleway Object Storage | ~0,012 €/Go/mois, hébergé en Europe | facturée |
+
+R2 est recommandé pour une raison simple : le jour où vous restaurez, vous
+téléchargez tout, et c'est exactement le jour où une facture de sortie est le
+plus mal venue.
+
+### Configurer rclone (une fois)
+
+```bash
+# rclone tourne dans son image Docker : rien à installer sur l'hôte.
+docker run --rm -it -v rclone_config:/config/rclone rclone/rclone config
+```
+
+Répondre : `n` (nouveau remote) → nom **`r2`** → type `s3` → fournisseur
+`Cloudflare` → vos clés → endpoint `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+
+Puis rendre cette configuration lisible par les scripts :
+
+```bash
+mkdir -p ~/.config/rclone
+docker run --rm -v rclone_config:/config/rclone alpine \
+  cat /config/rclone/rclone.conf > ~/.config/rclone/rclone.conf
+chmod 600 ~/.config/rclone/rclone.conf
+```
+
+> Ce fichier contient vos clés d'accès. `chmod 600` n'est pas une politesse.
+
+### Essayer, puis installer
+
+```bash
+cd /opt/jt-alwm
+
+# 1. À blanc : rien n'est écrit, on vérifie que la destination répond.
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/sauvegarde-hors-site.sh --essai
+
+# 2. Pour de vrai. La première fois envoie tout : comptez du temps.
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/sauvegarde-hors-site.sh
+
+# 3. Tous les jours à 4h (une heure après la sauvegarde locale).
+(crontab -l 2>/dev/null; echo "0 4 * * * cd /opt/jt-alwm && REMOTE=r2:jt-alwm-sauvegarde ./scripts/sauvegarde-hors-site.sh >> /var/log/jt-alwm-hors-site.log 2>&1") | crontab -
+```
+
+**Le script refuse de partir si la source paraît vide** — si le volume ne se
+monte pas, il s'arrête au lieu de vider le coffre. Et les fichiers supprimés ou
+modifiés sont écartés dans `versions/<date>/` plutôt que détruits : une
+suppression accidentelle reste récupérable.
+
+### L'essai de restauration — à faire une fois, vraiment
+
+Une sauvegarde qu'on n'a jamais restaurée n'est pas une sauvegarde, c'est une
+intention. L'essai ne touche pas la production :
+
+```bash
+# Ce que contient le coffre
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/restaurer-sauvegarde.sh --lister
+
+# Restaurer dans un volume jetable (la production n'est pas touchée)
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/restaurer-sauvegarde.sh
+
+# Regarder ce qui est arrivé
+docker run --rm -v jt-alwm_restauration_essai:/data alpine \
+  sh -c 'ls /data | head -20; echo; du -sh /data'
+
+# Puis jeter le volume d'essai
+docker volume rm jt-alwm_restauration_essai
+```
+
+**Ce qu'il faut vérifier**, et pas seulement que des fichiers sont arrivés :
+ouvrir un rush restauré et le lire, et vérifier que `store.json` est là. Une
+archive qui se décompresse mais dont les vidéos sont tronquées est un piège.
+
+### Le jour où ça arrive pour de bon
+
+```bash
+docker compose down            # sans quoi le backend écrit pendant la copie
+REMOTE=r2:jt-alwm-sauvegarde ./scripts/restaurer-sauvegarde.sh --sur-la-production
+docker compose up -d
+```
+
+Le script demande de taper `restaurer la production` en toutes lettres. C'est
+volontaire : cette commande-là s'exécute un jour de stress.
+
+---
+
+## 12. Restauration locale (si besoin)
 
 ```bash
 # Arrêter les services
@@ -392,6 +502,124 @@ ufw status verbose
 
 ---
 
+## 13 bis. Supervision (savoir qu'il y a un problème avant le dimanche)
+
+> **Ce que cela protège.** Un correspondant envoie son rush le samedi soir
+> depuis Douala. L'envoi échoue. Sans supervision, personne ne l'apprend : ni
+> lui — il croit avoir envoyé — ni vous. On le découvre le dimanche, après la
+> clôture de 10h30, quand le sujet manque au conducteur.
+
+Rien de tout cela n'est obligatoire : sans ces variables, le backend démarre,
+prévient dans ses journaux, et tout fonctionne. Mais c'est la différence entre
+apprendre une panne pendant qu'elle a lieu et la constater après coup.
+
+### Ce qui remonte, et par quel chemin
+
+| Ce qui casse | Comment vous l'apprenez |
+|---|---|
+| Une erreur serveur (envoi, rendu, archive) | Sentry, immédiatement |
+| Le studio qui s'effondre chez un monteur | Le studio le signale à votre backend, qui relaie à Sentry |
+| Plus de 5 % d'erreurs sur les 5 dernières minutes | Alerte → Sentry **et** webhook |
+| Le disque qui se remplit (> 80 %) | Alerte → Sentry **et** webhook |
+| La mémoire qui sature (> 90 %) | Alerte → Sentry **et** webhook |
+
+Les plantages du navigateur passent par votre serveur (`POST
+/api/client-error`) et non par un script tiers : rien n'est chargé chez les
+monteurs, et il n'y a qu'un seul projet à surveiller.
+
+### Étape 1 — créer le projet Sentry
+
+Sur [sentry.io](https://sentry.io), l'offre gratuite suffit largement (5 000
+événements par mois ; le tracé de performance est désactivé côté code,
+justement pour ne pas les consommer). Créez un projet **Node.js** et relevez
+son DSN, de la forme `https://xxxx@oyyyy.ingest.sentry.io/123456`.
+
+### Étape 2 — un webhook pour être prévenu sur votre téléphone
+
+C'est le point qui compte le plus : un tableau de bord Sentry ne vous réveille
+pas, une notification Discord si.
+
+Dans un salon Discord → **Paramètres du salon → Intégrations → Webhooks →
+Nouveau webhook → Copier l'URL**. (Slack fonctionne aussi, même format.)
+
+### Étape 3 — les poser dans `.env`
+
+```bash
+nano /opt/jt-alwm/.env
+```
+
+```env
+# Suivi des erreurs (facultatif mais recommandé)
+SENTRY_DSN=https://xxxx@oyyyy.ingest.sentry.io/123456
+
+# Alertes sur téléphone (facultatif, très recommandé)
+ALERT_WEBHOOK_URL=https://discord.com/api/webhooks/.../...
+
+# Capacité disque de référence pour l'alerte de saturation.
+# Le défaut est 10 Go : sur un disque plus grand, l'alerte partirait à 8 Go
+# sans que rien ne soit plein. Mettez la taille réelle de votre volume.
+DISK_CAPACITY_MB=40960
+```
+
+```bash
+docker compose up -d --build backend
+docker compose logs backend | grep -i sentry
+# attendu : ✅ Sentry initialized
+# si vous lisez « ⚠️  SENTRY_DSN not set », la variable n'est pas arrivée
+```
+
+### Étape 4 — l'épreuve, parce qu'une supervision jamais essayée n'en est pas une
+
+C'est la seule étape qui prouve quoi que ce soit. **Une configuration qui n'a
+jamais fait remonter un événement n'est pas une configuration : c'est une
+intention.**
+
+```bash
+# Depuis le VPS : une route qui n'existe pas donne un 404, pas un 5xx —
+# ce n'est donc PAS un test valable. Il faut une vraie erreur serveur.
+# La plus simple : couper le worker et demander un rendu depuis le studio.
+docker compose stop worker
+```
+
+Puis, dans le studio, cliquez sur « Générer le master ». Le rendu doit échouer
+franchement. Ensuite :
+
+1. **Sentry** : l'événement doit apparaître dans le projet en moins d'une
+   minute. Ouvrez-le et vérifiez qu'il porte le contexte `requete` (méthode,
+   chemin) — et **qu'il ne contient ni mot de passe ni adresse électronique**.
+   C'est expurgé côté code, mais regardez-le une fois de vos yeux.
+2. **Webhook** : si le taux d'erreur dépasse 5 % sur cinq minutes, la
+   notification arrive dans le salon. Sur une installation peu sollicitée il
+   faut une vingtaine de requêtes dans la fenêtre pour que l'alerte se permette
+   de conclure — rafraîchissez le studio quelques fois.
+
+```bash
+docker compose start worker
+```
+
+Pour éprouver le signalement du studio, ouvrez la console du navigateur sur le
+studio et provoquez un plantage de rendu React ; l'écran « Oups ! Une erreur est
+survenue » doit s'afficher **et** l'événement arriver dans Sentry, étiqueté
+`source: studio`.
+
+### Si rien n'arrive
+
+- **« ⚠️  SENTRY_DSN not set » dans les journaux** → la variable n'est pas dans
+  `.env`, ou le conteneur n'a pas été reconstruit (`docker compose up -d --build
+  backend`).
+- **Sentry initialisé mais aucun événement** → seules les **5xx** partent, par
+  choix : une requête refusée (4xx) est le fonctionnement normal de
+  l'application et épuiserait le quota en bruit. Provoquez une vraie erreur
+  serveur.
+- **Le webhook reste muet alors que Sentry reçoit** → l'alerte de taux d'erreur
+  demande au moins 20 requêtes dans la fenêtre de 5 minutes avant de conclure ;
+  c'est délibéré (une erreur sur trois requêtes à 3 h du matin fait 33 % et
+  n'est pas un incident).
+- **Une alerte disque alors que le disque est vide** → `DISK_CAPACITY_MB` n'est
+  pas renseignée et le défaut de 10 Go s'applique.
+
+---
+
 ## 14. Checklist finale de production
 
 - [ ] Docker et Docker Compose installés
@@ -407,7 +635,16 @@ ufw status verbose
 - [ ] Studio de Montage charge les clips
 - [ ] Voix Off enregistre et traite l'audio
 - [ ] Certificat TLS valide (pas d'avertissement navigateur)
-- [ ] Sauvegarde cron configurée
+- [ ] Sauvegarde locale cron configurée (§11)
+- [ ] **Sauvegarde hors machine cron configurée (§11 bis)** — la seule qui
+      protège les rushes de la perte du VPS
+- [ ] **Une restauration réellement essayée**, dans le volume jetable, avec un
+      rush ouvert et lu — pas seulement une commande lancée
+- [ ] **`SENTRY_DSN` renseigné et un événement réellement reçu** (§13 bis) —
+      pas seulement la variable posée
+- [ ] **`ALERT_WEBHOOK_URL` renseigné** : c'est lui qui prévient sur téléphone
+      un samedi soir, quand un tableau de bord ne réveille personne
+- [ ] `DISK_CAPACITY_MB` à la taille réelle du volume (§13 bis)
 - [ ] SSH par clé uniquement (optionnel mais recommandé)
 
 ---

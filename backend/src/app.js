@@ -27,8 +27,9 @@ import { readReporter, requireAuth, requireAdmin, safeEqual } from './middleware
 import logger from './logger/index.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
-import { globalLimiter, uploadLimiter, archiveLimiter } from './middleware/rateLimiter.js';
+import { globalLimiter, uploadLimiter, archiveLimiter, signalementLimiter } from './middleware/rateLimiter.js';
 import { errorHandlerMiddleware, notFoundMiddleware } from './middleware/errorHandler.js';
+import clientErrorRouter from './routes/clientError.js';
 import { Server } from 'socket.io';
 import { setProgressIo } from './services/editorProgress.js';
 
@@ -137,7 +138,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.set('trust proxy', process.env.TRUST_PROXY || 1);
 
   if (enableMonitoring) {
-    initSentry(app);
+    initSentry();
     initMetrics(app);
   }
 
@@ -286,6 +287,9 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/health', healthRouter);
   app.use('/metrics', requireAdmin, metricsRouter);
   app.use('/api/auth', authRouter);
+  // Signalement de plantage du studio. **Avant `requireAuth`** : le studio peut
+  // planter avant l'écran de connexion, et c'est souvent là que ça compte.
+  app.use('/api/client-error', signalementLimiter, clientErrorRouter);
 
   app.post('/api/editor/internal/progress', async (req, res, next) => {
     try {

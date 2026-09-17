@@ -1,6 +1,7 @@
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { buildWeeks } from '../data/constants.js';
+import { creerFenetre, enregistrer, taux } from './fenetreErreurs.js';
 
 export let metricsData = {
   start_time: Date.now(),
@@ -16,12 +17,28 @@ export let metricsData = {
 let uploadTimes = [];
 
 /**
+ * Le taux d'erreur des dernières minutes, à côté des compteurs cumulés.
+ *
+ * Les deux ne servent pas à la même chose : les cumuls disent la vie du serveur
+ * depuis son démarrage (c'est ce que `/metrics` publie), la fenêtre dit s'il va
+ * mal **maintenant**. C'est elle que l'alerte regarde — le cumul en était
+ * incapable, voir `fenetreErreurs.js`.
+ */
+const fenetre = creerFenetre();
+
+/** Ce qui s'est passé dans les dernières minutes. */
+export function tauxRecent(maintenant = Date.now()) {
+  return taux(fenetre, maintenant);
+}
+
+/**
  * Initialize metrics tracking
  */
 export function initMetrics(app) {
   // Track all requests
   app.use((req, res, next) => {
     metricsData.request_count++;
+    enregistrer(fenetre, { maintenant: Date.now(), requetes: 1 });
     next();
   });
 
@@ -52,6 +69,7 @@ export function recordUpload(duration_ms, success = true) {
  */
 export function recordError(error) {
   metricsData.errors_total++;
+  enregistrer(fenetre, { maintenant: Date.now(), erreurs: 1 });
   metricsData.last_error = {
     timestamp: new Date().toISOString(),
     message: error.message,
@@ -124,10 +142,12 @@ export function resetMetrics() {
     last_error: null,
   });
   uploadTimes = [];
+  fenetre.seaux = [];
 }
 
 export default {
   initMetrics,
+  tauxRecent,
   recordUpload,
   recordError,
   getMetrics,
