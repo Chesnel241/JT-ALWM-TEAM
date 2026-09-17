@@ -502,6 +502,124 @@ ufw status verbose
 
 ---
 
+## 13 bis. Supervision (savoir qu'il y a un problème avant le dimanche)
+
+> **Ce que cela protège.** Un correspondant envoie son rush le samedi soir
+> depuis Douala. L'envoi échoue. Sans supervision, personne ne l'apprend : ni
+> lui — il croit avoir envoyé — ni vous. On le découvre le dimanche, après la
+> clôture de 10h30, quand le sujet manque au conducteur.
+
+Rien de tout cela n'est obligatoire : sans ces variables, le backend démarre,
+prévient dans ses journaux, et tout fonctionne. Mais c'est la différence entre
+apprendre une panne pendant qu'elle a lieu et la constater après coup.
+
+### Ce qui remonte, et par quel chemin
+
+| Ce qui casse | Comment vous l'apprenez |
+|---|---|
+| Une erreur serveur (envoi, rendu, archive) | Sentry, immédiatement |
+| Le studio qui s'effondre chez un monteur | Le studio le signale à votre backend, qui relaie à Sentry |
+| Plus de 5 % d'erreurs sur les 5 dernières minutes | Alerte → Sentry **et** webhook |
+| Le disque qui se remplit (> 80 %) | Alerte → Sentry **et** webhook |
+| La mémoire qui sature (> 90 %) | Alerte → Sentry **et** webhook |
+
+Les plantages du navigateur passent par votre serveur (`POST
+/api/client-error`) et non par un script tiers : rien n'est chargé chez les
+monteurs, et il n'y a qu'un seul projet à surveiller.
+
+### Étape 1 — créer le projet Sentry
+
+Sur [sentry.io](https://sentry.io), l'offre gratuite suffit largement (5 000
+événements par mois ; le tracé de performance est désactivé côté code,
+justement pour ne pas les consommer). Créez un projet **Node.js** et relevez
+son DSN, de la forme `https://xxxx@oyyyy.ingest.sentry.io/123456`.
+
+### Étape 2 — un webhook pour être prévenu sur votre téléphone
+
+C'est le point qui compte le plus : un tableau de bord Sentry ne vous réveille
+pas, une notification Discord si.
+
+Dans un salon Discord → **Paramètres du salon → Intégrations → Webhooks →
+Nouveau webhook → Copier l'URL**. (Slack fonctionne aussi, même format.)
+
+### Étape 3 — les poser dans `.env`
+
+```bash
+nano /opt/jt-alwm/.env
+```
+
+```env
+# Suivi des erreurs (facultatif mais recommandé)
+SENTRY_DSN=https://xxxx@oyyyy.ingest.sentry.io/123456
+
+# Alertes sur téléphone (facultatif, très recommandé)
+ALERT_WEBHOOK_URL=https://discord.com/api/webhooks/.../...
+
+# Capacité disque de référence pour l'alerte de saturation.
+# Le défaut est 10 Go : sur un disque plus grand, l'alerte partirait à 8 Go
+# sans que rien ne soit plein. Mettez la taille réelle de votre volume.
+DISK_CAPACITY_MB=40960
+```
+
+```bash
+docker compose up -d --build backend
+docker compose logs backend | grep -i sentry
+# attendu : ✅ Sentry initialized
+# si vous lisez « ⚠️  SENTRY_DSN not set », la variable n'est pas arrivée
+```
+
+### Étape 4 — l'épreuve, parce qu'une supervision jamais essayée n'en est pas une
+
+C'est la seule étape qui prouve quoi que ce soit. **Une configuration qui n'a
+jamais fait remonter un événement n'est pas une configuration : c'est une
+intention.**
+
+```bash
+# Depuis le VPS : une route qui n'existe pas donne un 404, pas un 5xx —
+# ce n'est donc PAS un test valable. Il faut une vraie erreur serveur.
+# La plus simple : couper le worker et demander un rendu depuis le studio.
+docker compose stop worker
+```
+
+Puis, dans le studio, cliquez sur « Générer le master ». Le rendu doit échouer
+franchement. Ensuite :
+
+1. **Sentry** : l'événement doit apparaître dans le projet en moins d'une
+   minute. Ouvrez-le et vérifiez qu'il porte le contexte `requete` (méthode,
+   chemin) — et **qu'il ne contient ni mot de passe ni adresse électronique**.
+   C'est expurgé côté code, mais regardez-le une fois de vos yeux.
+2. **Webhook** : si le taux d'erreur dépasse 5 % sur cinq minutes, la
+   notification arrive dans le salon. Sur une installation peu sollicitée il
+   faut une vingtaine de requêtes dans la fenêtre pour que l'alerte se permette
+   de conclure — rafraîchissez le studio quelques fois.
+
+```bash
+docker compose start worker
+```
+
+Pour éprouver le signalement du studio, ouvrez la console du navigateur sur le
+studio et provoquez un plantage de rendu React ; l'écran « Oups ! Une erreur est
+survenue » doit s'afficher **et** l'événement arriver dans Sentry, étiqueté
+`source: studio`.
+
+### Si rien n'arrive
+
+- **« ⚠️  SENTRY_DSN not set » dans les journaux** → la variable n'est pas dans
+  `.env`, ou le conteneur n'a pas été reconstruit (`docker compose up -d --build
+  backend`).
+- **Sentry initialisé mais aucun événement** → seules les **5xx** partent, par
+  choix : une requête refusée (4xx) est le fonctionnement normal de
+  l'application et épuiserait le quota en bruit. Provoquez une vraie erreur
+  serveur.
+- **Le webhook reste muet alors que Sentry reçoit** → l'alerte de taux d'erreur
+  demande au moins 20 requêtes dans la fenêtre de 5 minutes avant de conclure ;
+  c'est délibéré (une erreur sur trois requêtes à 3 h du matin fait 33 % et
+  n'est pas un incident).
+- **Une alerte disque alors que le disque est vide** → `DISK_CAPACITY_MB` n'est
+  pas renseignée et le défaut de 10 Go s'applique.
+
+---
+
 ## 14. Checklist finale de production
 
 - [ ] Docker et Docker Compose installés
@@ -522,6 +640,11 @@ ufw status verbose
       protège les rushes de la perte du VPS
 - [ ] **Une restauration réellement essayée**, dans le volume jetable, avec un
       rush ouvert et lu — pas seulement une commande lancée
+- [ ] **`SENTRY_DSN` renseigné et un événement réellement reçu** (§13 bis) —
+      pas seulement la variable posée
+- [ ] **`ALERT_WEBHOOK_URL` renseigné** : c'est lui qui prévient sur téléphone
+      un samedi soir, quand un tableau de bord ne réveille personne
+- [ ] `DISK_CAPACITY_MB` à la taille réelle du volume (§13 bis)
 - [ ] SSH par clé uniquement (optionnel mais recommandé)
 
 ---

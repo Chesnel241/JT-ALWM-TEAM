@@ -130,3 +130,44 @@ describe('le rapporteur lui-même', () => {
     expect(signalerPlantage(undefined, undefined, { fetch: undefined })).toBeTypeOf('boolean');
   });
 });
+
+describe('les variables annoncées au déploiement', () => {
+  it('sont toutes lues par le studio', async () => {
+    // L'INCIDENT, sous sa forme générale. `VITE_SENTRY_DSN` figurait dans
+    // README.md, DEPLOYMENT.md et .env.example, et **rien** ne le lisait : on
+    // pouvait le renseigner consciencieusement sur le VPS et croire le studio
+    // surveillé. C'est « le logiciel promet ce qui n'existe pas » appliqué à la
+    // documentation de déploiement — et rien ne pouvait l'attraper.
+    const { readFileSync, readdirSync, existsSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const RACINE = join(dirname(fileURLToPath(import.meta.url)), '../..');
+
+    const sansCommentaires = (code) => code
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    const fichiers = (dossier) => readdirSync(dossier, { withFileTypes: true })
+      .flatMap((e) => (e.isDirectory()
+        ? fichiers(join(dossier, e.name))
+        : (/\.(js|jsx)$/.test(e.name) ? [join(dossier, e.name)] : [])));
+
+    const lues = new Set();
+    fichiers(join(RACINE, 'frontend/src')).forEach((f) => {
+      [...sansCommentaires(readFileSync(f, 'utf8')).matchAll(/env(?:\?)?\.(VITE_[A-Z0-9_]+)/g)]
+        .forEach((m) => lues.add(m[1]));
+    });
+
+    const fantomes = [];
+    ['README.md', 'DEPLOYMENT.md', '.env.example', 'DEPLOY_VPS.md', 'docker-compose.yml'].forEach((doc) => {
+      const chemin = join(RACINE, doc);
+      if (!existsSync(chemin)) return;
+      const texte = readFileSync(chemin, 'utf8');
+      [...texte.matchAll(/VITE_[A-Z0-9_]+/g)].forEach((m) => {
+        if (!lues.has(m[0])) fantomes.push(`${doc} → ${m[0]}`);
+      });
+    });
+
+    expect([...new Set(fantomes)], 'ces variables sont documentées et lues par personne').toEqual([]);
+  });
+});

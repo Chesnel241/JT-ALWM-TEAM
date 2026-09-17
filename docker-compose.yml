@@ -55,6 +55,21 @@ services:
       - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      # Supervision. Sans ces variables, une panne d'envoi un samedi soir n'est
+      # signalée à personne et se découvre le dimanche, après la clôture.
+      #
+      # SENTRY_DSN : suivi des erreurs (offre gratuite suffisante). Absent, le
+      #   backend démarre et prévient — rien ne casse. Les plantages du studio
+      #   passent par POST /api/client-error et remontent par le même chemin.
+      # ALERT_WEBHOOK_URL : webhook Discord/Slack. C'est lui qui fait arriver
+      #   l'alerte sur un téléphone plutôt que dans une boîte mail ouverte le
+      #   lundi — la différence qui compte pour une échéance dominicale.
+      # DISK_CAPACITY_MB : capacité de référence de l'alerte disque. Le défaut
+      #   (10 Go) est un héritage Render ; sur un VPS plus grand, l'alerte
+      #   hurlerait à 8 Go sans que rien ne soit plein.
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - ALERT_WEBHOOK_URL=${ALERT_WEBHOOK_URL:-}
+      - DISK_CAPACITY_MB=${DISK_CAPACITY_MB:-}
     volumes:
       - uploads_volume:/app/uploads
     networks:

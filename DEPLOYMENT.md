@@ -242,8 +242,9 @@ sudo docker system prune -f
 | `JT_STORE_PATH` | Chemin du store JSON | interne |
 | `UPSTASH_REDIS_REST_URL` | Redis externe (métadonnées) | — |
 | `UPSTASH_REDIS_REST_TOKEN` | Token Redis | — |
-| `SENTRY_DSN` | Error tracking backend | — |
-| `VITE_SENTRY_DSN` | Error tracking frontend | — |
+| `SENTRY_DSN` | Suivi des erreurs (backend **et** plantages du studio, relayés par `POST /api/client-error`) | — |
+| `ALERT_WEBHOOK_URL` | Webhook Discord/Slack pour les alertes | — |
+| `DISK_CAPACITY_MB` | Capacité de référence de l'alerte disque | `10240` |
 | `ALERT_WEBHOOK_URL` | Webhook Discord/Slack | — |
 
 > **Note sur `VITE_API_URL`** : Sur un VPS avec Caddy, laisser cette variable **vide**. Le frontend appelle l'API en same-origin (`/api/...`), et Caddy route vers le backend. Cela évite les problèmes de CORS.

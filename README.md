@@ -141,12 +141,20 @@ cd frontend && npm test    # vitest + RTL (8 tests)
 - `MAX_FILE_SIZE` — bytes. Défaut **200 MB**
 - `JT_STORE_PATH` — chemin du store JSON (overridable, utile en tests)
 - `LOG_DIR` — dossier des logs Winston.
-- `SENTRY_DSN` — error tracking (no-op si absent)
+- `SENTRY_DSN` — suivi des erreurs (inerte si absent). Reçoit aussi les
+  plantages du studio, relayés par `POST /api/client-error`.
+- `ALERT_WEBHOOK_URL` — webhook Discord/Slack pour les alertes (taux d'erreur,
+  disque, mémoire). C'est lui qui prévient sur téléphone.
+- `DISK_CAPACITY_MB` — capacité de référence de l'alerte disque (défaut 10 Go).
 - `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` — persistance Redis optionnelle (métadonnées).
 
 ### Frontend
 - `VITE_API_URL` — URL absolue du backend en prod. Laisser vide en VPS (Caddy gère le proxy /api → backend).
-- `VITE_SENTRY_DSN` — error tracking côté navigateur
+
+> Il n'y a pas de DSN Sentry côté navigateur, et c'est voulu : le studio
+> signale ses plantages à son propre backend (`POST /api/client-error`), qui
+> relaie. Pas de script tiers chargé chez les monteurs, un seul projet à
+> surveiller.
 
 ## Production (VPS)
 
