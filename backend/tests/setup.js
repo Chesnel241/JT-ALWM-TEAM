@@ -1,12 +1,15 @@
 import { mkdtempSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { inject } from 'vitest';
 
 // Isolation des tests : store JSON + uploads dans un répertoire temporaire
 // unique. On chdir dans ce dossier pour que les chemins relatifs utilisés
 // par multer (`uploads/`) et par les routes (`process.cwd()/uploads`)
 // pointent vers le tmpdir au lieu de polluer backend/uploads/.
-const tmpRoot = mkdtempSync(join(tmpdir(), 'jt-alwm-tests-'));
+// Sous la racine commune (tests/racine-temporaire.js), qui disparaît en fin
+// de suite ; à défaut — un fichier lancé hors de la configuration — dans /tmp.
+const tmpRoot = mkdtempSync(join(inject('racineTests') || tmpdir(), 'jt-alwm-tests-'));
 mkdirSync(join(tmpRoot, 'uploads'), { recursive: true });
 
 process.env.JT_STORE_PATH = join(tmpRoot, 'store.json');
