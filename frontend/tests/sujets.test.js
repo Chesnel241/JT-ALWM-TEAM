@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildSections, filesForSection } from '../src/lib/sujets.js';
+import { buildSections, filesForSection, etatNombreReportages, estSectionFixe, nomAffiche, SECTIONS_FIXES } from '../src/lib/sujets.js';
+import { translations } from '../src/i18n/translations.js';
 
 const EXTRAS = [{ id: 'annonces', sujetId: null, name: 'Annonces', badge: 'A', isFirst: false }];
 
@@ -57,5 +58,60 @@ describe('rattachement des fichiers', () => {
   it('ne casse pas sur des entrées vides', () => {
     expect(filesForSection(null, { sujetId: 's1' })).toEqual([]);
     expect(filesForSection(files, null)).toEqual([]);
+  });
+});
+
+describe('le nombre de reportages', () => {
+  // Ce que la carte « Combien de reportages envoyez-vous cette semaine ? »
+  // affiche, et le plancher sous lequel on perdrait des fichiers.
+
+  it('ne décide rien tant que rien n’est choisi ni déposé', () => {
+    expect(etatNombreReportages([], [])).toEqual({ nommes: false, actuel: 0, minimum: 1 });
+  });
+
+  it('ne compte pas les sections fixes comme un reportage', () => {
+    // Une annonce déposée ne vaut pas choix d'un reportage.
+    const etat = etatNombreReportages([], [{ id: 'a', reportage: 'Annonces' }]);
+    expect(etat.actuel).toBe(0);
+  });
+
+  it('compte les sections de repli qui portent déjà des fichiers', () => {
+    // Elles sont à l'écran : le chiffre retenu doit le dire.
+    const etat = etatNombreReportages([], [{ id: 'x', reportage: 'Reportage 2' }]);
+    expect(etat).toEqual({ nommes: false, actuel: 2, minimum: 2 });
+  });
+
+  it('suit les reportages nommés', () => {
+    const etat = etatNombreReportages([{ id: 'a' }, { id: 'b' }, { id: 'c' }], []);
+    expect(etat).toEqual({ nommes: true, actuel: 3, minimum: 1 });
+  });
+
+  it('ne descend pas sous le dernier reportage qui contient des fichiers', () => {
+    // Le serveur le refuse (409) ; ici on ne le propose pas.
+    const sujets = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    expect(etatNombreReportages(sujets, [{ sujetId: 'a' }]).minimum).toBe(1);
+    expect(etatNombreReportages(sujets, [{ sujetId: 'c' }]).minimum).toBe(3);
+  });
+
+  it('reconnaît une section fixe', () => {
+    expect(estSectionFixe({ reportage: 'Séminaires de la semaine' })).toBe(true);
+    expect(estSectionFixe({ reportage: 'Reportage 1' })).toBe(false);
+  });
+});
+
+describe('nomAffiche — le nom lu, pas l’étiquette de rangement', () => {
+  // L'INCIDENT : les onglets affichaient `name`, qui est aussi l'étiquette
+  // de rangement des fichiers (`reportage: 'Annonces'`). Un correspondant
+  // anglophone lisait donc « Annonces » dans un écran anglais.
+  it('traduit les sections fixes sans toucher à leur étiquette', () => {
+    const [annonces, seminaires] = SECTIONS_FIXES;
+    expect(nomAffiche(annonces, translations.en)).toBe('Announcements');
+    expect(nomAffiche(seminaires, translations.en)).toBe('This week’s seminars');
+    expect(annonces.name).toBe('Annonces');
+    expect(nomAffiche(annonces, translations.fr)).toBe('Annonces');
+  });
+
+  it('laisse le titre d’un reportage tel que le correspondant l’a écrit', () => {
+    expect(nomAffiche({ id: 's1', name: 'Le marché de Douala' }, translations.en)).toBe('Le marché de Douala');
   });
 });

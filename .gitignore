@@ -23,3 +23,9 @@ JT-ALWM-TEAM-master/
 # depuis les .dc.html par la commande rappelée dans .design/README.md.
 .design/*.html
 !.design/*.dc.html
+
+# Réécrit à chaque build par le greffon `generate-version-json`
+# (frontend/vite.config.js, `buildStart`), en développement comme en image
+# Docker. Suivi par git, il salissait l'arbre de travail à chaque build et
+# revenait dans les commits sans rien porter.
+frontend/public/version.json

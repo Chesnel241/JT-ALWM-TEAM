@@ -10,8 +10,8 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
-import { sectionsFromUploads, classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
-import { buildSections, filesForSection } from '../lib/sujets.js';
+import { classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
+import { buildSections, filesForSection, etatNombreReportages, nomAffiche, SECTIONS_FIXES } from '../lib/sujets.js';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import PhoneInput from 'react-phone-number-input';
@@ -39,6 +39,8 @@ import OfflineBanner from './OfflineBanner.jsx';
 import EmptyState from './EmptyState.jsx';
 import EmptyInbox from './illustrations/EmptyInbox.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
+import NombreReportages from './NombreReportages.jsx';
+import ReportagesSheet from './ReportagesSheet.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
   const { t, lang } = useI18n();
@@ -58,24 +60,16 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const offlineQueueRef = useRef([]);
   const isOnline = useOnlineStatus();
   const queuedCount = uploading.filter((f) => f.status === 'queued').length;
-  // Choix explicite de la personne pour cette session. Le nombre réellement
-  // affiché est le maximum entre ce choix et ce que les envois révèlent : voir
-  // `reportageCount` plus bas.
-  const [chosenReportageCount, setChosenReportageCount] = useState(1);
-  // Nombre de sections réellement affichées. Les envois font foi : un
-  // correspondant qui avait ouvert trois reportages les retrouve après un
-  // rechargement, sans avoir à toucher au sélecteur.
-  const reportageCount = Math.max(1, chosenReportageCount, sectionsFromUploads(uploads));
+  // Le nombre de reportages se lit sur les sujets du serveur. Le sélecteur
+  // d'avant écrivait un nombre que rien ne lisait : choisir « 3 » ne faisait
+  // apparaître aucune section.
+  const etatReportages = etatNombreReportages(sujets, uploads);
+  // Nombre dont on demande les titres ; `null` quand la feuille est fermée.
+  const [sheetNombre, setSheetNombre] = useState(null);
 
-  // Rubriques fixes du JT : elles n'appartiennent à personne et ne sont pas
-  // des sujets de correspondant.
-  const RUBRIQUES = [
-    { id: 'annonces', sujetId: null, name: 'Annonces', badge: 'A', isFirst: false },
-    { id: 'seminaires', sujetId: null, name: 'Séminaires de la semaine', badge: 'S', isFirst: false },
-  ];
   const sections = buildSections(sujets, uploads, {
     reportageName: t.uploader.reportageName,
-    extras: RUBRIQUES,
+    extras: SECTIONS_FIXES,
   });
   const [scriptText, setScriptText] = useState({});
   const [dragActive, setDragActive] = useState({});
@@ -126,39 +120,20 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       .finally(() => setIsLoadingUploads(false));
   }, [selectedWeek, country.id]);
 
-  const refreshSujets = useCallback(() => {
-    if (!selectedWeek) return Promise.resolve();
-    return api.getSujets(selectedWeek, country.id)
-      .then((suj) => setSujets(Array.isArray(suj) ? suj : []))
-      .catch(() => {});
+  /**
+   * Fixe les reportages de la semaine : leur nombre, leur ordre, leurs titres.
+   *
+   * Les envois sont relus ensuite, et pas seulement les sujets : des fichiers
+   * déposés avant que les reportages soient nommés viennent d'être rattachés
+   * par le serveur, et doivent apparaître dans leur reportage. Une erreur
+   * remonte à la feuille des titres, qui la montre sans se refermer.
+   */
+  const handleFixerReportages = useCallback(async (reportages) => {
+    const res = await api.setReportages(selectedWeek, country.id, reportages);
+    setSujets(Array.isArray(res?.sujets) ? res.sujets : []);
+    api.getUploads(selectedWeek, country.id).then(setUploads).catch(() => {});
+    return res;
   }, [selectedWeek, country.id]);
-
-  /** Ouvre un sujet nommé. Le titre est ce que la rédaction verra. */
-  const handleCreateSujet = useCallback(async (titre) => {
-    const propre = String(titre || '').trim();
-    if (!propre) return null;
-    try {
-      const sujet = await api.createSujet(selectedWeek, country.id, propre);
-      setSujets((prev) => [...prev, sujet]);
-      return sujet;
-    } catch (err) {
-      addToast(err.message || t.uploader.errorPrefix, 'error', 4000);
-      return null;
-    }
-  }, [selectedWeek, country.id, addToast, t.uploader.errorPrefix]);
-
-  const handleRenameSujet = useCallback(async (sujetId, titre) => {
-    const propre = String(titre || '').trim();
-    if (!propre) return;
-    // Optimiste : renommer doit se voir tout de suite, c'est une frappe.
-    setSujets((prev) => prev.map((s) => (s.id === sujetId ? { ...s, titre: propre } : s)));
-    try {
-      await api.renameSujet(selectedWeek, country.id, sujetId, propre);
-    } catch (err) {
-      addToast(err.message || t.uploader.errorPrefix, 'error', 4000);
-      refreshSujets();
-    }
-  }, [selectedWeek, country.id, addToast, t.uploader.errorPrefix, refreshSujets]);
 
   useEffect(() => {
     setPendingUploads(listPendingUploads(selectedWeek, country.id));
@@ -414,7 +389,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       setDelaysData(dls);
     } catch (err) {
       console.error(err);
-      addToast(err.message || 'Erreur lors de la demande de délai', 'error');
+      addToast(err.message || t.uploader.delayError, 'error');
     } finally {
       setIsRequestingDelay(false);
     }
@@ -473,7 +448,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       saveCountryPhone(country.id, phoneToSub);
       setPhone(phoneToSub);
       setHasPhoneNumber(true);
-      addToast(t.uploader.notifySuccess || 'Numéro WhatsApp enregistré avec succès !', 'success', 3000);
+      addToast(t.uploader.notifySuccess, 'success', 3000);
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
@@ -495,11 +470,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           uploading={uploading}
           setUploading={setUploading}
           isLoadingUploads={isLoadingUploads}
-          reportageCount={reportageCount}
-          setReportageCount={setChosenReportageCount}
           sujets={sujets}
-          onCreateSujet={handleCreateSujet}
-          onRenameSujet={handleRenameSujet}
+          onFixerReportages={handleFixerReportages}
           isLocked={isLocked}
           extensionStatus={extensionStatus}
           handleRequestDelay={handleRequestDelay}
@@ -539,7 +511,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           </span>
         </div>
 
-      {country.id !== 'tj' && country.id !== 'mj' && <Tutorial5W1H />}
+      <Tutorial5W1H />
 
       {!isOnline && <OfflineBanner queuedCount={queuedCount} />}
 
@@ -555,15 +527,15 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           <p className="text-sm text-[color:var(--muted)]">{t.uploader.weekSubtitle}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          {hasPhoneNumber && phone && country.id !== 'tj' && country.id !== 'mj' && (
+          {hasPhoneNumber && phone && (
             <button
               onClick={handleEditPhone}
               type="button"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--success)]/10 text-[color:var(--success-deep)] border border-[var(--success)]/30 text-xs font-semibold hover:bg-[var(--success)]/20 transition-colors active:scale-95"
-              title="Cliquer pour modifier le numéro WhatsApp"
+              title={t.uploader.phoneEdit}
             >
-              <span>📱 WhatsApp : {phone}</span>
-              <span className="text-[10px] underline">(Modifier)</span>
+              <span>📱 {t.uploader.whatsappLabel} {phone}</span>
+              <span className="text-[10px] underline">({t.uploader.edit})</span>
             </button>
           )}
           <select
@@ -601,7 +573,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           ) : extensionStatus === 'approved' ? (
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium text-sm shrink-0">
               <Clock size={18} className="shrink-0" />
-              <span>Délai supplémentaire accordé.</span>
+              <span>{t.uploader.delayGranted}</span>
             </div>
           ) : (
             <button
@@ -609,7 +581,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               disabled={isRequestingDelay}
               className="btn btn-primary bg-[var(--signal)] border-transparent text-white shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
             >
-              {isRequestingDelay ? 'Envoi…' : 'Demander un délai'}
+              {isRequestingDelay ? t.uploader.sending : t.uploader.delayAsk}
             </button>
           )}
         </div>
@@ -623,17 +595,17 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             </div>
             <div>
               <h2 className="text-xl font-bold text-[color:var(--ink)] mb-2">
-                {t.uploader.mandatoryPhoneTitle || 'Un contact WhatsApp est obligatoire'}
+                {t.uploader.mandatoryPhoneTitle}
               </h2>
               <p className="text-[color:var(--muted)]">
-                {t.uploader.mandatoryPhoneDesc || 'Afin de vous avertir rapidement en cas de problème (vidéo refusée, son inaudible, etc.) ou vous prévenir de la disponibilité du JT, veuillez renseigner le numéro WhatsApp de votre pays.'}
+                {t.uploader.mandatoryPhoneDesc}
               </p>
             </div>
           </div>
           
           <div className="max-w-md mx-auto bg-[var(--paper)] p-5 rounded-2xl border border-[var(--border)] shadow-sm">
             <label className="block text-sm font-medium text-[color:var(--ink)] mb-3">
-              Numéro de téléphone avec indicatif
+              {t.uploader.phoneLabel}
             </label>
             <PhoneInput
               international
@@ -651,55 +623,35 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               {isSubscribing ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : null}
-              {t.uploader.mandatoryPhoneSubmit || 'Valider et débloquer l\'upload'}
+              {t.uploader.mandatoryPhoneSubmit}
             </button>
           </div>
         </div>
-      ) : country.id === 'tj' || country.id === 'mj' ? (
-        <>
-          <TjUploader 
-            selectedWeek={selectedWeek} 
-            country={country} 
-            onUploaded={() => {
-              api.getUploads(selectedWeek, country.id)
-                .then(setUploads)
-                .catch(console.error);
-            }} 
-            t={t} 
-          />
-          {uploads.length > 0 && (
-            <div className="mb-8 p-6 bg-[var(--paper)] border border-[var(--border)] rounded-2xl shadow-sm">
-              <h3 className="font-bold text-lg mb-4 text-[color:var(--ink)]">Fichiers sauvegardés</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {uploads.map(file => (
-                  <div key={file.id} className="bg-[var(--paper-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between">
-                    <div className="flex flex-col overflow-hidden mr-3">
-                      <span className="font-medium text-sm truncate text-[color:var(--ink)]">{file.name}</span>
-                      <span className="text-xs text-[color:var(--muted)]">{file.reportage || (country.id === 'tj' ? 'Titres / Audio' : 'Mot du JT')}</span>
-                    </div>
-                    <button onClick={() => openDeleteDialog(file)} className="text-[var(--signal)] hover:opacity-80 p-2 flex-shrink-0" title={t.uploader.delete}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
       ) : (
         <>
-          <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
-            <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.reportageCountTitle}</h3>
-            <select
-              value={reportageCount}
-              onChange={(e) => setChosenReportageCount(Number(e.target.value))}
-              className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-4 py-2 font-medium"
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+          {/* Étape 1 : combien de reportages. Remplace un sélecteur dont la
+              valeur n'était lue par rien — choisir « 3 » ne faisait
+              apparaître aucune section. */}
+          <div className="mb-8 max-w-xl">
+            <NombreReportages
+              etat={etatReportages}
+              onChoisir={(n) => setSheetNombre(n)}
+              onModifierTitres={() => setSheetNombre(etatReportages.actuel)}
+              disabled={isLocked}
+            />
+            {!etatReportages.nommes && (
+              <p className="mt-3 text-sm font-bold text-[color:var(--muted)]">
+                {t.uploader.nbReportagesStep2}
+              </p>
+            )}
           </div>
+          <ReportagesSheet
+            isOpen={sheetNombre !== null}
+            nombre={sheetNombre || 0}
+            sujets={sujets}
+            onClose={() => setSheetNombre(null)}
+            onValider={handleFixerReportages}
+          />
 
       {sections.map((section, i) => {
         const reportageName = section.name;
@@ -722,12 +674,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             >
               <div className="flex items-center gap-2 md:gap-3 md:mb-6">
                 <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm md:shadow-none">{section.badge}</span>
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[color:var(--ink)]">{reportageName}</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[color:var(--ink)]">{nomAffiche(section, t)}</h2>
               </div>
               <div className="flex items-center gap-4">
                 {repUploads.length > 0 && (
                   <span className="text-xs sm:text-sm font-medium text-[color:var(--muted)] bg-[var(--paper-2)] border border-[var(--border)] px-3 py-1 rounded-full hidden sm:inline-block md:hidden">
-                    {repUploads.length} {repUploads.length > 1 ? 'fichiers' : 'fichier'}
+                    {t.uploader.checklistCount(repUploads.length)}
                   </span>
                 )}
                 <div className={`p-1 rounded-full transition-transform duration-300 md:hidden ${expandedSection === section.id ? 'bg-[var(--accent)] text-white rotate-180' : 'bg-black/5 dark:bg-white/5 text-[color:var(--ink)]'}`}>
@@ -890,7 +842,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                       {submittingScripts[reportageName] ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Envoi...
+                          {t.uploader.sending}
                         </>
                       ) : (
                         t.uploader.scriptSubmit
@@ -904,7 +856,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 <div className="flex items-center gap-2 mb-6">
                   <Folder className="text-[color:var(--muted)]" />
                   <h3 className="font-semibold text-[color:var(--ink)]">
-                    {reportageName}
+                    {nomAffiche(section, t)}
                   </h3>
                 </div>
 
@@ -934,7 +886,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                               {file.name}
                               {file.isLate && (
                                 <span className="text-[10px] bg-[var(--signal)] text-white px-2 py-0.5 rounded-full font-bold">
-                                  EN RETARD
+                                  {t.uploader.late}
                                 </span>
                               )}
                             </p>
@@ -951,13 +903,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                             </p>
                             {file.status === 'approved' && (
                               <p className="text-xs font-medium text-[var(--accent)] mt-1 flex items-center gap-1">
-                                <CheckCircle size={12} /> Validé
+                                <CheckCircle size={12} /> {t.uploader.approved}
                               </p>
                             )}
                             {file.status === 'rejected' && (
                               <div className="mt-2 p-2 bg-[var(--signal)]/10 rounded-lg border border-[var(--signal)]/20">
                                 <p className="text-xs font-bold text-[var(--signal)] flex items-center gap-1 mb-1">
-                                  <AlertCircle size={12} /> À corriger
+                                  <AlertCircle size={12} /> {t.uploader.toFix}
                                 </p>
                                 <p className="text-xs text-[var(--signal)]/90">{file.feedback}</p>
                               </div>
@@ -1001,114 +953,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           setFileToDelete(null);
         }}
       />
-    </div>
-  );
-}
-
-function TjUploader({ selectedWeek, country, onUploaded, t }) {
-  const [text, setText] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const { addToast } = useToast();
-
-  const isMj = country.id === 'mj';
-
-  const handleTextUpload = async () => {
-    if (!text.trim()) return;
-    setIsUploading(true);
-    try {
-      const blob = new Blob([text], { type: 'text/plain' });
-      const filename = isMj ? `details_mot_du_jt_${Date.now()}.txt` : `titres_et_rappels_${Date.now()}.txt`;
-      const file = new File([blob], filename, { type: 'text/plain' });
-      await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Détails' : 'Titres' });
-      setText('');
-      addToast(isMj ? 'Détails sauvegardés avec succès' : 'Titres sauvegardés avec succès', 'success');
-      if (onUploaded) onUploaded();
-    } catch (err) {
-      console.error(err);
-      addToast("Erreur lors de la sauvegarde", 'error');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setIsUploading(true);
-    try {
-      for (const file of files) {
-        await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Vidéo' : 'Audio/Voix Off' });
-      }
-      addToast('Fichiers uploadés avec succès', 'success');
-      if (onUploaded) onUploaded();
-    } catch (err) {
-      console.error(err);
-      addToast("Erreur lors de l'upload", 'error');
-    } finally {
-      setIsUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  return (
-    <div className="mb-8 p-6 bg-[var(--paper)] border border-[var(--border)] rounded-2xl shadow-sm flex flex-col lg:flex-row gap-6">
-      <div className="flex-1">
-        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">
-          {isMj ? "Détails (Orateur, Thème, Pays)" : "Rédiger les Titres"}
-        </h3>
-        <textarea 
-          className="w-full min-h-[150px] p-3 rounded-xl border border-[var(--border)] bg-[var(--paper-2)] text-[color:var(--ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] resize-y mb-3"
-          placeholder={isMj ? "Collez ou tapez les détails de l'orateur, le thème, et le pays ici..." : "Collez ou tapez les titres et rappels ici..."}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button 
-          onClick={handleTextUpload}
-          disabled={!text.trim() || isUploading}
-          className="btn btn-primary px-4 py-2 w-full disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {isUploading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-[var(--paper)]/30 border-t-[var(--paper)] rounded-full animate-spin" />
-              Sauvegarde...
-            </>
-          ) : (
-            isMj ? 'Sauvegarder les Détails' : 'Sauvegarder les Titres'
-          )}
-        </button>
-      </div>
-
-      <div className="w-px bg-[var(--border)] hidden lg:block"></div>
-
-      <div className="flex-1 flex flex-col justify-center">
-        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">
-          {isMj ? "Uploader la Vidéo" : "Uploader Audio & Vidéo"}
-        </h3>
-        <p className="text-sm text-[color:var(--muted)] mb-4">
-          {isMj ? "Sélectionnez le fichier vidéo du Mot du JT." : "Sélectionnez les voix off, les virgules sonores, etc."}
-        </p>
-        
-        <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-[var(--border)] rounded-xl cursor-pointer hover:bg-[color:var(--accent)]/5 hover:border-[color:var(--accent)] transition-colors group">
-          <UploadCloud className="w-8 h-8 text-[color:var(--muted)] group-hover:text-[color:var(--accent)] mb-3" />
-          <span className="font-medium text-[color:var(--ink)]">Cliquez pour choisir des fichiers</span>
-          <span className="text-xs text-[color:var(--muted)] mt-1">
-            {isMj ? "Vidéo (MP4, MOV), etc." : "Audio (MP3, WAV), Vidéo, etc."}
-          </span>
-          <input 
-            type="file" 
-            className="hidden" 
-            multiple 
-            onChange={handleFileUpload} 
-            disabled={isUploading}
-          />
-        </label>
-        {isUploading && (
-          <div className="flex items-center justify-center gap-2 mt-3 text-[color:var(--accent)] font-medium">
-            <div className="w-4 h-4 border-2 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin" />
-            <p className="text-sm">Upload en cours...</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

@@ -117,7 +117,13 @@ ADMIN_PASSWORD=change-me-admin-immediately
 WORKER_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-> ⚠️ **Le backend refuse de démarrer** si `GLOBAL_PASSWORD`, `ADMIN_PASSWORD`, ou `WORKER_KEY` sont absents ou égaux aux valeurs par défaut.
+> ⚠️ `WORKER_KEY` absent : `docker compose` refuse de démarrer.
+> `ADMIN_PASSWORD` absent **ou laissé à la valeur d'exemple ci-dessus** : le
+> backend démarre, mais **refuse toutes les actions de l'équipe montage** et
+> l'écrit dans ses journaux. La valeur d'exemple est publique — elle est dans
+> ce dépôt — et ne doit jamais protéger quoi que ce soit.
+> `GLOBAL_PASSWORD` n'est plus lu : la connexion par mot de passe partagé a
+> été retirée. Il peut rester vide.
 
 ---
 
@@ -492,13 +498,59 @@ systemctl restart sshd
 chmod 600 /opt/jt-alwm/.env
 ```
 
-### Vérifier que les ports internes sont fermés
+### Vérifier que les ports internes sont fermés — depuis une AUTRE machine
+
+`ufw status` ne suffit pas : **Docker contourne UFW** pour les ports qu'il
+publie. `docker-compose.yml` publie `3010` (backend) et `3003` (frontend) sur
+toutes les interfaces, donc ils peuvent être joignables depuis Internet même
+si UFW les dit fermés. Joint directement, le backend répond en HTTP clair,
+sans passer par Caddy, et l'en-tête `X-Forwarded-For` peut y être forgé pour
+déjouer les limites d'essais.
+
+Le seul test qui compte se fait depuis votre ordinateur, pas depuis le VPS :
 
 ```bash
-ufw status verbose
-# NE PAS ouvrir 3010 (backend) ni 8080 (worker) publiquement
-# Seuls 22, 80, 443 doivent être ouverts
+curl -m 5 http://<IP_DU_VPS>:3010/health   # doit échouer (timeout / refus)
+curl -m 5 http://<IP_DU_VPS>:3003/         # idem
 ```
+
+S'ils répondent, regardez comment le Caddy d'`/opt/edge` joint les services :
+
+```bash
+grep -n reverse_proxy /opt/edge/Caddyfile
+```
+
+S'il vise `backend:3010` / `frontend:80` (réseau Docker) ou `localhost:…`,
+restreignez la publication à la machine elle-même dans `docker-compose.yml`,
+puis `docker compose up -d` :
+
+```yaml
+    ports:
+      - "127.0.0.1:3010:3010"   # backend
+    ports:
+      - "127.0.0.1:3003:80"     # frontend
+```
+
+S'il vise l'IP publique ou celle du pont Docker (`172.17.0.1`), ne changez
+rien sans adapter d'abord le Caddyfile d'`/opt/edge`.
+
+### Le verrou des liens personnels (`REPORTER_ACCESS`)
+
+Tant qu'il vaut `observe` (le défaut), **rien n'est refusé** : quiconque
+connaît l'adresse du site peut déposer, renommer ou supprimer dans n'importe
+quel pays. Le cran sert à mesurer avant de fermer :
+
+1. distribuer les liens personnels (studio → Liens) ;
+2. lire l'état, avec le mot de passe montage :
+   ```bash
+   curl -s -H "X-Admin-Password: $ADMIN_PASSWORD" https://<domaine>/api/liens/etat
+   ```
+   Tant qu'un pays y travaille encore sans lien, `strict` le couperait ;
+3. alors seulement, dans `.env` : `REPORTER_ACCESS=strict`, puis
+   `docker compose up -d backend`.
+
+En cas de problème un dimanche : `REPORTER_ACCESS=ouvert`, même commande.
+Aucun redéploiement de code n'est nécessaire.
 
 ---
 
@@ -645,6 +697,11 @@ survenue » doit s'afficher **et** l'événement arriver dans Sentry, étiqueté
 - [ ] **`ALERT_WEBHOOK_URL` renseigné** : c'est lui qui prévient sur téléphone
       un samedi soir, quand un tableau de bord ne réveille personne
 - [ ] `DISK_CAPACITY_MB` à la taille réelle du volume (§13 bis)
+- [ ] **Ports 3010 et 3003 injoignables depuis Internet**, testé depuis une
+      autre machine (§13) — `ufw status` ne le prouve pas
+- [ ] **`REPORTER_ACCESS=strict`** une fois les liens distribués et
+      `/api/liens/etat` vérifié (§13) ; tant qu'il reste sur `observe`,
+      n'importe qui peut supprimer un envoi
 - [ ] SSH par clé uniquement (optionnel mais recommandé)
 
 ---

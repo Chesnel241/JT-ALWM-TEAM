@@ -51,6 +51,12 @@ services:
       # lui, aucun envoi n'est attribué et la plateforme fonctionne comme
       # avant. Le changer révoque tous les liens distribués.
       - REPORTER_TOKEN_SECRET=${REPORTER_TOKEN_SECRET}
+      # Le cran des liens personnels : observe (défaut, ne refuse rien et
+      # compte), strict (refuse pour de bon), ouvert (marche arrière). Il
+      # n'était pas transmis : le backend restait donc en `observe` quoi que
+      # dise le .env, et n'importe qui pouvait supprimer le fichier d'un
+      # correspondant. Avant `strict`, lire GET /api/liens/etat (DEPLOY_VPS.md).
+      - REPORTER_ACCESS=${REPORTER_ACCESS:-observe}
       - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
       - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}

@@ -50,10 +50,14 @@ export default function AdminGate({ onDeverrouille, titre, sous }) {
       }
       saveAdminPassword(propre);
       onDeverrouille?.(propre);
-    } catch {
+    } catch (err) {
       // Réseau coupé ou serveur muet : le dire, plutôt que de laisser croire
       // que le mot de passe est faux. Les deux se corrigent différemment.
-      setErreur(g.erreurReseau || 'Vérification impossible. Réessayez.');
+      // Même chose pour le blocage après trop d'essais : il faut attendre,
+      // pas retaper.
+      setErreur(err?.status === 429
+        ? g.tropDEssais
+        : (g.erreurReseau || 'Vérification impossible. Réessayez.'));
     } finally {
       setEnCours(false);
     }

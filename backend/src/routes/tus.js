@@ -13,7 +13,7 @@ import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constan
 import { recordUpload } from '../monitoring/metrics.js';
 import { broadcastNotification, AUDIENCES } from './webpush.js';
 import { io } from '../app.js';
-import { safeEqual, normalizeToken } from '../middleware/auth.js';
+import { verifierMotDePasseAdmin } from '../middleware/auth.js';
 import { readReporterToken } from '../lib/reporterToken.js';
 import { evaluerPortee } from '../middleware/portee.js';
 import { nomLisible } from '../middleware/sanitizer.js';
@@ -91,10 +91,21 @@ function enTete(req, nom) {
   return entetes[nom] || entetes[nom.toLowerCase()] || '';
 }
 
+/**
+ * L'adresse du client, pour le compte des échecs du mot de passe montage.
+ *
+ * TUS reçoit une requête brute, sans `req.ip`. Derrière Caddy, la dernière
+ * entrée de `X-Forwarded-For` est celle que Caddy a ajoutée — la seule
+ * fiable, et celle que retient Express avec `trust proxy = 1`.
+ */
+function adresseClient(req) {
+  const relais = String(enTete(req, 'x-forwarded-for') || '').split(',').pop().trim();
+  return relais || req?.socket?.remoteAddress || 'tus';
+}
+
 export function authorizeTusUpload(meta = {}, req = null) {
-  const ADMIN = process.env.ADMIN_PASSWORD;
-  const token = normalizeToken(String(meta.adminPassword || meta.appPassword || ''));
-  const isAdmin = !!(ADMIN && token && safeEqual(token, normalizeToken(String(ADMIN))));
+  const fourni = String(meta.adminPassword || meta.appPassword || '');
+  const isAdmin = verifierMotDePasseAdmin(fourni, adresseClient(req)).verdict === 'ok';
 
   // En-tête d'abord : il voyage hors des métadonnées, donc hors du sidecar
   // écrit sur disque. La métadonnée reste acceptée en repli, car un proxy

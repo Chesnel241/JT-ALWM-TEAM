@@ -174,6 +174,10 @@ export const api = {
       if (err.message.includes('mise à jour') || err.message.includes('connexion')) {
         throw err;
       }
+      // Trop d'essais : le serveur bloque l'adresse un moment. Répondre « faux »
+      // ferait retaper un mot de passe peut-être juste, et prolongerait le
+      // blocage à chaque essai.
+      if (err.status === 429) throw err;
       return false;
     }
   },
@@ -316,18 +320,18 @@ export const api = {
   getSujets: (weekId, countryId, adminPassword) =>
     request(countryId ? `/sujets/${weekId}/${countryId}` : `/sujets/${weekId}`, { adminPassword }),
 
-  createSujet: (weekId, countryId, titre) =>
+  // Fixe en une requête les reportages de la semaine : leur nombre, leur
+  // ordre et leurs titres. Elle remplace la création et le renommage un par
+  // un (les routes POST et PATCH restent côté serveur, pour les clients déjà
+  // ouverts dans un onglet). Une seule requête et non une par reportage : sur
+  // un réseau qui décroche, la troisième création ne part jamais et le
+  // correspondant se retrouve avec un nombre qu'il n'a pas choisi.
+  // `reportages` : [{ id?, titre }], les existants d'abord, dans leur ordre.
+  setReportages: (weekId, countryId, reportages) =>
     request(`/sujets/${weekId}/${countryId}`, {
-      method: 'POST',
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titre }),
-    }),
-
-  renameSujet: (weekId, countryId, sujetId, titre) =>
-    request(`/sujets/${weekId}/${countryId}/${sujetId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titre }),
+      body: JSON.stringify({ reportages }),
     }),
 
   setSujetEtat: (weekId, countryId, sujetId, etat, adminPassword) =>
@@ -337,9 +341,6 @@ export const api = {
       adminPassword,
       body: JSON.stringify({ etat }),
     }),
-
-  deleteSujet: (weekId, countryId, sujetId, adminPassword) =>
-    request(`/sujets/${weekId}/${countryId}/${sujetId}`, { method: 'DELETE', adminPassword }),
 
   getUploads: (weekId, countryId) =>
     request(`/uploads/${weekId}/${countryId}`),

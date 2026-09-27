@@ -1,4 +1,19 @@
-import { sectionsFromUploads } from './mediaTypes.js';
+import { sectionsFromUploads, sectionNumber } from './mediaTypes.js';
+
+/**
+ * Les sections fixes de l'espace d'un pays. Elles ne sont pas des reportages :
+ * pas de titre à choisir, et hors de la limite de cinq.
+ *
+ * Écrites une seule fois ici — elles l'étaient en double, dans la vue mobile
+ * et dans la vue ordinateur. Le serveur en tient la liste miroir
+ * (`ETIQUETTES_HORS_SUJET`, `backend/src/data/rubriques.js`) : sans elle, une
+ * annonce redevenait un reportage « Annonces » au redémarrage suivant. Un test
+ * garde les deux listes accordées.
+ */
+export const SECTIONS_FIXES = Object.freeze([
+  Object.freeze({ id: 'annonces', sujetId: null, name: 'Annonces', badge: 'A', isFirst: false }),
+  Object.freeze({ id: 'seminaires', sujetId: null, name: 'Séminaires de la semaine', badge: 'S', isFirst: false }),
+]);
 
 /**
  * Sections affichées au correspondant.
@@ -54,4 +69,61 @@ export function filesForSection(files, section) {
   return liste.filter(
     (f) => f?.reportage === section.name || (!f?.reportage && !f?.sujetId && section.isFirst)
   );
+}
+
+/**
+ * Le nom à AFFICHER d'une section.
+ *
+ * Le `name` d'une section fixe est aussi l'étiquette de rangement de ses
+ * fichiers (`reportage: 'Annonces'`), que le serveur connaît sous ce nom : il
+ * ne se traduit donc pas. Seul l'affichage suit la langue — sans quoi un
+ * correspondant anglophone lisait « Annonces » dans un écran anglais.
+ */
+export function nomAffiche(section, t) {
+  if (section?.id === 'annonces') return t?.uploader?.sectionAnnonces || section.name;
+  if (section?.id === 'seminaires') return t?.uploader?.sectionSeminaires || section.name;
+  return section?.name || '';
+}
+
+/** Vrai si le fichier appartient à une section fixe, et non à un reportage. */
+export function estSectionFixe(fichier) {
+  return SECTIONS_FIXES.some((s) => s.name === fichier?.reportage);
+}
+
+/**
+ * Ce que le choix du nombre de reportages doit savoir.
+ *
+ * - `nommes` : les reportages ont déjà un titre (des sujets existent) ;
+ * - `actuel` : le nombre à afficher comme choisi — 0 tant que rien n'est
+ *   décidé et que rien n'a été déposé ;
+ * - `minimum` : on ne descend pas sous le dernier reportage qui contient des
+ *   fichiers. Le serveur le refuse aussi (409) ; ici, on évite de proposer ce
+ *   qui serait refusé.
+ *
+ * Tant qu'aucun reportage n'est nommé, les envois déjà faits dans les
+ * sections de repli (« Reportage 2 ») comptent : ils sont à l'écran, et le
+ * serveur les rattachera au reportage de même rang.
+ */
+export function etatNombreReportages(sujets, uploads) {
+  const liste = Array.isArray(sujets) ? sujets : [];
+  const fichiers = Array.isArray(uploads) ? uploads : [];
+
+  if (liste.length > 0) {
+    let dernierPlein = 0;
+    liste.forEach((sujet, i) => {
+      if (fichiers.some((f) => f?.sujetId === sujet.id)) dernierPlein = i + 1;
+    });
+    return { nommes: true, actuel: liste.length, minimum: Math.max(1, dernierPlein) };
+  }
+
+  const orphelins = fichiers.filter((f) => f && !f.sujetId && !estSectionFixe(f));
+  if (orphelins.length === 0) return { nommes: false, actuel: 0, minimum: 1 };
+
+  // Un envoi sans étiquette s'affiche dans la section 1.
+  const dernierPlein = orphelins.reduce((max, f) => Math.max(max, sectionNumber(f.reportage) || 1), 1);
+  return {
+    nommes: false,
+    actuel: Math.max(1, sectionsFromUploads(fichiers), dernierPlein),
+    minimum: dernierPlein,
+  };
 }

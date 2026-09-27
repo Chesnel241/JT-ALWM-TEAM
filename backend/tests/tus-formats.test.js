@@ -3,7 +3,7 @@ import request from 'supertest';
 import { existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { TEST_UPLOADS_DIR } from './setup.js';
-import { semaineActive } from './semaine.js';
+import { semaineOuverte } from './semaine.js';
 
 /**
  * Le parcours réel d'un fichier, du protocole TUS jusqu'au store.
@@ -17,7 +17,7 @@ import { semaineActive } from './semaine.js';
 
 // La semaine active, et non une semaine figée : une suite qui ne passe que la
 // semaine de son écriture annonce une panne tous les lundis.
-const SEMAINE = semaineActive();
+const SEMAINE = semaineOuverte();
 const PAYS = 'cm';
 
 let app;

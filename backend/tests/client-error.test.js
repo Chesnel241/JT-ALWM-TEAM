@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { createApp } from '../src/app.js';
 import { nettoyerSignalement } from '../src/routes/clientError.js';
+import { RACINE_TESTS } from './setup.js';
 
 /**
  * Les plantages du studio, relayés par le backend.
@@ -27,7 +27,7 @@ let app;
 let dossier;
 
 beforeAll(() => {
-  dossier = mkdtempSync(join(tmpdir(), 'jt-client-error-'));
+  dossier = mkdtempSync(join(RACINE_TESTS, 'jt-client-error-'));
   app = createApp({ uploadsDir: dossier, corsOrigins: ['http://localhost:5173'], enableMonitoring: false });
 });
 

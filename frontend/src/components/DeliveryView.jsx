@@ -64,7 +64,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
       .catch(() => setSubscriptions([]));
   }, [selectedWeek, addToast, t.uploader.errorPrefix, showNotifyPanel]);
 
-  const whatsappMessage = t.delivery.whatsappMessage || 'Le JT ALWM est prêt ! Vous pouvez le télécharger sur la plateforme.';
+  const whatsappMessage = t.delivery.whatsappMessage;
   const week = weeks.find((w) => w.id === selectedWeek);
 
   return (
@@ -106,7 +106,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                 rel="noopener noreferrer"
                 className="px-4 py-1.5 rounded-xl bg-[var(--action)] text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 shadow-sm"
               >
-                <Download size={13} /> Télécharger
+                <Download size={13} /> {t.delivery.download}
               </a>
             </div>
           </div>
@@ -125,7 +125,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
             </div>
             {deliveries.length > 0 && (
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--success)]/12 text-[color:var(--success-deep)] border border-[var(--success)]/30">
-                DISPONIBLE
+                {t.delivery.available}
               </span>
             )}
           </div>
@@ -136,7 +136,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
 
           {/* Week Selector */}
           <div className="p-2.5 bg-[var(--paper-2)] rounded-2xl border border-[var(--border)] flex items-center justify-between gap-2">
-            <span className="shrink-0 text-xs font-semibold text-[color:var(--muted)]">Semaine</span>
+            <span className="shrink-0 text-xs font-semibold text-[color:var(--muted)]">{t.delivery.week}</span>
             <select
               value={selectedWeek}
               onChange={(e) => setSelectedWeek(e.target.value)}
@@ -155,7 +155,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--muted)]">
-              Fichiers JT Prêts ({deliveries.length})
+              {t.delivery.readyFiles(deliveries.length)}
             </span>
           </div>
 
@@ -205,7 +205,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                         className="py-2.5 px-3 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                       >
                         <Play size={14} className="fill-current" />
-                        <span>Regarder</span>
+                        <span>{t.delivery.watch}</span>
                       </button>
                     )}
                     <a
@@ -218,7 +218,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                       }`}
                     >
                       <Download size={14} />
-                      <span>Télécharger</span>
+                      <span>{t.delivery.download}</span>
                     </a>
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
           <div className="flex items-center gap-2">
             <MessageCircle size={18} className="text-[#25D366]" />
             <h4 className="font-bold text-xs text-[color:var(--ink)]">
-              {t.delivery.notifyAll ? t.delivery.notifyAll(subscriptions.length || 0) : `WhatsApp (${subscriptions.length || 0})`}
+              {t.delivery.notifyAll(subscriptions.length || 0)}
             </h4>
           </div>
 
@@ -254,7 +254,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
             </div>
           ) : (
             <p className="text-xs text-[color:var(--muted)] leading-relaxed">
-              Les correspondants inscrits aux alertes WhatsApp apparaîtront ici dès publication du JT.
+              {t.delivery.notifyEmpty}
             </p>
           )}
         </div>
@@ -334,7 +334,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                           <span>{file.name}</span>
                           {file.isLate && (
                             <span className="text-[10px] bg-[var(--signal)] text-white px-2 py-0.5 rounded-full font-bold">
-                              EN RETARD
+                              {t.delivery.late}
                             </span>
                           )}
                         </p>
@@ -372,7 +372,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
             <div id="tour-delivery-whatsapp" className="mt-8 pt-6 border-t border-[var(--border)]">
               <h4 className="font-semibold text-sm text-[color:var(--ink)] mb-3 flex items-center gap-2">
                 <MessageCircle size={16} className="text-[#25D366]" />
-                {t.delivery.notifyAll ? t.delivery.notifyAll(subscriptions.length || 0) : `Notifier ${subscriptions.length || 0} journaliste(s)`}
+                {t.delivery.notifyAll(subscriptions.length || 0)}
               </h4>
               {deliveries.length > 0 && subscriptions.length > 0 ? (
                 <div className="flex flex-wrap gap-2">

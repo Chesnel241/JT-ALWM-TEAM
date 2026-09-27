@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, chmodSync, mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { RACINE_TESTS } from './setup.js';
 
 /**
  * Les deux scripts de sauvegarde hors machine.
@@ -71,7 +71,7 @@ function lancer(script, { args = [], env = {}, entree = '' } = {}) {
 }
 
 beforeEach(() => {
-  atelier = mkdtempSync(join(tmpdir(), 'jt-sauvegarde-'));
+  atelier = mkdtempSync(join(RACINE_TESTS, 'jt-sauvegarde-'));
   mkdirSync(join(atelier, '.config/rclone'), { recursive: true });
   writeFileSync(join(atelier, '.config/rclone/rclone.conf'), '[r2]\ntype = s3\n');
 });

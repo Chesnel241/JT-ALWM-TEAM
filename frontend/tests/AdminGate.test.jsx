@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AdminGate from '../src/components/AdminGate.jsx';
 import { api } from '../src/api/index.js';
@@ -69,6 +69,22 @@ describe('AdminGate — la porte de l’espace montage', () => {
     expect(readAdminPassword()).toBe('');
   });
 
+  it('dit d’attendre, et non « incorrect », quand le serveur bloque après trop d’essais', async () => {
+    // Le serveur bloque une adresse après vingt échecs (echecsAdmin.js).
+    // Répondre « incorrect » ferait retaper un mot de passe peut-être juste,
+    // et chaque nouvel essai prolongerait l'attente.
+    const blocage = Object.assign(new Error('Trop d’essais'), { status: 429 });
+    vi.spyOn(api, 'checkAdminPassword').mockRejectedValue(blocage);
+
+    poser();
+    fireEvent.change(screen.getByLabelText(/mot de passe/i), { target: { value: 'montage2026' } });
+    fireEvent.click(screen.getByRole('button'));
+
+    const alerte = await screen.findByRole('alert');
+    expect(alerte).toHaveTextContent(/trop d’essais/i);
+    expect(alerte).not.toHaveTextContent(/incorrect/i);
+  });
+
   it('distingue une panne réseau d’un mot de passe faux', async () => {
     // Les deux ne se corrigent pas de la même façon : dire « incorrect »
     // quand le serveur est muet envoie la personne chercher un mot de passe
@@ -95,5 +111,29 @@ describe('AdminGate — la porte de l’espace montage', () => {
     poser({ titre: 'Programmation réservée', sous: 'Le planning des monteurs.' });
     expect(screen.getByText('Programmation réservée')).toBeInTheDocument();
     expect(screen.getByText('Le planning des monteurs.')).toBeInTheDocument();
+  });
+});
+
+describe('api.checkAdminPassword — le blocage n’est pas un mauvais mot de passe', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function repondre(status, corps) {
+    vi.stubGlobal('fetch', () => Promise.resolve({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: '',
+      json: async () => corps,
+      text: async () => JSON.stringify(corps),
+    }));
+  }
+
+  it('un refus reste un refus', async () => {
+    repondre(401, { authenticated: false });
+    await expect(api.checkAdminPassword('faux')).resolves.toBe(false);
+  });
+
+  it('un blocage remonte comme une erreur 429, pour que l’écran dise d’attendre', async () => {
+    repondre(429, { authenticated: false, code: 'TROP_D_ESSAIS', error: 'Trop d’essais' });
+    await expect(api.checkAdminPassword('montage2026')).rejects.toMatchObject({ status: 429 });
   });
 });

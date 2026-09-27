@@ -61,6 +61,35 @@ export function estRubrique(id) {
 }
 
 /**
+ * Étiquettes de fichier qui ne désignent **jamais** un reportage de
+ * correspondant.
+ *
+ * L'espace d'un pays a deux sections fixes, « Annonces » et « Séminaires de
+ * la semaine », et la rédaction y dépose aussi le « Reportage Assemblé ».
+ * Aucune n'est un sujet : elles n'ont pas d'auteur, pas de titre à choisir,
+ * et n'entrent pas dans la limite de cinq reportages.
+ *
+ * L'INCIDENT : la migration créait un sujet par étiquette rencontrée, sans
+ * exception. Au redémarrage suivant, une annonce devenait un sujet
+ * « Annonces » — numéroté parmi les reportages du correspondant, en double
+ * avec la section fixe, compté dans ses cinq, et présenté à la rédaction
+ * comme un reportage attendu. Vérifié sur le vrai store.
+ *
+ * Le studio déclare les mêmes noms (`SECTIONS_FIXES`, dans
+ * `frontend/src/lib/sujets.js`) ; un test garde les deux listes accordées.
+ */
+export const ETIQUETTES_HORS_SUJET = Object.freeze(new Set([
+  'Annonces',
+  'Séminaires de la semaine',
+  'Reportage Assemblé',
+]));
+
+/** Vrai si l'étiquette désigne une section fixe, et non un reportage. */
+export function estHorsSujet(etiquette) {
+  return ETIQUETTES_HORS_SUJET.has(String(etiquette || '').trim());
+}
+
+/**
  * Ne garde que les champs déclarés, en respectant leurs bornes.
  * Un champ absent de la déclaration est ignoré : la forme de la rubrique est
  * décidée ici, pas par ce que le client envoie.

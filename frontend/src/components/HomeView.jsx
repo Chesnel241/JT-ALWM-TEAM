@@ -92,7 +92,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
                   <div className="flex items-center gap-1.5">
                     <Sparkles size={13} className="text-[color:var(--accent-deep)]" />
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--accent-deep)]">
-                      Dernier accès
+                      {t.home.lastAccess}
                     </span>
                   </div>
                   <p className="text-base font-bold text-[color:var(--ink)] leading-tight">
@@ -105,7 +105,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
                 type="button"
                 className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-bold shadow-md shadow-[var(--accent)]/20 active:scale-95 motion-tap flex items-center gap-1"
               >
-                <span>Ouvrir</span>
+                <span>{t.home.open}</span>
                 <ChevronRight size={14} />
               </button>
             </div>
@@ -120,7 +120,8 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher un pays (ex: Gabon, CI, Sénégal)..."
+              placeholder={t.home.searchPh}
+              aria-label={t.home.searchPh}
               className="w-full bg-[var(--paper)] border border-[var(--border)] rounded-xl pl-10 pr-9 py-2.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] shadow-sm"
             />
             {searchQuery && (
@@ -165,7 +166,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
                 <div className="text-left">
                   <p className="text-base font-bold text-[color:var(--ink)] leading-tight">{country.name}</p>
                   <p className="text-[11px] uppercase tracking-wider text-[color:var(--muted)]">
-                    {country.id === 'tj' ? 'Titres & Rappels' : country.id === 'mj' ? 'Mot du JT' : t.home.countryRole}
+                    {t.home.countryRole}
                   </p>
                 </div>
               </div>
@@ -178,13 +179,13 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
 
           {filteredCountries.length === 0 && (
             <div className="p-8 text-center bg-[var(--paper)] rounded-2xl border border-[var(--border)] text-[color:var(--muted)]">
-              <p className="text-sm font-medium">Aucun pays ne correspond à « {searchQuery} »</p>
+              <p className="text-sm font-medium">{t.home.noMatch(searchQuery)}</p>
               <button
                 onClick={() => setAddOpen(true)}
                 className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-semibold shadow-sm"
               >
                 <Plus size={14} />
-                <span>Ajouter ce pays</span>
+                <span>{t.home.addThis}</span>
               </button>
             </div>
           )}

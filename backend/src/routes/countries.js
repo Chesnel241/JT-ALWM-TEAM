@@ -5,6 +5,7 @@ import { getCustomCountries, addCustomCountry } from '../data/store.js';
 import { createLimiter } from '../middleware/rateLimiter.js';
 import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
 import { audit } from '../logger/audit.js';
+import { estRubrique } from '../data/rubriques.js';
 
 const router = Router();
 
@@ -19,9 +20,13 @@ function listAllCountries() {
   // Pays par défaut (env COUNTRIES_JSON ou liste statique) + pays
   // ajoutés via l'API. Dedupe par id ; le défaut gagne en cas de
   // collision (un pays "officiel" ne peut pas être écrasé).
+  //
+  // Les tiroirs des rubriques (`tj`, `mj`) n'en sortent jamais, d'où qu'ils
+  // viennent : un pays portant l'un de ces identifiants partagerait ses
+  // fichiers avec le conducteur ou le Mot du JT.
   const seen = new Set(COUNTRIES.map((c) => c.id));
   const extras = getCustomCountries().filter((c) => !seen.has(c.id));
-  return [...COUNTRIES, ...extras];
+  return [...COUNTRIES, ...extras].filter((c) => !estRubrique(c.id));
 }
 
 router.get('/', (_req, res) => res.json(listAllCountries()));
@@ -58,6 +63,14 @@ router.post(
           'code: 2 à 5 caractères, majuscules / chiffres uniquement'
         )
       );
+    }
+
+    // L'INCIDENT : cette route, ouverte à tous, acceptait `tj` et `mj` — les
+    // tiroirs du conducteur et du Mot du JT. Un « pays » `mj` créé par
+    // n'importe qui rouvrait l'ancien écran d'envoi spécial et mêlait ses
+    // fichiers à ceux de la rubrique.
+    if (estRubrique(cleanId)) {
+      return next(createErrors.badRequest(`L'identifiant "${cleanId}" est réservé à une rubrique du journal`));
     }
 
     const all = listAllCountries();

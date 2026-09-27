@@ -23,7 +23,7 @@ import editorRouter from './routes/editor.js';
 import delaysRouter from './routes/delays.js';
 import webpushRouter from './routes/webpush.js';
 import healthRouter, { metricsRouter } from './routes/health.js';
-import { readReporter, requireAuth, requireAdmin, safeEqual } from './middleware/auth.js';
+import { readReporter, requireAuth, requireAdmin, safeEqual, verdictAdmin } from './middleware/auth.js';
 import logger from './logger/index.js';
 
 import { sanitizerMiddleware } from './middleware/sanitizer.js';
@@ -222,25 +222,17 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
 
       if (req.query.dl === '1') {
         if (metadata && metadata.countryId === 'mj') {
-          const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
-          let providedToken = req.header('x-admin-password');
-          let dlToken = req.query.dl_token;
-
-          let isValidToken = false;
-          if (ADMIN_PASSWORD) {
-            if (typeof providedToken === 'string' && safeEqual(providedToken.trim(), ADMIN_PASSWORD)) {
-              isValidToken = true;
-            } else if (typeof dlToken === 'string') {
-              const { verifyDownloadToken } = await import('./lib/downloadTokens.js');
-              if (verifyDownloadToken(dlToken, filename)) {
-                isValidToken = true;
-              }
-            }
-          } else {
-            isValidToken = true;
+          // Même vérification que partout ailleurs (`verdictAdmin`). Elle était
+          // ici sensible à la casse quand les autres gardes ne l'étaient pas,
+          // et laissait tout passer quand ADMIN_PASSWORD manquait.
+          let isValidToken = verdictAdmin(req).verdict === 'ok';
+          const dlToken = req.query.dl_token;
+          if (!isValidToken && typeof dlToken === 'string') {
+            const { verifyDownloadToken } = await import('./lib/downloadTokens.js');
+            isValidToken = verifyDownloadToken(dlToken, filename);
           }
 
-          if (!isValidToken && ADMIN_PASSWORD) {
+          if (!isValidToken) {
             return res.status(403).send('Accès protégé : authentification requise pour cette rubrique.');
           }
         }
@@ -259,6 +251,23 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
       next(err);
     }
   };
+
+  // Les fichiers d'état du serveur ne se servent jamais, même posés dans le
+  // dossier des envois. En production ils vivent à côté (`dataDir()`), mais en
+  // développement `store.json` est DANS le dossier servi, et un
+  // `UPLOADS_DIR` mal réglé suffirait à le publier. Le chemin est décodé
+  // d'abord : `express.static` décode `store%2Ejson` en `store.json`.
+  const FICHIERS_INTERNES = /(?:^|\/)(?:store\.json|webpush_subscriptions\.json)$|\.tmp$/i;
+  const refuserFichiersInternes = (req, res, next) => {
+    let chemin = req.path;
+    try {
+      chemin = decodeURIComponent(chemin);
+    } catch {
+      // Chemin mal encodé : `express.static` le refusera de lui-même.
+    }
+    return FICHIERS_INTERNES.test(chemin) ? res.sendStatus(404) : next();
+  };
+  app.use(['/uploads', '/api/uploads/files'], refuserFichiersInternes);
 
   app.get('/uploads/*', serveUploadDownload);
   app.get('/api/uploads/files/*', serveUploadDownload);

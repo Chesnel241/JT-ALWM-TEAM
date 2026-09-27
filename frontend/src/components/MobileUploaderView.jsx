@@ -1,19 +1,19 @@
 import { useState, useRef } from 'react';
 import {
-  UploadCloud, FileText, Video, Mic, CheckCircle,
-  Clock, ChevronRight, Trash2, AlertCircle, Plus,
+  FileText, Video, Mic, CheckCircle,
+  Clock, Trash2, AlertCircle,
   HelpCircle, X, ArrowLeft, Send, MessageCircle, Image as ImageIcon, RotateCcw
 } from 'lucide-react';
-import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute, formatWeekFull, formatExpiry } from '../lib/dates.js';
+import { formatRelative, formatWeekFull, formatExpiry } from '../lib/dates.js';
 import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
-import SujetTitleSheet from './SujetTitleSheet.jsx';
+import NombreReportages from './NombreReportages.jsx';
+import ReportagesSheet from './ReportagesSheet.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 import OfflineBanner from './OfflineBanner.jsx';
 import EmptyState from './EmptyState.jsx';
@@ -23,7 +23,7 @@ import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
 import { UPLOAD_ACCEPT } from '../lib/mediaTypes.js';
 import { reportageTone } from '../lib/branding.js';
-import { buildSections, filesForSection } from '../lib/sujets.js';
+import { buildSections, filesForSection, etatNombreReportages, nomAffiche, SECTIONS_FIXES } from '../lib/sujets.js';
 import 'react-phone-number-input/style.css';
 
 // Charte : bleus du logo et neutres. Le texte coloré sur aplat coloré de la
@@ -45,11 +45,8 @@ export default function MobileUploaderView({
   setUploads,
   uploading,
   isLoadingUploads,
-  reportageCount,
-  setReportageCount,
   sujets = [],
-  onCreateSujet,
-  onRenameSujet,
+  onFixerReportages,
   isLocked,
   extensionStatus,
   handleRequestDelay,
@@ -83,7 +80,8 @@ export default function MobileUploaderView({
   const [activeTabId, setActiveTabId] = useState('reportage-0');
   const [scriptModalOpen, setScriptModalOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [sujetSheet, setSujetSheet] = useState({ open: false, mode: 'create', id: null, titre: '' });
+  // Nombre choisi dont on demande les titres ; `null` quand la feuille est fermée.
+  const [sheetNombre, setSheetNombre] = useState(null);
   const [previewScriptFile, setPreviewScriptFile] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -91,37 +89,33 @@ export default function MobileUploaderView({
   // ou « Séminaires » seuls ne parlaient qu'à l'équipe montage.
   const sections = buildSections(sujets, uploads, {
     reportageName: t.uploader.reportageName,
-    extras: [
-      {
-        id: 'annonces',
-        sujetId: null,
-        name: 'Annonces',
-        badge: 'A',
-        isFirst: false,
-      },
-      {
-        id: 'seminaires',
-        sujetId: null,
-        name: 'Séminaires de la semaine',
-        badge: 'S',
-        isFirst: false,
-      },
-    ],
-  }).map((section, i) => ({
-    ...section,
-    // Un titre de sujet peut être long : l'onglet en montre le début, la
-    // carte de section le donne en entier.
-    shortName: section.sujetId ? section.name : (section.id === 'seminaires' ? 'Séminaires' : section.name),
-    badge: section.sujetId ? `${i + 1}` : section.badge,
-    tone: section.sujetId ? reportageTone(i) : undefined,
-    hint: section.sujetId
-      ? t.uploader.sectionHintReportage
-      : section.id === 'annonces'
-        ? t.uploader.sectionHintAnnonces
-        : t.uploader.sectionHintSeminaires,
-  }));
+    extras: SECTIONS_FIXES,
+  }).map((section, i) => {
+    // Un reportage est tout ce qui n'est pas une section fixe — y compris la
+    // section de repli « Reportage 1 », qui n'a pas encore de sujet. Le test
+    // se faisait sur `sujetId` : la section de repli tombait alors dans le cas
+    // par défaut, et un correspondant qui débutait lisait sous « Reportage 1 »
+    // la consigne des séminaires.
+    const reportage = !SECTIONS_FIXES.some((fixe) => fixe.id === section.id);
+    return {
+      ...section,
+      // Un titre de sujet peut être long : l'onglet en montre le début, la
+      // carte de section le donne en entier.
+      label: nomAffiche(section, t),
+      shortName: section.id === 'seminaires' ? t.uploader.sectionSeminairesCourt : nomAffiche(section, t),
+      badge: reportage ? `${i + 1}` : section.badge,
+      tone: reportage ? reportageTone(i) : undefined,
+      hint: reportage
+        ? t.uploader.sectionHintReportage
+        : section.id === 'annonces'
+          ? t.uploader.sectionHintAnnonces
+          : t.uploader.sectionHintSeminaires,
+    };
+  });
 
-  const nbSujets = sections.filter((sec) => sec.sujetId).length;
+  // Le nombre de reportages : choisi, affiché, et le plancher sous lequel on
+  // perdrait des fichiers.
+  const etatReportages = etatNombreReportages(sujets, uploads);
 
   // Find active section
   const currentSection = sections.find((s) => s.id === activeTabId) || sections[0];
@@ -137,7 +131,7 @@ export default function MobileUploaderView({
 
   const handleTriggerFileInput = () => {
     if (isLocked) {
-      addToast('Les envois sont clôturés pour cette semaine.', 'warning');
+      addToast(t.uploader.lockedToast, 'warning');
       return;
     }
     fileInputRef.current?.click();
@@ -177,16 +171,14 @@ export default function MobileUploaderView({
             </span>
           </div>
 
-          {country.id !== 'tj' && country.id !== 'mj' && (
-            <button
-              onClick={() => setTutorialOpen(true)}
-              type="button"
-              className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
-            >
-              <HelpCircle size={14} />
-              <span>Guide</span>
-            </button>
-          )}
+          <button
+            onClick={() => setTutorialOpen(true)}
+            type="button"
+            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
+          >
+            <HelpCircle size={14} />
+            <span>{t.uploader.guide}</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -209,7 +201,7 @@ export default function MobileUploaderView({
           </select>
           {isLocked && (
             <span className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[var(--signal)] text-white">
-              Clôturé
+              {t.uploader.lockedBadge}
             </span>
           )}
         </div>
@@ -243,10 +235,10 @@ export default function MobileUploaderView({
         <div className="p-4 rounded-2xl bg-[var(--signal)]/10 border-2 border-[var(--signal)]/40 text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-[var(--signal)] font-bold text-sm">
             <AlertCircle size={18} />
-            <span>Délai d'envoi dépassé</span>
+            <span>{t.uploader.lateTitle}</span>
           </div>
           <p className="text-xs text-[color:var(--ink)]">
-            Les envois pour cette semaine sont clôturés. Vous pouvez demander un délai exceptionnel à l'équipe.
+            {t.uploader.lateText}
           </p>
           {extensionStatus === 'pending' ? (
             <div className="inline-block px-3 py-1.5 rounded-xl bg-[var(--signal)]/15 border border-[var(--signal)]/40 text-[color:var(--ink)] text-xs font-bold">
@@ -257,7 +249,7 @@ export default function MobileUploaderView({
               onClick={handleRequestDelay}
               className="w-full py-2.5 rounded-xl bg-[var(--signal)] text-white font-bold text-xs shadow-md active:scale-95 transition-transform"
             >
-              Demander un délai supplémentaire
+              {t.uploader.delayAsk}
             </button>
           )}
         </div>
@@ -272,7 +264,7 @@ export default function MobileUploaderView({
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-bold text-[color:var(--ink)]">
-                {t.uploader.mandatoryPhoneTitle || 'Numéro WhatsApp requis'}
+                {t.uploader.mandatoryPhoneTitle}
               </h3>
               <p className="text-sm text-[color:var(--muted)] mt-0.5">
                 {t.uploader.phoneWhy}
@@ -300,7 +292,7 @@ export default function MobileUploaderView({
               {isSubscribing && (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               )}
-              <span>{t.uploader.mandatoryPhoneSubmit || 'Valider et continuer'}</span>
+              <span>{t.uploader.mandatoryPhoneSubmit}</span>
             </button>
             {/* Dire ce qui vient après : l'écran était un mur sans horizon. */}
             <p className="text-center text-xs text-[color:var(--muted)]">
@@ -308,30 +300,37 @@ export default function MobileUploaderView({
             </p>
           </div>
         </div>
-      ) : country.id === 'tj' || country.id === 'mj' ? (
-        /* 5. SPECIAL COUNTRY VIEW (TJ / MJ) */
-        <MobileSpecialUploader
-          country={country}
-          selectedWeek={selectedWeek}
-          uploads={uploads}
-          setUploads={setUploads}
-          openDeleteDialog={openDeleteDialog}
-          t={t}
-        />
       ) : (
-        /* 6. STANDARD REPORTAGES VIEW */
+        /* 5. STANDARD REPORTAGES VIEW — le conducteur et le Mot du JT ont
+           leur propre écran (RubriqueView) : ce ne sont plus des pays. */
         <div className="space-y-4">
-          {/* Sections : une rangée compacte, libellés courts, bouton d'ajout
-              intégré. Le titre en pleine largeur repoussait les boutons
-              d'envoi hors du premier écran, et le bandeau défilait
-              horizontalement sans indice — « Séminaires » restait invisible. */}
+          {/* Étape 1 : combien de reportages. Le choix se fait d'abord et
+              reste visible ; il remplace le bouton « Ajouter un reportage »
+              que plusieurs correspondants ne comprenaient pas. */}
+          <NombreReportages
+            etat={etatReportages}
+            onChoisir={(n) => setSheetNombre(n)}
+            onModifierTitres={() => setSheetNombre(etatReportages.actuel)}
+            disabled={isLocked}
+          />
+
+          {/* Sections : une rangée compacte, libellés courts. Le titre en
+              pleine largeur repoussait les boutons d'envoi hors du premier
+              écran, et le bandeau défilait horizontalement sans indice —
+              « Séminaires » restait invisible. */}
           <div className="space-y-1.5">
+            {!etatReportages.nommes && (
+              <p className="text-xs font-bold text-[color:var(--muted)]">
+                {t.uploader.nbReportagesStep2}
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {sections.map((sec) => {
                 const isActive = sec.id === activeTabId;
-                const count = uploads.filter(
-                  (u) => u.reportage === sec.name || (!u.reportage && sec.isFirst)
-                ).length;
+                // Par `sujetId`, comme la section elle-même : comparer
+                // l'étiquette au titre donnait 0 dès qu'un reportage était
+                // renommé, alors que ses fichiers étaient bien là.
+                const count = filesForSection(uploads, sec).length;
 
                 return (
                   <button
@@ -374,31 +373,6 @@ export default function MobileUploaderView({
 
             </div>
 
-            {/* Ajouter un reportage : pleine largeur sous les onglets. En
-                puce au bout de la rangée, l'action passait inaperçue alors
-                que beaucoup de correspondants couvrent plusieurs sujets. */}
-            <div className="pt-1">
-              {nbSujets < 5 ? (
-                <button
-                  // Un sujet naît avec son titre. Le compteur anonyme
-                  // « Reportage 2 » ne disait rien à la rédaction, qui devait
-                  // rouvrir les fichiers pour savoir de quoi il s'agissait.
-                  onClick={() => setSujetSheet({ open: true, mode: 'create', id: null, titre: '' })}
-                  type="button"
-                  className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-[color:var(--action)]/45 bg-[var(--action)]/5 text-[color:var(--action-deep)] font-bold text-sm active:scale-[0.98] transition-transform"
-                >
-                  <Plus size={18} className="shrink-0" />
-                  <span className="truncate">{t.uploader.addReportage}</span>
-                  <span className="shrink-0 rounded-full bg-[var(--action)]/12 px-2 py-0.5 text-[11px] font-bold">
-                    {nbSujets}
-                  </span>
-                </button>
-              ) : (
-                <p className="text-center text-xs text-[color:var(--muted)]">
-                  {t.uploader.addReportageMax}
-                </p>
-              )}
-            </div>
           </div>
 
           {/* ACTIVE SECTION CONTAINER */}
@@ -413,7 +387,7 @@ export default function MobileUploaderView({
                 >
                   {currentSection.badge}
                 </span>
-                <span className="truncate">{activeReportageName}</span>
+                <span className="truncate">{currentSection.label}</span>
               </h3>
               <p className="mt-0.5 text-xs text-[color:var(--muted)]">{currentSection.hint}</p>
             </div>
@@ -481,10 +455,10 @@ export default function MobileUploaderView({
                 <div className="flex items-center justify-between text-xs font-bold text-[color:var(--ink)]">
                   <span className="flex items-center gap-1.5">
                     <div className="w-3 h-3 border-2 border-[var(--action)]/30 border-t-[var(--action)] rounded-full animate-spin" />
-                    <span>Envoi en cours...</span>
+                    <span>{t.uploader.sendingNow}</span>
                   </span>
                   <span className="text-[11px] text-[color:var(--muted)]">
-                    {activeUploading.length} {activeUploading.length > 1 ? 'fichiers' : 'fichier'}
+                    {t.uploader.checklistCount(activeUploading.length)}
                   </span>
                 </div>
 
@@ -503,7 +477,7 @@ export default function MobileUploaderView({
                           {f.status === 'queued'
                             ? t.uploader.offlineBadge
                             : f.phase === 'processing'
-                            ? 'Finalisation...'
+                            ? t.uploader.finalizing
                             : `${Math.round(f.progress)}%`}
                         </span>
                       </div>
@@ -558,10 +532,10 @@ export default function MobileUploaderView({
             <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[color:var(--ink)]">
-                  Fichiers de {activeReportageName}
+                  {t.uploader.filesOf(currentSection.label)}
                 </span>
                 <span className="text-[11px] text-[color:var(--muted)] font-semibold">
-                  {activeUploads.length} total
+                  {t.uploader.totalCount(activeUploads.length)}
                 </span>
               </div>
 
@@ -606,12 +580,12 @@ export default function MobileUploaderView({
                             </div>
                             {file.status === 'approved' && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[color:var(--success-deep)] mt-1">
-                                <CheckCircle size={11} /> Validé
+                                <CheckCircle size={11} /> {t.uploader.approved}
                               </span>
                             )}
                             {file.status === 'rejected' && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--signal)] mt-1">
-                                <AlertCircle size={11} /> À corriger : {file.feedback}
+                                <AlertCircle size={11} /> {t.uploader.toFixNote(file.feedback)}
                               </span>
                             )}
                           </div>
@@ -623,7 +597,8 @@ export default function MobileUploaderView({
                               onClick={() => setPreviewScriptFile(file)}
                               type="button"
                               className="p-2 text-xs font-semibold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 rounded-xl active:scale-90"
-                              title="Lire le script"
+                              title={t.uploader.readScript}
+                              aria-label={t.uploader.readScript}
                             >
                               <FileText size={15} />
                             </button>
@@ -652,7 +627,7 @@ export default function MobileUploaderView({
               <span className="flex items-center gap-2 min-w-0">
                 <MessageCircle size={15} className="shrink-0 text-[#25D366]" />
                 <span className="font-semibold text-[color:var(--ink)] truncate">
-                  WhatsApp : {phone}
+                  {t.uploader.whatsappLabel} {phone}
                 </span>
               </span>
               <button
@@ -660,7 +635,7 @@ export default function MobileUploaderView({
                 onClick={() => (onEditPhone ? onEditPhone() : setHasPhoneNumber?.(false))}
                 className="shrink-0 rounded-lg px-2.5 py-1.5 font-bold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 active:scale-95"
               >
-                Modifier
+                {t.uploader.edit}
               </button>
             </div>
           )}
@@ -681,7 +656,7 @@ export default function MobileUploaderView({
               <div className="flex items-center gap-2">
                 <FileText className="text-[color:var(--accent-deep)]" size={20} />
                 <h3 className="font-bold text-base text-[color:var(--ink)]">
-                  Script : {activeReportageName}
+                  {t.uploader.scriptFor(currentSection.label)}
                 </h3>
               </div>
               <button
@@ -693,7 +668,7 @@ export default function MobileUploaderView({
             </div>
 
             <p className="text-xs text-[color:var(--muted)]">
-              Collez ou rédigez votre texte de voix off ou vos indications pour le monteur.
+              {t.uploader.scriptModalHint}
             </p>
 
             <textarea
@@ -707,7 +682,7 @@ export default function MobileUploaderView({
             />
 
             <div className="flex items-center justify-between text-xs text-[color:var(--muted)]">
-              <span>{wordCount} mots</span>
+              <span>{t.uploader.wordCount(wordCount)}</span>
               <button
                 onClick={handleScriptModalSubmit}
                 disabled={!activeScriptContent.trim() || submittingScripts[activeReportageName]}
@@ -718,7 +693,7 @@ export default function MobileUploaderView({
                 ) : (
                   <Send size={14} />
                 )}
-                <span>Enregistrer le script</span>
+                <span>{t.uploader.saveScript}</span>
               </button>
             </div>
           </div>
@@ -745,14 +720,14 @@ export default function MobileUploaderView({
             </div>
 
             <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--paper-2)] rounded-2xl text-xs text-[color:var(--ink)] whitespace-pre-wrap font-mono">
-              {previewScriptFile.content || previewScriptFile.text || 'Chargement du contenu...'}
+              {previewScriptFile.content || previewScriptFile.text || t.uploader.scriptLoading}
             </div>
 
             <button
               onClick={() => setPreviewScriptFile(null)}
               className="w-full py-2.5 rounded-xl bg-[var(--paper-2)] border border-[var(--border)] font-bold text-xs text-[color:var(--ink)]"
             >
-              Fermer
+              {t.common.close}
             </button>
           </div>
         </div>
@@ -761,159 +736,21 @@ export default function MobileUploaderView({
       {/* 9. TUTORIAL 5W1H BOTTOM SHEET / MODAL */}
       <Tutorial5W1H isOpen={tutorialOpen} onClose={() => setTutorialOpen(false)} />
 
-      <SujetTitleSheet
-        isOpen={sujetSheet.open}
-        mode={sujetSheet.mode}
-        initialValue={sujetSheet.titre}
-        onClose={() => setSujetSheet((prev) => ({ ...prev, open: false }))}
-        onSubmit={async (titre) => {
-          if (sujetSheet.mode === 'rename' && sujetSheet.id) {
-            await onRenameSujet?.(sujetSheet.id, titre);
-            return;
-          }
-          const cree = await onCreateSujet?.(titre);
-          // On bascule sur le sujet qu'on vient d'ouvrir : c'est là qu'on
-          // va déposer, sinon il faut le chercher dans la rangée.
-          if (cree?.id) setActiveTabId(cree.id);
+      <ReportagesSheet
+        isOpen={sheetNombre !== null}
+        nombre={sheetNombre || 0}
+        sujets={sujets}
+        onClose={() => setSheetNombre(null)}
+        onValider={async (reportages) => {
+          const res = await onFixerReportages?.(reportages);
+          // On se place sur le premier reportage ajouté : c'est là qu'on va
+          // déposer. Sinon on reste où l'on était, s'il existe encore.
+          const anciens = new Set(sujets.map((x) => x.id));
+          const nouveau = (res?.sujets || []).find((x) => !anciens.has(x.id));
+          if (nouveau) setActiveTabId(nouveau.id);
+          else if (!(res?.sujets || []).some((x) => x.id === activeTabId)) setActiveTabId(res?.sujets?.[0]?.id || 'reportage-0');
         }}
       />
-    </div>
-  );
-}
-
-function MobileSpecialUploader({ country, selectedWeek, uploads, setUploads, openDeleteDialog, t }) {
-  const [tab, setTab] = useState('text');
-  const [text, setText] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const { addToast } = useToast();
-  const isMj = country.id === 'mj';
-
-  const handleTextUpload = async () => {
-    if (!text.trim()) return;
-    setIsUploading(true);
-    try {
-      const blob = new Blob([text], { type: 'text/plain' });
-      const filename = isMj ? `details_mot_du_jt_${Date.now()}.txt` : `titres_et_rappels_${Date.now()}.txt`;
-      const file = new File([blob], filename, { type: 'text/plain' });
-      await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Détails' : 'Titres' });
-      setText('');
-      addToast(isMj ? 'Détails sauvegardés' : 'Titres sauvegardés', 'success');
-      const ups = await api.getUploads(selectedWeek, country.id);
-      setUploads(ups);
-    } catch (err) {
-      console.error(err);
-      // Le message du serveur dit pourquoi — format, date limite, portée.
-      // « Erreur lors de la sauvegarde » ne laissait aucune prise.
-      addToast(err?.message || 'Erreur lors de la sauvegarde', 'error', 5000);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setIsUploading(true);
-    try {
-      for (const file of files) {
-        await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Vidéo' : 'Audio/Voix Off' });
-      }
-      addToast('Fichiers uploadés avec succès', 'success');
-      const ups = await api.getUploads(selectedWeek, country.id);
-      setUploads(ups);
-    } catch (err) {
-      console.error(err);
-      addToast(err?.message || "Erreur lors de l'upload", 'error', 5000);
-    } finally {
-      setIsUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* 2 Tabs switcher */}
-      <div className="grid grid-cols-2 gap-2 bg-[var(--paper)] p-1.5 rounded-2xl border border-[var(--border)]">
-        <button
-          onClick={() => setTab('text')}
-          className={`py-2.5 rounded-xl font-bold text-xs motion-tap ${
-            tab === 'text'
-              ? 'bg-[var(--accent)] text-white shadow-sm'
-              : 'text-[color:var(--muted)] hover:text-[color:var(--ink)]'
-          }`}
-        >
-          {isMj ? '1. Rédiger les Détails' : '1. Rédiger les Titres'}
-        </button>
-        <button
-          onClick={() => setTab('media')}
-          className={`py-2.5 rounded-xl font-bold text-xs motion-tap ${
-            tab === 'media'
-              ? 'bg-[var(--accent)] text-white shadow-sm'
-              : 'text-[color:var(--muted)] hover:text-[color:var(--ink)]'
-          }`}
-        >
-          {isMj ? '2. Uploader la Vidéo' : '2. Uploader Médias'}
-        </button>
-      </div>
-
-      {tab === 'text' ? (
-        <div className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] space-y-3">
-          <h3 className="font-bold text-sm text-[color:var(--ink)]">
-            {isMj ? "Détails (Orateur, Thème, Pays)" : "Rédiger les Titres & Rappels"}
-          </h3>
-          <textarea
-            rows={5}
-            className="w-full p-3.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-2xl text-xs text-[color:var(--ink)] outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
-            placeholder={isMj ? "Orateur, thème, pays..." : "Collez ou tapez les titres..."}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <button
-            onClick={handleTextUpload}
-            disabled={!text.trim() || isUploading}
-            className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-50"
-          >
-            {isUploading ? 'Sauvegarde...' : 'Sauvegarder'}
-          </button>
-        </div>
-      ) : (
-        <div className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] space-y-3 text-center">
-          <h3 className="font-bold text-sm text-[color:var(--ink)]">
-            {isMj ? 'Vidéo du Mot du JT' : 'Fichiers Audio & Vidéo'}
-          </h3>
-          <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--border)] rounded-2xl cursor-pointer bg-[var(--paper-2)] active:scale-98">
-            <UploadCloud size={28} className="text-[color:var(--accent-deep)] mb-2" />
-            <span className="font-bold text-xs text-[color:var(--ink)]">Touchez pour choisir des fichiers</span>
-            <span className="text-[10px] text-[color:var(--muted)] mt-1">
-              {isMj ? 'Vidéo MP4, MOV...' : 'Audio MP3, WAV, Vidéo...'}
-            </span>
-            <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-          </label>
-        </div>
-      )}
-
-      {/* Saved files */}
-      {uploads.length > 0 && (
-        <div className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] space-y-2">
-          <h4 className="font-bold text-xs text-[color:var(--ink)]">Fichiers enregistrés</h4>
-          <div className="space-y-1.5">
-            {uploads.map((file) => (
-              <div
-                key={file.id}
-                className="p-2.5 bg-[var(--paper-2)] rounded-xl border border-[var(--border)] flex items-center justify-between text-xs"
-              >
-                <span className="font-medium text-[color:var(--ink)] truncate pr-2">{file.name}</span>
-                <button
-                  onClick={() => openDeleteDialog(file)}
-                  className="text-[var(--signal)] p-1 shrink-0 active:scale-90"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
