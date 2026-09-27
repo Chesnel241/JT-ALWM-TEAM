@@ -1,3 +1,5 @@
+import { estRubrique } from './rubriques.js';
+
 const DEFAULT_COUNTRIES = [
   { id: 'tj', name: 'Titres & Rappels JT', code: 'TJ' },
   { id: 'cm', name: 'Cameroun', code: 'CM' },
@@ -43,7 +45,8 @@ function loadCountries() {
   // c'est le conducteur du journal, et il a désormais sa propre rubrique
   // (data/rubriques.js), avec ses champs. On le RETIRE de la liste des pays,
   // y compris d'un COUNTRIES_JSON hérité qui le contiendrait encore.
-  return list.filter((c) => c.id !== 'tj');
+  // `mj` non plus, s'il arrivait par un COUNTRIES_JSON : ce sont des tiroirs.
+  return list.filter((c) => !estRubrique(c.id));
 }
 
 export const COUNTRIES = loadCountries();
