@@ -23,7 +23,7 @@ import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
 import { UPLOAD_ACCEPT } from '../lib/mediaTypes.js';
 import { reportageTone } from '../lib/branding.js';
-import { buildSections, filesForSection, etatNombreReportages, SECTIONS_FIXES } from '../lib/sujets.js';
+import { buildSections, filesForSection, etatNombreReportages, nomAffiche, SECTIONS_FIXES } from '../lib/sujets.js';
 import 'react-phone-number-input/style.css';
 
 // Charte : bleus du logo et neutres. Le texte coloré sur aplat coloré de la
@@ -101,7 +101,8 @@ export default function MobileUploaderView({
       ...section,
       // Un titre de sujet peut être long : l'onglet en montre le début, la
       // carte de section le donne en entier.
-      shortName: section.id === 'seminaires' ? 'Séminaires' : section.name,
+      label: nomAffiche(section, t),
+      shortName: section.id === 'seminaires' ? t.uploader.sectionSeminairesCourt : nomAffiche(section, t),
       badge: reportage ? `${i + 1}` : section.badge,
       tone: reportage ? reportageTone(i) : undefined,
       hint: reportage
@@ -130,7 +131,7 @@ export default function MobileUploaderView({
 
   const handleTriggerFileInput = () => {
     if (isLocked) {
-      addToast('Les envois sont clôturés pour cette semaine.', 'warning');
+      addToast(t.uploader.lockedToast, 'warning');
       return;
     }
     fileInputRef.current?.click();
@@ -176,7 +177,7 @@ export default function MobileUploaderView({
             className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
           >
             <HelpCircle size={14} />
-            <span>Guide</span>
+            <span>{t.uploader.guide}</span>
           </button>
         </div>
 
@@ -200,7 +201,7 @@ export default function MobileUploaderView({
           </select>
           {isLocked && (
             <span className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[var(--signal)] text-white">
-              Clôturé
+              {t.uploader.lockedBadge}
             </span>
           )}
         </div>
@@ -234,10 +235,10 @@ export default function MobileUploaderView({
         <div className="p-4 rounded-2xl bg-[var(--signal)]/10 border-2 border-[var(--signal)]/40 text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-[var(--signal)] font-bold text-sm">
             <AlertCircle size={18} />
-            <span>Délai d'envoi dépassé</span>
+            <span>{t.uploader.lateTitle}</span>
           </div>
           <p className="text-xs text-[color:var(--ink)]">
-            Les envois pour cette semaine sont clôturés. Vous pouvez demander un délai exceptionnel à l'équipe.
+            {t.uploader.lateText}
           </p>
           {extensionStatus === 'pending' ? (
             <div className="inline-block px-3 py-1.5 rounded-xl bg-[var(--signal)]/15 border border-[var(--signal)]/40 text-[color:var(--ink)] text-xs font-bold">
@@ -248,7 +249,7 @@ export default function MobileUploaderView({
               onClick={handleRequestDelay}
               className="w-full py-2.5 rounded-xl bg-[var(--signal)] text-white font-bold text-xs shadow-md active:scale-95 transition-transform"
             >
-              Demander un délai supplémentaire
+              {t.uploader.delayAsk}
             </button>
           )}
         </div>
@@ -263,7 +264,7 @@ export default function MobileUploaderView({
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-bold text-[color:var(--ink)]">
-                {t.uploader.mandatoryPhoneTitle || 'Numéro WhatsApp requis'}
+                {t.uploader.mandatoryPhoneTitle}
               </h3>
               <p className="text-sm text-[color:var(--muted)] mt-0.5">
                 {t.uploader.phoneWhy}
@@ -291,7 +292,7 @@ export default function MobileUploaderView({
               {isSubscribing && (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               )}
-              <span>{t.uploader.mandatoryPhoneSubmit || 'Valider et continuer'}</span>
+              <span>{t.uploader.mandatoryPhoneSubmit}</span>
             </button>
             {/* Dire ce qui vient après : l'écran était un mur sans horizon. */}
             <p className="text-center text-xs text-[color:var(--muted)]">
@@ -386,7 +387,7 @@ export default function MobileUploaderView({
                 >
                   {currentSection.badge}
                 </span>
-                <span className="truncate">{activeReportageName}</span>
+                <span className="truncate">{currentSection.label}</span>
               </h3>
               <p className="mt-0.5 text-xs text-[color:var(--muted)]">{currentSection.hint}</p>
             </div>
@@ -454,10 +455,10 @@ export default function MobileUploaderView({
                 <div className="flex items-center justify-between text-xs font-bold text-[color:var(--ink)]">
                   <span className="flex items-center gap-1.5">
                     <div className="w-3 h-3 border-2 border-[var(--action)]/30 border-t-[var(--action)] rounded-full animate-spin" />
-                    <span>Envoi en cours...</span>
+                    <span>{t.uploader.sendingNow}</span>
                   </span>
                   <span className="text-[11px] text-[color:var(--muted)]">
-                    {activeUploading.length} {activeUploading.length > 1 ? 'fichiers' : 'fichier'}
+                    {t.uploader.checklistCount(activeUploading.length)}
                   </span>
                 </div>
 
@@ -476,7 +477,7 @@ export default function MobileUploaderView({
                           {f.status === 'queued'
                             ? t.uploader.offlineBadge
                             : f.phase === 'processing'
-                            ? 'Finalisation...'
+                            ? t.uploader.finalizing
                             : `${Math.round(f.progress)}%`}
                         </span>
                       </div>
@@ -531,10 +532,10 @@ export default function MobileUploaderView({
             <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[color:var(--ink)]">
-                  Fichiers de {activeReportageName}
+                  {t.uploader.filesOf(currentSection.label)}
                 </span>
                 <span className="text-[11px] text-[color:var(--muted)] font-semibold">
-                  {activeUploads.length} total
+                  {t.uploader.totalCount(activeUploads.length)}
                 </span>
               </div>
 
@@ -579,12 +580,12 @@ export default function MobileUploaderView({
                             </div>
                             {file.status === 'approved' && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[color:var(--success-deep)] mt-1">
-                                <CheckCircle size={11} /> Validé
+                                <CheckCircle size={11} /> {t.uploader.approved}
                               </span>
                             )}
                             {file.status === 'rejected' && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--signal)] mt-1">
-                                <AlertCircle size={11} /> À corriger : {file.feedback}
+                                <AlertCircle size={11} /> {t.uploader.toFixNote(file.feedback)}
                               </span>
                             )}
                           </div>
@@ -596,7 +597,8 @@ export default function MobileUploaderView({
                               onClick={() => setPreviewScriptFile(file)}
                               type="button"
                               className="p-2 text-xs font-semibold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 rounded-xl active:scale-90"
-                              title="Lire le script"
+                              title={t.uploader.readScript}
+                              aria-label={t.uploader.readScript}
                             >
                               <FileText size={15} />
                             </button>
@@ -625,7 +627,7 @@ export default function MobileUploaderView({
               <span className="flex items-center gap-2 min-w-0">
                 <MessageCircle size={15} className="shrink-0 text-[#25D366]" />
                 <span className="font-semibold text-[color:var(--ink)] truncate">
-                  WhatsApp : {phone}
+                  {t.uploader.whatsappLabel} {phone}
                 </span>
               </span>
               <button
@@ -633,7 +635,7 @@ export default function MobileUploaderView({
                 onClick={() => (onEditPhone ? onEditPhone() : setHasPhoneNumber?.(false))}
                 className="shrink-0 rounded-lg px-2.5 py-1.5 font-bold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 active:scale-95"
               >
-                Modifier
+                {t.uploader.edit}
               </button>
             </div>
           )}
@@ -654,7 +656,7 @@ export default function MobileUploaderView({
               <div className="flex items-center gap-2">
                 <FileText className="text-[color:var(--accent-deep)]" size={20} />
                 <h3 className="font-bold text-base text-[color:var(--ink)]">
-                  Script : {activeReportageName}
+                  {t.uploader.scriptFor(currentSection.label)}
                 </h3>
               </div>
               <button
@@ -666,7 +668,7 @@ export default function MobileUploaderView({
             </div>
 
             <p className="text-xs text-[color:var(--muted)]">
-              Collez ou rédigez votre texte de voix off ou vos indications pour le monteur.
+              {t.uploader.scriptModalHint}
             </p>
 
             <textarea
@@ -680,7 +682,7 @@ export default function MobileUploaderView({
             />
 
             <div className="flex items-center justify-between text-xs text-[color:var(--muted)]">
-              <span>{wordCount} mots</span>
+              <span>{t.uploader.wordCount(wordCount)}</span>
               <button
                 onClick={handleScriptModalSubmit}
                 disabled={!activeScriptContent.trim() || submittingScripts[activeReportageName]}
@@ -691,7 +693,7 @@ export default function MobileUploaderView({
                 ) : (
                   <Send size={14} />
                 )}
-                <span>Enregistrer le script</span>
+                <span>{t.uploader.saveScript}</span>
               </button>
             </div>
           </div>
@@ -718,14 +720,14 @@ export default function MobileUploaderView({
             </div>
 
             <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--paper-2)] rounded-2xl text-xs text-[color:var(--ink)] whitespace-pre-wrap font-mono">
-              {previewScriptFile.content || previewScriptFile.text || 'Chargement du contenu...'}
+              {previewScriptFile.content || previewScriptFile.text || t.uploader.scriptLoading}
             </div>
 
             <button
               onClick={() => setPreviewScriptFile(null)}
               className="w-full py-2.5 rounded-xl bg-[var(--paper-2)] border border-[var(--border)] font-bold text-xs text-[color:var(--ink)]"
             >
-              Fermer
+              {t.common.close}
             </button>
           </div>
         </div>

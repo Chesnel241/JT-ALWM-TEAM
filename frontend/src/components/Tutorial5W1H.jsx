@@ -96,14 +96,14 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
                 className="hidden md:flex shrink-0 items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30 motion-tap hover:scale-105 active:scale-95"
               >
                 <CheckCircle size={20} />
-                <span>J'ai compris</span>
+                <span>{t.tutorial.gotIt}</span>
               </button>
             </div>
 
             <div className="mb-4 sm:mb-6 p-3.5 sm:p-4 bg-[var(--accent)]/10 border border-[var(--accent)] rounded-xl flex gap-3 items-start">
               <Info className="text-[var(--accent)] shrink-0 mt-0.5" size={18} />
               <p className="text-xs sm:text-sm text-[var(--ink)]">
-                <strong className="text-[var(--accent)]">Important :</strong> Un contact WhatsApp est requis pour vous avertir rapidement en cas de problème technique sur vos envois ou disponibilité du JT.
+                <strong className="text-[var(--accent)]">{t.tutorial.important}</strong> {t.tutorial.whatsappRequired}
               </p>
             </div>
 
@@ -139,7 +139,7 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
                 className="w-full flex justify-center items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30 motion-tap active:scale-95 text-sm"
               >
                 <CheckCircle size={18} />
-                <span>J'ai compris</span>
+                <span>{t.tutorial.gotIt}</span>
               </button>
             </div>
             

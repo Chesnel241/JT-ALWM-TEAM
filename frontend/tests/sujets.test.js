@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildSections, filesForSection, etatNombreReportages, estSectionFixe } from '../src/lib/sujets.js';
+import { buildSections, filesForSection, etatNombreReportages, estSectionFixe, nomAffiche, SECTIONS_FIXES } from '../src/lib/sujets.js';
+import { translations } from '../src/i18n/translations.js';
 
 const EXTRAS = [{ id: 'annonces', sujetId: null, name: 'Annonces', badge: 'A', isFirst: false }];
 
@@ -95,5 +96,22 @@ describe('le nombre de reportages', () => {
   it('reconnaît une section fixe', () => {
     expect(estSectionFixe({ reportage: 'Séminaires de la semaine' })).toBe(true);
     expect(estSectionFixe({ reportage: 'Reportage 1' })).toBe(false);
+  });
+});
+
+describe('nomAffiche — le nom lu, pas l’étiquette de rangement', () => {
+  // L'INCIDENT : les onglets affichaient `name`, qui est aussi l'étiquette
+  // de rangement des fichiers (`reportage: 'Annonces'`). Un correspondant
+  // anglophone lisait donc « Annonces » dans un écran anglais.
+  it('traduit les sections fixes sans toucher à leur étiquette', () => {
+    const [annonces, seminaires] = SECTIONS_FIXES;
+    expect(nomAffiche(annonces, translations.en)).toBe('Announcements');
+    expect(nomAffiche(seminaires, translations.en)).toBe('This week’s seminars');
+    expect(annonces.name).toBe('Annonces');
+    expect(nomAffiche(annonces, translations.fr)).toBe('Annonces');
+  });
+
+  it('laisse le titre d’un reportage tel que le correspondant l’a écrit', () => {
+    expect(nomAffiche({ id: 's1', name: 'Le marché de Douala' }, translations.en)).toBe('Le marché de Douala');
   });
 });

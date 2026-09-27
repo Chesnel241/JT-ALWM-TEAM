@@ -1,5 +1,6 @@
 import { AlertCircle } from 'lucide-react';
 import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
+import { tStatic } from '../i18n/runtime.js';
 
 export default function ConfirmDialog({
   isOpen,
@@ -82,8 +83,7 @@ export default function ConfirmDialog({
             {isLoading ? (
               <>
                 <div className="h-4 w-4 border-2 border-[var(--paper)] border-t-transparent rounded-full animate-spin" aria-hidden="true" />
-                <span className="sr-only">Chargement</span>
-                En cours...
+                {tStatic().common.working}
               </>
             ) : (
               confirmText

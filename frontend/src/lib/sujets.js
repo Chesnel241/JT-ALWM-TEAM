@@ -71,6 +71,20 @@ export function filesForSection(files, section) {
   );
 }
 
+/**
+ * Le nom à AFFICHER d'une section.
+ *
+ * Le `name` d'une section fixe est aussi l'étiquette de rangement de ses
+ * fichiers (`reportage: 'Annonces'`), que le serveur connaît sous ce nom : il
+ * ne se traduit donc pas. Seul l'affichage suit la langue — sans quoi un
+ * correspondant anglophone lisait « Annonces » dans un écran anglais.
+ */
+export function nomAffiche(section, t) {
+  if (section?.id === 'annonces') return t?.uploader?.sectionAnnonces || section.name;
+  if (section?.id === 'seminaires') return t?.uploader?.sectionSeminaires || section.name;
+  return section?.name || '';
+}
+
 /** Vrai si le fichier appartient à une section fixe, et non à un reportage. */
 export function estSectionFixe(fichier) {
   return SECTIONS_FIXES.some((s) => s.name === fichier?.reportage);

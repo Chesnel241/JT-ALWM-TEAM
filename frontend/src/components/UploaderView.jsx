@@ -11,7 +11,7 @@ import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js'
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import { classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
-import { buildSections, filesForSection, etatNombreReportages, SECTIONS_FIXES } from '../lib/sujets.js';
+import { buildSections, filesForSection, etatNombreReportages, nomAffiche, SECTIONS_FIXES } from '../lib/sujets.js';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import PhoneInput from 'react-phone-number-input';
@@ -389,7 +389,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       setDelaysData(dls);
     } catch (err) {
       console.error(err);
-      addToast(err.message || 'Erreur lors de la demande de délai', 'error');
+      addToast(err.message || t.uploader.delayError, 'error');
     } finally {
       setIsRequestingDelay(false);
     }
@@ -448,7 +448,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       saveCountryPhone(country.id, phoneToSub);
       setPhone(phoneToSub);
       setHasPhoneNumber(true);
-      addToast(t.uploader.notifySuccess || 'Numéro WhatsApp enregistré avec succès !', 'success', 3000);
+      addToast(t.uploader.notifySuccess, 'success', 3000);
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
     } finally {
@@ -532,10 +532,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               onClick={handleEditPhone}
               type="button"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--success)]/10 text-[color:var(--success-deep)] border border-[var(--success)]/30 text-xs font-semibold hover:bg-[var(--success)]/20 transition-colors active:scale-95"
-              title="Cliquer pour modifier le numéro WhatsApp"
+              title={t.uploader.phoneEdit}
             >
-              <span>📱 WhatsApp : {phone}</span>
-              <span className="text-[10px] underline">(Modifier)</span>
+              <span>📱 {t.uploader.whatsappLabel} {phone}</span>
+              <span className="text-[10px] underline">({t.uploader.edit})</span>
             </button>
           )}
           <select
@@ -573,7 +573,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           ) : extensionStatus === 'approved' ? (
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium text-sm shrink-0">
               <Clock size={18} className="shrink-0" />
-              <span>Délai supplémentaire accordé.</span>
+              <span>{t.uploader.delayGranted}</span>
             </div>
           ) : (
             <button
@@ -581,7 +581,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               disabled={isRequestingDelay}
               className="btn btn-primary bg-[var(--signal)] border-transparent text-white shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
             >
-              {isRequestingDelay ? 'Envoi…' : 'Demander un délai'}
+              {isRequestingDelay ? t.uploader.sending : t.uploader.delayAsk}
             </button>
           )}
         </div>
@@ -595,17 +595,17 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             </div>
             <div>
               <h2 className="text-xl font-bold text-[color:var(--ink)] mb-2">
-                {t.uploader.mandatoryPhoneTitle || 'Un contact WhatsApp est obligatoire'}
+                {t.uploader.mandatoryPhoneTitle}
               </h2>
               <p className="text-[color:var(--muted)]">
-                {t.uploader.mandatoryPhoneDesc || 'Afin de vous avertir rapidement en cas de problème (vidéo refusée, son inaudible, etc.) ou vous prévenir de la disponibilité du JT, veuillez renseigner le numéro WhatsApp de votre pays.'}
+                {t.uploader.mandatoryPhoneDesc}
               </p>
             </div>
           </div>
           
           <div className="max-w-md mx-auto bg-[var(--paper)] p-5 rounded-2xl border border-[var(--border)] shadow-sm">
             <label className="block text-sm font-medium text-[color:var(--ink)] mb-3">
-              Numéro de téléphone avec indicatif
+              {t.uploader.phoneLabel}
             </label>
             <PhoneInput
               international
@@ -623,7 +623,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               {isSubscribing ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : null}
-              {t.uploader.mandatoryPhoneSubmit || 'Valider et débloquer l\'upload'}
+              {t.uploader.mandatoryPhoneSubmit}
             </button>
           </div>
         </div>
@@ -674,12 +674,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             >
               <div className="flex items-center gap-2 md:gap-3 md:mb-6">
                 <span className="bg-[var(--accent)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm md:shadow-none">{section.badge}</span>
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[color:var(--ink)]">{reportageName}</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[color:var(--ink)]">{nomAffiche(section, t)}</h2>
               </div>
               <div className="flex items-center gap-4">
                 {repUploads.length > 0 && (
                   <span className="text-xs sm:text-sm font-medium text-[color:var(--muted)] bg-[var(--paper-2)] border border-[var(--border)] px-3 py-1 rounded-full hidden sm:inline-block md:hidden">
-                    {repUploads.length} {repUploads.length > 1 ? 'fichiers' : 'fichier'}
+                    {t.uploader.checklistCount(repUploads.length)}
                   </span>
                 )}
                 <div className={`p-1 rounded-full transition-transform duration-300 md:hidden ${expandedSection === section.id ? 'bg-[var(--accent)] text-white rotate-180' : 'bg-black/5 dark:bg-white/5 text-[color:var(--ink)]'}`}>
@@ -842,7 +842,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                       {submittingScripts[reportageName] ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Envoi...
+                          {t.uploader.sending}
                         </>
                       ) : (
                         t.uploader.scriptSubmit
@@ -856,7 +856,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 <div className="flex items-center gap-2 mb-6">
                   <Folder className="text-[color:var(--muted)]" />
                   <h3 className="font-semibold text-[color:var(--ink)]">
-                    {reportageName}
+                    {nomAffiche(section, t)}
                   </h3>
                 </div>
 
@@ -886,7 +886,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                               {file.name}
                               {file.isLate && (
                                 <span className="text-[10px] bg-[var(--signal)] text-white px-2 py-0.5 rounded-full font-bold">
-                                  EN RETARD
+                                  {t.uploader.late}
                                 </span>
                               )}
                             </p>
@@ -903,13 +903,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                             </p>
                             {file.status === 'approved' && (
                               <p className="text-xs font-medium text-[var(--accent)] mt-1 flex items-center gap-1">
-                                <CheckCircle size={12} /> Validé
+                                <CheckCircle size={12} /> {t.uploader.approved}
                               </p>
                             )}
                             {file.status === 'rejected' && (
                               <div className="mt-2 p-2 bg-[var(--signal)]/10 rounded-lg border border-[var(--signal)]/20">
                                 <p className="text-xs font-bold text-[var(--signal)] flex items-center gap-1 mb-1">
-                                  <AlertCircle size={12} /> À corriger
+                                  <AlertCircle size={12} /> {t.uploader.toFix}
                                 </p>
                                 <p className="text-xs text-[var(--signal)]/90">{file.feedback}</p>
                               </div>
