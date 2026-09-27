@@ -343,3 +343,35 @@ describe('l’archive de la rédaction survit à la portée', () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe('fixer les reportages de la semaine', () => {
+  // Une route qui crée, renomme et retire des reportages d'un pays : c'est
+  // précisément ce qu'un correspondant ne doit pouvoir faire que chez lui.
+  const strict = () => { process.env.REPORTER_ACCESS = 'strict'; };
+
+  it('laisse le correspondant fixer les reportages de SON pays', async () => {
+    strict();
+    const res = await request(app)
+      .put(`/api/sujets/${SEMAINE}/${GABON}`)
+      .set('X-Reporter-Token', lienPour(GABON))
+      .send({ reportages: [{ titre: 'Portée : sujet du correspondant' }] });
+    expect(res.status).toBe(200);
+  });
+
+  it('lui refuse ceux d’un autre pays', async () => {
+    strict();
+    const res = await request(app)
+      .put(`/api/sujets/${SEMAINE}/${AUTRE}`)
+      .set('X-Reporter-Token', lienPour(GABON))
+      .send({ reportages: [{ titre: 'Détourné' }] });
+    expect(res.status).toBe(403);
+  });
+
+  it('les refuse à qui ne présente aucun lien', async () => {
+    strict();
+    const res = await request(app)
+      .put(`/api/sujets/${SEMAINE}/${GABON}`)
+      .send({ reportages: [{ titre: 'Anonyme' }] });
+    expect(res.status).toBe(403);
+  });
+});

@@ -1,6 +1,21 @@
 import { sectionsFromUploads } from './mediaTypes.js';
 
 /**
+ * Les sections fixes de l'espace d'un pays. Elles ne sont pas des reportages :
+ * pas de titre à choisir, et hors de la limite de cinq.
+ *
+ * Écrites une seule fois ici — elles l'étaient en double, dans la vue mobile
+ * et dans la vue ordinateur. Le serveur en tient la liste miroir
+ * (`ETIQUETTES_HORS_SUJET`, `backend/src/data/rubriques.js`) : sans elle, une
+ * annonce redevenait un reportage « Annonces » au redémarrage suivant. Un test
+ * garde les deux listes accordées.
+ */
+export const SECTIONS_FIXES = Object.freeze([
+  Object.freeze({ id: 'annonces', sujetId: null, name: 'Annonces', badge: 'A', isFirst: false }),
+  Object.freeze({ id: 'seminaires', sujetId: null, name: 'Séminaires de la semaine', badge: 'S', isFirst: false }),
+]);
+
+/**
  * Sections affichées au correspondant.
  *
  * Un sujet du serveur donne une section nommée, à laquelle les fichiers se

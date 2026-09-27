@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
 import { weekExpiryDate, weekUploadCutoff } from './constants.js';
+import { estRubrique, estHorsSujet } from './rubriques.js';
 import { storePath } from '../lib/paths.js';
 import { Redis } from '@upstash/redis';
 
@@ -172,16 +173,131 @@ function amorcerPlanning() {
 }
 
 /**
- * Crée un sujet par étiquette de reportage rencontrée, et rattache les
- * fichiers existants.
+ * Numéro d'un libellé de repli — « Reportage 2 », « Report 2 » — ou 0.
  *
- * Sans perte : un fichier sans étiquette rejoint le premier sujet du pays,
- * exactement comme l'affichage le faisait déjà en balayant les envois
- * antérieurs au découpage vers la section 1. Idempotent — un fichier qui a
- * déjà son `sujetId` n'est pas retouché — donc rejouable à chaque démarrage.
+ * C'est le nom que l'écran du correspondant donne à une section tant
+ * qu'aucun sujet n'existe (`buildSections`, côté studio), dans l'une ou
+ * l'autre langue de l'interface. Un fichier déposé là porte ce libellé : il
+ * appartient au k-ième reportage.
+ */
+export function numeroDeRepli(etiquette) {
+  const m = /^(?:reportage|report)\s+(\d{1,2})$/i.exec(String(etiquette || '').trim());
+  return m ? Number(m[1]) : 0;
+}
+
+/**
+ * Rattache à un sujet les fichiers d'un pays qui n'en ont pas encore.
+ *
+ * POURQUOI À CHAUD, ET PLUS SEULEMENT AU DÉMARRAGE
+ * ------------------------------------------------
+ * Tant qu'un pays n'a aucun sujet, l'écran du correspondant montre une
+ * section de repli, « Reportage 1 », et y accepte des fichiers — sans sujet,
+ * puisqu'il n'y en a pas. Dès qu'un premier sujet était créé, l'écran passait
+ * aux sujets et la section de repli disparaissait : **les fichiers déposés
+ * juste avant n'apparaissaient plus nulle part.** Seule la migration du
+ * redémarrage suivant les rattachait — à un nouveau sujet « Reportage 1 »,
+ * rangé *après* celui qu'on venait de créer. Le premier reportage du
+ * correspondant devenait son second. Vérifié sur le vrai store, et sur le
+ * rendu des sections.
+ *
+ * LES RÈGLES, dans l'ordre
+ * ------------------------
+ * - un tiroir de rubrique (`tj`, `mj`) n'a pas de sujets ;
+ * - une section fixe (Annonces, Séminaires, Reportage Assemblé) n'est jamais
+ *   rattachée : elle se retrouve par son étiquette ;
+ * - une étiquette égale au titre d'un sujet rejoint ce sujet ;
+ * - un libellé de repli « Reportage k » rejoint le k-ième sujet ;
+ * - le reste rejoint le premier sujet, celui qui affichait déjà les fichiers
+ *   sans étiquette.
+ *
+ * À la migration (`creerSiAbsent`), une étiquette sans correspondance crée
+ * son propre sujet, comme avant : c'est ainsi que les anciens envois trouvent
+ * chacun leur reportage. À chaud, on ne crée rien — le correspondant vient de
+ * dire combien de reportages il envoie, on ne lui en ajoute pas.
+ *
+ * Idempotent : un fichier qui a déjà son sujet n'est pas retouché.
+ *
+ * @returns {number} le nombre de fichiers rattachés
+ */
+export function rattacherOrphelins(weekId, countryId, { creerSiAbsent = false } = {}) {
+  if (estRubrique(countryId)) return 0;
+  const files = db[weekId]?.[countryId];
+  if (!Array.isArray(files)) return 0;
+  const orphelin = (f) => f && !f.sujetId && !estHorsSujet(f.reportage);
+  if (!files.some(orphelin)) return 0;
+
+  const store = sujetsOf(weekId);
+  const creer = (titre) => {
+    const sujet = {
+      id: randomUUID(),
+      weekId,
+      countryId,
+      titre,
+      auteur: '',
+      etat: ETATS_SUJET.RECU,
+      creeLe: new Date().toISOString(),
+    };
+    store[sujet.id] = sujet;
+    return sujet.id;
+  };
+
+  const cible = (etiquette) => {
+    const sujets = getSujets(weekId, countryId);
+    const exact = sujets.find((s) => s.titre === etiquette);
+    if (exact) return exact.id;
+    const k = numeroDeRepli(etiquette);
+    if (k > 0 && sujets[k - 1]) return sujets[k - 1].id;
+    return creerSiAbsent ? creer(etiquette) : null;
+  };
+
+  const touches = new Set();
+  let rattaches = 0;
+  const rattacher = (file, id) => {
+    file.sujetId = id;
+    touches.add(id);
+    rattaches++;
+  };
+
+  // Premier passage : les fichiers étiquetés fixent l'ordre des sujets créés.
+  for (const file of files) {
+    if (!orphelin(file)) continue;
+    const etiquette = String(file.reportage || '').trim();
+    if (!etiquette) continue;
+    const id = cible(etiquette);
+    if (id) rattacher(file, id);
+  }
+
+  // Second passage : ce qui reste rejoint le premier sujet.
+  for (const file of files) {
+    if (!orphelin(file)) continue;
+    let premier = getSujets(weekId, countryId)[0]?.id;
+    if (!premier) {
+      if (!creerSiAbsent) break;
+      premier = creer('Reportage 1');
+    }
+    rattacher(file, premier);
+  }
+
+  // L'état d'un sujet qui reçoit des fichiers se recalcule — sauf s'il a été
+  // fixé par un monteur. La migration recalculait jusqu'ici l'état de TOUS les
+  // sujets du pays, et effaçait au redémarrage une validation de la rédaction.
+  for (const id of touches) {
+    const sujet = store[id];
+    if (!sujet) continue;
+    if (sujet.etat === ETATS_SUJET.VALIDE || sujet.etat === ETATS_SUJET.AU_CONDUCTEUR) continue;
+    sujet.etat = etatDeduit(files.filter((f) => f?.sujetId === id));
+  }
+
+  if (rattaches) persistDb();
+  return rattaches;
+}
+
+/**
+ * Au démarrage : rattache les fichiers de tous les pays, en créant un sujet
+ * par étiquette rencontrée. Voir `rattacherOrphelins`.
  */
 function migrateSujets() {
-  let touched = 0;
+  let rattaches = 0;
 
   for (const weekId of Object.keys(db)) {
     if (META_KEYS.has(weekId)) continue;
@@ -190,64 +306,12 @@ function migrateSujets() {
 
     for (const countryId of Object.keys(week)) {
       if (RESERVED_WEEK_KEYS.has(countryId) || countryId === '_subscriptions' || countryId === '_extensions') continue;
-      const files = week[countryId];
-      if (!Array.isArray(files) || files.length === 0) continue;
-      if (files.every((f) => f?.sujetId)) continue;
-
-      const store = sujetsOf(weekId);
-      // Un sujet par étiquette distincte, dans l'ordre où elles apparaissent.
-      const parLabel = new Map();
-      for (const [id, sujet] of Object.entries(store)) {
-        if (sujet.countryId === countryId && sujet.titre) parLabel.set(sujet.titre, id);
-      }
-
-      const ensure = (titre) => {
-        if (parLabel.has(titre)) return parLabel.get(titre);
-        const sujet = {
-          id: randomUUID(),
-          weekId,
-          countryId,
-          titre,
-          auteur: '',
-          etat: ETATS_SUJET.RECU,
-          creeLe: new Date().toISOString(),
-        };
-        store[sujet.id] = sujet;
-        parLabel.set(titre, sujet.id);
-        return sujet.id;
-      };
-
-      // Premier passage : les fichiers étiquetés fixent l'ordre des sujets.
-      for (const file of files) {
-        if (!file || file.sujetId) continue;
-        const label = String(file.reportage || '').trim();
-        if (label) file.sujetId = ensure(label);
-      }
-
-      // Second passage : les fichiers sans étiquette rejoignent le premier
-      // sujet du pays, celui qui les affichait déjà.
-      const premier = getSujets(weekId, countryId)[0];
-      const repli = premier ? premier.id : null;
-      for (const file of files) {
-        if (!file || file.sujetId) continue;
-        file.sujetId = repli || ensure('Reportage 1');
-      }
-
-      for (const file of files) {
-        if (file?.sujetId) touched++;
-      }
-
-      // L'état de chaque sujet découle des fichiers déjà reçus.
-      for (const sujet of Object.values(store)) {
-        if (sujet.countryId !== countryId) continue;
-        sujet.etat = etatDeduit(files.filter((f) => f?.sujetId === sujet.id));
-      }
+      rattaches += rattacherOrphelins(weekId, countryId, { creerSiAbsent: true });
     }
   }
 
-  if (touched) {
-    logger.info('Sujets créés depuis les étiquettes de reportage', { context: { fichiers: touched } });
-    persistDb();
+  if (rattaches) {
+    logger.info('Fichiers rattachés à leur sujet', { context: { fichiers: rattaches } });
   }
 }
 
