@@ -117,7 +117,13 @@ ADMIN_PASSWORD=change-me-admin-immediately
 WORKER_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-> ⚠️ **Le backend refuse de démarrer** si `GLOBAL_PASSWORD`, `ADMIN_PASSWORD`, ou `WORKER_KEY` sont absents ou égaux aux valeurs par défaut.
+> ⚠️ `WORKER_KEY` absent : `docker compose` refuse de démarrer.
+> `ADMIN_PASSWORD` absent **ou laissé à la valeur d'exemple ci-dessus** : le
+> backend démarre, mais **refuse toutes les actions de l'équipe montage** et
+> l'écrit dans ses journaux. La valeur d'exemple est publique — elle est dans
+> ce dépôt — et ne doit jamais protéger quoi que ce soit.
+> `GLOBAL_PASSWORD` n'est plus lu : la connexion par mot de passe partagé a
+> été retirée. Il peut rester vide.
 
 ---
 

@@ -11,37 +11,12 @@
  */
 
 import { Router } from 'express';
-import { timingSafeEqual, createHash } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import logger from '../logger/index.js';
-import { asyncHandler, createErrors } from '../middleware/errorHandler.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
+import { verdictAdmin, erreurTropDEssais } from '../middleware/auth.js';
 
 const router = Router();
-
-// Normalise le mot de passe admin avant comparaison :
-// - NFC unicode (un même caractère accentué peut arriver en deux formes
-//   différentes selon le clavier ou l'OS)
-// - retire les caractères invisibles ajoutés par copier-coller (NBSP,
-//   NARROW NBSP, ZW SPACE/JOINER, BOM, WORD JOINER)
-// - trim des espaces classiques en début/fin (auto-fill/auto-complete
-//   navigateur en injecte fréquemment)
-// - toLowerCase (saisie insensible à la casse — décision produit pour
-//   limiter les rejets sur clavier mobile, validée par l'admin)
-function normalizePassword(s) {
-  if (typeof s !== 'string') return '';
-  return s
-    .normalize('NFC')
-    .replace(/[\u0009\u00A0\u1680\u2000-\u200D\u202F\u205F\u2060\u3000\uFEFF]/g, '')
-    .trim()
-    .toLowerCase();
-}
-
-function safeEqual(a, b) {
-  if (a == null || b == null) return false;
-  const hashA = createHash('sha256').update(String(a)).digest();
-  const hashB = createHash('sha256').update(String(b)).digest();
-  return timingSafeEqual(hashA, hashB);
-}
 
 // La route n'a plus de secret à garder, mais elle reste publique : on
 // plafonne son débit pour qu'un client en boucle ou un robot ne la martèle
@@ -83,17 +58,23 @@ router.get('/check', authLimiter, (_req, res) => {
 });
 
 // GET /api/auth/check-admin — vérifier si le mot de passe admin est valide
+//
+// C'est la porte la plus exposée : elle répond oui ou non, rien d'autre. Elle
+// passe donc par le vérificateur commun, qui compte les échecs et bloque une
+// adresse après trop d'essais (middleware/echecsAdmin.js).
+//
+// Sans mot de passe configuré — ou avec la valeur d'exemple — elle répondait
+// « authentifié » : l'espace montage s'ouvrait, puis chaque action échouait.
+// Elle dit désormais la même chose que `requireAdmin` : non.
 router.get('/check-admin', authLimiter, (req, res) => {
-  const token = normalizePassword(req.headers['x-admin-password']);
-  if (!token) return res.status(401).json({ authenticated: false });
-
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
-  if (!ADMIN_PASSWORD) return res.json({ authenticated: true });
-  if (!safeEqual(token, normalizePassword(ADMIN_PASSWORD))) {
-    return res.status(401).json({ authenticated: false });
+  const { verdict, attente } = verdictAdmin(req);
+  if (verdict === 'ok') return res.json({ authenticated: true });
+  if (verdict === 'bloque') {
+    const erreur = erreurTropDEssais(attente);
+    res.set('Retry-After', String(attente));
+    return res.status(429).json({ authenticated: false, error: erreur.publicMessage, code: 'TROP_D_ESSAIS' });
   }
-
-  return res.json({ authenticated: true });
+  return res.status(401).json({ authenticated: false });
 });
 
 export default router;

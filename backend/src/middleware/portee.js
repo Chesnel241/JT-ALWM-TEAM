@@ -24,7 +24,7 @@
  */
 
 import { createErrors } from './errorHandler.js';
-import { safeEqual, normalizeToken } from './auth.js';
+import { verdictAdmin } from './auth.js';
 import { COUNTRIES } from '../data/constants.js';
 import { estRubrique, trouverRubrique } from '../data/rubriques.js';
 import { getCustomCountries } from '../data/store.js';
@@ -59,17 +59,14 @@ export function niveauAcces() {
 /**
  * Vrai si l'appel porte le mot de passe de l'équipe montage.
  *
- * Mêmes règles de normalisation que `requireAdmin` (auth.js) : sans ça, un
- * NBSP en bord d'ADMIN_PASSWORD ferait diverger deux gardes censées dire la
- * même chose. Pas de dérogation en mode test — la garde doit se comporter
- * ici exactement comme en production.
+ * Même vérification que `requireAdmin`, par le même chemin
+ * (`verdictAdmin`, auth.js) : deux gardes censées dire la même chose ne
+ * doivent pas pouvoir diverger, et un mauvais mot de passe essayé ici compte
+ * parmi les échecs. Pas de dérogation en mode test — la garde doit se
+ * comporter ici exactement comme en production.
  */
 export function estRedaction(req) {
-  const attendu = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : '';
-  if (!attendu) return false;
-  const fourni = typeof req?.header === 'function' ? req.header('x-admin-password') : null;
-  if (!fourni) return false;
-  return safeEqual(normalizeToken(fourni), normalizeToken(attendu));
+  return verdictAdmin(req).verdict === 'ok';
 }
 
 function nomPays(id) {

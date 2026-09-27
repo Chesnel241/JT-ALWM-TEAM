@@ -163,6 +163,7 @@ export const translations = {
       enCours: 'Vérification…',
       erreur: 'Mot de passe incorrect',
       erreurReseau: 'Vérification impossible. Réessayez.',
+      tropDEssais: 'Trop d’essais depuis cet appareil. Attendez un quart d’heure avant de réessayer.',
     },
     delais: {
       enAttente: (n) => (n <= 1 ? `${n} demande de délai en attente` : `${n} demandes de délai en attente`),
@@ -1131,6 +1132,7 @@ export const translations = {
       enCours: 'Checking…',
       erreur: 'Wrong password',
       erreurReseau: 'We could not check it. Try again.',
+      tropDEssais: 'Too many attempts from this device. Wait fifteen minutes before trying again.',
     },
     delais: {
       enAttente: (n) => (n <= 1 ? `${n} extension request waiting` : `${n} extension requests waiting`),

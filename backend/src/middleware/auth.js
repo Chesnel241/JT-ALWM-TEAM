@@ -1,4 +1,5 @@
-import { createErrors } from './errorHandler.js';
+import { createErrors, AppError } from './errorHandler.js';
+import { creerCompteur, estBloque, noterEchec, secondesRestantes, MAX_ECHECS } from './echecsAdmin.js';
 import logger from '../logger/index.js';
 import { timingSafeEqual, createHash } from 'crypto';
 import { readReporterToken } from '../lib/reporterToken.js';
@@ -46,20 +47,101 @@ export function requireAuth(req, res, next) {
   return next();
 }
 
+// Les valeurs d'exemple de `.env.example` et `DEPLOY_VPS.md`. Elles sont
+// publiques — elles sont dans le dépôt — et ne doivent jamais rien protéger :
+// un serveur qui les garde est traité comme un serveur SANS mot de passe
+// montage, c'est-à-dire qui refuse toutes les actions de l'équipe.
+const VALEURS_EXEMPLE = new Set(
+  ['change-me-admin-immediately', 'change-me-immediately', 'change-me', 'changeme'].map(normalizeToken)
+);
+
+/**
+ * Le mot de passe montage configuré, normalisé — ou `''` s'il est absent ou
+ * laissé à sa valeur d'exemple.
+ *
+ * Relu à chaque appel, comme avant : il doit pouvoir changer par simple
+ * redémarrage, et les tests le basculent d'un bloc à l'autre.
+ */
+export function motDePasseAdmin() {
+  const attendu = normalizeToken(process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD) : '');
+  return attendu && !VALEURS_EXEMPLE.has(attendu) ? attendu : '';
+}
+
+const compteurEchecs = creerCompteur({
+  max: Number(process.env.ADMIN_ECHECS_MAX) || MAX_ECHECS,
+});
+
+/**
+ * LE point de vérification du mot de passe montage.
+ *
+ * Il y en avait cinq — `requireAdmin`, `estRedaction`, `/check-admin`, TUS et
+ * le téléchargement du Mot du JT — chacun avec sa lecture de la variable, et
+ * l'un d'eux sensible à la casse quand les autres ne l'étaient pas. Un seul
+ * chemin, et c'est lui qui compte les échecs.
+ *
+ * @returns {{verdict: 'ok'|'faux'|'absent'|'bloque'|'non-configure', attente: number}}
+ *   `attente` : secondes avant de pouvoir réessayer, quand `bloque`.
+ */
+export function verifierMotDePasseAdmin(fourni, adresse, maintenant = Date.now()) {
+  const attendu = motDePasseAdmin();
+  if (!attendu) return { verdict: 'non-configure', attente: 0 };
+  const token = normalizeToken(typeof fourni === 'string' ? fourni : '');
+  if (!token) return { verdict: 'absent', attente: 0 };
+  const cle = String(adresse || 'inconnue');
+  if (estBloque(compteurEchecs, cle, maintenant)) {
+    return { verdict: 'bloque', attente: secondesRestantes(compteurEchecs, cle, maintenant) };
+  }
+  if (safeEqual(token, attendu)) return { verdict: 'ok', attente: 0 };
+  noterEchec(compteurEchecs, cle, maintenant);
+  return { verdict: 'faux', attente: 0 };
+}
+
+const VERDICT = Symbol('verdictMotDePasseAdmin');
+
+/**
+ * Le verdict pour une requête Express, calculé une seule fois : plusieurs
+ * gardes lisent le même en-tête au cours d'une même requête (la portée, puis
+ * la route), et un seul mauvais mot de passe ne doit compter qu'une fois.
+ */
+export function verdictAdmin(req) {
+  if (!req) return { verdict: 'absent', attente: 0 };
+  if (!req[VERDICT]) {
+    const fourni = typeof req.header === 'function' ? req.header('x-admin-password') : undefined;
+    req[VERDICT] = verifierMotDePasseAdmin(fourni, req.ip);
+  }
+  return req[VERDICT];
+}
+
+/** L'erreur rendue à une adresse qui a épuisé ses essais. */
+export function erreurTropDEssais(attente) {
+  const minutes = Math.max(1, Math.ceil(attente / 60));
+  return new AppError(
+    'Too many admin password failures',
+    429,
+    `Trop d'essais du mot de passe montage. Réessayez dans ${minutes} min.`
+  );
+}
+
 export function requireAdmin(req, res, next) {
   if (req.method === 'OPTIONS') return next();
   if (IS_TEST) return next();
 
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ? String(process.env.ADMIN_PASSWORD).trim() : undefined;
-  if (!ADMIN_PASSWORD) {
-    logger.warn('Admin action attempted but ADMIN_PASSWORD is not set on the server.');
-    return next(createErrors.forbidden('Action non configurée (mot de passe admin manquant sur le serveur)'));
+  const { verdict, attente } = verdictAdmin(req);
+  if (verdict === 'ok') return next();
+
+  if (verdict === 'non-configure') {
+    logger.warn('Action montage refusée : ADMIN_PASSWORD absent ou laissé à sa valeur d’exemple.');
+    return next(createErrors.forbidden(
+      'Action non configurée : le mot de passe montage est absent du serveur, ou laissé à sa valeur d’exemple.'
+    ));
   }
 
-  const token = normalizeToken(req.header('x-admin-password'));
-
-  if (token && safeEqual(token, normalizeToken(ADMIN_PASSWORD))) {
-    return next();
+  if (verdict === 'bloque') {
+    logger.warn('Mot de passe montage : adresse bloquée après trop d’échecs', {
+      context: { path: req.path, ip: req.ip },
+    });
+    res.set('Retry-After', String(attente));
+    return next(erreurTropDEssais(attente));
   }
 
   logger.warn('Admin authentication failed: Invalid or missing X-Admin-Password', {

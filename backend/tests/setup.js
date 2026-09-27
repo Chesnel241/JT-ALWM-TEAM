@@ -16,6 +16,11 @@ process.env.NODE_ENV = 'test';
 process.env.GLOBAL_RATE_LIMIT_MAX_REQUESTS = '10000';
 process.env.RATE_LIMIT_MAX_REQUESTS = '10000';
 process.env.CREATE_RATE_LIMIT_MAX = '10000';
+// Les échecs du mot de passe montage bloquent une adresse (echecsAdmin.js).
+// Toute la suite parle depuis la même : les tests qui essaient exprès un
+// mauvais mot de passe ne doivent pas bloquer ceux qui suivent. Le test du
+// blocage remonte sa propre application avec le vrai seuil.
+process.env.ADMIN_ECHECS_MAX = '10000';
 // Portée des correspondants figée sur `ouvert` : la suite historique décrit
 // le comportement d'avant la séparation d'accès, et doit continuer de le
 // décrire. Les tests de la portée elle-même montent leur propre application

@@ -18,6 +18,7 @@ const app = createApp({ uploadsDir, corsOrigins });
 startAlertMonitoring(uploadsDir);
 
 import { initWebPushDb } from './data/webpushSubscriptions.js';
+import { motDePasseAdmin } from './middleware/auth.js';
 import { startDeadlineReminders } from './services/deadlineReminders.js';
 import { startRecapCloture } from './services/recapCloture.js';
 
@@ -65,6 +66,13 @@ const server = app.listen(PORT, () => {
   console.log(`✅ Backend JT ALWM démarré sur http://localhost:${PORT}`);
   console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
   console.log(`💊 Health: http://localhost:${PORT}/health`);
+  // Un serveur sans mot de passe montage — ou avec la valeur d'exemple,
+  // publique puisqu'elle est dans le dépôt — refuse toutes les actions de
+  // l'équipe. Le dire au démarrage, plutôt qu'au premier « accès refusé »
+  // d'un dimanche matin.
+  if (!motDePasseAdmin()) {
+    logger.error('ADMIN_PASSWORD absent ou laissé à sa valeur d’exemple : toutes les actions de l’équipe montage seront refusées. Le définir dans .env (openssl rand -base64 24).');
+  }
 });
 
 // Node >= 18 impose server.requestTimeout = 5 min (délai MAX pour recevoir la

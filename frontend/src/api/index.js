@@ -174,6 +174,10 @@ export const api = {
       if (err.message.includes('mise à jour') || err.message.includes('connexion')) {
         throw err;
       }
+      // Trop d'essais : le serveur bloque l'adresse un moment. Répondre « faux »
+      // ferait retaper un mot de passe peut-être juste, et prolongerait le
+      // blocage à chaque essai.
+      if (err.status === 429) throw err;
       return false;
     }
   },
