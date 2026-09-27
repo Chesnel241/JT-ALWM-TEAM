@@ -10,8 +10,8 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
-import { sectionsFromUploads, classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
-import { buildSections, filesForSection } from '../lib/sujets.js';
+import { classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
+import { buildSections, filesForSection, etatNombreReportages, SECTIONS_FIXES } from '../lib/sujets.js';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import PhoneInput from 'react-phone-number-input';
@@ -39,6 +39,8 @@ import OfflineBanner from './OfflineBanner.jsx';
 import EmptyState from './EmptyState.jsx';
 import EmptyInbox from './illustrations/EmptyInbox.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
+import NombreReportages from './NombreReportages.jsx';
+import ReportagesSheet from './ReportagesSheet.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
   const { t, lang } = useI18n();
@@ -58,24 +60,16 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const offlineQueueRef = useRef([]);
   const isOnline = useOnlineStatus();
   const queuedCount = uploading.filter((f) => f.status === 'queued').length;
-  // Choix explicite de la personne pour cette session. Le nombre réellement
-  // affiché est le maximum entre ce choix et ce que les envois révèlent : voir
-  // `reportageCount` plus bas.
-  const [chosenReportageCount, setChosenReportageCount] = useState(1);
-  // Nombre de sections réellement affichées. Les envois font foi : un
-  // correspondant qui avait ouvert trois reportages les retrouve après un
-  // rechargement, sans avoir à toucher au sélecteur.
-  const reportageCount = Math.max(1, chosenReportageCount, sectionsFromUploads(uploads));
+  // Le nombre de reportages se lit sur les sujets du serveur. Le sélecteur
+  // d'avant écrivait un nombre que rien ne lisait : choisir « 3 » ne faisait
+  // apparaître aucune section.
+  const etatReportages = etatNombreReportages(sujets, uploads);
+  // Nombre dont on demande les titres ; `null` quand la feuille est fermée.
+  const [sheetNombre, setSheetNombre] = useState(null);
 
-  // Rubriques fixes du JT : elles n'appartiennent à personne et ne sont pas
-  // des sujets de correspondant.
-  const RUBRIQUES = [
-    { id: 'annonces', sujetId: null, name: 'Annonces', badge: 'A', isFirst: false },
-    { id: 'seminaires', sujetId: null, name: 'Séminaires de la semaine', badge: 'S', isFirst: false },
-  ];
   const sections = buildSections(sujets, uploads, {
     reportageName: t.uploader.reportageName,
-    extras: RUBRIQUES,
+    extras: SECTIONS_FIXES,
   });
   const [scriptText, setScriptText] = useState({});
   const [dragActive, setDragActive] = useState({});
@@ -126,39 +120,20 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       .finally(() => setIsLoadingUploads(false));
   }, [selectedWeek, country.id]);
 
-  const refreshSujets = useCallback(() => {
-    if (!selectedWeek) return Promise.resolve();
-    return api.getSujets(selectedWeek, country.id)
-      .then((suj) => setSujets(Array.isArray(suj) ? suj : []))
-      .catch(() => {});
+  /**
+   * Fixe les reportages de la semaine : leur nombre, leur ordre, leurs titres.
+   *
+   * Les envois sont relus ensuite, et pas seulement les sujets : des fichiers
+   * déposés avant que les reportages soient nommés viennent d'être rattachés
+   * par le serveur, et doivent apparaître dans leur reportage. Une erreur
+   * remonte à la feuille des titres, qui la montre sans se refermer.
+   */
+  const handleFixerReportages = useCallback(async (reportages) => {
+    const res = await api.setReportages(selectedWeek, country.id, reportages);
+    setSujets(Array.isArray(res?.sujets) ? res.sujets : []);
+    api.getUploads(selectedWeek, country.id).then(setUploads).catch(() => {});
+    return res;
   }, [selectedWeek, country.id]);
-
-  /** Ouvre un sujet nommé. Le titre est ce que la rédaction verra. */
-  const handleCreateSujet = useCallback(async (titre) => {
-    const propre = String(titre || '').trim();
-    if (!propre) return null;
-    try {
-      const sujet = await api.createSujet(selectedWeek, country.id, propre);
-      setSujets((prev) => [...prev, sujet]);
-      return sujet;
-    } catch (err) {
-      addToast(err.message || t.uploader.errorPrefix, 'error', 4000);
-      return null;
-    }
-  }, [selectedWeek, country.id, addToast, t.uploader.errorPrefix]);
-
-  const handleRenameSujet = useCallback(async (sujetId, titre) => {
-    const propre = String(titre || '').trim();
-    if (!propre) return;
-    // Optimiste : renommer doit se voir tout de suite, c'est une frappe.
-    setSujets((prev) => prev.map((s) => (s.id === sujetId ? { ...s, titre: propre } : s)));
-    try {
-      await api.renameSujet(selectedWeek, country.id, sujetId, propre);
-    } catch (err) {
-      addToast(err.message || t.uploader.errorPrefix, 'error', 4000);
-      refreshSujets();
-    }
-  }, [selectedWeek, country.id, addToast, t.uploader.errorPrefix, refreshSujets]);
 
   useEffect(() => {
     setPendingUploads(listPendingUploads(selectedWeek, country.id));
@@ -495,11 +470,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           uploading={uploading}
           setUploading={setUploading}
           isLoadingUploads={isLoadingUploads}
-          reportageCount={reportageCount}
-          setReportageCount={setChosenReportageCount}
           sujets={sujets}
-          onCreateSujet={handleCreateSujet}
-          onRenameSujet={handleRenameSujet}
+          onFixerReportages={handleFixerReportages}
           isLocked={isLocked}
           extensionStatus={extensionStatus}
           handleRequestDelay={handleRequestDelay}
@@ -688,18 +660,29 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </>
       ) : (
         <>
-          <div className="panel p-5 flex flex-wrap items-center justify-between gap-4 mb-8 border-l-4 border-l-[color:var(--accent)]">
-            <h3 className="font-semibold text-[color:var(--ink)]">{t.uploader.reportageCountTitle}</h3>
-            <select
-              value={reportageCount}
-              onChange={(e) => setChosenReportageCount(Number(e.target.value))}
-              className="bg-[var(--paper)] border border-[var(--border)] text-[color:var(--ink)] text-sm rounded-lg px-4 py-2 font-medium"
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+          {/* Étape 1 : combien de reportages. Remplace un sélecteur dont la
+              valeur n'était lue par rien — choisir « 3 » ne faisait
+              apparaître aucune section. */}
+          <div className="mb-8 max-w-xl">
+            <NombreReportages
+              etat={etatReportages}
+              onChoisir={(n) => setSheetNombre(n)}
+              onModifierTitres={() => setSheetNombre(etatReportages.actuel)}
+              disabled={isLocked}
+            />
+            {!etatReportages.nommes && (
+              <p className="mt-3 text-sm font-bold text-[color:var(--muted)]">
+                {t.uploader.nbReportagesStep2}
+              </p>
+            )}
           </div>
+          <ReportagesSheet
+            isOpen={sheetNombre !== null}
+            nombre={sheetNombre || 0}
+            sujets={sujets}
+            onClose={() => setSheetNombre(null)}
+            onValider={handleFixerReportages}
+          />
 
       {sections.map((section, i) => {
         const reportageName = section.name;

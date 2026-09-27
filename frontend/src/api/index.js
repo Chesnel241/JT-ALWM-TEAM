@@ -323,6 +323,18 @@ export const api = {
       body: JSON.stringify({ titre }),
     }),
 
+  // Fixe en une requête les reportages de la semaine : leur nombre, leur
+  // ordre et leurs titres. Une seule requête et non une par reportage : sur
+  // un réseau qui décroche, la troisième création ne part jamais et le
+  // correspondant se retrouve avec un nombre qu'il n'a pas choisi.
+  // `reportages` : [{ id?, titre }], les existants d'abord, dans leur ordre.
+  setReportages: (weekId, countryId, reportages) =>
+    request(`/sujets/${weekId}/${countryId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reportages }),
+    }),
+
   renameSujet: (weekId, countryId, sujetId, titre) =>
     request(`/sujets/${weekId}/${countryId}/${sujetId}`, {
       method: 'PATCH',

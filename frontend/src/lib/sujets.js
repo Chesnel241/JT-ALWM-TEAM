@@ -1,4 +1,4 @@
-import { sectionsFromUploads } from './mediaTypes.js';
+import { sectionsFromUploads, sectionNumber } from './mediaTypes.js';
 
 /**
  * Les sections fixes de l'espace d'un pays. Elles ne sont pas des reportages :
@@ -69,4 +69,47 @@ export function filesForSection(files, section) {
   return liste.filter(
     (f) => f?.reportage === section.name || (!f?.reportage && !f?.sujetId && section.isFirst)
   );
+}
+
+/** Vrai si le fichier appartient à une section fixe, et non à un reportage. */
+export function estSectionFixe(fichier) {
+  return SECTIONS_FIXES.some((s) => s.name === fichier?.reportage);
+}
+
+/**
+ * Ce que le choix du nombre de reportages doit savoir.
+ *
+ * - `nommes` : les reportages ont déjà un titre (des sujets existent) ;
+ * - `actuel` : le nombre à afficher comme choisi — 0 tant que rien n'est
+ *   décidé et que rien n'a été déposé ;
+ * - `minimum` : on ne descend pas sous le dernier reportage qui contient des
+ *   fichiers. Le serveur le refuse aussi (409) ; ici, on évite de proposer ce
+ *   qui serait refusé.
+ *
+ * Tant qu'aucun reportage n'est nommé, les envois déjà faits dans les
+ * sections de repli (« Reportage 2 ») comptent : ils sont à l'écran, et le
+ * serveur les rattachera au reportage de même rang.
+ */
+export function etatNombreReportages(sujets, uploads) {
+  const liste = Array.isArray(sujets) ? sujets : [];
+  const fichiers = Array.isArray(uploads) ? uploads : [];
+
+  if (liste.length > 0) {
+    let dernierPlein = 0;
+    liste.forEach((sujet, i) => {
+      if (fichiers.some((f) => f?.sujetId === sujet.id)) dernierPlein = i + 1;
+    });
+    return { nommes: true, actuel: liste.length, minimum: Math.max(1, dernierPlein) };
+  }
+
+  const orphelins = fichiers.filter((f) => f && !f.sujetId && !estSectionFixe(f));
+  if (orphelins.length === 0) return { nommes: false, actuel: 0, minimum: 1 };
+
+  // Un envoi sans étiquette s'affiche dans la section 1.
+  const dernierPlein = orphelins.reduce((max, f) => Math.max(max, sectionNumber(f.reportage) || 1), 1);
+  return {
+    nommes: false,
+    actuel: Math.max(1, sectionsFromUploads(fichiers), dernierPlein),
+    minimum: dernierPlein,
+  };
 }

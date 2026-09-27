@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSections, filesForSection } from '../src/lib/sujets.js';
+import { buildSections, filesForSection, etatNombreReportages, estSectionFixe } from '../src/lib/sujets.js';
 
 const EXTRAS = [{ id: 'annonces', sujetId: null, name: 'Annonces', badge: 'A', isFirst: false }];
 
@@ -57,5 +57,43 @@ describe('rattachement des fichiers', () => {
   it('ne casse pas sur des entrées vides', () => {
     expect(filesForSection(null, { sujetId: 's1' })).toEqual([]);
     expect(filesForSection(files, null)).toEqual([]);
+  });
+});
+
+describe('le nombre de reportages', () => {
+  // Ce que la carte « Combien de reportages envoyez-vous cette semaine ? »
+  // affiche, et le plancher sous lequel on perdrait des fichiers.
+
+  it('ne décide rien tant que rien n’est choisi ni déposé', () => {
+    expect(etatNombreReportages([], [])).toEqual({ nommes: false, actuel: 0, minimum: 1 });
+  });
+
+  it('ne compte pas les sections fixes comme un reportage', () => {
+    // Une annonce déposée ne vaut pas choix d'un reportage.
+    const etat = etatNombreReportages([], [{ id: 'a', reportage: 'Annonces' }]);
+    expect(etat.actuel).toBe(0);
+  });
+
+  it('compte les sections de repli qui portent déjà des fichiers', () => {
+    // Elles sont à l'écran : le chiffre retenu doit le dire.
+    const etat = etatNombreReportages([], [{ id: 'x', reportage: 'Reportage 2' }]);
+    expect(etat).toEqual({ nommes: false, actuel: 2, minimum: 2 });
+  });
+
+  it('suit les reportages nommés', () => {
+    const etat = etatNombreReportages([{ id: 'a' }, { id: 'b' }, { id: 'c' }], []);
+    expect(etat).toEqual({ nommes: true, actuel: 3, minimum: 1 });
+  });
+
+  it('ne descend pas sous le dernier reportage qui contient des fichiers', () => {
+    // Le serveur le refuse (409) ; ici on ne le propose pas.
+    const sujets = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    expect(etatNombreReportages(sujets, [{ sujetId: 'a' }]).minimum).toBe(1);
+    expect(etatNombreReportages(sujets, [{ sujetId: 'c' }]).minimum).toBe(3);
+  });
+
+  it('reconnaît une section fixe', () => {
+    expect(estSectionFixe({ reportage: 'Séminaires de la semaine' })).toBe(true);
+    expect(estSectionFixe({ reportage: 'Reportage 1' })).toBe(false);
   });
 });

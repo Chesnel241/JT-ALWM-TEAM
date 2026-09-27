@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   UploadCloud, FileText, Video, Mic, CheckCircle,
-  Clock, ChevronRight, Trash2, AlertCircle, Plus,
+  Clock, ChevronRight, Trash2, AlertCircle,
   HelpCircle, X, ArrowLeft, Send, MessageCircle, Image as ImageIcon, RotateCcw
 } from 'lucide-react';
 import { api } from '../api/index.js';
@@ -13,7 +13,8 @@ import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import Tutorial5W1H from './Tutorial5W1H.jsx';
 import PendingUploadsCard from './PendingUploadsCard.jsx';
-import SujetTitleSheet from './SujetTitleSheet.jsx';
+import NombreReportages from './NombreReportages.jsx';
+import ReportagesSheet from './ReportagesSheet.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 import OfflineBanner from './OfflineBanner.jsx';
 import EmptyState from './EmptyState.jsx';
@@ -23,7 +24,7 @@ import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
 import { UPLOAD_ACCEPT } from '../lib/mediaTypes.js';
 import { reportageTone } from '../lib/branding.js';
-import { buildSections, filesForSection } from '../lib/sujets.js';
+import { buildSections, filesForSection, etatNombreReportages, SECTIONS_FIXES } from '../lib/sujets.js';
 import 'react-phone-number-input/style.css';
 
 // Charte : bleus du logo et neutres. Le texte coloré sur aplat coloré de la
@@ -45,11 +46,8 @@ export default function MobileUploaderView({
   setUploads,
   uploading,
   isLoadingUploads,
-  reportageCount,
-  setReportageCount,
   sujets = [],
-  onCreateSujet,
-  onRenameSujet,
+  onFixerReportages,
   isLocked,
   extensionStatus,
   handleRequestDelay,
@@ -83,7 +81,8 @@ export default function MobileUploaderView({
   const [activeTabId, setActiveTabId] = useState('reportage-0');
   const [scriptModalOpen, setScriptModalOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [sujetSheet, setSujetSheet] = useState({ open: false, mode: 'create', id: null, titre: '' });
+  // Nombre choisi dont on demande les titres ; `null` quand la feuille est fermée.
+  const [sheetNombre, setSheetNombre] = useState(null);
   const [previewScriptFile, setPreviewScriptFile] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -91,37 +90,32 @@ export default function MobileUploaderView({
   // ou « Séminaires » seuls ne parlaient qu'à l'équipe montage.
   const sections = buildSections(sujets, uploads, {
     reportageName: t.uploader.reportageName,
-    extras: [
-      {
-        id: 'annonces',
-        sujetId: null,
-        name: 'Annonces',
-        badge: 'A',
-        isFirst: false,
-      },
-      {
-        id: 'seminaires',
-        sujetId: null,
-        name: 'Séminaires de la semaine',
-        badge: 'S',
-        isFirst: false,
-      },
-    ],
-  }).map((section, i) => ({
-    ...section,
-    // Un titre de sujet peut être long : l'onglet en montre le début, la
-    // carte de section le donne en entier.
-    shortName: section.sujetId ? section.name : (section.id === 'seminaires' ? 'Séminaires' : section.name),
-    badge: section.sujetId ? `${i + 1}` : section.badge,
-    tone: section.sujetId ? reportageTone(i) : undefined,
-    hint: section.sujetId
-      ? t.uploader.sectionHintReportage
-      : section.id === 'annonces'
-        ? t.uploader.sectionHintAnnonces
-        : t.uploader.sectionHintSeminaires,
-  }));
+    extras: SECTIONS_FIXES,
+  }).map((section, i) => {
+    // Un reportage est tout ce qui n'est pas une section fixe — y compris la
+    // section de repli « Reportage 1 », qui n'a pas encore de sujet. Le test
+    // se faisait sur `sujetId` : la section de repli tombait alors dans le cas
+    // par défaut, et un correspondant qui débutait lisait sous « Reportage 1 »
+    // la consigne des séminaires.
+    const reportage = !SECTIONS_FIXES.some((fixe) => fixe.id === section.id);
+    return {
+      ...section,
+      // Un titre de sujet peut être long : l'onglet en montre le début, la
+      // carte de section le donne en entier.
+      shortName: section.id === 'seminaires' ? 'Séminaires' : section.name,
+      badge: reportage ? `${i + 1}` : section.badge,
+      tone: reportage ? reportageTone(i) : undefined,
+      hint: reportage
+        ? t.uploader.sectionHintReportage
+        : section.id === 'annonces'
+          ? t.uploader.sectionHintAnnonces
+          : t.uploader.sectionHintSeminaires,
+    };
+  });
 
-  const nbSujets = sections.filter((sec) => sec.sujetId).length;
+  // Le nombre de reportages : choisi, affiché, et le plancher sous lequel on
+  // perdrait des fichiers.
+  const etatReportages = etatNombreReportages(sujets, uploads);
 
   // Find active section
   const currentSection = sections.find((s) => s.id === activeTabId) || sections[0];
@@ -321,17 +315,33 @@ export default function MobileUploaderView({
       ) : (
         /* 6. STANDARD REPORTAGES VIEW */
         <div className="space-y-4">
-          {/* Sections : une rangée compacte, libellés courts, bouton d'ajout
-              intégré. Le titre en pleine largeur repoussait les boutons
-              d'envoi hors du premier écran, et le bandeau défilait
-              horizontalement sans indice — « Séminaires » restait invisible. */}
+          {/* Étape 1 : combien de reportages. Le choix se fait d'abord et
+              reste visible ; il remplace le bouton « Ajouter un reportage »
+              que plusieurs correspondants ne comprenaient pas. */}
+          <NombreReportages
+            etat={etatReportages}
+            onChoisir={(n) => setSheetNombre(n)}
+            onModifierTitres={() => setSheetNombre(etatReportages.actuel)}
+            disabled={isLocked}
+          />
+
+          {/* Sections : une rangée compacte, libellés courts. Le titre en
+              pleine largeur repoussait les boutons d'envoi hors du premier
+              écran, et le bandeau défilait horizontalement sans indice —
+              « Séminaires » restait invisible. */}
           <div className="space-y-1.5">
+            {!etatReportages.nommes && (
+              <p className="text-xs font-bold text-[color:var(--muted)]">
+                {t.uploader.nbReportagesStep2}
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {sections.map((sec) => {
                 const isActive = sec.id === activeTabId;
-                const count = uploads.filter(
-                  (u) => u.reportage === sec.name || (!u.reportage && sec.isFirst)
-                ).length;
+                // Par `sujetId`, comme la section elle-même : comparer
+                // l'étiquette au titre donnait 0 dès qu'un reportage était
+                // renommé, alors que ses fichiers étaient bien là.
+                const count = filesForSection(uploads, sec).length;
 
                 return (
                   <button
@@ -374,31 +384,6 @@ export default function MobileUploaderView({
 
             </div>
 
-            {/* Ajouter un reportage : pleine largeur sous les onglets. En
-                puce au bout de la rangée, l'action passait inaperçue alors
-                que beaucoup de correspondants couvrent plusieurs sujets. */}
-            <div className="pt-1">
-              {nbSujets < 5 ? (
-                <button
-                  // Un sujet naît avec son titre. Le compteur anonyme
-                  // « Reportage 2 » ne disait rien à la rédaction, qui devait
-                  // rouvrir les fichiers pour savoir de quoi il s'agissait.
-                  onClick={() => setSujetSheet({ open: true, mode: 'create', id: null, titre: '' })}
-                  type="button"
-                  className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-[color:var(--action)]/45 bg-[var(--action)]/5 text-[color:var(--action-deep)] font-bold text-sm active:scale-[0.98] transition-transform"
-                >
-                  <Plus size={18} className="shrink-0" />
-                  <span className="truncate">{t.uploader.addReportage}</span>
-                  <span className="shrink-0 rounded-full bg-[var(--action)]/12 px-2 py-0.5 text-[11px] font-bold">
-                    {nbSujets}
-                  </span>
-                </button>
-              ) : (
-                <p className="text-center text-xs text-[color:var(--muted)]">
-                  {t.uploader.addReportageMax}
-                </p>
-              )}
-            </div>
           </div>
 
           {/* ACTIVE SECTION CONTAINER */}
@@ -761,20 +746,19 @@ export default function MobileUploaderView({
       {/* 9. TUTORIAL 5W1H BOTTOM SHEET / MODAL */}
       <Tutorial5W1H isOpen={tutorialOpen} onClose={() => setTutorialOpen(false)} />
 
-      <SujetTitleSheet
-        isOpen={sujetSheet.open}
-        mode={sujetSheet.mode}
-        initialValue={sujetSheet.titre}
-        onClose={() => setSujetSheet((prev) => ({ ...prev, open: false }))}
-        onSubmit={async (titre) => {
-          if (sujetSheet.mode === 'rename' && sujetSheet.id) {
-            await onRenameSujet?.(sujetSheet.id, titre);
-            return;
-          }
-          const cree = await onCreateSujet?.(titre);
-          // On bascule sur le sujet qu'on vient d'ouvrir : c'est là qu'on
-          // va déposer, sinon il faut le chercher dans la rangée.
-          if (cree?.id) setActiveTabId(cree.id);
+      <ReportagesSheet
+        isOpen={sheetNombre !== null}
+        nombre={sheetNombre || 0}
+        sujets={sujets}
+        onClose={() => setSheetNombre(null)}
+        onValider={async (reportages) => {
+          const res = await onFixerReportages?.(reportages);
+          // On se place sur le premier reportage ajouté : c'est là qu'on va
+          // déposer. Sinon on reste où l'on était, s'il existe encore.
+          const anciens = new Set(sujets.map((x) => x.id));
+          const nouveau = (res?.sujets || []).find((x) => !anciens.has(x.id));
+          if (nouveau) setActiveTabId(nouveau.id);
+          else if (!(res?.sujets || []).some((x) => x.id === activeTabId)) setActiveTabId(res?.sujets?.[0]?.id || 'reportage-0');
         }}
       />
     </div>
