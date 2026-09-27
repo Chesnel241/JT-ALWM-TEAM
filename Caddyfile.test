@@ -1,6 +1,0 @@
-:8888 {
-    handle_path /uploads/* {
-        root * /tmp/caddy_test/uploads
-        file_server
-    }
-}
