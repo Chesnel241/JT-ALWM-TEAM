@@ -1,13 +1,12 @@
 import { useState, useRef } from 'react';
 import {
-  UploadCloud, FileText, Video, Mic, CheckCircle,
-  Clock, ChevronRight, Trash2, AlertCircle,
+  FileText, Video, Mic, CheckCircle,
+  Clock, Trash2, AlertCircle,
   HelpCircle, X, ArrowLeft, Send, MessageCircle, Image as ImageIcon, RotateCcw
 } from 'lucide-react';
-import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute, formatWeekFull, formatExpiry } from '../lib/dates.js';
+import { formatRelative, formatWeekFull, formatExpiry } from '../lib/dates.js';
 import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
@@ -171,16 +170,14 @@ export default function MobileUploaderView({
             </span>
           </div>
 
-          {country.id !== 'tj' && country.id !== 'mj' && (
-            <button
-              onClick={() => setTutorialOpen(true)}
-              type="button"
-              className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
-            >
-              <HelpCircle size={14} />
-              <span>Guide</span>
-            </button>
-          )}
+          <button
+            onClick={() => setTutorialOpen(true)}
+            type="button"
+            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
+          >
+            <HelpCircle size={14} />
+            <span>Guide</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -302,18 +299,9 @@ export default function MobileUploaderView({
             </p>
           </div>
         </div>
-      ) : country.id === 'tj' || country.id === 'mj' ? (
-        /* 5. SPECIAL COUNTRY VIEW (TJ / MJ) */
-        <MobileSpecialUploader
-          country={country}
-          selectedWeek={selectedWeek}
-          uploads={uploads}
-          setUploads={setUploads}
-          openDeleteDialog={openDeleteDialog}
-          t={t}
-        />
       ) : (
-        /* 6. STANDARD REPORTAGES VIEW */
+        /* 5. STANDARD REPORTAGES VIEW — le conducteur et le Mot du JT ont
+           leur propre écran (RubriqueView) : ce ne sont plus des pays. */
         <div className="space-y-4">
           {/* Étape 1 : combien de reportages. Le choix se fait d'abord et
               reste visible ; il remplace le bouton « Ajouter un reportage »
@@ -761,143 +749,6 @@ export default function MobileUploaderView({
           else if (!(res?.sujets || []).some((x) => x.id === activeTabId)) setActiveTabId(res?.sujets?.[0]?.id || 'reportage-0');
         }}
       />
-    </div>
-  );
-}
-
-function MobileSpecialUploader({ country, selectedWeek, uploads, setUploads, openDeleteDialog, t }) {
-  const [tab, setTab] = useState('text');
-  const [text, setText] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const { addToast } = useToast();
-  const isMj = country.id === 'mj';
-
-  const handleTextUpload = async () => {
-    if (!text.trim()) return;
-    setIsUploading(true);
-    try {
-      const blob = new Blob([text], { type: 'text/plain' });
-      const filename = isMj ? `details_mot_du_jt_${Date.now()}.txt` : `titres_et_rappels_${Date.now()}.txt`;
-      const file = new File([blob], filename, { type: 'text/plain' });
-      await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Détails' : 'Titres' });
-      setText('');
-      addToast(isMj ? 'Détails sauvegardés' : 'Titres sauvegardés', 'success');
-      const ups = await api.getUploads(selectedWeek, country.id);
-      setUploads(ups);
-    } catch (err) {
-      console.error(err);
-      // Le message du serveur dit pourquoi — format, date limite, portée.
-      // « Erreur lors de la sauvegarde » ne laissait aucune prise.
-      addToast(err?.message || 'Erreur lors de la sauvegarde', 'error', 5000);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setIsUploading(true);
-    try {
-      for (const file of files) {
-        await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Vidéo' : 'Audio/Voix Off' });
-      }
-      addToast('Fichiers uploadés avec succès', 'success');
-      const ups = await api.getUploads(selectedWeek, country.id);
-      setUploads(ups);
-    } catch (err) {
-      console.error(err);
-      addToast(err?.message || "Erreur lors de l'upload", 'error', 5000);
-    } finally {
-      setIsUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* 2 Tabs switcher */}
-      <div className="grid grid-cols-2 gap-2 bg-[var(--paper)] p-1.5 rounded-2xl border border-[var(--border)]">
-        <button
-          onClick={() => setTab('text')}
-          className={`py-2.5 rounded-xl font-bold text-xs motion-tap ${
-            tab === 'text'
-              ? 'bg-[var(--accent)] text-white shadow-sm'
-              : 'text-[color:var(--muted)] hover:text-[color:var(--ink)]'
-          }`}
-        >
-          {isMj ? '1. Rédiger les Détails' : '1. Rédiger les Titres'}
-        </button>
-        <button
-          onClick={() => setTab('media')}
-          className={`py-2.5 rounded-xl font-bold text-xs motion-tap ${
-            tab === 'media'
-              ? 'bg-[var(--accent)] text-white shadow-sm'
-              : 'text-[color:var(--muted)] hover:text-[color:var(--ink)]'
-          }`}
-        >
-          {isMj ? '2. Uploader la Vidéo' : '2. Uploader Médias'}
-        </button>
-      </div>
-
-      {tab === 'text' ? (
-        <div className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] space-y-3">
-          <h3 className="font-bold text-sm text-[color:var(--ink)]">
-            {isMj ? "Détails (Orateur, Thème, Pays)" : "Rédiger les Titres & Rappels"}
-          </h3>
-          <textarea
-            rows={5}
-            className="w-full p-3.5 bg-[var(--paper-2)] border border-[var(--border)] rounded-2xl text-xs text-[color:var(--ink)] outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
-            placeholder={isMj ? "Orateur, thème, pays..." : "Collez ou tapez les titres..."}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <button
-            onClick={handleTextUpload}
-            disabled={!text.trim() || isUploading}
-            className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-50"
-          >
-            {isUploading ? 'Sauvegarde...' : 'Sauvegarder'}
-          </button>
-        </div>
-      ) : (
-        <div className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] space-y-3 text-center">
-          <h3 className="font-bold text-sm text-[color:var(--ink)]">
-            {isMj ? 'Vidéo du Mot du JT' : 'Fichiers Audio & Vidéo'}
-          </h3>
-          <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--border)] rounded-2xl cursor-pointer bg-[var(--paper-2)] active:scale-98">
-            <UploadCloud size={28} className="text-[color:var(--accent-deep)] mb-2" />
-            <span className="font-bold text-xs text-[color:var(--ink)]">Touchez pour choisir des fichiers</span>
-            <span className="text-[10px] text-[color:var(--muted)] mt-1">
-              {isMj ? 'Vidéo MP4, MOV...' : 'Audio MP3, WAV, Vidéo...'}
-            </span>
-            <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-          </label>
-        </div>
-      )}
-
-      {/* Saved files */}
-      {uploads.length > 0 && (
-        <div className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] space-y-2">
-          <h4 className="font-bold text-xs text-[color:var(--ink)]">Fichiers enregistrés</h4>
-          <div className="space-y-1.5">
-            {uploads.map((file) => (
-              <div
-                key={file.id}
-                className="p-2.5 bg-[var(--paper-2)] rounded-xl border border-[var(--border)] flex items-center justify-between text-xs"
-              >
-                <span className="font-medium text-[color:var(--ink)] truncate pr-2">{file.name}</span>
-                <button
-                  onClick={() => openDeleteDialog(file)}
-                  className="text-[var(--signal)] p-1 shrink-0 active:scale-90"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

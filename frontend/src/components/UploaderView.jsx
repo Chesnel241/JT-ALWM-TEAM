@@ -511,7 +511,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           </span>
         </div>
 
-      {country.id !== 'tj' && country.id !== 'mj' && <Tutorial5W1H />}
+      <Tutorial5W1H />
 
       {!isOnline && <OfflineBanner queuedCount={queuedCount} />}
 
@@ -527,7 +527,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           <p className="text-sm text-[color:var(--muted)]">{t.uploader.weekSubtitle}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          {hasPhoneNumber && phone && country.id !== 'tj' && country.id !== 'mj' && (
+          {hasPhoneNumber && phone && (
             <button
               onClick={handleEditPhone}
               type="button"
@@ -627,37 +627,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             </button>
           </div>
         </div>
-      ) : country.id === 'tj' || country.id === 'mj' ? (
-        <>
-          <TjUploader 
-            selectedWeek={selectedWeek} 
-            country={country} 
-            onUploaded={() => {
-              api.getUploads(selectedWeek, country.id)
-                .then(setUploads)
-                .catch(console.error);
-            }} 
-            t={t} 
-          />
-          {uploads.length > 0 && (
-            <div className="mb-8 p-6 bg-[var(--paper)] border border-[var(--border)] rounded-2xl shadow-sm">
-              <h3 className="font-bold text-lg mb-4 text-[color:var(--ink)]">Fichiers sauvegardés</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {uploads.map(file => (
-                  <div key={file.id} className="bg-[var(--paper-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between">
-                    <div className="flex flex-col overflow-hidden mr-3">
-                      <span className="font-medium text-sm truncate text-[color:var(--ink)]">{file.name}</span>
-                      <span className="text-xs text-[color:var(--muted)]">{file.reportage || (country.id === 'tj' ? 'Titres / Audio' : 'Mot du JT')}</span>
-                    </div>
-                    <button onClick={() => openDeleteDialog(file)} className="text-[var(--signal)] hover:opacity-80 p-2 flex-shrink-0" title={t.uploader.delete}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
       ) : (
         <>
           {/* Étape 1 : combien de reportages. Remplace un sélecteur dont la
@@ -984,114 +953,6 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           setFileToDelete(null);
         }}
       />
-    </div>
-  );
-}
-
-function TjUploader({ selectedWeek, country, onUploaded, t }) {
-  const [text, setText] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const { addToast } = useToast();
-
-  const isMj = country.id === 'mj';
-
-  const handleTextUpload = async () => {
-    if (!text.trim()) return;
-    setIsUploading(true);
-    try {
-      const blob = new Blob([text], { type: 'text/plain' });
-      const filename = isMj ? `details_mot_du_jt_${Date.now()}.txt` : `titres_et_rappels_${Date.now()}.txt`;
-      const file = new File([blob], filename, { type: 'text/plain' });
-      await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Détails' : 'Titres' });
-      setText('');
-      addToast(isMj ? 'Détails sauvegardés avec succès' : 'Titres sauvegardés avec succès', 'success');
-      if (onUploaded) onUploaded();
-    } catch (err) {
-      console.error(err);
-      addToast("Erreur lors de la sauvegarde", 'error');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setIsUploading(true);
-    try {
-      for (const file of files) {
-        await api.uploadFile(selectedWeek, country.id, file, { reportage: isMj ? 'Vidéo' : 'Audio/Voix Off' });
-      }
-      addToast('Fichiers uploadés avec succès', 'success');
-      if (onUploaded) onUploaded();
-    } catch (err) {
-      console.error(err);
-      addToast("Erreur lors de l'upload", 'error');
-    } finally {
-      setIsUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  return (
-    <div className="mb-8 p-6 bg-[var(--paper)] border border-[var(--border)] rounded-2xl shadow-sm flex flex-col lg:flex-row gap-6">
-      <div className="flex-1">
-        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">
-          {isMj ? "Détails (Orateur, Thème, Pays)" : "Rédiger les Titres"}
-        </h3>
-        <textarea 
-          className="w-full min-h-[150px] p-3 rounded-xl border border-[var(--border)] bg-[var(--paper-2)] text-[color:var(--ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] resize-y mb-3"
-          placeholder={isMj ? "Collez ou tapez les détails de l'orateur, le thème, et le pays ici..." : "Collez ou tapez les titres et rappels ici..."}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button 
-          onClick={handleTextUpload}
-          disabled={!text.trim() || isUploading}
-          className="btn btn-primary px-4 py-2 w-full disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {isUploading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-[var(--paper)]/30 border-t-[var(--paper)] rounded-full animate-spin" />
-              Sauvegarde...
-            </>
-          ) : (
-            isMj ? 'Sauvegarder les Détails' : 'Sauvegarder les Titres'
-          )}
-        </button>
-      </div>
-
-      <div className="w-px bg-[var(--border)] hidden lg:block"></div>
-
-      <div className="flex-1 flex flex-col justify-center">
-        <h3 className="font-bold text-lg mb-2 text-[color:var(--ink)]">
-          {isMj ? "Uploader la Vidéo" : "Uploader Audio & Vidéo"}
-        </h3>
-        <p className="text-sm text-[color:var(--muted)] mb-4">
-          {isMj ? "Sélectionnez le fichier vidéo du Mot du JT." : "Sélectionnez les voix off, les virgules sonores, etc."}
-        </p>
-        
-        <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-[var(--border)] rounded-xl cursor-pointer hover:bg-[color:var(--accent)]/5 hover:border-[color:var(--accent)] transition-colors group">
-          <UploadCloud className="w-8 h-8 text-[color:var(--muted)] group-hover:text-[color:var(--accent)] mb-3" />
-          <span className="font-medium text-[color:var(--ink)]">Cliquez pour choisir des fichiers</span>
-          <span className="text-xs text-[color:var(--muted)] mt-1">
-            {isMj ? "Vidéo (MP4, MOV), etc." : "Audio (MP3, WAV), Vidéo, etc."}
-          </span>
-          <input 
-            type="file" 
-            className="hidden" 
-            multiple 
-            onChange={handleFileUpload} 
-            disabled={isUploading}
-          />
-        </label>
-        {isUploading && (
-          <div className="flex items-center justify-center gap-2 mt-3 text-[color:var(--accent)] font-medium">
-            <div className="w-4 h-4 border-2 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin" />
-            <p className="text-sm">Upload en cours...</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
