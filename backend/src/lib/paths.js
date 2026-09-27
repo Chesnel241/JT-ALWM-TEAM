@@ -33,6 +33,18 @@ export function uploadsDir() {
   return path.join(process.cwd(), 'uploads');
 }
 
+/**
+ * Dossier des données du serveur : celui du store, sur le volume persistant
+ * (`/app/uploads` dans l'image), mais **hors** de `uploadsDir()`.
+ *
+ * La distinction compte : `uploadsDir()` est servi sans authentification par
+ * `/uploads` (app.js), parce que les rushes s'y lisent par URL. Un fichier
+ * d'état rangé là devient téléchargeable par quiconque connaît son nom.
+ */
+export function dataDir() {
+  return path.dirname(storePath());
+}
+
 export function logsDir() {
   if (process.env.LOG_DIR) return process.env.LOG_DIR;
   if (HAS_RENDER_DISK) return path.join(RENDER_DISK, 'logs');

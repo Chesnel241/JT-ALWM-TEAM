@@ -1,11 +1,32 @@
 import fs from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import logger from '../logger/index.js';
+import { dataDir } from '../lib/paths.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const FILE_PATH = join(__dirname, '../../../uploads/webpush_subscriptions.json');
+/**
+ * Où vivent les abonnements : à côté du store, sur le volume persistant.
+ *
+ * L'INCIDENT : le chemin se calculait depuis l'emplacement du fichier source,
+ * trois niveaux au-dessus de `src/data/`. Dans le dépôt, cela tombait sur la
+ * racine du projet ; **dans l'image Docker, sur `/uploads`, à la racine du
+ * conteneur** — et non `/app/uploads`, où est monté le volume. Le processus
+ * tourne en utilisateur `node`, `/uploads` n'existe pas : chaque écriture
+ * échouait, l'erreur n'était que journalisée, et les abonnements ne vivaient
+ * qu'en mémoire. Chaque redéploiement désabonnait en silence tous ceux qui
+ * avaient activé les notifications.
+ *
+ * Et PAS dans le dossier des envois : celui-là est servi sans
+ * authentification par `/uploads`. Le premier correctif l'y rangeait, ce qui
+ * aurait rendu téléchargeables les adresses de notification et les clés de
+ * chaque appareil abonné. Rattrapé avant d'être commité, par le contre-audit.
+ *
+ * Calculé à l'appel, et non au chargement du module : un test ou un
+ * déploiement qui fixe `JT_STORE_PATH` après l'import doit être suivi.
+ */
+function cheminFichier() {
+  return join(dataDir(), 'webpush_subscriptions.json');
+}
 
 /**
  * Abonnements push, indexés par endpoint.
@@ -61,11 +82,11 @@ function normalizeEntry(entry) {
 }
 
 async function loadDb() {
-  if (!existsSync(FILE_PATH)) {
+  if (!existsSync(cheminFichier())) {
     return;
   }
   try {
-    const raw = await fs.readFile(FILE_PATH, 'utf-8');
+    const raw = await fs.readFile(cheminFichier(), 'utf-8');
     const parsed = JSON.parse(raw);
     subscriptions = {};
     for (const [endpoint, entry] of Object.entries(parsed || {})) {
@@ -79,9 +100,11 @@ async function loadDb() {
 
 async function persistDb() {
   try {
-    const tmpPath = `${FILE_PATH}.${Date.now()}.${Math.floor(Math.random() * 10000)}.tmp`;
+    const cible = cheminFichier();
+    mkdirSync(dataDir(), { recursive: true });
+    const tmpPath = `${cible}.${Date.now()}.${Math.floor(Math.random() * 10000)}.tmp`;
     await fs.writeFile(tmpPath, JSON.stringify(subscriptions, null, 2));
-    await fs.rename(tmpPath, FILE_PATH);
+    await fs.rename(tmpPath, cible);
   } catch (err) {
     logger.error('Failed to persist webpush subscriptions', { error: err.message });
   }

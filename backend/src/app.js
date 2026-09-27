@@ -260,6 +260,23 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
     }
   };
 
+  // Les fichiers d'état du serveur ne se servent jamais, même posés dans le
+  // dossier des envois. En production ils vivent à côté (`dataDir()`), mais en
+  // développement `store.json` est DANS le dossier servi, et un
+  // `UPLOADS_DIR` mal réglé suffirait à le publier. Le chemin est décodé
+  // d'abord : `express.static` décode `store%2Ejson` en `store.json`.
+  const FICHIERS_INTERNES = /(?:^|\/)(?:store\.json|webpush_subscriptions\.json)$|\.tmp$/i;
+  const refuserFichiersInternes = (req, res, next) => {
+    let chemin = req.path;
+    try {
+      chemin = decodeURIComponent(chemin);
+    } catch {
+      // Chemin mal encodé : `express.static` le refusera de lui-même.
+    }
+    return FICHIERS_INTERNES.test(chemin) ? res.sendStatus(404) : next();
+  };
+  app.use(['/uploads', '/api/uploads/files'], refuserFichiersInternes);
+
   app.get('/uploads/*', serveUploadDownload);
   app.get('/api/uploads/files/*', serveUploadDownload);
 

@@ -2,10 +2,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { dataDir } from '../src/lib/paths.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const FILE_PATH = join(__dirname, '../../uploads/webpush_subscriptions.json');
+// Le dossier des données, isolé par `tests/setup.js` (JT_STORE_PATH). Ce
+// chemin était figé à la racine du dépôt, comme celui du module : la suite y
+// écrivait un abonnement factice à chaque passage.
+const FILE_PATH = join(dataDir(), 'webpush_subscriptions.json');
 
 // Le module garde un cache mémoire : on le réimporte à neuf à chaque test.
 async function freshStore() {
