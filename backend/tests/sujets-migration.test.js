@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
+import { RACINE_TESTS } from './setup.js';
 
 // Le store lit son chemin au chargement : on l'isole par test.
 let dir, dbPath;
@@ -16,7 +16,7 @@ async function loadStoreWith(contenu) {
 }
 
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-sujets-'));
+  dir = fs.mkdtempSync(path.join(RACINE_TESTS, 'jt-sujets-'));
   dbPath = path.join(dir, 'db.json');
 });
 

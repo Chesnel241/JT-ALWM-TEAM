@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
 import { join } from 'path';
 import { FFMPEG_PATH } from '../src/lib/ffmpeg.js';
 import { mesurerDuree } from '../src/services/mediaDuration.js';
+import { RACINE_TESTS } from './setup.js';
 
 /**
  * La durée est mesurée sur de VRAIS fichiers fabriqués par ffmpeg, et non sur
@@ -22,7 +22,7 @@ function fabriquer(nom, args) {
 }
 
 beforeAll(() => {
-  dossier = mkdtempSync(join(tmpdir(), 'jt-duree-'));
+  dossier = mkdtempSync(join(RACINE_TESTS, 'jt-duree-'));
 
   fichiers.audio = fabriquer('voix.mp3', [
     '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3',

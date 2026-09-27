@@ -9,7 +9,8 @@ import { inject } from 'vitest';
 // pointent vers le tmpdir au lieu de polluer backend/uploads/.
 // Sous la racine commune (tests/racine-temporaire.js), qui disparaît en fin
 // de suite ; à défaut — un fichier lancé hors de la configuration — dans /tmp.
-const tmpRoot = mkdtempSync(join(inject('racineTests') || tmpdir(), 'jt-alwm-tests-'));
+export const RACINE_TESTS = inject('racineTests') || tmpdir();
+const tmpRoot = mkdtempSync(join(RACINE_TESTS, 'jt-alwm-tests-'));
 mkdirSync(join(tmpRoot, 'uploads'), { recursive: true });
 
 process.env.JT_STORE_PATH = join(tmpRoot, 'store.json');

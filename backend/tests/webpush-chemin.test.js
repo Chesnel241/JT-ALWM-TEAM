@@ -1,10 +1,9 @@
 import { describe, it, expect, afterEach, afterAll, beforeAll, vi } from 'vitest';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
-import { tmpdir } from 'os';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import request from 'supertest';
-import { TEST_UPLOADS_DIR } from './setup.js';
+import { TEST_UPLOADS_DIR, RACINE_TESTS } from './setup.js';
 
 /**
  * Où les abonnements aux notifications sont enregistrés — et ce qui n'en sort
@@ -46,7 +45,7 @@ const abonnement = { endpoint: 'https://push.example/abc', keys: { auth: 'a', p2
 
 describe('les abonnements aux notifications', () => {
   it('sont écrits à côté du store, sur le volume persistant', async () => {
-    dossier = mkdtempSync(join(tmpdir(), 'jt-webpush-'));
+    dossier = mkdtempSync(join(RACINE_TESTS, 'jt-webpush-'));
     process.env.JT_STORE_PATH = join(dossier, 'store.json');
     const store = await moduleNeuf();
     await store.initWebPushDb();
@@ -58,7 +57,7 @@ describe('les abonnements aux notifications', () => {
   });
 
   it('ne sont jamais rangés dans le dossier servi par /uploads', async () => {
-    dossier = mkdtempSync(join(tmpdir(), 'jt-webpush-'));
+    dossier = mkdtempSync(join(RACINE_TESTS, 'jt-webpush-'));
     process.env.JT_STORE_PATH = join(dossier, 'store.json');
     const store = await moduleNeuf();
     await store.initWebPushDb();
@@ -72,7 +71,7 @@ describe('les abonnements aux notifications', () => {
   it('survivent à un redémarrage du serveur', async () => {
     // C'est ce que l'ancien chemin empêchait : rien n'était écrit, donc rien
     // n'était relu.
-    dossier = mkdtempSync(join(tmpdir(), 'jt-webpush-'));
+    dossier = mkdtempSync(join(RACINE_TESTS, 'jt-webpush-'));
     process.env.JT_STORE_PATH = join(dossier, 'store.json');
     const premier = await moduleNeuf();
     await premier.initWebPushDb();
