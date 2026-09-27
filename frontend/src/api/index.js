@@ -5,13 +5,11 @@ import { readReporterToken } from '../lib/reporterIdentity.js';
 export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const BASE = `${API_BASE}/api`;
 
-// Toutes les requêtes envoient le token de session.
+// Le mot de passe montage n'accompagne que les requêtes qui le demandent.
+// L'ancien mot de passe global (`app-password`) n'est plus envoyé : le
+// serveur ne le lit plus depuis la suppression de l'écran de connexion.
 async function request(url, options = {}) {
   const headers = { ...options.headers };
-  const token = localStorage.getItem('app-password');
-  if (token) {
-    headers['X-App-Password'] = token;
-  }
   if (options.adminPassword) {
     headers['X-Admin-Password'] = options.adminPassword;
   }
@@ -435,7 +433,6 @@ export const api = {
 
   uploadFile: async (weekId, countryId, file, { onProgress, onPhase, signal, reportage, sujetId, adminPassword, tailleMorceau } = {}) => {
     const { Upload } = await import('tus-js-client');
-    const token = localStorage.getItem('app-password');
 
     return new Promise((resolve, reject) => {
       const upload = new Upload(file, {
@@ -460,7 +457,12 @@ export const api = {
           countryId,
           reportage: reportage || '',
           sujetId: sujetId || '',
-          adminPassword: adminPassword || token || '',
+          // Seul le mot de passe montage, quand c'est la rédaction qui envoie.
+          // On y mettait l'ancien mot de passe global, resté dans le
+          // navigateur des correspondants : le serveur le comptait comme un
+          // mauvais mot de passe montage, et vingt envois fermaient l'espace
+          // montage à toute l'équipe.
+          adminPassword: adminPassword || '',
           // Repli si un proxy retire l'en-tête X-Reporter-Token posé plus
           // haut : sans identité, un envoi est refusé dès que la portée est
           // en `strict`. Le serveur retire ce champ avant d'écrire les
@@ -536,8 +538,6 @@ export const api = {
     formData.append('file', file);
 
     const headers = {};
-    const token = localStorage.getItem('app-password');
-    if (token) headers['X-App-Password'] = token;
     if (adminPassword) headers['X-Admin-Password'] = adminPassword;
 
     try {

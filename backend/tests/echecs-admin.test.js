@@ -89,27 +89,55 @@ describe('le vérificateur commun', () => {
     }
   });
 
-  it('le bon mot de passe ne compte jamais comme un échec', () => {
-    for (let i = 0; i < 100; i += 1) {
-      expect(auth.verifierMotDePasseAdmin('montage-secret', 'equipe', i).verdict).toBe('ok');
-    }
-    for (let i = 0; i < 19; i += 1) auth.verifierMotDePasseAdmin('faux', 'equipe', 200 + i);
-    expect(auth.verifierMotDePasseAdmin('montage-secret', 'equipe', 300).verdict).toBe('ok');
+  it('vérifier ne compte jamais : seul `noterEchecAdmin` compte', () => {
+    // L'INCIDENT : la vérification comptait elle-même. L'envoi d'un
+    // correspondant, qui transportait l'ancien mot de passe global, passait
+    // par elle : un « échec » par vidéo, et l'espace montage fermé.
+    for (let i = 0; i < 100; i += 1) auth.verifierMotDePasseAdmin('ancien-global', 'correspondant', i);
+    expect(auth.verifierMotDePasseAdmin('montage-secret', 'correspondant', 200).verdict).toBe('ok');
   });
 
-  it('après vingt échecs, même le bon mot de passe attend — sinon le blocage servirait d’oracle', () => {
-    for (let i = 0; i < 20; i += 1) {
-      expect(auth.verifierMotDePasseAdmin('essai-' + i, 'robot', i).verdict).toBe('faux');
-    }
+  it('après vingt échecs notés, même le bon mot de passe attend — sinon le blocage servirait d’oracle', () => {
+    for (let i = 0; i < 20; i += 1) auth.noterEchecAdmin('robot', i);
     const r = auth.verifierMotDePasseAdmin('montage-secret', 'robot', 100);
     expect(r.verdict).toBe('bloque');
     expect(r.attente).toBeGreaterThan(0);
     expect(auth.verifierMotDePasseAdmin('montage-secret', 'robot', 20 + 15 * MINUTE).verdict).toBe('ok');
   });
 
+  it('n’enferme jamais une adresse interne : ce serait enfermer toute l’équipe', () => {
+    // Derrière un relais mal déclaré, tout le monde arrive avec l'adresse
+    // du relais. La compter bloquerait l'équipe entière pour les fautes d'un
+    // seul — ou d'un inconnu.
+    for (const interne of ['172.18.0.5', '::ffff:172.18.0.5', '10.0.0.3', '127.0.0.1', '::1', '']) {
+      for (let i = 0; i < 30; i += 1) expect(auth.noterEchecAdmin(interne, i)).toBe(false);
+      expect(auth.verifierMotDePasseAdmin('montage-secret', interne, 40).verdict).toBe('ok');
+    }
+  });
+
+  it('reconnaît les adresses internes, et seulement elles', () => {
+    ['172.18.0.5', '::ffff:10.1.2.3', '192.168.1.4', '127.0.0.1', '::1', 'fd12:3456::1', 'fe80::1', '']
+      .forEach((a) => expect(auth.estAdresseInterne(a), a).toBe(true));
+    ['41.202.207.3', '203.0.113.7', '172.32.0.1', '2001:db8::1', '::ffff:41.202.207.3']
+      .forEach((a) => expect(auth.estAdresseInterne(a), a).toBe(false));
+  });
+
   it('un en-tête absent n’est pas une tentative', () => {
     for (let i = 0; i < 50; i += 1) auth.verifierMotDePasseAdmin(undefined, 'visiteur', i);
     expect(auth.verifierMotDePasseAdmin('montage-secret', 'visiteur', 60).verdict).toBe('ok');
+  });
+});
+
+describe('le nombre de relais (TRUST_PROXY)', () => {
+  it('un nombre devient un nombre de relais, et non une adresse', async () => {
+    // Transmis tel quel, « 2 » était lu par Express comme une adresse IP :
+    // le réglage ne pouvait pas marcher.
+    const { relaisDeConfiance } = await import('../src/app.js');
+    expect(relaisDeConfiance('2')).toBe(2);
+    expect(relaisDeConfiance(' 1 ')).toBe(1);
+    expect(relaisDeConfiance('')).toBe(1);
+    expect(relaisDeConfiance(undefined)).toBe(1);
+    expect(relaisDeConfiance('loopback')).toBe('loopback');
   });
 });
 
@@ -160,21 +188,63 @@ describe('à travers l’application', () => {
     expect(equipe.status).toBe(200);
   });
 
-  it('un mauvais mot de passe lu par deux gardes ne compte qu’une fois', async () => {
-    // La suppression d'un envoi lit l'en-tête dans la portée, puis dans la
-    // route. Compté deux fois, le blocage tomberait après dix requêtes.
+  it('l’incident rejoué : vingt-cinq envois portant l’ancien mot de passe global ne ferment rien', async () => {
+    // Les navigateurs des correspondants mettaient l'ancien mot de passe
+    // global dans les métadonnées TUS (`adminPassword`). Chaque envoi
+    // comptait un échec ; au vingtième, l'espace montage refusait le bon mot
+    // de passe à toute l'équipe.
+    const { authorizeTusUpload } = await import('../src/routes/tus.js');
+    const ip = '203.0.113.50';
+    for (let i = 0; i < 25; i += 1) {
+      const r = authorizeTusUpload({ adminPassword: 'ancien-global', appPassword: 'ancien-global' }, { headers: { 'x-forwarded-for': ip } });
+      expect(r.isAdmin).toBe(false);
+    }
+    const r = await request(app).get('/api/auth/check-admin').set('X-Forwarded-For', ip).set('X-Admin-Password', MOT_DE_PASSE);
+    expect(r.status).toBe(200);
+  });
+
+  it('un mauvais en-tête sur une route de correspondant ne compte pas', async () => {
     const ip = '203.0.113.99';
     const { WEEKS } = await import('../src/data/constants.js');
     const semaine = WEEKS.find((w) => w.status === 'active').id;
-    for (let i = 0; i < 10; i += 1) {
+    for (let i = 0; i < 25; i += 1) {
       await request(app).delete(`/api/uploads/${semaine}/cm/${randomUUID()}`).set('X-Forwarded-For', ip).set('X-Admin-Password', 'faux');
+    }
+    const r = await request(app).get('/api/auth/check-admin').set('X-Forwarded-For', ip).set('X-Admin-Password', MOT_DE_PASSE);
+    expect(r.status).toBe(200);
+  });
+
+  it('les actions réservées comptent, comme l’écran de connexion', async () => {
+    const ip = '203.0.113.77';
+    for (let i = 0; i < 10; i += 1) {
+      const r = await request(app).get('/api/liens/etat').set('X-Forwarded-For', ip).set('X-Admin-Password', 'faux');
+      expect(r.status).toBe(403);
     }
     for (let i = 0; i < 10; i += 1) {
       const r = await request(app).get('/api/auth/check-admin').set('X-Forwarded-For', ip).set('X-Admin-Password', 'faux');
       expect(r.status, `essai ${11 + i}`).toBe(401);
     }
-    const r = await request(app).get('/api/auth/check-admin').set('X-Forwarded-For', ip).set('X-Admin-Password', 'faux');
+    const r = await request(app).get('/api/auth/check-admin').set('X-Forwarded-For', ip).set('X-Admin-Password', MOT_DE_PASSE);
     expect(r.status).toBe(429);
+  });
+
+  it('sans adresse de visiteur, ne bloque personne et le dit une fois dans le journal', async () => {
+    // Pas de X-Forwarded-For : le serveur ne voit que la boucle locale, comme
+    // derrière un relais mal déclaré.
+    const { default: logger } = await import('../src/logger/index.js');
+    const espion = vi.spyOn(logger, 'warn');
+    try {
+      for (let i = 0; i < 30; i += 1) {
+        const r = await request(app).get('/api/auth/check-admin').set('X-Admin-Password', 'faux');
+        expect(r.status).toBe(401);
+      }
+      const r = await request(app).get('/api/auth/check-admin').set('X-Admin-Password', MOT_DE_PASSE);
+      expect(r.status).toBe(200);
+      const avertissements = espion.mock.calls.filter(([m]) => String(m).includes('TRUST_PROXY'));
+      expect(avertissements).toHaveLength(1);
+    } finally {
+      espion.mockRestore();
+    }
   });
 
   it('la valeur d’exemple n’ouvre rien : ni l’espace montage, ni ses actions', async () => {
@@ -187,5 +257,42 @@ describe('à travers l’application', () => {
     } finally {
       process.env.ADMIN_PASSWORD = MOT_DE_PASSE;
     }
+  });
+});
+
+describe('derrière deux relais (Caddy puis nginx), avec TRUST_PROXY=2', () => {
+  // La chaîne `X-Forwarded-For` arrive alors en « visiteur, relais ». Avec
+  // un seul relais déclaré, le serveur retenait l'adresse du relais — la même
+  // pour tous. Avec deux, il retrouve le visiteur, et la limite redevient
+  // personnelle.
+  let app;
+  const MOT_DE_PASSE = 'montage-secret-2026';
+
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.ADMIN_ECHECS_MAX = '20';
+    process.env.ADMIN_PASSWORD = MOT_DE_PASSE;
+    process.env.TRUST_PROXY = '2';
+    vi.resetModules();
+    const { createApp } = await import('../src/app.js');
+    app = createApp({ uploadsDir: TEST_UPLOADS_DIR, corsOrigins: ['http://localhost:5173'], enableMonitoring: false });
+  });
+
+  afterAll(() => {
+    process.env.NODE_ENV = 'test';
+    process.env.ADMIN_ECHECS_MAX = '10000';
+    delete process.env.ADMIN_PASSWORD;
+    delete process.env.TRUST_PROXY;
+    vi.resetModules();
+  });
+
+  it('bloque le visiteur fautif, pas celui qui passe par le même relais', async () => {
+    for (let i = 0; i < 20; i += 1) {
+      await request(app).get('/api/auth/check-admin').set('X-Forwarded-For', '203.0.113.20, 172.18.0.3').set('X-Admin-Password', 'faux');
+    }
+    const fautif = await request(app).get('/api/auth/check-admin').set('X-Forwarded-For', '203.0.113.20, 172.18.0.3').set('X-Admin-Password', MOT_DE_PASSE);
+    expect(fautif.status).toBe(429);
+    const equipe = await request(app).get('/api/auth/check-admin').set('X-Forwarded-For', '203.0.113.21, 172.18.0.3').set('X-Admin-Password', MOT_DE_PASSE);
+    expect(equipe.status).toBe(200);
   });
 });

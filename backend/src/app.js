@@ -129,13 +129,33 @@ function timeoutMiddleware(ms) {
 // comportement gracieux voulu côté index.js. Les routes sont déjà protégées
 // individuellement (asyncHandler + errorHandlerMiddleware).
 
+/**
+ * Combien de relais se trouvent devant le backend : c'est ce qui permet à
+ * Express de retrouver l'adresse du visiteur dans `X-Forwarded-For`.
+ *
+ * Un nombre (« 2 ») était transmis tel quel, donc comme une CHAÎNE, qu'Express
+ * lit comme une adresse IP : le réglage ne pouvait pas marcher. Il devient ici
+ * un nombre de relais ; toute autre valeur (« loopback », une liste
+ * d'adresses) garde le sens qu'Express lui donne.
+ *
+ * - 1 (défaut) : Caddy → backend ;
+ * - 2 : Caddy → nginx du frontend → backend.
+ */
+export function relaisDeConfiance(valeur) {
+  const brut = String(valeur ?? '').trim();
+  if (!brut) return 1;
+  if (/^\d+$/.test(brut)) return Number(brut);
+  if (brut === 'true' || brut === 'false') return brut === 'true';
+  return brut;
+}
+
 export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } = {}) {
   const dir = uploadsDir || join(process.cwd(), 'uploads');
   mkdirSync(dir, { recursive: true });
 
   const app = express();
 
-  app.set('trust proxy', process.env.TRUST_PROXY || 1);
+  app.set('trust proxy', relaisDeConfiance(process.env.TRUST_PROXY));
 
   if (enableMonitoring) {
     initSentry();

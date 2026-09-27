@@ -72,12 +72,51 @@ const compteurEchecs = creerCompteur({
 });
 
 /**
+ * Vrai si l'adresse ne désigne pas un visiteur identifiable : réseau privé,
+ * réseau Docker, boucle locale, lien local — ou pas d'adresse du tout.
+ *
+ * Une limite par adresse ne vaut que si l'adresse est celle du visiteur.
+ * Derrière un relais mal déclaré (`TRUST_PROXY`), le serveur voit l'adresse
+ * interne du relais, la même pour tout le monde : compter les échecs sous
+ * cette clé revient à laisser n'importe qui bloquer toute l'équipe.
+ */
+export function estAdresseInterne(adresse) {
+  let a = String(adresse || '').trim().toLowerCase();
+  if (a.startsWith('::ffff:')) a = a.slice(7);
+  if (!a) return true;
+  return /^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a)
+    || a === '::1'
+    || /^f[cd][0-9a-f]{0,2}:/.test(a)
+    || /^fe[89ab][0-9a-f]?:/.test(a);
+}
+
+let adresseInterneSignalee = false;
+
+function signalerAdresseInterne(adresse) {
+  if (adresseInterneSignalee) return;
+  adresseInterneSignalee = true;
+  logger.warn(
+    'Mot de passe montage : le serveur voit une adresse interne au lieu de celle du visiteur. '
+    + 'La limite d’essais est suspendue tant que TRUST_PROXY n’est pas réglé (DEPLOY_VPS.md §13).',
+    { context: { ip: String(adresse || '') } }
+  );
+}
+
+/**
  * LE point de vérification du mot de passe montage.
  *
  * Il y en avait cinq — `requireAdmin`, `estRedaction`, `/check-admin`, TUS et
  * le téléchargement du Mot du JT — chacun avec sa lecture de la variable, et
- * l'un d'eux sensible à la casse quand les autres ne l'étaient pas. Un seul
- * chemin, et c'est lui qui compte les échecs.
+ * l'un d'eux sensible à la casse quand les autres ne l'étaient pas.
+ *
+ * Elle vérifie, et ne compte RIEN : compter est l'affaire de
+ * `noterEchecAdmin`, appelée seulement là où quelqu'un ESSAIE un mot de passe.
+ *
+ * L'INCIDENT : elle comptait elle-même chaque échec. Or l'envoi d'un
+ * correspondant transportait, dans ses métadonnées TUS, l'ancien mot de passe
+ * global resté dans son navigateur — un « échec » par vidéo. Vingt envois un
+ * dimanche, et l'équipe montage trouvait l'espace montage fermé, avec le bon
+ * mot de passe.
  *
  * @returns {{verdict: 'ok'|'faux'|'absent'|'bloque'|'non-configure', attente: number}}
  *   `attente` : secondes avant de pouvoir réessayer, quand `bloque`.
@@ -87,27 +126,49 @@ export function verifierMotDePasseAdmin(fourni, adresse, maintenant = Date.now()
   if (!attendu) return { verdict: 'non-configure', attente: 0 };
   const token = normalizeToken(typeof fourni === 'string' ? fourni : '');
   if (!token) return { verdict: 'absent', attente: 0 };
-  const cle = String(adresse || 'inconnue');
-  if (estBloque(compteurEchecs, cle, maintenant)) {
+  const cle = String(adresse || '');
+  if (!estAdresseInterne(cle) && estBloque(compteurEchecs, cle, maintenant)) {
     return { verdict: 'bloque', attente: secondesRestantes(compteurEchecs, cle, maintenant) };
   }
-  if (safeEqual(token, attendu)) return { verdict: 'ok', attente: 0 };
+  return { verdict: safeEqual(token, attendu) ? 'ok' : 'faux', attente: 0 };
+}
+
+/**
+ * Compte un échec — seulement pour une vraie tentative : l'écran de
+ * connexion de l'espace montage (`/check-admin`) et les actions réservées
+ * (`requireAdmin`). Jamais sur une adresse interne (voir plus haut).
+ */
+export function noterEchecAdmin(adresse, maintenant = Date.now()) {
+  const cle = String(adresse || '');
+  if (estAdresseInterne(cle)) {
+    signalerAdresseInterne(cle);
+    return false;
+  }
   noterEchec(compteurEchecs, cle, maintenant);
-  return { verdict: 'faux', attente: 0 };
+  return true;
 }
 
 const VERDICT = Symbol('verdictMotDePasseAdmin');
+const COMPTE = Symbol('echecCompte');
 
 /**
  * Le verdict pour une requête Express, calculé une seule fois : plusieurs
- * gardes lisent le même en-tête au cours d'une même requête (la portée, puis
- * la route), et un seul mauvais mot de passe ne doit compter qu'une fois.
+ * gardes lisent le même en-tête au cours d'une même requête.
+ *
+ * `compter` : cette garde reçoit une vraie tentative. Un mauvais mot de passe
+ * n'est alors compté qu'une fois par requête, quel que soit le nombre de
+ * gardes qui le lisent. Les autres — la portée, le téléchargement du Mot du
+ * JT — se contentent de savoir si c'est la rédaction.
  */
-export function verdictAdmin(req) {
+export function verdictAdmin(req, { compter = false } = {}) {
   if (!req) return { verdict: 'absent', attente: 0 };
   if (!req[VERDICT]) {
     const fourni = typeof req.header === 'function' ? req.header('x-admin-password') : undefined;
     req[VERDICT] = verifierMotDePasseAdmin(fourni, req.ip);
+  }
+  if (compter && req[VERDICT].verdict === 'faux' && !req[COMPTE]) {
+    req[COMPTE] = true;
+    noterEchecAdmin(req.ip);
   }
   return req[VERDICT];
 }
@@ -126,7 +187,7 @@ export function requireAdmin(req, res, next) {
   if (req.method === 'OPTIONS') return next();
   if (IS_TEST) return next();
 
-  const { verdict, attente } = verdictAdmin(req);
+  const { verdict, attente } = verdictAdmin(req, { compter: true });
   if (verdict === 'ok') return next();
 
   if (verdict === 'non-configure') {

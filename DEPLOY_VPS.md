@@ -534,6 +534,30 @@ puis `docker compose up -d` :
 S'il vise l'IP publique ou celle du pont Docker (`172.17.0.1`), ne changez
 rien sans adapter d'abord le Caddyfile d'`/opt/edge`.
 
+### L'adresse réelle des visiteurs (`TRUST_PROXY`)
+
+Le backend limite les essais du mot de passe montage **par adresse** : vingt
+échecs en quinze minutes bloquent cette adresse. Encore faut-il qu'il voie
+l'adresse du visiteur, et non celle d'un relais. Tout dépend du chemin que
+suit une requête :
+
+```bash
+docker ps --format '{{.Names}}' | grep -i caddy          # le nom du conteneur Caddy
+docker exec <nom> cat /etc/caddy/Caddyfile | grep -n reverse_proxy
+```
+
+- `/api/*` part vers `backend:3010` (ou `localhost:3010`) : un seul relais,
+  `TRUST_PROXY=1` (le défaut) ;
+- tout part vers `frontend:80` (ou `localhost:3003`) : Caddy puis nginx,
+  deux relais, `TRUST_PROXY=2` dans `.env`, puis `docker compose up -d backend`.
+
+Si le réglage est faux, le backend l'écrit dans ses journaux et suspend la
+limite plutôt que de bloquer toute l'équipe :
+
+```bash
+docker compose logs backend | grep TRUST_PROXY
+```
+
 ### Le verrou des liens personnels (`REPORTER_ACCESS`)
 
 Tant qu'il vaut `observe` (le défaut), **rien n'est refusé** : quiconque

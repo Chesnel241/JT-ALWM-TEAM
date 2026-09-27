@@ -67,7 +67,7 @@ router.get('/check', authLimiter, (_req, res) => {
 // « authentifié » : l'espace montage s'ouvrait, puis chaque action échouait.
 // Elle dit désormais la même chose que `requireAdmin` : non.
 router.get('/check-admin', authLimiter, (req, res) => {
-  const { verdict, attente } = verdictAdmin(req);
+  const { verdict, attente } = verdictAdmin(req, { compter: true });
   if (verdict === 'ok') return res.json({ authenticated: true });
   if (verdict === 'bloque') {
     const erreur = erreurTropDEssais(attente);

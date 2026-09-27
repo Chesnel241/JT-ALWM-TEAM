@@ -104,7 +104,12 @@ function adresseClient(req) {
 }
 
 export function authorizeTusUpload(meta = {}, req = null) {
-  const fourni = String(meta.adminPassword || meta.appPassword || '');
+  // Vérifier sans compter : un envoi n'est pas une tentative de connexion.
+  // Les navigateurs des correspondants mettaient ici l'ancien mot de passe
+  // global — le compter comme un échec a fermé l'espace montage à toute
+  // l'équipe (voir verifierMotDePasseAdmin). `appPassword`, ce même mot de
+  // passe global, n'est plus lu du tout.
+  const fourni = String(meta.adminPassword || '');
   const isAdmin = verifierMotDePasseAdmin(fourni, adresseClient(req)).verdict === 'ok';
 
   // En-tête d'abord : il voyage hors des métadonnées, donc hors du sidecar
