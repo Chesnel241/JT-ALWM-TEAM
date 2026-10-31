@@ -1416,7 +1416,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
     try {
       await api.deleteDelivery(selectedWeek, fileId, authenticatedAdminPassword);
-      addToast(t.delivery.deleteSuccess(fileName), 'success');
+      addToast(t.delivery.deleted(fileName), 'success');
     } catch (err) {
       setDeliveries(previousDeliveries);
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error');
@@ -1531,13 +1531,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
     try {
       await api.deleteFile(selectedWeek, targetCountryId, targetFileId, authenticatedAdminPassword);
-      addToast(t.dashboard.deleted(targetFileName), 'success');
+      addToast(t.uploader.deleted(targetFileName), 'success');
     } catch (err) {
       setDashboard((prev) => ({
         ...prev,
         [targetCountryId]: previousBinState,
       }));
-      addToast(`${t.dashboard.deleteError} : ${err.message}`, 'error');
+      addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error');
     } finally {
       setIsDeleting(false);
     }

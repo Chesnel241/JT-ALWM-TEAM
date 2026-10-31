@@ -127,7 +127,7 @@ describe('MobileUploaderView', () => {
 describe('MobileUploaderView — repères ajoutés', () => {
   it('affiche l\'échéance de la semaine, absente jusque-là sur téléphone', () => {
     renderMobileUploader();
-    expect(screen.getByText(/Temps restant pour envoyer|VOUS êtes en retard/i)).toBeInTheDocument();
+    expect(screen.getByRole('timer')).toHaveAccessibleName(/Temps restant pour envoyer|clôturés/i);
   });
 
   it('explique ce qu\'on dépose dans la section active', () => {

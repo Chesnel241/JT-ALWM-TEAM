@@ -306,19 +306,17 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       {onBack && (
-        <button onClick={quitter} type="button" className="btn btn-ghost border border-[var(--border)] py-1.5 text-sm mb-5 motion-tap">
+        <button onClick={quitter} type="button" className="btn btn-ghost border-2 border-[var(--border)] min-h-[44px] px-4 text-sm font-bold mb-5 motion-tap inline-flex items-center gap-2">
           <ArrowLeft size={15} aria-hidden="true" /> {r.retour}
         </button>
       )}
 
-      <header className="flex items-start gap-3 mb-6">
-        <span className="h-12 w-12 shrink-0 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center">
-          <Icone size={24} aria-hidden="true" />
+      <header className="jr-ciel mb-6 px-4 py-6 sm:py-8 flex flex-col items-center text-center">
+        <span className="h-16 w-16 shrink-0 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shadow-lg">
+          <Icone size={30} aria-hidden="true" />
         </span>
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-[color:var(--ink)] leading-tight">{rubrique.nom}</h1>
-          <p className="text-sm text-[color:var(--muted)] mt-0.5">{rubrique.description}</p>
-        </div>
+        <h1 className="mt-3 text-2xl sm:text-3xl font-extrabold text-[color:var(--ink)] leading-tight">{rubrique.nom}</h1>
+        <p className="text-sm sm:text-base text-[color:var(--muted)] mt-1.5 max-w-xl">{rubrique.description}</p>
       </header>
 
       {/* Un brouillon plus récent que le serveur : proposé, jamais imposé. */}
@@ -329,10 +327,10 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
             {r.modifieLe(formatRelative(brouillonPropose.le, lang))}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={reprendreBrouillon} className="btn btn-primary py-1.5 px-4 text-sm motion-tap">
+            <button type="button" onClick={reprendreBrouillon} className="jr-bouton jr-bouton-orange">
               {r.conflitRecharger}
             </button>
-            <button type="button" onClick={ignorerBrouillon} className="btn btn-ghost border border-[var(--border)] py-1.5 px-4 text-sm motion-tap">
+            <button type="button" onClick={ignorerBrouillon} className="btn btn-ghost border-2 border-[var(--border)] min-h-[44px] px-4 text-sm font-bold motion-tap">
               {r.retour}
             </button>
           </div>
@@ -341,15 +339,15 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
 
       {/* Conflit : la saisie reste à l'écran, rien n'est écrasé. */}
       {etat === 'conflit' && (
-        <div role="alert" className="mb-5 rounded-2xl border border-[var(--signal)]/50 bg-[var(--signal)]/10 p-4">
-          <p className="text-sm font-bold text-[color:var(--ink)] flex items-center gap-2">
-            <AlertCircle size={16} aria-hidden="true" /> {r.conflitTitre}
+        <div role="alert" className="mb-5 rounded-2xl border-2 border-[var(--cta-orange)]/40 bg-[var(--cta-orange)]/10 p-4">
+          <p className="text-base font-bold text-[color:var(--ink)] flex items-center gap-2">
+            <AlertCircle size={18} className="shrink-0 text-[color:var(--cta-orange)]" aria-hidden="true" /> {r.conflitTitre}
           </p>
-          <p className="text-xs text-[color:var(--ink)] mt-1">{r.conflitTexte}</p>
+          <p className="text-sm text-[color:var(--ink)] mt-1">{r.conflitTexte}</p>
           <button
             type="button"
             onClick={() => recharger({ ignorerBrouillon: true })}
-            className="btn btn-ghost border border-[var(--border)] mt-3 py-1.5 px-4 text-sm motion-tap"
+            className="jr-bouton jr-bouton-orange mt-3"
           >
             <RefreshCw size={14} aria-hidden="true" /> {r.conflitRecharger}
           </button>
@@ -360,7 +358,7 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
       <section className="space-y-4">
         {rubrique.champs.map((champ) => (
           <label key={champ.cle} className="block">
-            <span className="block text-sm font-bold text-[color:var(--ink)] mb-1.5">{champ.libelle}</span>
+            <span className="block text-base font-bold text-[color:var(--ink)] mb-1.5">{champ.libelle}</span>
             {champ.multiligne ? (
               <textarea
                 id={`rubrique-${cle}-${champ.cle}`}
@@ -368,7 +366,7 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
                 maxLength={champ.max}
                 value={champs[champ.cle] || ''}
                 onChange={(e) => modifier(champ.cle, e.target.value)}
-                className="w-full bg-[var(--paper)] border border-[var(--border)] rounded-2xl px-3.5 py-3 text-sm text-[color:var(--ink)] leading-relaxed resize-y"
+                className="w-full bg-[var(--paper)] border-2 border-[var(--border)] rounded-2xl px-4 py-3 text-base text-[color:var(--ink)] leading-relaxed resize-y outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15"
               />
             ) : (
               <input
@@ -376,8 +374,19 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
                 maxLength={champ.max}
                 value={champs[champ.cle] || ''}
                 onChange={(e) => modifier(champ.cle, e.target.value)}
-                className="w-full bg-[var(--paper)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 text-sm text-[color:var(--ink)]"
+                className="w-full min-h-[56px] bg-[var(--paper)] border-2 border-[var(--border)] rounded-2xl px-4 text-base font-semibold text-[color:var(--ink)] outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15"
               />
+            )}
+            {champ.max > 0 && (
+              // La limite était invisible : la saisie s'arrêtait net, sans
+              // qu'on sache pourquoi.
+              <span
+                className={`mt-1 block text-right text-xs font-semibold ${
+                  (champs[champ.cle] || '').length >= champ.max ? 'text-[color:var(--cta-orange-deep)]' : 'text-[color:var(--muted)]'
+                }`}
+              >
+                {r.compteur((champs[champ.cle] || '').length, champ.max)}
+              </span>
             )}
           </label>
         ))}
@@ -387,17 +396,17 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
             type="button"
             onClick={() => enregistrer(champs, { manuel: true })}
             disabled={etat === 'en_cours'}
-            className="btn btn-primary motion-tap px-6 py-2.5 flex items-center justify-center gap-2"
+            className="jr-bouton jr-bouton-vert min-w-[12rem] disabled:opacity-60"
           >
-            {etat === 'en_cours' ? <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-              : etat === 'fait' ? <Check size={16} aria-hidden="true" />
-              : <Save size={16} aria-hidden="true" />}
+            {etat === 'en_cours' ? <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+              : etat === 'fait' ? <Check size={18} className="motion-check" aria-hidden="true" />
+              : <Save size={18} aria-hidden="true" />}
             {etat === 'en_cours' ? r.enregistrement : r.enregistrer}
           </button>
 
           {/* L'état réel, dit sans détour : ce qui est parti, ce qui ne l'est
               pas encore, et ce qui n'a pu être gardé qu'ici. */}
-          <span role="status" className="text-xs text-[color:var(--muted)]">
+          <span role="status" className={`text-sm font-semibold ${etat === 'fait' ? 'text-[color:var(--action-deep)]' : 'text-[color:var(--muted)]'}`}>
             {etat === 'en_cours' && r.enregistrement}
             {etat === 'fait' && enregistreA && r.enregistreA(enregistreA)}
             {etat === 'brouillon' && r.brouillonLocal}
@@ -408,8 +417,8 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
 
       {/* Le fichier attendu par cette rubrique. */}
       <section className="mt-8 pt-6 border-t border-[var(--border)]">
-        <h2 className="text-sm font-bold text-[color:var(--ink)] mb-1">{rubrique.libelleFichier}</h2>
-        <p className="text-xs text-[color:var(--muted)] mb-3">{r.fichierTousFormats}</p>
+        <h2 className="text-lg font-extrabold text-[color:var(--ink)] mb-1">{rubrique.libelleFichier}</h2>
+        <p className="text-sm text-[color:var(--muted)] mb-3">{r.fichierTousFormats}</p>
 
         <input
           ref={entreeFichier}
@@ -423,18 +432,18 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--paper)] p-3.5">
             <div className="flex items-center gap-3">
               <Loader2 size={16} className="animate-spin shrink-0 text-[color:var(--accent-deep)]" aria-hidden="true" />
-              <span className="text-sm font-semibold text-[color:var(--ink)]">
+              <span className="text-base font-bold text-[color:var(--ink)]">
                 {r.fichierEnvoi} {Math.round(envoi.progression || 0)} %
               </span>
               <button
                 type="button"
                 onClick={annulerEnvoi}
-                className="ml-auto btn btn-ghost border border-[var(--border)] py-1 px-3 text-xs motion-tap"
+                className="ml-auto btn btn-ghost border-2 border-[var(--border)] min-h-[44px] px-3 text-sm font-bold motion-tap inline-flex items-center gap-1.5"
               >
                 <X size={13} aria-hidden="true" /> {r.fichierAnnuler}
               </button>
             </div>
-            <div className="mt-2.5 h-1.5 w-full rounded-full bg-[var(--paper-2)] overflow-hidden">
+            <div className="mt-3 h-3 w-full rounded-full bg-[var(--paper-2)] overflow-hidden">
               <div
                 className="h-full rounded-full bg-[var(--action)] transition-[width] duration-200"
                 style={{ width: `${Math.min(100, Math.max(0, envoi.progression || 0))}%` }}
@@ -449,9 +458,9 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
           <button
             type="button"
             onClick={() => entreeFichier.current?.click()}
-            className="btn btn-ghost border border-[var(--border)] motion-tap px-4 py-2.5 flex items-center gap-2"
+            className="jr-bouton jr-bouton-vert w-full sm:w-auto"
           >
-            <Paperclip size={16} aria-hidden="true" />
+            <Paperclip size={18} aria-hidden="true" />
             {r.fichierChoisir}
           </button>
         )}
@@ -461,13 +470,15 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
             {fichiers.map((f) => {
               const duree = formaterDuree(f.duree);
               return (
-                <li key={f.id} className="flex items-center gap-2 text-sm rounded-xl bg-[var(--paper)] border border-[var(--border)] px-3 py-2">
-                  <Check size={14} className="text-[color:var(--success)] shrink-0" aria-hidden="true" />
+                <li key={f.id} className="flex items-center gap-2.5 text-sm rounded-2xl bg-[var(--paper)] border-2 border-[var(--action)]/25 px-3.5 py-2.5">
+                  <span className="h-7 w-7 shrink-0 rounded-full bg-[var(--action)] text-white flex items-center justify-center" aria-hidden="true">
+                    <Check size={15} strokeWidth={3} />
+                  </span>
                   <a
                     href={`${API_BASE}/uploads/${f.filename}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="truncate text-[color:var(--ink)] hover:underline"
+                    className="truncate font-semibold text-[color:var(--ink)] hover:underline"
                   >
                     {f.name}
                   </a>
@@ -486,16 +497,16 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
         <section className="mt-8 pt-6 border-t border-[var(--border)]">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
             <div>
-              <h2 className="text-sm font-bold text-[color:var(--ink)] mb-1">{r.sujetsTitre}</h2>
-              <p className="text-xs text-[color:var(--muted)]">{r.sujetsSous}</p>
+              <h2 className="text-lg font-extrabold text-[color:var(--ink)] mb-1">{r.sujetsTitre}</h2>
+              <p className="text-sm text-[color:var(--muted)]">{r.sujetsSous}</p>
             </div>
             {parPays.length > 0 && (
               <button
                 type="button"
                 onClick={insererDeroule}
-                className="btn btn-ghost border border-[var(--border)] py-1.5 px-3.5 text-xs motion-tap shrink-0"
+                className="jr-bouton jr-bouton-bleu shrink-0 text-sm"
               >
-                <ListPlus size={14} aria-hidden="true" /> {r.sujetsInserer}
+                <ListPlus size={16} aria-hidden="true" /> {r.sujetsInserer}
               </button>
             )}
           </div>

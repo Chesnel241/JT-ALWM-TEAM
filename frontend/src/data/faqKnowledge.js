@@ -1,3 +1,5 @@
+import { phraseProchaineCloture } from '../lib/echeance.js';
+
 /**
  * Base de connaissances pour l'assistant IA (FAQ Dynamique)
  * Ce système analyse les mots-clés de l'utilisateur pour trouver la meilleure réponse.
@@ -27,7 +29,9 @@ const faqKnowledge = {
     },
     {
       keywords: ['heure', 'limite', 'deadline', 'clôture', 'fin', 'tard', 'dimanche'],
-      answer: "La date limite stricte pour envoyer vos reportages est le **dimanche à 10h30 (GMT+2)**. Passé ce délai, l'upload est bloqué par sécurité pour que l'équipe de montage puisse finaliser le JT. Le compteur en bas à gauche de la page d'accueil vous indique le temps restant."
+      // L'heure dite dans le fuseau de l'appareil : « dimanche 10h30 (GMT+2) »
+      // obligeait chaque correspondant à faire la conversion de tête.
+      answer: ({ echeance }) => `La date limite stricte pour envoyer vos reportages est **${echeance}**. Passé ce délai, l'envoi est bloqué pour que l'équipe de montage puisse finaliser le JT. Le compte à rebours de votre espace vous indique le temps restant.`
     },
     {
       keywords: ['montage', 'télécharger', 'récupérer', 'jt prêt', 'final', 'voir le jt', 'visionner'],
@@ -81,7 +85,8 @@ const faqKnowledge = {
     },
     {
       keywords: ['time', 'limit', 'deadline', 'closing', 'end', 'late', 'sunday'],
-      answer: "The strict deadline to send your reports is **Sunday at 5:30 PM**. After this time, uploads are blocked for security so the editing team can finalize the broadcast. The countdown timer shows you the remaining time."
+      // Annonçait « Sunday at 5:30 PM » : sept heures après la vraie clôture.
+      answer: ({ echeance }) => `The strict deadline to send your reports is **${echeance}**. After this time, uploads are blocked so the editing team can finalize the broadcast. The countdown in your space shows the time left.`
     },
     {
       keywords: ['edit', 'download', 'retrieve', 'final cut', 'final', 'watch', 'view'],
@@ -150,9 +155,13 @@ export function getAIResponse(userInput, t, lang = 'fr') {
     }
   }
 
-  // Si on a un score, on retourne la meilleure réponse
+  // Si on a un score, on retourne la meilleure réponse. Une réponse peut
+  // dépendre du moment et du fuseau (l'heure limite) : elle est alors une
+  // fonction, appelée ici.
   if (maxScore > 0) {
-    return bestMatch;
+    return typeof bestMatch === 'function'
+      ? bestMatch({ echeance: phraseProchaineCloture(t, lang) })
+      : bestMatch;
   }
 
   return t.aiAssistant.defaultAnswer;

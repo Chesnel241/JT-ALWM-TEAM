@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 import UploaderView from '../src/components/UploaderView.jsx';
 import { api } from '../src/api/index.js';
 import { I18nProvider } from '../src/i18n/I18nContext.jsx';
@@ -58,5 +58,29 @@ describe('UploaderView — ordinateur', () => {
     expect(within(desktop).getAllByText('Announcements').length).toBeGreaterThan(0);
     expect(within(desktop).queryByText('Annonces')).toBeNull();
     expect(within(desktop).getAllByText('Approved').length).toBeGreaterThan(0);
+  });
+});
+
+describe('UploaderView — fin d’un envoi', () => {
+  it('le fichier arrivé apparaît dans la liste, sans recharger la page', async () => {
+    // L'INCIDENT : un envoi TUS se termine sans renvoyer la fiche du
+    // fichier. L'écran attendait cette fiche : le reçu disait « Terminé ! »,
+    // mais la liste restait à « Aucun fichier » jusqu'au rechargement.
+    const arrive = { id: 'f2', name: 'son-du-marche.mp3', type: 'audio', size: '3 MB', sujetId: 's1', status: 'pending' };
+    api.getUploads.mockResolvedValueOnce(ENVOIS).mockResolvedValue([...ENVOIS, arrive]);
+    vi.spyOn(api, 'uploadFile').mockResolvedValue({ success: true, message: 'Upload terminé avec succès via TUS' });
+
+    monter('fr');
+    await screen.findAllByText('interview.mp4');
+    expect(screen.queryAllByText('son-du-marche.mp3')).toHaveLength(0);
+
+    const entree = document.querySelector('input[type="file"]');
+    fireEvent.change(entree, { target: { files: [new File(['x'], 'son-du-marche.mp3', { type: 'audio/mpeg' })] } });
+
+    await waitFor(() => expect(api.uploadFile).toHaveBeenCalled());
+    // Le reçu de l'envoi porte aussi le nom : on attend la liste, qui le
+    // montre une seconde fois, avec sa taille.
+    expect(await screen.findAllByText(/3 MB/)).not.toHaveLength(0);
+    expect(api.getUploads).toHaveBeenLastCalledWith('2026-W34', 'ga');
   });
 });

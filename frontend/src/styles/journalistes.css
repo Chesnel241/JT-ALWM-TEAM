@@ -1,0 +1,1700 @@
+/*
+ * Espace journalistes — formes et mouvements.
+ *
+ * Les correspondants sont nombreux à être âgés ou peu familiers du numérique,
+ * et arrivent sur un téléphone, en 4G parfois faible. D'où trois règles :
+ *
+ *   1. Tout en CSS et SVG : aucune bibliothèque d'animation à télécharger.
+ *   2. Le mouvement montre ce qui se passe (le temps qui file, le fichier
+ *      qui part) ; il ne décore pas. Il n'anime que `transform`, `opacity`
+ *      et des traits SVG, qui restent sur le fil de composition.
+ *   3. La réduction des mouvements demandée par le système s'applique
+ *      ici aussi (règle globale d'index.css) : tout se fige, rien ne casse.
+ *
+ * Les couleurs viennent des jetons d'index.css : vert --action, bleu
+ * --accent, orange --cta-orange, rouge --cta-red, et les trois couleurs de
+ * jauge. `color-mix` donne les teintes douces ; un navigateur trop ancien
+ * ignore la ligne et garde l'aplat déclaré juste avant.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Compte à rebours                                                    */
+/* ------------------------------------------------------------------ */
+
+/* La phase pose deux couleurs : celle du tracé (vive, ≥ 3:1 sur l'ivoire)
+   et celle des pastilles à texte blanc (sombre, ≥ 4,5:1). */
+.cr {
+	--cr-couleur: var(--jauge-serein);
+	--cr-plein: var(--action);
+	--cr-pouls: 4s;
+}
+
+.cr[data-phase='proche'] {
+	--cr-couleur: var(--jauge-proche);
+	--cr-plein: var(--cta-orange);
+}
+
+.cr[data-phase='urgent'] {
+	--cr-couleur: var(--jauge-urgent);
+	--cr-plein: var(--cta-red);
+}
+
+.cr[data-phase='clos'] {
+	--cr-couleur: var(--cta-red-deep);
+	--cr-plein: var(--cta-red-deep);
+}
+
+.cr-carte {
+	position: relative;
+	overflow: hidden;
+	border-radius: 1.75rem;
+	border: 2px solid var(--border);
+	border-color: color-mix(in oklch, var(--cr-couleur) 35%, var(--border));
+	background: var(--paper);
+	background: linear-gradient(
+		135deg,
+		color-mix(in oklch, var(--cr-couleur) 12%, var(--paper)) 0%,
+		var(--paper) 55%,
+		color-mix(in oklch, var(--brand-sky) 10%, var(--paper)) 100%
+	);
+	box-shadow: var(--shadow-soft);
+	transition: border-color 600ms var(--ease-out);
+}
+
+/* Le cadran : une piste, un arc qui raccourcit, une comète au bout, et un
+   halo qui respire. Plus la clôture approche, plus il respire vite. */
+.cr-cadran {
+	position: relative;
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+}
+
+.cr-cadran > svg {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg);
+}
+
+.cr-halo {
+	position: absolute;
+	inset: -12%;
+	border-radius: 9999px;
+	background: radial-gradient(circle, color-mix(in oklch, var(--cr-couleur) 40%, transparent) 0%, transparent 68%);
+	animation: cr-respire var(--cr-pouls) ease-in-out infinite;
+	pointer-events: none;
+}
+
+.cr[data-pouls='0'] .cr-halo {
+	animation: none;
+	opacity: 0.25;
+}
+
+@keyframes cr-respire {
+	0%,
+	100% {
+		transform: scale(0.9);
+		opacity: 0.4;
+	}
+
+	50% {
+		transform: scale(1.08);
+		opacity: 0.95;
+	}
+}
+
+.cr-piste {
+	stroke: var(--border);
+	stroke: color-mix(in oklch, var(--cr-couleur) 16%, var(--border));
+}
+
+.cr-arc {
+	stroke: var(--cr-couleur);
+	stroke-linecap: round;
+	transition:
+		stroke-dashoffset 1s var(--ease-out),
+		stroke 600ms var(--ease-out);
+}
+
+/* La trotteuse : un point qui fait le tour en une minute, calé sur les
+   secondes réelles à l'affichage. C'est elle qui dit « le temps passe ». */
+.cr-trotteuse {
+	transform-origin: 50% 50%;
+	animation: cr-tour 60s linear infinite;
+}
+
+.cr-trotteuse circle {
+	fill: var(--cr-couleur);
+}
+
+.cr[data-phase='clos'] .cr-trotteuse {
+	display: none;
+}
+
+@keyframes cr-tour {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.cr-centre {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	line-height: 1;
+}
+
+/* Pastille de phase : texte blanc sur la couleur sombre de la phase. */
+.cr-phase {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.85rem;
+	border-radius: 9999px;
+	background: var(--cr-plein);
+	color: #fff;
+	font-weight: 800;
+	font-size: 0.85rem;
+	line-height: 1.2;
+	box-shadow: 0 6px 16px -8px var(--cr-plein);
+	transition: background-color 600ms var(--ease-out);
+}
+
+.cr[data-phase='urgent'] .cr-phase svg {
+	animation: cr-secoue 1.6s ease-in-out infinite;
+}
+
+@keyframes cr-secoue {
+	0%,
+	70%,
+	100% {
+		transform: rotate(0);
+	}
+
+	75% {
+		transform: rotate(-14deg);
+	}
+
+	85% {
+		transform: rotate(12deg);
+	}
+
+	95% {
+		transform: rotate(-6deg);
+	}
+}
+
+/* Chiffres qui basculent : chaque chiffre est remonté à son changement
+   (clé React), ce qui rejoue l'entrée — et seulement elle. */
+.cr-chiffres {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.cr-bloc {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.3rem;
+}
+
+.cr-cases {
+	display: flex;
+	gap: 0.2rem;
+}
+
+.cr-case {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 2.2rem;
+	height: 2.9rem;
+	overflow: hidden;
+	border-radius: 0.65rem;
+	background: #fff;
+	border: 1px solid var(--border);
+	border-bottom: 3px solid var(--border);
+	border-bottom-color: color-mix(in oklch, var(--cr-couleur) 55%, var(--border));
+	color: var(--ink);
+	font-size: 1.6rem;
+	font-weight: 900;
+	font-variant-numeric: tabular-nums;
+	box-shadow: 0 6px 14px -10px oklch(0.25 0.05 250 / 0.5);
+	perspective: 200px;
+}
+
+.cr-case::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	height: 1px;
+	background: oklch(0.25 0.02 250 / 0.08);
+}
+
+.cr-case > span {
+	display: block;
+	animation: cr-bascule 420ms var(--ease-emphasis) both;
+}
+
+@keyframes cr-bascule {
+	from {
+		transform: translateY(-65%) rotateX(70deg);
+		opacity: 0;
+	}
+
+	to {
+		transform: none;
+		opacity: 1;
+	}
+}
+
+/* Sur un petit téléphone, les quatre blocs doivent tenir sur une ligne :
+   les secondes renvoyées seules à la ligne se lisaient comme un autre
+   compteur. */
+@media (max-width: 420px) {
+	.cr-chiffres {
+		gap: 0.35rem;
+	}
+
+	.cr-case {
+		width: 1.75rem;
+		height: 2.45rem;
+		font-size: 1.3rem;
+		border-radius: 0.5rem;
+	}
+
+	.cr-unite {
+		font-size: 0.6rem;
+	}
+}
+
+.cr-unite {
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--muted);
+}
+
+/* Ruban de la semaine : sept jours, le dernier est celui de la clôture. */
+.cr-ruban {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 0.35rem;
+}
+
+.cr-jour {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.3rem;
+	min-width: 0;
+}
+
+.cr-jour-libelle {
+	font-size: 0.72rem;
+	font-weight: 700;
+	color: var(--muted);
+	text-transform: capitalize;
+	white-space: nowrap;
+}
+
+.cr-jour-barre {
+	position: relative;
+	width: 100%;
+	height: 0.6rem;
+	overflow: hidden;
+	border-radius: 9999px;
+	background: var(--border);
+	background: color-mix(in oklch, var(--cr-couleur) 14%, var(--border));
+}
+
+.cr-jour-barre > i {
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: var(--cr-couleur);
+	transform-origin: left center;
+	transform: scaleX(var(--r, 0));
+	transition: transform 1s var(--ease-out);
+}
+
+.cr-jour[data-etat='aujourdhui'] .cr-jour-libelle {
+	color: var(--cr-plein);
+	font-weight: 900;
+}
+
+.cr-jour[data-etat='aujourdhui'] .cr-jour-barre {
+	box-shadow: 0 0 0 3px color-mix(in oklch, var(--cr-couleur) 28%, transparent);
+}
+
+/* L'étiquette « Aujourd'hui » flotte doucement au-dessus du jour. */
+.cr-ici {
+	position: absolute;
+	bottom: calc(100% + 0.15rem);
+	left: 50%;
+	padding: 0.15rem 0.5rem;
+	border-radius: 9999px;
+	background: var(--cr-plein);
+	color: #fff;
+	font-size: 0.65rem;
+	font-weight: 800;
+	white-space: nowrap;
+	transform: translateX(-50%);
+	animation: cr-flotte 2.4s ease-in-out infinite;
+}
+
+@keyframes cr-flotte {
+	0%,
+	100% {
+		transform: translate(-50%, 0);
+	}
+
+	50% {
+		transform: translate(-50%, -3px);
+	}
+}
+
+.cr-jour[data-cloture] .cr-jour-libelle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+}
+
+/* Version compacte, pour le téléphone et le bandeau d'état. */
+.cr-compact {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	padding: 0.75rem 0.85rem;
+	border-radius: 1.25rem;
+	border: 2px solid var(--border);
+	border-color: color-mix(in oklch, var(--cr-couleur) 35%, var(--border));
+	background: var(--paper);
+	background: color-mix(in oklch, var(--cr-couleur) 8%, var(--paper));
+}
+
+.cr-compact-temps {
+	font-size: 1.15rem;
+	font-weight: 900;
+	font-variant-numeric: tabular-nums;
+	color: var(--cr-plein);
+	white-space: nowrap;
+}
+
+.cr-compact .cr-jour-libelle {
+	font-size: 0.6rem;
+}
+
+.cr-compact .cr-jour-barre {
+	height: 0.4rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Accueil journalistes                                                */
+/* ------------------------------------------------------------------ */
+
+/* Le ciel de l'en-tête : deux taches de couleur qui dérivent lentement.
+   Des dégradés plutôt qu'un flou : un `filter: blur` sur une grande surface
+   coûte cher à un téléphone d'entrée de gamme. */
+.jr-ciel {
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+	border-radius: 2rem;
+}
+
+.jr-ciel::before,
+.jr-ciel::after {
+	content: '';
+	position: absolute;
+	z-index: -1;
+	width: 22rem;
+	height: 22rem;
+	border-radius: 9999px;
+	animation: jr-derive 16s ease-in-out infinite alternate;
+	pointer-events: none;
+}
+
+.jr-ciel::before {
+	top: -9rem;
+	left: -6rem;
+	background: radial-gradient(circle closest-side, color-mix(in oklch, var(--brand-sky) 45%, transparent) 0%, transparent 100%);
+}
+
+.jr-ciel::after {
+	top: -7rem;
+	right: -7rem;
+	background: radial-gradient(circle closest-side, color-mix(in oklch, var(--action) 28%, transparent) 0%, transparent 100%);
+	animation-delay: -8s;
+}
+
+@keyframes jr-derive {
+	from {
+		transform: translate(0, 0) scale(1);
+	}
+
+	to {
+		transform: translate(2.5rem, 1.5rem) scale(1.15);
+	}
+}
+
+/* La carte du pays : le drapeau émet des ondes, comme une antenne. */
+.jr-pays {
+	position: relative;
+	overflow: hidden;
+	border-radius: 2rem;
+	border: 2px solid var(--border);
+	border-color: color-mix(in oklch, var(--accent) 30%, var(--border));
+	background: var(--paper);
+	background: linear-gradient(135deg, color-mix(in oklch, var(--brand-sky) 16%, var(--paper)) 0%, var(--paper) 60%);
+	box-shadow: var(--shadow-soft);
+}
+
+.jr-drapeau {
+	position: relative;
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+}
+
+.jr-drapeau::before,
+.jr-drapeau::after {
+	content: '';
+	position: absolute;
+	inset: -4px;
+	border-radius: 9999px;
+	border: 3px solid color-mix(in oklch, var(--brand-sky) 70%, transparent);
+	animation: jr-onde 3s ease-out infinite;
+	pointer-events: none;
+}
+
+.jr-drapeau::after {
+	animation-delay: 1.5s;
+}
+
+@keyframes jr-onde {
+	from {
+		transform: scale(0.95);
+		opacity: 0.9;
+	}
+
+	to {
+		transform: scale(1.5);
+		opacity: 0;
+	}
+}
+
+/* Le parcours de la semaine : trois nœuds, un trait qui se remplit, et un
+   flux de points qui avance sur la partie restante — la « liaison ». */
+.jr-parcours {
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.5rem;
+}
+
+.jr-trait {
+	position: absolute;
+	top: 2rem;
+	left: 16.66%;
+	right: 16.66%;
+	height: 6px;
+	transform: translateY(-50%);
+	border-radius: 9999px;
+	overflow: hidden;
+	background-image: repeating-linear-gradient(90deg, var(--border) 0 10px, transparent 10px 18px);
+	background-size: 18px 100%;
+	animation: jr-flux 1.1s linear infinite;
+}
+
+.jr-trait > i {
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: linear-gradient(90deg, var(--action), var(--brand-sky));
+	transform-origin: left center;
+	transform: scaleX(var(--r, 0));
+	transition: transform 900ms var(--ease-emphasis);
+}
+
+@keyframes jr-flux {
+	to {
+		background-position: 18px 0;
+	}
+}
+
+.jr-etape {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.45rem;
+	min-width: 0;
+	padding: 0 0.15rem;
+	text-align: center;
+	border-radius: 1.25rem;
+}
+
+.jr-noeud {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 4rem;
+	height: 4rem;
+	border-radius: 9999px;
+	background: #fff;
+	color: var(--accent);
+	border: 3px dashed var(--border);
+	box-shadow: 0 8px 18px -12px oklch(0.25 0.05 250 / 0.6);
+	transition:
+		transform var(--motion-enter) var(--ease-out),
+		background-color 400ms var(--ease-out),
+		border-color 400ms var(--ease-out);
+}
+
+.jr-etape:hover .jr-noeud {
+	transform: translateY(-3px) scale(1.04);
+}
+
+.jr-etape[data-etat='aFaire'] .jr-noeud {
+	border-color: var(--accent);
+}
+
+.jr-etape[data-etat='fait'] .jr-noeud {
+	background: var(--action);
+	border: 3px solid var(--action);
+	color: #fff;
+}
+
+.jr-etape[data-etat='pret'] .jr-noeud {
+	background: var(--accent);
+	border: 3px solid var(--accent);
+	color: #fff;
+}
+
+.jr-etape[data-etat='aCorriger'] .jr-noeud {
+	background: var(--cta-orange);
+	border: 3px solid var(--cta-orange);
+	color: #fff;
+}
+
+.jr-etape[data-etat='facultatif'] .jr-noeud,
+.jr-etape[data-etat='enAttente'] .jr-noeud {
+	color: var(--muted);
+	background: var(--paper-2);
+}
+
+.jr-etape[data-etat='enAttente'] .jr-noeud svg {
+	animation: jr-sablier 3s ease-in-out infinite;
+}
+
+@keyframes jr-sablier {
+	0%,
+	40% {
+		transform: rotate(0);
+	}
+
+	50%,
+	90% {
+		transform: rotate(180deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+/* « À vous » : une onde autour du nœud qui attend le correspondant. */
+.jr-etape[data-avous] .jr-noeud::after {
+	content: '';
+	position: absolute;
+	inset: -7px;
+	border-radius: 9999px;
+	border: 3px solid var(--accent);
+	animation: jr-onde 2s ease-out infinite;
+}
+
+.jr-etape[data-etat='aCorriger'][data-avous] .jr-noeud::after {
+	border-color: var(--cta-orange);
+}
+
+.jr-avous {
+	position: absolute;
+	top: -1.55rem;
+	padding: 0.1rem 0.5rem;
+	border-radius: 9999px;
+	background: var(--accent);
+	color: #fff;
+	font-size: 0.65rem;
+	font-weight: 800;
+	white-space: nowrap;
+	animation: cr-flotte 2.4s ease-in-out infinite;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.jr-etape[data-etat='aCorriger'] .jr-avous {
+	background: var(--cta-orange);
+}
+
+/* Cartes d'action : une couleur par nature d'action. */
+.jr-carte {
+	--jr-c: var(--action);
+	position: relative;
+	overflow: hidden;
+	border-radius: 1.75rem;
+	border: 2px solid var(--border);
+	border-color: color-mix(in oklch, var(--jr-c) 30%, var(--border));
+	background: var(--paper);
+	background: linear-gradient(160deg, color-mix(in oklch, var(--jr-c) 10%, var(--paper)) 0%, var(--paper) 58%);
+	transition:
+		transform var(--motion-enter) var(--ease-out),
+		box-shadow var(--motion-enter) var(--ease-out),
+		border-color var(--motion-enter) var(--ease-out);
+}
+
+.jr-carte[data-ton='bleu'] {
+	--jr-c: var(--accent);
+}
+
+.jr-carte[data-ton='rouge'] {
+	--jr-c: var(--cta-red);
+}
+
+.jr-carte[data-ton='orange'] {
+	--jr-c: var(--cta-orange);
+}
+
+@media (hover: hover) {
+	.jr-carte:hover {
+		transform: translateY(-4px);
+		border-color: var(--jr-c);
+		box-shadow: 0 22px 40px -26px var(--jr-c);
+	}
+}
+
+.jr-carte:active {
+	transform: scale(0.98);
+}
+
+.jr-carte-icone {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 4.5rem;
+	height: 4.5rem;
+	border-radius: 1.4rem;
+	background: var(--jr-c);
+	color: #fff;
+	box-shadow: 0 12px 24px -14px var(--jr-c);
+}
+
+.jr-cta {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	width: 100%;
+	min-height: 3.5rem;
+	padding: 0.85rem 1.25rem;
+	border-radius: 1.1rem;
+	background: var(--jr-c);
+	color: #fff;
+	font-weight: 800;
+	font-size: 1rem;
+	box-shadow: 0 10px 22px -14px var(--jr-c);
+}
+
+.jr-cta svg:last-child {
+	transition: transform var(--motion-enter) var(--ease-out);
+}
+
+.jr-carte:hover .jr-cta svg:last-child {
+	transform: translateX(4px);
+}
+
+/* Les icônes montrent leur geste : la flèche monte (envoyer), descend
+   (télécharger), le micro émet. */
+.jr-anim-monte svg {
+	animation: jr-monte 2.2s ease-in-out infinite;
+}
+
+.jr-anim-descend svg {
+	animation: jr-descend 2.2s ease-in-out infinite;
+}
+
+@keyframes jr-monte {
+	0%,
+	100% {
+		transform: translateY(3px);
+	}
+
+	50% {
+		transform: translateY(-4px);
+	}
+}
+
+@keyframes jr-descend {
+	0%,
+	100% {
+		transform: translateY(-3px);
+	}
+
+	50% {
+		transform: translateY(4px);
+	}
+}
+
+.jr-egaliseur {
+	position: absolute;
+	right: 0.55rem;
+	bottom: 0.55rem;
+	display: flex;
+	align-items: flex-end;
+	gap: 2px;
+	height: 0.9rem;
+}
+
+.jr-egaliseur i {
+	width: 3px;
+	height: 100%;
+	border-radius: 2px;
+	background: #fff;
+	transform-origin: bottom;
+	animation: jr-barre 0.9s ease-in-out infinite alternate;
+}
+
+.jr-egaliseur i:nth-child(2) {
+	animation-delay: -0.3s;
+}
+
+.jr-egaliseur i:nth-child(3) {
+	animation-delay: -0.6s;
+}
+
+@keyframes jr-barre {
+	from {
+		transform: scaleY(0.3);
+	}
+
+	to {
+		transform: scaleY(1);
+	}
+}
+
+/* Le point rouge de l'enregistrement, dans le bouton de la voix off. */
+.jr-rec {
+	width: 0.65rem;
+	height: 0.65rem;
+	border-radius: 9999px;
+	background: #fff;
+	animation: jr-clignote 1.4s ease-in-out infinite;
+}
+
+@keyframes jr-clignote {
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.35;
+	}
+}
+
+.jr-nouveau {
+	position: absolute;
+	top: 0.9rem;
+	right: 0.9rem;
+	padding: 0.25rem 0.65rem;
+	border-radius: 9999px;
+	background: var(--accent);
+	color: #fff;
+	font-size: 0.75rem;
+	font-weight: 800;
+	animation: cr-flotte 2.4s ease-in-out infinite;
+}
+
+/* ------------------------------------------------------------------ */
+/* Choix du pays                                                       */
+/* ------------------------------------------------------------------ */
+
+.jr-reprise {
+	border-radius: 1.75rem;
+	border: 2px solid var(--action);
+	background: var(--paper);
+	background: linear-gradient(120deg, color-mix(in oklch, var(--action) 12%, var(--paper)) 0%, var(--paper) 70%);
+	box-shadow: 0 16px 34px -26px var(--action);
+	transition: transform var(--motion-enter) var(--ease-out);
+}
+
+.jr-reprise:active {
+	transform: scale(0.98);
+}
+
+.jr-tuile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.55rem;
+	min-width: 0;
+	padding: 1.15rem 0.75rem 1rem;
+	border-radius: 1.5rem;
+	border: 2px solid var(--border);
+	background: var(--paper);
+	text-align: center;
+	box-shadow: 0 10px 22px -20px oklch(0.25 0.05 250 / 0.6);
+	transition:
+		transform var(--motion-enter) var(--ease-out),
+		border-color var(--motion-enter) var(--ease-out),
+		box-shadow var(--motion-enter) var(--ease-out);
+}
+
+@media (hover: hover) {
+	.jr-tuile:hover {
+		transform: translateY(-4px);
+		border-color: var(--accent);
+		box-shadow: 0 20px 34px -24px var(--accent);
+	}
+
+	/* Le drapeau ondule au survol, comme au vent. */
+	.jr-tuile:hover .jr-tuile-drapeau {
+		animation: jr-vent 1.2s ease-in-out infinite;
+	}
+}
+
+.jr-tuile:active {
+	transform: scale(0.97);
+}
+
+.jr-tuile-drapeau {
+	display: inline-flex;
+	transform-origin: 50% 90%;
+}
+
+@keyframes jr-vent {
+	0%,
+	100% {
+		transform: rotate(0);
+	}
+
+	25% {
+		transform: rotate(-5deg);
+	}
+
+	75% {
+		transform: rotate(5deg);
+	}
+}
+
+.jr-tuile[data-dernier] {
+	border-color: var(--action);
+	background: var(--paper);
+	background: linear-gradient(180deg, color-mix(in oklch, var(--action) 10%, var(--paper)) 0%, var(--paper) 70%);
+}
+
+.jr-tuile-entrer {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+	margin-top: 0.15rem;
+	padding: 0.35rem 0.8rem;
+	border-radius: 9999px;
+	background: var(--accent);
+	color: #fff;
+	font-size: 0.85rem;
+	font-weight: 800;
+}
+
+.jr-tuile[data-dernier] .jr-tuile-entrer {
+	background: var(--action);
+}
+
+.jr-tuile-ajout {
+	justify-content: center;
+	border-style: dashed;
+	border-color: var(--cta-orange);
+	color: var(--cta-orange-deep);
+	background: var(--paper);
+	background: color-mix(in oklch, var(--cta-orange) 6%, var(--paper));
+}
+
+@media (hover: hover) {
+	.jr-tuile-ajout:hover {
+		border-color: var(--cta-orange);
+		box-shadow: 0 20px 34px -24px var(--cta-orange);
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/* Envoi : le voyage des fichiers                                      */
+/* ------------------------------------------------------------------ */
+
+.jr-voyage {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 1rem;
+	border-radius: 1.5rem;
+	border: 2px solid var(--border);
+	border-color: color-mix(in oklch, var(--accent) 25%, var(--border));
+	background: var(--paper-2);
+	background: linear-gradient(135deg, color-mix(in oklch, var(--brand-sky) 14%, var(--paper)) 0%, var(--paper) 70%);
+}
+
+/* Le point vert qui émet : « ça envoie ». */
+.jr-radar {
+	position: relative;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-radius: 9999px;
+	background: var(--action);
+}
+
+.jr-radar::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: var(--action);
+	animation: jr-onde 1.4s ease-out infinite;
+}
+
+.jr-liaison {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.jr-liaison-noeud {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+}
+
+.jr-liaison-alwm {
+	width: 3rem;
+	height: 3rem;
+	border-radius: 9999px;
+	background: #fff;
+	box-shadow: 0 0 0 4px #fff, 0 8px 18px -10px oklch(0.25 0.05 250 / 0.6);
+}
+
+/* La piste : des tirets qui défilent vers la rédaction tant qu'un envoi
+   est en route. */
+.jr-liaison-piste {
+	position: relative;
+	flex: 1;
+	height: 2.75rem;
+	min-width: 4rem;
+}
+
+.jr-liaison-piste::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	height: 4px;
+	transform: translateY(-50%);
+	border-radius: 9999px;
+	background-image: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 14px);
+	background-size: 14px 100%;
+	opacity: 0.4;
+}
+
+.jr-liaison-piste[data-actif]::before {
+	animation: jr-defile 0.7s linear infinite;
+}
+
+@keyframes jr-defile {
+	to {
+		background-position: 14px 0;
+	}
+}
+
+/* Chaque fichier glisse sur la piste : le rail fait la largeur de la piste,
+   et se décale de la part déjà envoyée (transform seul, pas de mise en page). */
+.jr-paquet-rail {
+	position: absolute;
+	inset: 0;
+	transform: translateX(calc(var(--p, 0) * (100% - 2.1rem)));
+	transition: transform 700ms var(--ease-out);
+	pointer-events: none;
+}
+
+.jr-paquet {
+	position: absolute;
+	left: 0;
+	top: 50%;
+	display: grid;
+	place-items: center;
+	width: 2.1rem;
+	height: 2.1rem;
+	margin-top: -1.05rem;
+	border-radius: 0.7rem;
+	background: var(--action);
+	color: #fff;
+	box-shadow: 0 8px 16px -8px var(--action);
+	animation: jr-flottement 1.3s ease-in-out infinite;
+}
+
+.jr-paquet-rail[data-etat='fait'] .jr-paquet {
+	background: var(--accent);
+	box-shadow: 0 8px 16px -8px var(--accent);
+}
+
+.jr-paquet-rail[data-etat='attente'] .jr-paquet {
+	background: var(--muted);
+	animation: none;
+}
+
+.jr-paquet-rail[data-etat='erreur'] .jr-paquet {
+	background: var(--cta-orange);
+	animation: none;
+}
+
+@keyframes jr-flottement {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+
+	50% {
+		transform: translateY(-5px);
+	}
+}
+
+/* Les trois étapes d'un fichier : Envoi, Traitement, Reçu. */
+.jr-etapes-envoi {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+}
+
+.jr-pas {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: 0.75rem;
+	font-weight: 800;
+	color: var(--muted);
+	white-space: nowrap;
+}
+
+.jr-pas-point {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 1.4rem;
+	height: 1.4rem;
+	border-radius: 9999px;
+	border: 2px solid var(--border);
+	background: #fff;
+	color: #fff;
+}
+
+.jr-pas[data-etat='actif'] {
+	color: var(--accent-deep);
+}
+
+/* L'étape en cours tourne : un quart de cercle bleu fait le tour. */
+.jr-pas[data-etat='actif'] .jr-pas-point::after {
+	content: '';
+	position: absolute;
+	inset: -2px;
+	border-radius: inherit;
+	border: 2px solid transparent;
+	border-top-color: var(--accent);
+	animation: cr-tour 0.9s linear infinite;
+}
+
+.jr-pas[data-etat='fait'] {
+	color: var(--action-deep);
+}
+
+.jr-pas[data-etat='fait'] .jr-pas-point {
+	background: var(--action);
+	border-color: var(--action);
+}
+
+.jr-pas[data-etat='attente'] .jr-pas-point {
+	border-style: dashed;
+	color: var(--muted);
+}
+
+.jr-pas[data-etat='erreur'] {
+	color: var(--cta-orange-deep);
+}
+
+.jr-pas[data-etat='erreur'] .jr-pas-point {
+	background: var(--cta-orange);
+	border-color: var(--cta-orange);
+}
+
+.jr-pas-trait {
+	flex: 1;
+	min-width: 0.6rem;
+	height: 3px;
+	border-radius: 9999px;
+	background: var(--border);
+	transition: background-color 400ms var(--ease-out);
+}
+
+.jr-pas-trait[data-fait] {
+	background: var(--action);
+}
+
+/* La zone de dépôt : un bord en pointillés qui défile, les types de
+   fichiers acceptés autour du nuage, et un soulèvement quand on y glisse
+   un fichier. */
+.jr-depot {
+	position: relative;
+	border-radius: 1.5rem;
+	background: var(--paper);
+	background: linear-gradient(160deg, color-mix(in oklch, var(--action) 7%, var(--paper)) 0%, var(--paper) 65%);
+	transition:
+		transform var(--motion-enter) var(--ease-out),
+		box-shadow var(--motion-enter) var(--ease-out);
+}
+
+.jr-depot-bord {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.jr-depot-bord rect {
+	fill: none;
+	stroke: var(--action);
+	stroke-width: 3;
+	stroke-dasharray: 12 9;
+	opacity: 0.55;
+	animation: jr-fourmis 1.6s linear infinite;
+}
+
+@keyframes jr-fourmis {
+	to {
+		stroke-dashoffset: -21;
+	}
+}
+
+.jr-depot[data-glisse] {
+	transform: translateY(-4px) scale(1.01);
+	box-shadow: 0 24px 40px -26px var(--action);
+}
+
+.jr-depot[data-glisse] .jr-depot-bord rect {
+	opacity: 1;
+	animation-duration: 0.5s;
+}
+
+.jr-depot[data-ferme] {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.jr-depot[data-ferme] .jr-depot-bord rect {
+	stroke: var(--border);
+	animation: none;
+}
+
+.jr-depot-icones {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.6rem;
+}
+
+.jr-depot-icones > span {
+	display: grid;
+	place-items: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 0.85rem;
+	background: #fff;
+	color: var(--accent);
+	border: 1px solid var(--border);
+	box-shadow: 0 6px 14px -10px oklch(0.25 0.05 250 / 0.6);
+	animation: jr-flottement 2.6s ease-in-out infinite;
+}
+
+.jr-depot-icones > span:nth-child(2) {
+	animation-delay: -0.6s;
+	color: var(--cta-red);
+}
+
+.jr-depot-icones > span:nth-child(4) {
+	animation-delay: -1.2s;
+	color: var(--cta-orange);
+}
+
+.jr-depot-icones > span:nth-child(5) {
+	animation-delay: -1.8s;
+}
+
+.jr-depot-icones > .jr-depot-nuage {
+	width: 4.5rem;
+	height: 4.5rem;
+	border-radius: 1.4rem;
+	background: var(--action);
+	color: #fff;
+	border: 0;
+	box-shadow: 0 14px 26px -14px var(--action);
+	animation: jr-monte 2.2s ease-in-out infinite;
+}
+
+/* Boutons d'action de l'espace journalistes. */
+.jr-bouton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	min-height: 3.25rem;
+	padding: 0.75rem 1.4rem;
+	border-radius: 1rem;
+	font-weight: 800;
+	font-size: 1rem;
+	transition:
+		transform var(--motion-tap) var(--ease-out),
+		box-shadow var(--motion-tap) var(--ease-out);
+}
+
+.jr-bouton:active {
+	transform: scale(0.98);
+}
+
+.jr-bouton-vert {
+	background: var(--action);
+	color: #fff;
+	box-shadow: 0 10px 22px -14px var(--action);
+}
+
+.jr-bouton-contour {
+	background: #fff;
+	color: var(--action-deep);
+	border: 2px solid var(--action);
+}
+
+/* ------------------------------------------------------------------ */
+/* Champs                                                              */
+/* ------------------------------------------------------------------ */
+
+/* Le numéro WhatsApp : très grand, et sa bordure dit si le format est bon
+   (vert) ou s'il manque des chiffres (orange). */
+.jr-champ-telephone .uploader-phone-input .PhoneInputInput {
+	min-height: 3.75rem;
+	padding: 0.85rem 1rem;
+	border-radius: 1rem;
+	border-width: 2px;
+	font-size: 1.25rem;
+	font-weight: 800;
+	letter-spacing: 0.02em;
+	background: #fff;
+}
+
+.jr-champ-telephone .uploader-phone-input .PhoneInputCountry {
+	min-height: 3.75rem;
+	padding: 0 0.75rem;
+	border-radius: 1rem;
+	border-width: 2px;
+	background: #fff;
+}
+
+.jr-champ-telephone[data-etat='ok'] .PhoneInputInput {
+	border-color: var(--action);
+	box-shadow: 0 0 0 4px color-mix(in oklch, var(--action) 15%, transparent);
+}
+
+.jr-champ-telephone[data-etat='incomplet'] .PhoneInputInput {
+	border-color: var(--cta-orange);
+}
+
+/* La pastille du pays (drapeau + code) prend sa place naturelle : la
+   bibliothèque l'enfermait dans un cadre de 1,5 × 1 em, prévu pour son
+   propre drapeau, qui rognait le code. */
+.jr-champ-telephone .PhoneInputCountryIcon,
+.jr-champ-telephone .PhoneInputCountryIcon--border {
+	width: auto;
+	height: auto;
+	background: none;
+	box-shadow: none;
+}
+
+/* Un numéro complet (« +237 6 99 00 00 00 ») tient sur un téléphone de
+   360 px sans défiler dans le champ. */
+@media (max-width: 420px) {
+	.jr-champ-telephone .uploader-phone-input .PhoneInputInput {
+		font-size: 1.0625rem;
+		letter-spacing: 0;
+		padding: 0.85rem 0.75rem;
+		margin-left: 0.5rem;
+	}
+	.jr-champ-telephone .uploader-phone-input .PhoneInputCountry {
+		padding: 0 0.5rem;
+	}
+}
+
+/* Les autres couleurs d'action, sur le même gabarit que le bouton vert :
+   bleu pour ouvrir ou regarder, orange pour reprendre, rouge pour
+   enregistrer ou supprimer. */
+.jr-bouton-bleu {
+	background: var(--accent);
+	color: #fff;
+	box-shadow: 0 10px 22px -14px var(--accent);
+}
+
+.jr-bouton-orange {
+	background: var(--cta-orange);
+	color: #fff;
+	box-shadow: 0 10px 22px -14px var(--cta-orange);
+}
+
+.jr-bouton-rouge {
+	background: var(--cta-red);
+	color: #fff;
+	box-shadow: 0 10px 22px -14px var(--cta-red);
+}
+
+/* ------------------------------------------------------------------ */
+/* JT prêt                                                             */
+/* ------------------------------------------------------------------ */
+
+/* Une carte par JT : un écran de télévision qu'on touche pour regarder,
+   puis les deux boutons. */
+.jr-jt {
+	overflow: hidden;
+	border-radius: 1.75rem;
+	border: 2px solid color-mix(in oklch, var(--accent) 25%, var(--border));
+	background: var(--paper);
+	box-shadow: 0 18px 40px -30px color-mix(in oklch, var(--accent) 80%, transparent);
+	animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+.jr-jt-ecran {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 30% 20%, color-mix(in oklch, #fff 22%, transparent) 0, transparent 45%),
+		linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+	cursor: pointer;
+}
+
+.jr-jt-ecran:disabled {
+	cursor: default;
+}
+
+/* Les lignes d'un vieil écran, qui défilent doucement. */
+.jr-jt-ecran::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: repeating-linear-gradient(0deg, color-mix(in oklch, #fff 7%, transparent) 0 2px, transparent 2px 6px);
+	animation: jr-balayage 6s linear infinite;
+}
+
+@keyframes jr-balayage {
+	to {
+		transform: translateY(24px);
+	}
+}
+
+.jr-jt-ecran:focus-visible {
+	outline: 4px solid color-mix(in oklch, var(--accent) 45%, transparent);
+	outline-offset: -4px;
+}
+
+.jr-jt-logo {
+	position: absolute;
+	top: 0.9rem;
+	left: 0.9rem;
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0.3rem;
+	border-radius: 9999px;
+	background: #fff;
+	object-fit: contain;
+	box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.5);
+}
+
+.jr-jt-lecture {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 5.25rem;
+	height: 5.25rem;
+	border-radius: 9999px;
+	background: #fff;
+	color: var(--accent-deep);
+	box-shadow: 0 14px 30px -12px rgb(0 0 0 / 0.55);
+	transition: transform var(--motion-enter) var(--ease-out);
+}
+
+/* Deux anneaux qui s'élargissent : « touchez ici ». */
+.jr-jt-lecture::before,
+.jr-jt-lecture::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	border: 3px solid #fff;
+	animation: jr-ondes-lecture 2.4s var(--ease-out) infinite;
+}
+
+.jr-jt-lecture::after {
+	animation-delay: 1.2s;
+}
+
+@keyframes jr-ondes-lecture {
+	from {
+		transform: scale(1);
+		opacity: 0.7;
+	}
+	to {
+		transform: scale(1.75);
+		opacity: 0;
+	}
+}
+
+.jr-jt-ecran:hover .jr-jt-lecture,
+.jr-jt-ecran:focus-visible .jr-jt-lecture {
+	transform: scale(1.08);
+}
+
+.jr-jt-ecran:disabled .jr-jt-lecture::before,
+.jr-jt-ecran:disabled .jr-jt-lecture::after {
+	animation: none;
+	opacity: 0;
+}
+
+/* La flèche du bouton vert descend, comme le fichier. */
+.jr-jt a:hover .jr-jt-fleche,
+.jr-jt a:focus-visible .jr-jt-fleche {
+	animation: jr-descend 0.9s var(--ease-out) infinite;
+}
+
+/* Le fichier tombe dans le plateau des téléchargements. */
+.jr-jt-lance {
+	animation: rise var(--motion-enter) var(--ease-out) both;
+}
+
+.jr-jt-plateau {
+	position: relative;
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 0.85rem;
+	background: var(--action);
+	color: #fff;
+	overflow: hidden;
+}
+
+.jr-jt-plateau svg {
+	animation: jr-chute 1.4s var(--ease-out) infinite;
+}
+
+@keyframes jr-chute {
+	0% {
+		transform: translateY(-140%);
+		opacity: 0;
+	}
+	45%,
+	75% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+	100% {
+		transform: translateY(0);
+		opacity: 0;
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/* Studio voix off                                                     */
+/* ------------------------------------------------------------------ */
+
+/* Le gros bouton rond : rouge, il dit « enregistrer » avant d'être lu.
+   Pendant la prise, deux halos battent comme un cœur ; en pause, ils se
+   figent en orange. */
+.jr-micro {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 9.5rem;
+	height: 9.5rem;
+}
+
+.jr-micro-halo,
+.jr-micro-halo::after {
+	position: absolute;
+	inset: 0.75rem;
+	border-radius: 9999px;
+	background: color-mix(in oklch, var(--cta-red) 22%, transparent);
+}
+
+.jr-micro-halo::after {
+	content: '';
+	inset: 0;
+	background: color-mix(in oklch, var(--cta-red) 14%, transparent);
+}
+
+.jr-micro[data-etat='rec'] .jr-micro-halo {
+	animation: jr-battement 1.2s var(--ease-out) infinite;
+}
+
+.jr-micro[data-etat='rec'] .jr-micro-halo::after {
+	animation: jr-battement 1.2s var(--ease-out) 0.3s infinite;
+}
+
+.jr-micro[data-etat='pause'] .jr-micro-halo {
+	background: color-mix(in oklch, var(--cta-orange) 22%, transparent);
+}
+
+.jr-micro[data-etat='pret'] .jr-micro-halo {
+	animation: jr-invite 2.6s ease-in-out infinite;
+}
+
+@keyframes jr-battement {
+	0% {
+		transform: scale(0.85);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1.35);
+		opacity: 0;
+	}
+}
+
+@keyframes jr-invite {
+	0%,
+	100% {
+		transform: scale(0.92);
+	}
+	50% {
+		transform: scale(1.04);
+	}
+}
+
+.jr-micro-bouton {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 7rem;
+	height: 7rem;
+	border-radius: 9999px;
+	background: radial-gradient(circle at 35% 30%, color-mix(in oklch, #fff 25%, var(--cta-red)) 0, var(--cta-red) 55%, var(--cta-red-deep) 100%);
+	color: #fff;
+	box-shadow:
+		0 16px 34px -14px var(--cta-red),
+		inset 0 -4px 0 color-mix(in oklch, #000 15%, transparent);
+	transition: transform var(--motion-tap) var(--ease-out);
+}
+
+.jr-micro-bouton:active:not(:disabled) {
+	transform: scale(0.94);
+}
+
+.jr-micro-bouton:focus-visible {
+	outline: 4px solid color-mix(in oklch, var(--cta-red) 45%, transparent);
+	outline-offset: 4px;
+}
+
+.jr-micro-bouton:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.jr-micro-point {
+	width: 0.7rem;
+	height: 0.7rem;
+	border-radius: 9999px;
+	background: var(--cta-red);
+	animation: jr-clignote 1s steps(2, start) infinite;
+}
+
+/* L'onde : sa hauteur suit le niveau mesuré (--h), et chaque barre ondule
+   un peu, décalée de la précédente, pour que la voix « vive » à l'écran. */
+.jr-onde {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.3rem;
+	width: 100%;
+	max-width: 22rem;
+	height: 4.5rem;
+	padding: 0 0.75rem;
+	border-radius: 1.25rem;
+	background: var(--paper-2);
+}
+
+.jr-onde-barre {
+	flex: 1;
+	max-width: 0.55rem;
+	height: calc(var(--h, 0.12) * 100%);
+	min-height: 0.35rem;
+	border-radius: 9999px;
+	background: color-mix(in oklch, var(--muted) 40%, transparent);
+	transition: height 120ms linear;
+}
+
+.jr-onde[data-actif] .jr-onde-barre {
+	background: linear-gradient(180deg, var(--cta-red) 0%, var(--cta-orange) 100%);
+	animation: jr-ondule 0.9s ease-in-out infinite alternate;
+	animation-delay: calc(var(--i) * -70ms);
+}
+
+@keyframes jr-ondule {
+	from {
+		transform: scaleY(0.7);
+	}
+	to {
+		transform: scaleY(1);
+	}
+}
+
+/* Le prompteur : grand texte sur fond clair, qui défile pendant la prise. */
+.jr-prompteur {
+	max-height: 12rem;
+	overflow-y: auto;
+	padding: 1rem 1.1rem;
+	border-radius: 1.25rem;
+	border: 2px solid var(--border);
+	background: var(--paper-2);
+	color: var(--ink);
+	font-weight: 600;
+	line-height: 1.55;
+}
+
+.jr-prompteur[data-actif] {
+	border-color: color-mix(in oklch, var(--cta-red) 45%, var(--border));
+}
+
+/* Sur l'écran bleu du JT, la pastille « Nouveau » passe en blanc : en bleu
+   sur bleu, elle ne se voyait plus. */
+.jr-jt-ecran .jr-nouveau {
+	background: #fff;
+	color: var(--accent-deep);
+	font-size: 0.85rem;
+	padding: 0.35rem 0.8rem;
+	box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.5);
+}

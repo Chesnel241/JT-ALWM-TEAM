@@ -54,3 +54,40 @@ describe('HomeView', () => {
     expect(screen.getByRole('dialog', { name: /Ajouter un pays/i })).toBeInTheDocument();
   });
 });
+
+describe('HomeView — tuiles à drapeau', () => {
+  // LE BESOIN : on reconnaît son pays à son drapeau avant de lire son nom.
+  // Il y avait deux listes (téléphone, ordinateur) qui divergeaient : le
+  // compteur de l'une était écrit en français en dur.
+  it('montre le drapeau de chaque pays, servi par l’application', () => {
+    const { container } = renderHome();
+    const sources = [...container.querySelectorAll('img')].map((img) => img.getAttribute('src'));
+    expect(sources).toEqual(expect.arrayContaining(['/flags/sn.svg', '/flags/cm.svg']));
+  });
+
+  it('propose le dernier pays ouvert en tête, pour y revenir en un geste', () => {
+    localStorage.setItem('last_selected_country_id', 'cm');
+    const onSelect = vi.fn();
+    renderHome({ onSelectCountry: onSelect });
+    expect(screen.getByText('Dernier accès')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Ouvrir'));
+    expect(onSelect).toHaveBeenCalledWith(COUNTRIES[1]);
+  });
+
+  it('compte les pays dans la langue choisie', () => {
+    localStorage.setItem('jt-alwm-lang', 'en');
+    renderHome();
+    expect(screen.getByText('2 countries')).toBeInTheDocument();
+  });
+
+  it('une recherche sans résultat propose d’ajouter le pays, et s’efface d’un geste', () => {
+    renderHome();
+    const champ = screen.getByRole('searchbox');
+    fireEvent.change(champ, { target: { value: 'Atlantide' } });
+    expect(screen.getByText(/Aucun pays ne correspond à « Atlantide »/)).toBeInTheDocument();
+    expect(screen.getByText('Ajouter ce pays')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Effacer la recherche' }));
+    expect(champ).toHaveValue('');
+    expect(screen.getByText('Sénégal')).toBeInTheDocument();
+  });
+});

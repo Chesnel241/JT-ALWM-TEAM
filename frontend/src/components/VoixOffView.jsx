@@ -11,6 +11,7 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { api } from '../api/index.js';
 import { readAdminPassword } from '../lib/adminSession.js';
 import { extensionDuBlob, extensionDepuisType } from '../lib/signatures.js';
+import StudioVoixJournaliste from './StudioVoixJournaliste.jsx';
 
 const getSupportedMimeType = () => {
   if (typeof MediaRecorder === 'undefined') return '';
@@ -77,6 +78,12 @@ export default function VoixOffView({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0); // 0..100
   const [isAudioClipping, setIsAudioClipping] = useState(false);
+  // Dernière voix off bien arrivée : le studio des journalistes le dit tant
+  // qu'une nouvelle prise n'a pas commencé.
+  const [voixEnvoyee, setVoixEnvoyee] = useState(false);
+  // Micro refusé : dit sous le bouton rouge, pas seulement dans un message
+  // qui disparaît au bout de six secondes.
+  const [microRefuse, setMicroRefuse] = useState(false);
 
   // Teleprompter state
   const [fontSize, setFontSize] = useState(20);
@@ -155,9 +162,9 @@ export default function VoixOffView({
 
   // Visualizer loop
   const drawVisualizer = () => {
-    if (!canvasRef.current || !analyserRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    // Le niveau se mesure même sans canevas : le studio des journalistes
+    // dessine son onde lui-même, à partir de `audioLevel`.
+    if (!analyserRef.current) return;
     const analyser = analyserRef.current;
 
     const bufferLength = analyser.frequencyBinCount;
@@ -180,6 +187,9 @@ export default function VoixOffView({
       setAudioLevel(Math.round((avg / 255) * 100));
       setIsAudioClipping(peak > 240);
 
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -210,10 +220,12 @@ export default function VoixOffView({
   const startRecording = async () => {
     if (isStarting || isRecording) return;
     if (!selectedCountry) {
-      return addToast('Veuillez sélectionner un pays d\'abord.', 'error');
+      return addToast(t.voix.erreurPays, 'error');
     }
 
     setIsStarting(true);
+    setVoixEnvoyee(false);
+    setMicroRefuse(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -270,7 +282,8 @@ export default function VoixOffView({
       setTimeout(drawVisualizer, 100);
     } catch (err) {
       console.error('Audio capture error:', err);
-      addToast('Impossible d\'accéder au microphone. Vérifiez vos permissions.', 'error');
+      addToast(t.voix.erreurMicro, 'error', 6000);
+      setMicroRefuse(true);
     } finally {
       setIsStarting(false);
     }
@@ -312,8 +325,9 @@ export default function VoixOffView({
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('audio/') && !/\.(mp3|m4a|wav|aac|ogg|webm)$/i.test(file.name)) {
-      return addToast('Veuillez sélectionner un fichier audio valide (.mp3, .m4a, .wav).', 'error');
+      return addToast(t.voix.erreurFichier, 'error');
     }
+    setVoixEnvoyee(false);
     setAudioBlob(file);
     const url = URL.createObjectURL(file);
     setAudioUrl(url);
@@ -329,7 +343,7 @@ export default function VoixOffView({
     const effectiveTitle = reportageTitle.trim() || `Reportage ${reportageNum}`;
 
     setIsUploading(true);
-    setUploadStepText('Envoi du fichier vers le serveur...');
+    setUploadStepText(t.voix.envoi);
 
     // Le format vient des OCTETS, pas du type annoncé. Safari appelle
     // « audio/aac » un conteneur MP4, et livre parfois un type que personne
@@ -347,11 +361,12 @@ export default function VoixOffView({
     formData.append('script', script);
 
     try {
-      setUploadStepText('Traitement studio broadcast FFmpeg (égalisation + compresseur dynamique)...');
+      setUploadStepText(t.voix.traitement);
 
       await api.uploadVoiceover(selectedWeek, selectedCountry.id, formData, readAdminPassword());
 
-      addToast('Voix off traitée et ajoutée aux rushes avec succès !', 'success', 6000);
+      addToast(t.voix.envoyee, 'success', 6000);
+      setVoixEnvoyee(true);
 
       // Reset
       setAudioBlob(null);
@@ -367,6 +382,69 @@ export default function VoixOffView({
       setUploadStepText('');
     }
   };
+
+  const recommencer = () => {
+    setAudioBlob(null);
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    setAudioUrl(null);
+    setIsAutoScrolling(false);
+  };
+
+  const choisirReportage = (num) => {
+    setReportageNum(num);
+    if (!reportageTitle || reportageTitle.startsWith('Reportage ')) {
+      setReportageTitle(`Reportage ${num}`);
+    }
+  };
+
+  // Les journalistes ont leur propre studio, clair et en trois étapes ; la
+  // logique d'enregistrement ci-dessus reste la même pour tous.
+  if (isReporter) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <StudioVoixJournaliste
+          pays={selectedCountry}
+          paysDisponibles={selectableCountries}
+          choisirPays={setSelectedCountry}
+          semaines={weeks}
+          semaine={selectedWeek}
+          setSemaine={setSelectedWeek}
+          mode={inputMode}
+          setMode={setInputMode}
+          reportageNum={reportageNum}
+          choisirReportage={choisirReportage}
+          titre={reportageTitle}
+          setTitre={setReportageTitle}
+          script={script}
+          setScript={setScript}
+          tailleTexte={fontSize}
+          setTailleTexte={setFontSize}
+          enregistre={isRecording}
+          enPause={isPaused}
+          demarrage={isStarting}
+          secondes={recordingSeconds}
+          niveau={audioLevel}
+          sature={isAudioClipping}
+          audioUrl={audioUrl}
+          envoiEnCours={isUploading}
+          etapeEnvoi={uploadStepText}
+          voixEnvoyee={voixEnvoyee}
+          microRefuse={microRefuse}
+          defilement={isAutoScrolling}
+          setDefilement={setIsAutoScrolling}
+          prompteurRef={prompterRef}
+          fichierRef={fileInputRef}
+          onDemarrer={startRecording}
+          onPause={pauseRecording}
+          onReprendre={resumeRecording}
+          onTerminer={stopRecording}
+          onRecommencer={recommencer}
+          onEnvoyer={handleUpload}
+          onFichier={handleFileSelect}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-6">

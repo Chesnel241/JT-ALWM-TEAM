@@ -54,7 +54,7 @@ describe('App — URL /journalistes', () => {
     fireEvent.click(await screen.findByText('Ouvrir le studio voix'));
 
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/voix-off'));
-    expect(await screen.findByText('Studio Voix Off')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Enregistrer votre voix off' })).toBeInTheDocument();
   });
 
   it('mène à la liste des pays depuis « Espace reportage »', async () => {
@@ -75,14 +75,14 @@ describe('App — URL /journalistes', () => {
     fireEvent.click(await screen.findByText('Ouvrir le JT prêt'));
 
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/telecharger-le-jt'));
-    expect(await screen.findByText(/Fichiers JT Prêts/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Votre JT est prêt|Le JT de la semaine/ })).toBeInTheDocument();
   });
 
   it('ouvre directement le JT prêt sur un lien profond', async () => {
     window.history.replaceState(null, '', '/journalistes/telecharger-le-jt');
     render(<App />);
 
-    expect(await screen.findByText(/Fichiers JT Prêts/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Votre JT est prêt|Le JT de la semaine/ })).toBeInTheDocument();
   });
 
   it('renvoie une URL de montage forgée vers l\'accueil journalistes', async () => {

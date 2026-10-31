@@ -3,7 +3,9 @@
  * Divisé par "pages" (home, uploader, etc.)
  */
 
-export const getTourSteps = (t) => ({
+import { phraseProchaineCloture } from '../lib/echeance.js';
+
+export const getTourSteps = (t, lang = 'fr') => ({
   home: [
     {
       target: 'body',
@@ -63,7 +65,7 @@ export const getTourSteps = (t) => ({
     },
     {
       target: '#tour-countdown',
-      content: t.aiAssistant.tourUploader.countdown,
+      content: t.aiAssistant.tourUploader.countdown(phraseProchaineCloture(t, lang)),
       placement: 'auto',
       disableBeacon: true,
     },

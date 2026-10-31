@@ -43,7 +43,7 @@ export default function PendingUploadsCard({ entries = [], onResume, onDismiss }
       {entries.map((entry) => (
         <div
           key={entry.key}
-          className="motion-rise rounded-2xl border border-[var(--signal)]/40 bg-[var(--signal)]/10 p-4"
+          className="motion-rise rounded-2xl border-2 border-[var(--cta-orange)]/40 bg-[var(--cta-orange)]/10 p-4"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -57,7 +57,7 @@ export default function PendingUploadsCard({ entries = [], onResume, onDismiss }
               onClick={() => onDismiss?.(entry)}
               aria-label={t.uploader.resumeDismiss}
               title={t.uploader.resumeDismiss}
-              className="shrink-0 p-2 rounded-full text-[color:var(--muted)] hover:text-[color:var(--ink)] active:scale-95"
+              className="shrink-0 h-11 w-11 -m-1 rounded-full flex items-center justify-center text-[color:var(--muted)] hover:text-[color:var(--ink)] active:scale-95"
             >
               <X size={16} />
             </button>
@@ -65,7 +65,7 @@ export default function PendingUploadsCard({ entries = [], onResume, onDismiss }
           <button
             type="button"
             onClick={() => pick(entry)}
-            className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl bg-[var(--action)] text-white font-bold text-sm shadow-sm active:scale-[0.98] transition-transform"
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 min-h-[52px] px-4 rounded-2xl bg-[var(--cta-orange)] text-white font-extrabold text-base shadow-sm active:scale-[0.98] motion-tap"
           >
             <RotateCcw size={17} />
             {t.uploader.resumeCta}

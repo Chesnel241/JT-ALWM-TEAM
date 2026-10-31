@@ -116,7 +116,7 @@ export default function ReportagesSheet({ isOpen, nombre, sujets = [], onValider
         )}
 
         {erreur && (
-          <p role="alert" className="rounded-2xl bg-[var(--signal)]/10 border border-[var(--signal)]/40 px-3 py-2.5 text-sm font-semibold text-[color:var(--ink)]">
+          <p role="alert" className="rounded-2xl bg-[var(--cta-orange)]/10 border-2 border-[var(--cta-orange)]/40 px-3 py-2.5 text-sm font-semibold text-[color:var(--ink)]">
             {erreur}
           </p>
         )}

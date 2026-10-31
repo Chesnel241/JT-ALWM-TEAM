@@ -54,7 +54,9 @@ describe('DeliveryView', () => {
     expect(watchBtn).toBeInTheDocument();
     fireEvent.click(watchBtn);
 
-    expect(screen.getByRole('button', { name: '' })).toBeInTheDocument(); // Close button
+    // Le bouton de fermeture avait un nom vide : un lecteur d'écran
+    // annonçait « bouton », sans dire lequel.
+    expect(screen.getByRole('button', { name: 'Fermer' })).toBeInTheDocument();
   });
 
   it('affiche le bloc de notification WhatsApp pour l\'équipe montage', async () => {
@@ -78,7 +80,7 @@ describe('DeliveryView', () => {
     expect(screen.queryByText(/\+24100000000/)).not.toBeInTheDocument();
     expect(api.getSubscriptions).not.toHaveBeenCalled();
     // Le téléchargement, lui, reste disponible.
-    expect(screen.getAllByText('Télécharger').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: /Télécharger JT_ALWM_2026_W34/ })).toBeInTheDocument();
   });
 
   it('dit au journaliste d\'attendre quand le JT n\'est pas publié', async () => {
@@ -92,5 +94,60 @@ describe('DeliveryView', () => {
     api.getDeliveries.mockResolvedValue([]);
     renderDelivery();
     expect(await screen.findAllByText(/peut déposer le rendu final/i)).not.toHaveLength(0);
+  });
+});
+
+/**
+ * Le JT prêt, côté journalistes : une grande carte à regarder ou télécharger.
+ *
+ * LE BESOIN : un correspondant ne voyait qu'un nom de fichier et un petit
+ * lien. Il doit voir que le JT est prêt, le reconnaître comme nouveau, et
+ * savoir que le téléchargement est parti — et où le fichier arrive.
+ */
+describe('DeliveryView — journalistes', () => {
+  it('annonce le JT prêt, avec un bouton vert pour télécharger et un bleu pour regarder', async () => {
+    renderDelivery({ audience: 'reporter' });
+    expect(await screen.findByRole('heading', { name: 'Votre JT est prêt' })).toBeInTheDocument();
+    const lien = screen.getByRole('link', { name: /Télécharger JT_ALWM_2026_W34/ });
+    expect(lien).toHaveAttribute('href', expect.stringContaining('JT_ALWM_2026_W34.mp4?dl=1'));
+    expect(lien.className).toContain('jr-bouton-vert');
+    expect(screen.getAllByRole('button', { name: /Regarder JT_ALWM_2026_W34/ })[0].className).toMatch(/jr-jt-ecran|jr-bouton-bleu/);
+  });
+
+  it('la pastille « Nouveau » disparaît une fois le JT téléchargé, et ne revient pas', async () => {
+    const { unmount } = renderDelivery({ audience: 'reporter' });
+    expect(await screen.findByText('Nouveau')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: /Télécharger JT_ALWM_2026_W34/ }));
+    expect(screen.queryByText('Nouveau')).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent(/Le téléchargement a commencé/);
+    expect(screen.getByRole('status')).toHaveTextContent(/Téléchargements/);
+
+    unmount();
+    renderDelivery({ audience: 'reporter' });
+    await screen.findByRole('heading', { name: 'Votre JT est prêt' });
+    expect(screen.queryByText('Nouveau')).toBeNull();
+  });
+
+  it('toucher l’écran du JT l’ouvre en lecture', async () => {
+    renderDelivery({ audience: 'reporter' });
+    const ecran = (await screen.findAllByRole('button', { name: /Regarder JT_ALWM_2026_W34/ }))[0];
+    fireEvent.click(ecran);
+    expect(document.querySelector('video')).toHaveAttribute('src', expect.stringContaining('JT_ALWM_2026_W34.mp4'));
+    expect(screen.queryByText('Nouveau')).toBeNull();
+  });
+
+  it('sans JT publié : un titre d’attente, sans bouton de téléchargement', async () => {
+    api.getDeliveries.mockResolvedValue([]);
+    renderDelivery({ audience: 'reporter' });
+    expect(await screen.findByRole('heading', { name: 'Le JT de la semaine' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Télécharger/ })).toBeNull();
+  });
+
+  it('parle anglais', async () => {
+    localStorage.setItem('jt-alwm-lang', 'en');
+    renderDelivery({ audience: 'reporter' });
+    expect(await screen.findByRole('heading', { name: 'Your broadcast is ready' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Download JT_ALWM_2026_W34/ })).toBeInTheDocument();
   });
 });

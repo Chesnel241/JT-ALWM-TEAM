@@ -206,3 +206,21 @@ describe('langue', () => {
     expect(screen.getByText('Back')).toBeInTheDocument();
   });
 });
+
+describe('les champs', () => {
+  it('chaque champ dit combien de caractères il reste, en orange à la limite', async () => {
+    // La limite du serveur était invisible : la saisie s'arrêtait net, sans
+    // qu'on sache pourquoi.
+    api.getRubrique.mockResolvedValue({
+      rubrique: { ...RUBRIQUE_CONDUCTEUR, champs: [{ cle: 'orateur', libelle: 'Nom de l’orateur', max: 10 }] },
+      champs: { orateur: 'Awa' },
+      revision: 1,
+      majLe: '2026-09-12T08:00:00.000Z',
+    });
+    poser();
+    expect(await screen.findByText('3 / 10 caractères')).toBeInTheDocument();
+    fireEvent.change(screen.getByDisplayValue('Awa'), { target: { value: 'Awa Diallo' } });
+    const compteur = screen.getByText('10 / 10 caractères');
+    expect(compteur.className).toContain('cta-orange');
+  });
+});
