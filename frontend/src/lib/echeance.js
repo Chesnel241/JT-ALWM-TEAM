@@ -225,3 +225,55 @@ export function phraseProchaineCloture(t, lang, maintenant = new Date()) {
   const e = echeanceLocale(prochaineCloture(maintenant), { lang, timeZone: fuseauNavigateur() });
   return phraseEcheance(e, t?.echeance);
 }
+
+function minuitLocal(annee, mois, jour, timeZone) {
+  // L'instant où commence ce jour du calendrier dans ce fuseau : minuit
+  // « mural », corrigé du décalage (deux passes pour les jours d'heure d'été).
+  const mural = Date.UTC(annee, mois - 1, jour);
+  let instant = mural - decalageMinutes(new Date(mural), timeZone) * 60000;
+  instant = mural - decalageMinutes(new Date(instant), timeZone) * 60000;
+  return instant;
+}
+
+/**
+ * Les sept jours qui mènent à la clôture, dans le calendrier du
+ * correspondant : le dernier est le jour de la clôture (dimanche à Douala,
+ * samedi à Honolulu).
+ *
+ * Chaque jour dit s'il est passé, en cours ou à venir, et de combien il est
+ * rempli : c'est ce qui dessine le ruban « vous êtes ici » sans qu'il puisse
+ * se décaler d'un jour selon le pays.
+ *
+ * @returns {Array<{libelle: string, numero: number, etat: 'passe'|'aujourdhui'|'avenir',
+ *   remplissage: number, cloture: boolean}>}
+ */
+export function rubanSemaine(cutoffAt, maintenant, { lang = 'fr', timeZone } = {}) {
+  const fin = cutoffAt instanceof Date ? cutoffAt : new Date(cutoffAt);
+  const now = (maintenant instanceof Date ? maintenant : new Date(maintenant)).getTime();
+  if (Number.isNaN(fin.getTime()) || Number.isNaN(now)) return [];
+
+  const p = lireParties(fin, timeZone);
+  const locale = lang === 'en' ? 'en-US' : 'fr-FR';
+  const nomJour = new Intl.DateTimeFormat(locale, timeZone ? { weekday: 'short', timeZone } : { weekday: 'short' });
+
+  const jours = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const debut = minuitLocal(p.year, p.month, p.day - i, timeZone);
+    const finJour = i === 0 ? fin.getTime() : minuitLocal(p.year, p.month, p.day - i + 1, timeZone);
+    const midi = new Date(debut + 12 * 3600 * 1000);
+    let etat = 'aujourdhui';
+    if (now >= finJour) etat = 'passe';
+    else if (now < debut) etat = 'avenir';
+    const remplissage = etat === 'passe' ? 1
+      : etat === 'avenir' ? 0
+        : Math.min(1, Math.max(0, (now - debut) / (finJour - debut)));
+    jours.push({
+      libelle: nomJour.format(midi),
+      numero: lireParties(midi, timeZone).day,
+      etat,
+      remplissage,
+      cloture: i === 0,
+    });
+  }
+  return jours;
+}

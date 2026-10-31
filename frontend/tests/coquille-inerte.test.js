@@ -26,7 +26,11 @@ const fichiers = (dossier) => readdirSync(dossier, { withFileTypes: true }).flat
   e.isDirectory() ? fichiers(join(dossier, e.name)) : (e.name.endsWith('.jsx') ? [join(dossier, e.name)] : [])
 ));
 
-const css = readFileSync(join(SRC, 'index.css'), 'utf8');
+// Toutes les feuilles de style : index.css, et celles de `styles/` (l'espace
+// journalistes y pose ses propres variables, comme --cr-plein).
+const css = [join(SRC, 'index.css'), ...readdirSync(join(SRC, 'styles')).filter((f) => f.endsWith('.css')).map((f) => join(SRC, 'styles', f))]
+  .map((f) => readFileSync(f, 'utf8'))
+  .join('\n');
 
 describe('les classes d’animation', () => {
   it('ne nomment pas un greffon absent', () => {

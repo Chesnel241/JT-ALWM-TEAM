@@ -1,0 +1,380 @@
+/*
+ * Espace journalistes — formes et mouvements.
+ *
+ * Les correspondants sont nombreux à être âgés ou peu familiers du numérique,
+ * et arrivent sur un téléphone, en 4G parfois faible. D'où trois règles :
+ *
+ *   1. Tout en CSS et SVG : aucune bibliothèque d'animation à télécharger.
+ *   2. Le mouvement montre ce qui se passe (le temps qui file, le fichier
+ *      qui part) ; il ne décore pas. Il n'anime que `transform`, `opacity`
+ *      et des traits SVG, qui restent sur le fil de composition.
+ *   3. La réduction des mouvements demandée par le système s'applique
+ *      ici aussi (règle globale d'index.css) : tout se fige, rien ne casse.
+ *
+ * Les couleurs viennent des jetons d'index.css : vert --action, bleu
+ * --accent, orange --cta-orange, rouge --cta-red, et les trois couleurs de
+ * jauge. `color-mix` donne les teintes douces ; un navigateur trop ancien
+ * ignore la ligne et garde l'aplat déclaré juste avant.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Compte à rebours                                                    */
+/* ------------------------------------------------------------------ */
+
+/* La phase pose deux couleurs : celle du tracé (vive, ≥ 3:1 sur l'ivoire)
+   et celle des pastilles à texte blanc (sombre, ≥ 4,5:1). */
+.cr {
+	--cr-couleur: var(--jauge-serein);
+	--cr-plein: var(--action);
+	--cr-pouls: 4s;
+}
+
+.cr[data-phase='proche'] {
+	--cr-couleur: var(--jauge-proche);
+	--cr-plein: var(--cta-orange);
+}
+
+.cr[data-phase='urgent'] {
+	--cr-couleur: var(--jauge-urgent);
+	--cr-plein: var(--cta-red);
+}
+
+.cr[data-phase='clos'] {
+	--cr-couleur: var(--cta-red-deep);
+	--cr-plein: var(--cta-red-deep);
+}
+
+.cr-carte {
+	position: relative;
+	overflow: hidden;
+	border-radius: 1.75rem;
+	border: 2px solid var(--border);
+	border-color: color-mix(in oklch, var(--cr-couleur) 35%, var(--border));
+	background: var(--paper);
+	background: linear-gradient(
+		135deg,
+		color-mix(in oklch, var(--cr-couleur) 12%, var(--paper)) 0%,
+		var(--paper) 55%,
+		color-mix(in oklch, var(--brand-sky) 10%, var(--paper)) 100%
+	);
+	box-shadow: var(--shadow-soft);
+	transition: border-color 600ms var(--ease-out);
+}
+
+/* Le cadran : une piste, un arc qui raccourcit, une comète au bout, et un
+   halo qui respire. Plus la clôture approche, plus il respire vite. */
+.cr-cadran {
+	position: relative;
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+}
+
+.cr-cadran > svg {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg);
+}
+
+.cr-halo {
+	position: absolute;
+	inset: -12%;
+	border-radius: 9999px;
+	background: radial-gradient(circle, color-mix(in oklch, var(--cr-couleur) 40%, transparent) 0%, transparent 68%);
+	animation: cr-respire var(--cr-pouls) ease-in-out infinite;
+	pointer-events: none;
+}
+
+.cr[data-pouls='0'] .cr-halo {
+	animation: none;
+	opacity: 0.25;
+}
+
+@keyframes cr-respire {
+	0%,
+	100% {
+		transform: scale(0.9);
+		opacity: 0.4;
+	}
+
+	50% {
+		transform: scale(1.08);
+		opacity: 0.95;
+	}
+}
+
+.cr-piste {
+	stroke: var(--border);
+	stroke: color-mix(in oklch, var(--cr-couleur) 16%, var(--border));
+}
+
+.cr-arc {
+	stroke: var(--cr-couleur);
+	stroke-linecap: round;
+	transition:
+		stroke-dashoffset 1s var(--ease-out),
+		stroke 600ms var(--ease-out);
+}
+
+/* La trotteuse : un point qui fait le tour en une minute, calé sur les
+   secondes réelles à l'affichage. C'est elle qui dit « le temps passe ». */
+.cr-trotteuse {
+	transform-origin: 50% 50%;
+	animation: cr-tour 60s linear infinite;
+}
+
+.cr-trotteuse circle {
+	fill: var(--cr-couleur);
+}
+
+.cr[data-phase='clos'] .cr-trotteuse {
+	display: none;
+}
+
+@keyframes cr-tour {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.cr-centre {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	line-height: 1;
+}
+
+/* Pastille de phase : texte blanc sur la couleur sombre de la phase. */
+.cr-phase {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.85rem;
+	border-radius: 9999px;
+	background: var(--cr-plein);
+	color: #fff;
+	font-weight: 800;
+	font-size: 0.85rem;
+	line-height: 1.2;
+	box-shadow: 0 6px 16px -8px var(--cr-plein);
+	transition: background-color 600ms var(--ease-out);
+}
+
+.cr[data-phase='urgent'] .cr-phase svg {
+	animation: cr-secoue 1.6s ease-in-out infinite;
+}
+
+@keyframes cr-secoue {
+	0%,
+	70%,
+	100% {
+		transform: rotate(0);
+	}
+
+	75% {
+		transform: rotate(-14deg);
+	}
+
+	85% {
+		transform: rotate(12deg);
+	}
+
+	95% {
+		transform: rotate(-6deg);
+	}
+}
+
+/* Chiffres qui basculent : chaque chiffre est remonté à son changement
+   (clé React), ce qui rejoue l'entrée — et seulement elle. */
+.cr-chiffres {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.cr-bloc {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.3rem;
+}
+
+.cr-cases {
+	display: flex;
+	gap: 0.2rem;
+}
+
+.cr-case {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 2.2rem;
+	height: 2.9rem;
+	overflow: hidden;
+	border-radius: 0.65rem;
+	background: #fff;
+	border: 1px solid var(--border);
+	border-bottom: 3px solid var(--border);
+	border-bottom-color: color-mix(in oklch, var(--cr-couleur) 55%, var(--border));
+	color: var(--ink);
+	font-size: 1.6rem;
+	font-weight: 900;
+	font-variant-numeric: tabular-nums;
+	box-shadow: 0 6px 14px -10px oklch(0.25 0.05 250 / 0.5);
+	perspective: 200px;
+}
+
+.cr-case::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	height: 1px;
+	background: oklch(0.25 0.02 250 / 0.08);
+}
+
+.cr-case > span {
+	display: block;
+	animation: cr-bascule 420ms var(--ease-emphasis) both;
+}
+
+@keyframes cr-bascule {
+	from {
+		transform: translateY(-65%) rotateX(70deg);
+		opacity: 0;
+	}
+
+	to {
+		transform: none;
+		opacity: 1;
+	}
+}
+
+.cr-unite {
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--muted);
+}
+
+/* Ruban de la semaine : sept jours, le dernier est celui de la clôture. */
+.cr-ruban {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 0.35rem;
+}
+
+.cr-jour {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.3rem;
+	min-width: 0;
+}
+
+.cr-jour-libelle {
+	font-size: 0.72rem;
+	font-weight: 700;
+	color: var(--muted);
+	text-transform: capitalize;
+	white-space: nowrap;
+}
+
+.cr-jour-barre {
+	position: relative;
+	width: 100%;
+	height: 0.6rem;
+	overflow: hidden;
+	border-radius: 9999px;
+	background: var(--border);
+	background: color-mix(in oklch, var(--cr-couleur) 14%, var(--border));
+}
+
+.cr-jour-barre > i {
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: var(--cr-couleur);
+	transform-origin: left center;
+	transform: scaleX(var(--r, 0));
+	transition: transform 1s var(--ease-out);
+}
+
+.cr-jour[data-etat='aujourdhui'] .cr-jour-libelle {
+	color: var(--cr-plein);
+	font-weight: 900;
+}
+
+.cr-jour[data-etat='aujourdhui'] .cr-jour-barre {
+	box-shadow: 0 0 0 3px color-mix(in oklch, var(--cr-couleur) 28%, transparent);
+}
+
+/* L'étiquette « Aujourd'hui » flotte doucement au-dessus du jour. */
+.cr-ici {
+	position: absolute;
+	bottom: calc(100% + 0.15rem);
+	left: 50%;
+	padding: 0.15rem 0.5rem;
+	border-radius: 9999px;
+	background: var(--cr-plein);
+	color: #fff;
+	font-size: 0.65rem;
+	font-weight: 800;
+	white-space: nowrap;
+	transform: translateX(-50%);
+	animation: cr-flotte 2.4s ease-in-out infinite;
+}
+
+@keyframes cr-flotte {
+	0%,
+	100% {
+		transform: translate(-50%, 0);
+	}
+
+	50% {
+		transform: translate(-50%, -3px);
+	}
+}
+
+.cr-jour[data-cloture] .cr-jour-libelle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+}
+
+/* Version compacte, pour le téléphone et le bandeau d'état. */
+.cr-compact {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	padding: 0.75rem 0.85rem;
+	border-radius: 1.25rem;
+	border: 2px solid var(--border);
+	border-color: color-mix(in oklch, var(--cr-couleur) 35%, var(--border));
+	background: var(--paper);
+	background: color-mix(in oklch, var(--cr-couleur) 8%, var(--paper));
+}
+
+.cr-compact-temps {
+	font-size: 1.15rem;
+	font-weight: 900;
+	font-variant-numeric: tabular-nums;
+	color: var(--cr-plein);
+	white-space: nowrap;
+}
+
+.cr-compact .cr-jour-libelle {
+	font-size: 0.6rem;
+}
+
+.cr-compact .cr-jour-barre {
+	height: 0.4rem;
+}

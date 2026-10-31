@@ -7,6 +7,7 @@ import {
   phaseEcheance,
   cadencePouls,
   decompte,
+  rubanSemaine,
   SEUILS,
 } from '../src/lib/echeance.js';
 
@@ -115,5 +116,39 @@ describe('decompte', () => {
   it('découpe le temps en jours, heures, minutes, secondes', () => {
     expect(decompte(((2 * 24 + 3) * 3600 + 4 * 60 + 5) * 1000)).toEqual({ jours: 2, heures: 3, minutes: 4, secondes: 5 });
     expect(decompte(-61000)).toEqual({ jours: 0, heures: 0, minutes: 1, secondes: 1 });
+  });
+});
+
+describe('rubanSemaine — les sept jours vers la clôture, dans le calendrier du correspondant', () => {
+  it('à Douala : du lundi au dimanche, aujourd’hui à moitié rempli', () => {
+    // Mercredi 28 octobre, 13h00 à Douala (12h00 UTC).
+    const ruban = rubanSemaine(CLOTURE, new Date('2026-10-28T12:00:00Z'), { timeZone: 'Africa/Douala' });
+    expect(ruban.map((j) => j.libelle)).toEqual(['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']);
+    expect(ruban.map((j) => j.etat)).toEqual(['passe', 'passe', 'aujourdhui', 'avenir', 'avenir', 'avenir', 'avenir']);
+    expect(ruban[2].remplissage).toBeCloseTo(13 / 24, 2);
+    expect(ruban[6]).toMatchObject({ cloture: true, numero: 1 });
+  });
+
+  it('à Honolulu : la semaine finit un samedi', () => {
+    const ruban = rubanSemaine(CLOTURE, new Date('2026-10-28T12:00:00Z'), { timeZone: 'Pacific/Honolulu', lang: 'en' });
+    expect(ruban[0].libelle).toBe('Sun');
+    expect(ruban[6]).toMatchObject({ libelle: 'Sat', numero: 31, cloture: true });
+  });
+
+  it('le jour de la clôture se remplit jusqu’à l’heure limite, pas jusqu’à minuit', () => {
+    // Dimanche 1er novembre, 07h30 à Douala (06h30 UTC). Ce jour-là va de
+    // minuit à 09h30, l'heure limite locale : 7,5 h sur 9,5 h.
+    const ruban = rubanSemaine(CLOTURE, new Date('2026-11-01T06:30:00Z'), { timeZone: 'Africa/Douala' });
+    expect(ruban[6].etat).toBe('aujourdhui');
+    expect(ruban[6].remplissage).toBeCloseTo(7.5 / 9.5, 2);
+  });
+
+  it('après la clôture, tout est passé ; avant la semaine, tout est à venir', () => {
+    expect(rubanSemaine(CLOTURE, new Date('2026-11-02T00:00:00Z'), { timeZone: 'Africa/Douala' }).every((j) => j.etat === 'passe')).toBe(true);
+    expect(rubanSemaine(CLOTURE, new Date('2026-10-20T00:00:00Z'), { timeZone: 'Africa/Douala' }).every((j) => j.etat === 'avenir')).toBe(true);
+  });
+
+  it('ne casse rien sur une date fausse', () => {
+    expect(rubanSemaine('pas une date', new Date())).toEqual([]);
   });
 });
