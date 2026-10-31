@@ -1348,3 +1348,353 @@
 		padding: 0 0.5rem;
 	}
 }
+
+/* Les autres couleurs d'action, sur le même gabarit que le bouton vert :
+   bleu pour ouvrir ou regarder, orange pour reprendre, rouge pour
+   enregistrer ou supprimer. */
+.jr-bouton-bleu {
+	background: var(--accent);
+	color: #fff;
+	box-shadow: 0 10px 22px -14px var(--accent);
+}
+
+.jr-bouton-orange {
+	background: var(--cta-orange);
+	color: #fff;
+	box-shadow: 0 10px 22px -14px var(--cta-orange);
+}
+
+.jr-bouton-rouge {
+	background: var(--cta-red);
+	color: #fff;
+	box-shadow: 0 10px 22px -14px var(--cta-red);
+}
+
+/* ------------------------------------------------------------------ */
+/* JT prêt                                                             */
+/* ------------------------------------------------------------------ */
+
+/* Une carte par JT : un écran de télévision qu'on touche pour regarder,
+   puis les deux boutons. */
+.jr-jt {
+	overflow: hidden;
+	border-radius: 1.75rem;
+	border: 2px solid color-mix(in oklch, var(--accent) 25%, var(--border));
+	background: var(--paper);
+	box-shadow: 0 18px 40px -30px color-mix(in oklch, var(--accent) 80%, transparent);
+	animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+.jr-jt-ecran {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 30% 20%, color-mix(in oklch, #fff 22%, transparent) 0, transparent 45%),
+		linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+	cursor: pointer;
+}
+
+.jr-jt-ecran:disabled {
+	cursor: default;
+}
+
+/* Les lignes d'un vieil écran, qui défilent doucement. */
+.jr-jt-ecran::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: repeating-linear-gradient(0deg, color-mix(in oklch, #fff 7%, transparent) 0 2px, transparent 2px 6px);
+	animation: jr-balayage 6s linear infinite;
+}
+
+@keyframes jr-balayage {
+	to {
+		transform: translateY(24px);
+	}
+}
+
+.jr-jt-ecran:focus-visible {
+	outline: 4px solid color-mix(in oklch, var(--accent) 45%, transparent);
+	outline-offset: -4px;
+}
+
+.jr-jt-logo {
+	position: absolute;
+	top: 0.9rem;
+	left: 0.9rem;
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0.3rem;
+	border-radius: 9999px;
+	background: #fff;
+	object-fit: contain;
+	box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.5);
+}
+
+.jr-jt-lecture {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 5.25rem;
+	height: 5.25rem;
+	border-radius: 9999px;
+	background: #fff;
+	color: var(--accent-deep);
+	box-shadow: 0 14px 30px -12px rgb(0 0 0 / 0.55);
+	transition: transform var(--motion-enter) var(--ease-out);
+}
+
+/* Deux anneaux qui s'élargissent : « touchez ici ». */
+.jr-jt-lecture::before,
+.jr-jt-lecture::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	border: 3px solid #fff;
+	animation: jr-ondes-lecture 2.4s var(--ease-out) infinite;
+}
+
+.jr-jt-lecture::after {
+	animation-delay: 1.2s;
+}
+
+@keyframes jr-ondes-lecture {
+	from {
+		transform: scale(1);
+		opacity: 0.7;
+	}
+	to {
+		transform: scale(1.75);
+		opacity: 0;
+	}
+}
+
+.jr-jt-ecran:hover .jr-jt-lecture,
+.jr-jt-ecran:focus-visible .jr-jt-lecture {
+	transform: scale(1.08);
+}
+
+.jr-jt-ecran:disabled .jr-jt-lecture::before,
+.jr-jt-ecran:disabled .jr-jt-lecture::after {
+	animation: none;
+	opacity: 0;
+}
+
+/* La flèche du bouton vert descend, comme le fichier. */
+.jr-jt a:hover .jr-jt-fleche,
+.jr-jt a:focus-visible .jr-jt-fleche {
+	animation: jr-descend 0.9s var(--ease-out) infinite;
+}
+
+/* Le fichier tombe dans le plateau des téléchargements. */
+.jr-jt-lance {
+	animation: rise var(--motion-enter) var(--ease-out) both;
+}
+
+.jr-jt-plateau {
+	position: relative;
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 0.85rem;
+	background: var(--action);
+	color: #fff;
+	overflow: hidden;
+}
+
+.jr-jt-plateau svg {
+	animation: jr-chute 1.4s var(--ease-out) infinite;
+}
+
+@keyframes jr-chute {
+	0% {
+		transform: translateY(-140%);
+		opacity: 0;
+	}
+	45%,
+	75% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+	100% {
+		transform: translateY(0);
+		opacity: 0;
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/* Studio voix off                                                     */
+/* ------------------------------------------------------------------ */
+
+/* Le gros bouton rond : rouge, il dit « enregistrer » avant d'être lu.
+   Pendant la prise, deux halos battent comme un cœur ; en pause, ils se
+   figent en orange. */
+.jr-micro {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 9.5rem;
+	height: 9.5rem;
+}
+
+.jr-micro-halo,
+.jr-micro-halo::after {
+	position: absolute;
+	inset: 0.75rem;
+	border-radius: 9999px;
+	background: color-mix(in oklch, var(--cta-red) 22%, transparent);
+}
+
+.jr-micro-halo::after {
+	content: '';
+	inset: 0;
+	background: color-mix(in oklch, var(--cta-red) 14%, transparent);
+}
+
+.jr-micro[data-etat='rec'] .jr-micro-halo {
+	animation: jr-battement 1.2s var(--ease-out) infinite;
+}
+
+.jr-micro[data-etat='rec'] .jr-micro-halo::after {
+	animation: jr-battement 1.2s var(--ease-out) 0.3s infinite;
+}
+
+.jr-micro[data-etat='pause'] .jr-micro-halo {
+	background: color-mix(in oklch, var(--cta-orange) 22%, transparent);
+}
+
+.jr-micro[data-etat='pret'] .jr-micro-halo {
+	animation: jr-invite 2.6s ease-in-out infinite;
+}
+
+@keyframes jr-battement {
+	0% {
+		transform: scale(0.85);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1.35);
+		opacity: 0;
+	}
+}
+
+@keyframes jr-invite {
+	0%,
+	100% {
+		transform: scale(0.92);
+	}
+	50% {
+		transform: scale(1.04);
+	}
+}
+
+.jr-micro-bouton {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 7rem;
+	height: 7rem;
+	border-radius: 9999px;
+	background: radial-gradient(circle at 35% 30%, color-mix(in oklch, #fff 25%, var(--cta-red)) 0, var(--cta-red) 55%, var(--cta-red-deep) 100%);
+	color: #fff;
+	box-shadow:
+		0 16px 34px -14px var(--cta-red),
+		inset 0 -4px 0 color-mix(in oklch, #000 15%, transparent);
+	transition: transform var(--motion-tap) var(--ease-out);
+}
+
+.jr-micro-bouton:active:not(:disabled) {
+	transform: scale(0.94);
+}
+
+.jr-micro-bouton:focus-visible {
+	outline: 4px solid color-mix(in oklch, var(--cta-red) 45%, transparent);
+	outline-offset: 4px;
+}
+
+.jr-micro-bouton:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.jr-micro-point {
+	width: 0.7rem;
+	height: 0.7rem;
+	border-radius: 9999px;
+	background: var(--cta-red);
+	animation: jr-clignote 1s steps(2, start) infinite;
+}
+
+/* L'onde : sa hauteur suit le niveau mesuré (--h), et chaque barre ondule
+   un peu, décalée de la précédente, pour que la voix « vive » à l'écran. */
+.jr-onde {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.3rem;
+	width: 100%;
+	max-width: 22rem;
+	height: 4.5rem;
+	padding: 0 0.75rem;
+	border-radius: 1.25rem;
+	background: var(--paper-2);
+}
+
+.jr-onde-barre {
+	flex: 1;
+	max-width: 0.55rem;
+	height: calc(var(--h, 0.12) * 100%);
+	min-height: 0.35rem;
+	border-radius: 9999px;
+	background: color-mix(in oklch, var(--muted) 40%, transparent);
+	transition: height 120ms linear;
+}
+
+.jr-onde[data-actif] .jr-onde-barre {
+	background: linear-gradient(180deg, var(--cta-red) 0%, var(--cta-orange) 100%);
+	animation: jr-ondule 0.9s ease-in-out infinite alternate;
+	animation-delay: calc(var(--i) * -70ms);
+}
+
+@keyframes jr-ondule {
+	from {
+		transform: scaleY(0.7);
+	}
+	to {
+		transform: scaleY(1);
+	}
+}
+
+/* Le prompteur : grand texte sur fond clair, qui défile pendant la prise. */
+.jr-prompteur {
+	max-height: 12rem;
+	overflow-y: auto;
+	padding: 1rem 1.1rem;
+	border-radius: 1.25rem;
+	border: 2px solid var(--border);
+	background: var(--paper-2);
+	color: var(--ink);
+	font-weight: 600;
+	line-height: 1.55;
+}
+
+.jr-prompteur[data-actif] {
+	border-color: color-mix(in oklch, var(--cta-red) 45%, var(--border));
+}
+
+/* Sur l'écran bleu du JT, la pastille « Nouveau » passe en blanc : en bleu
+   sur bleu, elle ne se voyait plus. */
+.jr-jt-ecran .jr-nouveau {
+	background: #fff;
+	color: var(--accent-deep);
+	font-size: 0.85rem;
+	padding: 0.35rem 0.8rem;
+	box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.5);
+}

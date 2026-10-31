@@ -12,6 +12,7 @@ import SkeletonCard from './SkeletonCard.jsx';
 import EmptyState from './EmptyState.jsx';
 import WaitingBroadcast from './illustrations/WaitingBroadcast.jsx';
 import { readAdminPassword } from '../lib/adminSession.js';
+import JTPretJournaliste from './JTPretJournaliste.jsx';
 
 // Charte : bleus du logo et neutres, avec un texte à fort contraste sur
 // chaque aplat (le bleu 500 sur bleu 100 précédent était illisible).
@@ -82,8 +83,11 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                 <span className="font-bold text-sm text-[color:var(--ink)] truncate">{previewVideo.name}</span>
               </div>
               <button
+                type="button"
                 onClick={() => setPreviewVideo(null)}
-                className="p-1.5 rounded-full bg-[var(--paper-2)] text-[color:var(--muted)] hover:text-[color:var(--ink)] active:scale-95"
+                aria-label={t.common.close}
+                title={t.common.close}
+                className="h-11 w-11 flex items-center justify-center rounded-full bg-[var(--paper-2)] text-[color:var(--muted)] hover:text-[color:var(--ink)] active:scale-95"
               >
                 <X size={18} />
               </button>
@@ -113,6 +117,19 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
         </div>
       )}
 
+      {/* Côté journalistes : un seul écran, qui s'adapte — de grandes cartes
+          de JT à regarder ou télécharger. Le montage garde ses deux vues. */}
+      {isReporterAudience ? (
+        <JTPretJournaliste
+          weeks={weeks}
+          selectedWeek={selectedWeek}
+          setSelectedWeek={setSelectedWeek}
+          livraisons={deliveries}
+          chargement={loading}
+          onRegarder={setPreviewVideo}
+        />
+      ) : (
+      <>
       {/* ================================================================ */}
       {/* MOBILE VIEW (md:hidden)                                          */}
       {/* ================================================================ */}
@@ -414,6 +431,8 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

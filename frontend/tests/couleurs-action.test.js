@@ -71,6 +71,9 @@ const ECRANS_JOURNALISTES = [
   'OfflineBanner.jsx',
   'PendingUploadsCard.jsx',
   'ReportagesSheet.jsx',
+  'JTPretJournaliste.jsx',
+  'StudioVoixJournaliste.jsx',
+  'RubriqueView.jsx',
 ];
 
 describe('écrans journalistes', () => {

@@ -35,6 +35,9 @@ const ECRANS = [
   'VoyageEnvoi.jsx',
   'ChampScript.jsx',
   'ChampWhatsApp.jsx',
+  'JTPretJournaliste.jsx',
+  'StudioVoixJournaliste.jsx',
+  'RubriqueView.jsx',
 ];
 
 const LETTRES = /[A-Za-zÀ-ÿ]{2,}/;
