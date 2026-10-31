@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Search, Sparkles, X, ChevronRight, Clock } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -6,19 +6,32 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import AddCountryDialog from './AddCountryDialog.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 
+/**
+ * Choisir son pays.
+ *
+ * Une grille de grandes tuiles à drapeau : on reconnaît son pays à son
+ * drapeau avant de lire son nom, et une tuile entière se touche du pouce.
+ * Le dernier pays ouvert est proposé en tête, en vert, pour revenir en un
+ * geste. La recherche est en grand, avec un bouton pour l'effacer.
+ *
+ * Il y avait deux écrans — une liste pour le téléphone, une autre pour
+ * l'ordinateur — qui divergeaient (le compteur de l'un était écrit en
+ * français en dur). Il n'y en a plus qu'un, qui s'adapte.
+ */
 export default function HomeView({ countries, onSelectCountry, onCountryAdded }) {
   const { t } = useI18n();
   const { addToast } = useToast();
   const [addOpen, setAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [lastCountryId, setLastCountryId] = useState(null);
+  const champ = useRef(null);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('last_selected_country_id');
       if (saved) setLastCountryId(saved);
     } catch {
-      // Ignore localStorage errors
+      // Stockage indisponible : pas de raccourci, rien de plus.
     }
   }, []);
 
@@ -27,7 +40,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
       localStorage.setItem('last_selected_country_id', country.id);
       setLastCountryId(country.id);
     } catch {
-      // Ignore
+      // Idem.
     }
     onSelectCountry(country);
   };
@@ -43,7 +56,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
     (str || '')
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
+      .replace(/[̀-ͯ]/g, '');
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery.trim()) return countries;
@@ -58,205 +71,146 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
     return countries.find((c) => c.id === lastCountryId);
   }, [countries, lastCountryId]);
 
+  const effacer = () => {
+    setSearchQuery('');
+    champ.current?.focus();
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-10">
-      {/* ======================= MOBILE VIEW (md:hidden) ======================= */}
-      <div className="md:hidden space-y-4">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <span className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] text-[10px]">
-              {t.home.badge}
-            </span>
-            <h2 className="text-xl font-bold text-[color:var(--ink)] mt-1">
-              {t.home.title}
-            </h2>
-          </div>
-          <button
-            onClick={() => setAddOpen(true)}
-            aria-label={t.home.addCountryAria}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-semibold shadow-sm active:scale-95 transition-transform"
-          >
-            <Plus size={16} />
-            <span>{t.home.addCountry}</span>
-          </button>
-        </div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-10 space-y-6 sm:space-y-8">
+      <header className="jr-ciel px-4 py-6 sm:py-10 text-center">
+        <span className="badge bg-[var(--paper)] text-[color:var(--accent-deep)] shadow-sm">
+          {t.home.badge}
+        </span>
+        <h2 className="mt-3 text-2xl sm:text-4xl font-extrabold text-[color:var(--ink)] leading-tight">
+          {t.home.title}
+        </h2>
+        <p className="mt-2 text-sm sm:text-lg text-[color:var(--muted)] max-w-2xl mx-auto">
+          {t.home.intro}
+        </p>
 
-        {/* Quick Resume Card (if last country exists) */}
-        {lastCountry && !searchQuery && (
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[var(--accent)]/15 via-[var(--accent)]/5 to-[var(--paper-2)] border border-[var(--accent)]/30 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CountryAvatar country={lastCountry} className="h-11 w-11 shadow-sm" />
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-[color:var(--accent-deep)]" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--accent-deep)]">
-                      {t.home.lastAccess}
-                    </span>
-                  </div>
-                  <p className="text-base font-bold text-[color:var(--ink)] leading-tight">
-                    {lastCountry.name}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleSelectCountry(lastCountry)}
-                type="button"
-                className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-bold shadow-md shadow-[var(--accent)]/20 active:scale-95 motion-tap flex items-center gap-1"
-              >
-                <span>{t.home.open}</span>
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Search Bar & Country Count */}
-        <div className="space-y-2">
-          <div className="relative flex items-center">
-            <Search size={16} className="absolute left-3.5 text-[color:var(--muted)] pointer-events-none" />
+        <div className="mt-5 sm:mt-7 max-w-xl mx-auto">
+          <div className="jr-recherche relative">
+            <Search size={22} className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--accent)] pointer-events-none" />
             <input
-              type="text"
+              ref={champ}
+              type="search"
+              inputMode="search"
+              autoComplete="off"
+              enterKeyHint="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t.home.searchPh}
               aria-label={t.home.searchPh}
-              className="w-full bg-[var(--paper)] border border-[var(--border)] rounded-xl pl-10 pr-9 py-2.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] shadow-sm"
+              className="w-full min-h-[60px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] pl-14 pr-14 text-base sm:text-lg font-semibold text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--muted)] shadow-sm focus:outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15"
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 text-[color:var(--muted)] p-1 active:scale-90"
+                type="button"
+                onClick={effacer}
+                aria-label={t.home.clearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-11 w-11 rounded-xl flex items-center justify-center text-[color:var(--muted)] hover:bg-[var(--paper-2)] active:scale-90 motion-tap"
               >
-                <X size={14} />
+                <X size={20} />
               </button>
             )}
           </div>
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-semibold text-[color:var(--muted)]">
-              {filteredCountries.length} {filteredCountries.length > 1 ? 'pays disponibles' : 'pays'}
+          <p className="mt-2.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs sm:text-sm text-[color:var(--muted)]">
+            <span className="font-bold text-[color:var(--ink)]">{t.home.countCount(filteredCountries.length)}</span>
+            <span className="flex items-center gap-1">
+              <Clock size={13} /> {t.home.reminderText}
             </span>
-            <span className="text-[11px] text-[color:var(--muted)] flex items-center gap-1">
-              <Clock size={12} /> {t.home.retention}
-            </span>
-          </div>
-        </div>
-
-        {/* Country Grid (Mobile tactile cards) */}
-        {/* Entrée décalée : la liste se pose au lieu d'apparaître d'un bloc.
-            Le décalage est plafonné dans la feuille de style, un pays en
-            vingtième position n'attendant pas vingt crans. */}
-        <div className="grid grid-cols-1 gap-2.5 motion-stagger">
-          {filteredCountries.map((country, index) => (
-            <button
-              key={`mobile-${country.id}`}
-              style={{ '--i': index }}
-              onClick={() => handleSelectCountry(country)}
-              type="button"
-              aria-label={t.home.enterAria(country.name)}
-              className={`w-full flex items-center justify-between p-3.5 rounded-2xl border motion-tap active:scale-[0.98] ${
-                country.id === 'tj' || country.id === 'mj'
-                  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-900/50 shadow-sm'
-                  : 'bg-[var(--paper)] border-[var(--border)] shadow-sm'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <CountryAvatar country={country} className="h-10 w-10 shrink-0" />
-                <div className="text-left">
-                  <p className="text-base font-bold text-[color:var(--ink)] leading-tight">{country.name}</p>
-                  <p className="text-[11px] uppercase tracking-wider text-[color:var(--muted)]">
-                    {t.home.countryRole}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 text-xs font-semibold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 px-2.5 py-1.5 rounded-xl">
-                <span>{t.home.enter}</span>
-                <ChevronRight size={14} />
-              </div>
-            </button>
-          ))}
-
-          {filteredCountries.length === 0 && (
-            <div className="p-8 text-center bg-[var(--paper)] rounded-2xl border border-[var(--border)] text-[color:var(--muted)]">
-              <p className="text-sm font-medium">{t.home.noMatch(searchQuery)}</p>
-              <button
-                onClick={() => setAddOpen(true)}
-                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-semibold shadow-sm"
-              >
-                <Plus size={14} />
-                <span>{t.home.addThis}</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ======================= DESKTOP VIEW (hidden md:grid) ======================= */}
-      <div className="hidden md:grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-8 lg:gap-10 items-start">
-        <div className="space-y-5 sm:space-y-6">
-          <div className="inline-flex items-center gap-2 badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)]">
-            {t.home.badge}
-          </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-[color:var(--ink)] leading-tight">
-            {t.home.title}
-          </h2>
-          <p className="text-[color:var(--muted)] text-base sm:text-lg max-w-xl">
-            {t.home.intro}
           </p>
-          <div className="panel-soft p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-[color:var(--muted)]">{t.home.reminderTitle}</p>
-              <p className="text-lg font-semibold text-[color:var(--ink)]">{t.home.reminderText}</p>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-[var(--signal)]/15 flex items-center justify-center text-[color:var(--signal)] font-semibold">
-              {t.home.retention}
-            </div>
-          </div>
         </div>
+      </header>
 
-        <div className="panel p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-[color:var(--ink)]">{t.home.sectionTitle}</h3>
-            <span className="badge bg-[var(--paper)] text-[color:var(--muted)]">{t.home.countCount(countries.length)}</span>
-          </div>
-          <div id="tour-country-list" className="space-y-2">
-            {countries.map((country, index) => (
+      {lastCountry && !searchQuery && (
+        <button
+          type="button"
+          onClick={() => handleSelectCountry(lastCountry)}
+          aria-label={t.home.enterAria(lastCountry.name)}
+          className="jr-reprise w-full flex items-center gap-4 p-4 sm:p-5 text-left motion-rise focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--action)]/40"
+        >
+          <span className="jr-drapeau">
+            <CountryAvatar country={lastCountry} ring className="h-16 w-16 sm:h-20 sm:w-20" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[color:var(--action-deep)]">
+              <Sparkles size={14} /> {t.home.lastAccess}
+            </span>
+            <span className="block text-2xl sm:text-3xl font-extrabold text-[color:var(--ink)] leading-tight truncate">
+              {lastCountry.name}
+            </span>
+          </span>
+          <span className="shrink-0 inline-flex items-center gap-1 min-h-[52px] px-5 rounded-2xl bg-[var(--action)] text-white font-extrabold shadow-md shadow-[var(--action)]/25">
+            {t.home.open}
+            <ChevronRight size={20} />
+          </span>
+        </button>
+      )}
+
+      <section aria-labelledby="choix-pays">
+        <h3 id="choix-pays" className="mb-3 text-lg sm:text-xl font-extrabold text-[color:var(--ink)]">
+          {t.home.sectionTitle}
+        </h3>
+
+        {filteredCountries.length > 0 ? (
+          <div id="tour-country-list" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 motion-stagger">
+            {filteredCountries.map((country, index) => (
               <button
                 key={country.id}
-                onClick={() => handleSelectCountry(country)}
                 type="button"
+                style={{ '--i': index }}
+                onClick={() => handleSelectCountry(country)}
                 aria-label={t.home.enterAria(country.name)}
-                className={`w-full flex items-center justify-between px-4 py-3 sm:py-4 rounded-2xl border motion-tap active:scale-[0.98] active:opacity-80 sm:hover:shadow-[var(--shadow-soft)] ${
-                  country.id === 'tj' || country.id === 'mj'
-                    ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 sm:hover:border-amber-400'
-                    : `border-[var(--border)] sm:hover:border-[color:var(--accent)] ${index % 2 === 0 ? 'bg-[var(--paper)]' : 'bg-[var(--paper-2)]'}`
-                }`}
+                data-dernier={country.id === lastCountryId ? '' : undefined}
+                className="jr-tuile focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40"
               >
-                <div className="flex items-center gap-3">
-                  <CountryAvatar country={country} className="h-10 w-10" />
-                  <div className="text-left">
-                    <p className="text-base font-semibold text-[color:var(--ink)]">{country.name}</p>
-                    <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">{t.home.countryRole}</p>
-                  </div>
-                </div>
-                <span className="text-sm text-[color:var(--muted)]">{t.home.enter}</span>
+                <span className="jr-tuile-drapeau">
+                  <CountryAvatar country={country} ring className="h-16 w-16 sm:h-20 sm:w-20" />
+                </span>
+                <span className="block w-full text-base sm:text-lg font-extrabold text-[color:var(--ink)] leading-tight break-words">
+                  {country.name}
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted)]">
+                  {t.home.countryRole}
+                </span>
+                <span className="jr-tuile-entrer">
+                  {t.home.enter}
+                  <ChevronRight size={15} />
+                </span>
               </button>
             ))}
 
             <button
               id="tour-add-country"
-              onClick={() => setAddOpen(true)}
               type="button"
+              style={{ '--i': filteredCountries.length }}
+              onClick={() => setAddOpen(true)}
               aria-label={t.home.addCountryAria}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 sm:py-4 rounded-2xl border-2 border-dashed border-[var(--border)] text-[color:var(--muted)] motion-tap font-medium active:scale-[0.98] active:opacity-80 sm:hover:border-[color:var(--accent)] sm:hover:text-[color:var(--accent-deep)] sm:hover:bg-[var(--accent)]/5"
+              className="jr-tuile jr-tuile-ajout focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--cta-orange)]/40"
             >
-              <Plus size={18} />
-              {t.home.addCountry}
+              <span className="h-16 w-16 sm:h-20 sm:w-20 rounded-full flex items-center justify-center bg-[var(--cta-orange)] text-white shadow-md">
+                <Plus size={32} />
+              </span>
+              <span className="text-base sm:text-lg font-extrabold leading-tight">{t.home.addCountry}</span>
             </button>
           </div>
-        </div>
-      </div>
+        ) : (
+          <div className="p-8 text-center bg-[var(--paper)] rounded-3xl border-2 border-dashed border-[var(--border)]">
+            <p className="text-base font-semibold text-[color:var(--ink)]">{t.home.noMatch(searchQuery)}</p>
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              aria-label={t.home.addCountryAria}
+              className="mt-4 inline-flex items-center gap-2 min-h-[52px] px-5 rounded-2xl bg-[var(--cta-orange)] text-white font-extrabold shadow-md active:scale-95 motion-tap"
+            >
+              <Plus size={20} />
+              <span>{t.home.addThis}</span>
+            </button>
+          </div>
+        )}
+      </section>
 
       <AddCountryDialog
         isOpen={addOpen}

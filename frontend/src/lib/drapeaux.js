@@ -98,7 +98,9 @@ export function isoDrapeau(pays) {
   if (CODES_MAISON[code]) return CODES_MAISON[code];
   const parNom = NOMS[normaliserNom(pays.name)];
   if (parNom) return parNom;
-  return depuisCode(pays.code) || depuisCode(pays.id) || null;
+  // L'identifiant d'un pays ajouté à la main est souvent son nom
+  // (« cameroun »), même quand le nom affiché diffère (« Cameroun Nord »).
+  return depuisCode(pays.code) || depuisCode(pays.id) || NOMS[normaliserNom(pays.id)] || null;
 }
 
 /** L'adresse du drapeau, servie par l'application, ou `null`. */

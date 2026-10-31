@@ -27,6 +27,7 @@ describe('isoDrapeau', () => {
     [{ id: 'gb', name: 'Gabon', code: 'GB' }, 'ga'],
     [{ id: 'ng', name: 'Nigeria', code: 'NG' }, 'ng'],
     [{ id: 'gh', name: 'Ghana', code: 'GHA' }, 'gh'],
+    [{ id: 'cameroun', name: 'Cameroun Nord', code: 'CMN' }, 'cm'],
   ])('%o → %s', (pays, attendu) => {
     expect(isoDrapeau(pays)).toBe(attendu);
   });

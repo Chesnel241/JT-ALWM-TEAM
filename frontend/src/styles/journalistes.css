@@ -825,3 +825,114 @@
 	font-weight: 800;
 	animation: cr-flotte 2.4s ease-in-out infinite;
 }
+
+/* ------------------------------------------------------------------ */
+/* Choix du pays                                                       */
+/* ------------------------------------------------------------------ */
+
+.jr-reprise {
+	border-radius: 1.75rem;
+	border: 2px solid var(--action);
+	background: var(--paper);
+	background: linear-gradient(120deg, color-mix(in oklch, var(--action) 12%, var(--paper)) 0%, var(--paper) 70%);
+	box-shadow: 0 16px 34px -26px var(--action);
+	transition: transform var(--motion-enter) var(--ease-out);
+}
+
+.jr-reprise:active {
+	transform: scale(0.98);
+}
+
+.jr-tuile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.55rem;
+	min-width: 0;
+	padding: 1.15rem 0.75rem 1rem;
+	border-radius: 1.5rem;
+	border: 2px solid var(--border);
+	background: var(--paper);
+	text-align: center;
+	box-shadow: 0 10px 22px -20px oklch(0.25 0.05 250 / 0.6);
+	transition:
+		transform var(--motion-enter) var(--ease-out),
+		border-color var(--motion-enter) var(--ease-out),
+		box-shadow var(--motion-enter) var(--ease-out);
+}
+
+@media (hover: hover) {
+	.jr-tuile:hover {
+		transform: translateY(-4px);
+		border-color: var(--accent);
+		box-shadow: 0 20px 34px -24px var(--accent);
+	}
+
+	/* Le drapeau ondule au survol, comme au vent. */
+	.jr-tuile:hover .jr-tuile-drapeau {
+		animation: jr-vent 1.2s ease-in-out infinite;
+	}
+}
+
+.jr-tuile:active {
+	transform: scale(0.97);
+}
+
+.jr-tuile-drapeau {
+	display: inline-flex;
+	transform-origin: 50% 90%;
+}
+
+@keyframes jr-vent {
+	0%,
+	100% {
+		transform: rotate(0);
+	}
+
+	25% {
+		transform: rotate(-5deg);
+	}
+
+	75% {
+		transform: rotate(5deg);
+	}
+}
+
+.jr-tuile[data-dernier] {
+	border-color: var(--action);
+	background: var(--paper);
+	background: linear-gradient(180deg, color-mix(in oklch, var(--action) 10%, var(--paper)) 0%, var(--paper) 70%);
+}
+
+.jr-tuile-entrer {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+	margin-top: 0.15rem;
+	padding: 0.35rem 0.8rem;
+	border-radius: 9999px;
+	background: var(--accent);
+	color: #fff;
+	font-size: 0.85rem;
+	font-weight: 800;
+}
+
+.jr-tuile[data-dernier] .jr-tuile-entrer {
+	background: var(--action);
+}
+
+.jr-tuile-ajout {
+	justify-content: center;
+	border-style: dashed;
+	border-color: var(--cta-orange);
+	color: var(--cta-orange-deep);
+	background: var(--paper);
+	background: color-mix(in oklch, var(--cta-orange) 6%, var(--paper));
+}
+
+@media (hover: hover) {
+	.jr-tuile-ajout:hover {
+		border-color: var(--cta-orange);
+		box-shadow: 0 20px 34px -24px var(--cta-orange);
+	}
+}

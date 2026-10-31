@@ -37,7 +37,28 @@ const ECRANS = [
 const LETTRES = /[A-Za-zÀ-ÿ]{2,}/;
 const ATTRIBUTS_LUS = new Set(['title', 'placeholder', 'aria-label', 'alt']);
 // Une liste de classes, une URL ou un identifiant ne sont pas du texte lu.
-const PAS_DU_TEXTE = /^[a-z0-9_-]+$|var\(--|^(bg|text|border|p[xytblr]?|m[xytblr]?|w|h|flex|grid|rounded|shadow|font|md:|sm:|lg:|opacity|scale|inline|block|hidden|animate|motion|min|max|space|gap|rotate|transition|items|justify|cursor|relative|absolute|btn|col|row|overflow|truncate|shrink|leading|tracking|uppercase|sr-only|app-|panel|uploader-)|^https?:|^\/|^#|^\.|\.\w{2,4}$/;
+//
+// L'INCIDENT DU DÉTECTEUR : il écartait toute chaîne commençant comme une
+// classe (`p`, `m`, `w`, `h`…), si bien que « pays disponibles » passait pour
+// `p-4`. Une chaîne n'est désormais une liste de classes que si CHACUN de ses
+// mots en a la forme (un tiret, deux-points, ou un nom de classe connu).
+const CLASSES_SEULES = new Set([
+  'flex', 'grid', 'hidden', 'block', 'inline', 'relative', 'absolute', 'fixed', 'sticky',
+  'truncate', 'uppercase', 'lowercase', 'capitalize', 'italic', 'underline', 'rounded',
+  'shadow', 'border', 'transition', 'group', 'peer', 'contents', 'container', 'btn', 'panel',
+  'badge', 'grow', 'shrink', 'isolate',
+]);
+const estUneClasse = (mot) => /^[a-zA-Z0-9:!\[\]\/._%(),#=>&*+-]+$/.test(mot)
+  && (mot.includes('-') || mot.includes(':') || CLASSES_SEULES.has(mot));
+
+function estDuTexte(valeur) {
+  const v = valeur.trim();
+  if (!LETTRES.test(v)) return false;
+  if (/var\(--|^https?:|^\/|^#|^\.|\.\w{2,4}$/.test(v)) return false;
+  // Un identifiant seul (« video », « warning », « sn ») n'est pas lu.
+  if (/^[a-z0-9_-]+$/.test(v)) return false;
+  return !v.split(/\s+/).every(estUneClasse);
+}
 
 function textesEnDur(source) {
   const ast = parseSync(source, {
@@ -63,7 +84,7 @@ function textesEnDur(source) {
     );
     if (affiche && (n.type === 'StringLiteral' || n.type === 'TemplateLiteral')) {
       const v = n.type === 'StringLiteral' ? n.value : n.quasis.map((q) => q.value.cooked).join('');
-      if (LETTRES.test(v) && !PAS_DU_TEXTE.test(v.trim())) noter(n, v);
+      if (estDuTexte(v)) noter(n, v);
     }
     for (const [cle, valeur] of Object.entries(n)) {
       if (cle === 'loc' || cle.endsWith('Comments')) continue;
@@ -86,8 +107,13 @@ describe('les écrans des correspondants n’ont aucun texte en dur', () => {
     const trouves = textesEnDur(`
       export default function X({ t, addToast }) {
         addToast('Envoi terminé', 'success');
-        return <div title="Lire le script">Délai dépassé {t.ok} {ok ? 'Validé' : t.non}</div>;
+        const n = 2;
+        return <div title="Lire le script" className={ok ? 'px-4 py-2 rounded-xl flex' : 'hidden'}>
+          Délai dépassé {t.ok} {ok ? 'Validé' : t.non} {n > 1 ? 'pays disponibles' : 'pays'}
+        </div>;
       }`);
-    expect(trouves).toHaveLength(4);
+    // Envoi terminé, Lire le script, Délai dépassé, Validé, pays disponibles —
+    // et pas la liste de classes.
+    expect(trouves).toHaveLength(5);
   });
 });
