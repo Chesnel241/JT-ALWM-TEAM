@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  UploadCloud, Folder, FileText, Video,
-  CheckCircle, Clock, ChevronRight, ChevronDown, Trash2, AlertCircle, RotateCcw,
+  UploadCloud, Folder, FileText, Video, Mic, Image as ImageIcon,
+  CheckCircle, Clock, ChevronRight, ChevronDown, Trash2, AlertCircle,
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -15,8 +15,8 @@ import { echeanceLocale, fuseauNavigateur, phraseEcheance } from '../lib/echeanc
 import { buildSections, filesForSection, etatNombreReportages, nomAffiche, SECTIONS_FIXES } from '../lib/sujets.js';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
-import PhoneInput from 'react-phone-number-input';
-import PhoneCountryBadge from './PhoneCountryBadge.jsx';
+import ChampWhatsApp from './ChampWhatsApp.jsx';
+import ChampScript from './ChampScript.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
 import { readCountryPhone, saveCountryPhone, forgetCountryPhone, isUsablePhone } from '../lib/countryPhone.js';
 import {
@@ -26,7 +26,6 @@ import {
   matchesEntry,
   fileKey,
 } from '../lib/pendingUploads.js';
-import 'react-phone-number-input/style.css';
 
 const FILE_ICONS = {
   video: { Icon: Video, color: 'text-blue-500', bg: 'bg-blue-100' },
@@ -42,6 +41,7 @@ import EmptyInbox from './illustrations/EmptyInbox.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 import NombreReportages from './NombreReportages.jsx';
 import ReportagesSheet from './ReportagesSheet.jsx';
+import VoyageEnvoi from './VoyageEnvoi.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
   const { t, lang } = useI18n();
@@ -146,6 +146,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   // pays courants. La file, elle, est vidée bien plus tard : passer par une
   // référence évite qu'une reprise parte vers la semaine d'il y a une heure.
   const startUploadRef = useRef(null);
+
+  // La semaine et le pays affichés, pour qu'un envoi fini ne remplace pas la
+  // liste d'une autre semaine par la sienne (même raison que ci-dessus).
+  const vueCourante = useRef({ semaine: selectedWeek, pays: country.id });
+  useEffect(() => {
+    vueCourante.current = { semaine: selectedWeek, pays: country.id };
+  }, [selectedWeek, country.id]);
 
   const viderLaFile = useCallback(() => {
     const queued = offlineQueueRef.current.splice(0);
@@ -269,6 +276,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     }
 
     const uploadFile = file;
+    const semaine = selectedWeek;
+    const pays = country.id;
 
       api
         .uploadFile(selectedWeek, country.id, uploadFile, {
@@ -292,7 +301,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             );
           },
         })
-        .then((result) => {
+        .then(() => {
           setUploading((prev) =>
             prev.map((f) =>
               f.id === tempId ? { ...f, progress: 100, status: 'completed', phase: 'done' } : f
@@ -301,11 +310,19 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           forgetUpload(fileKey(uploadFile));
           setPendingUploads(listPendingUploads(selectedWeek, country.id));
           filesByUploadRef.current.delete(tempId);
-          // In case the API returns the result (our TUS wrapper returns {success, message})
-          // we fetch the updated files via the effect or manual fetch if needed.
-          // Since the server sends socket events, the list should refresh.
-          if (result.name) setUploads((prev) => [...prev, result]);
-          addToast(t.uploader.uploadSuccess(result.name || uploadFile.name), 'success', 3000);
+          // Un envoi TUS ne renvoie pas la fiche du fichier : la liste est
+          // relue. On attendait ici une fiche qui n'arrivait jamais, et
+          // « Fichiers du reportage » restait à 0, « Ce reportage contient »
+          // à « Rien pour l'instant », jusqu'au rechargement de la page —
+          // alors que le fichier était bien arrivé.
+          api
+            .getUploads(semaine, pays)
+            .then((liste) => {
+              const vue = vueCourante.current;
+              if (vue.semaine === semaine && vue.pays === pays && Array.isArray(liste)) setUploads(liste);
+            })
+            .catch(() => {});
+          addToast(t.uploader.uploadSuccess(uploadFile.name), 'success', 3000);
         })
         .catch((err) => {
           // Coupure en cours d'envoi : l'échec n'est pas la faute du
@@ -556,12 +573,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
       {currentWeek && <CountdownTimer week={currentWeek} />}
       {isLocked && (
-        <div role="alert" className="panel p-5 mb-8 border-2 !border-[var(--signal)]/50 !bg-[var(--signal)]/10 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div role="alert" className="panel p-5 mb-8 border-2 !border-[var(--cta-red)]/50 !bg-[var(--cta-red)]/10 flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-start gap-3 flex-1">
-            <AlertCircle className="text-[var(--signal)] flex-shrink-0 mt-0.5" size={22} />
+            <AlertCircle className="text-[color:var(--cta-red)] flex-shrink-0 mt-0.5" size={22} />
             <div>
-              <p className="font-bold text-[var(--signal)]">{t.uploader.lockedTitle}</p>
-              <p className="text-sm text-[var(--signal)]/90 mt-1">{t.uploader.lockedDesc(phraseEcheance(echeanceLocale(currentWeek?.cutoffAt, { lang, timeZone: fuseauNavigateur() }), t.echeance))}</p>
+              <p className="font-bold text-[color:var(--cta-red-deep)]">{t.uploader.lockedTitle}</p>
+              <p className="text-sm text-[color:var(--ink)] mt-1">{t.uploader.lockedDesc(phraseEcheance(echeanceLocale(currentWeek?.cutoffAt, { lang, timeZone: fuseauNavigateur() }), t.echeance))}</p>
             </div>
           </div>
           {/* Action délai directement dans la zone du timer verrouillé —
@@ -580,7 +597,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             <button
               onClick={handleRequestDelay}
               disabled={isRequestingDelay}
-              className="btn btn-primary bg-[var(--signal)] border-transparent text-white shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+              className="jr-bouton bg-[var(--cta-orange)] text-white shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isRequestingDelay ? t.uploader.sending : t.uploader.delayAsk}
             </button>
@@ -605,27 +622,13 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           </div>
           
           <div className="max-w-md mx-auto bg-[var(--paper)] p-5 rounded-2xl border border-[var(--border)] shadow-sm">
-            <label className="block text-sm font-medium text-[color:var(--ink)] mb-3">
-              {t.uploader.phoneLabel}
-            </label>
-            <PhoneInput
-              international
-              defaultCountry={defaultPhoneCountry}
-              flagComponent={PhoneCountryBadge}
-              value={phone}
+            <ChampWhatsApp
+              valeur={phone}
               onChange={setPhone}
-              className="w-full mb-4 uploader-phone-input"
+              onValider={() => handleSubscribe()}
+              enCours={isSubscribing}
+              paysDefaut={defaultPhoneCountry}
             />
-            <button
-              onClick={handleSubscribe}
-              disabled={isSubscribing || !phone || phone.length < 5}
-              className="btn btn-primary w-full flex justify-center items-center gap-2"
-            >
-              {isSubscribing ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : null}
-              {t.uploader.mandatoryPhoneSubmit}
-            </button>
           </div>
         </div>
       ) : (
@@ -711,30 +714,36 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                     ouvrir le reportage). */}
                 <div
                   id={i === 0 ? 'tour-dropzone' : undefined}
-                  className={`relative border-2 border-dashed rounded-[1.5rem] p-6 sm:p-10 text-center motion-tap ${
-                    isLocked
-                      ? 'border-[var(--border)] bg-[var(--paper-2)] opacity-50 cursor-not-allowed'
-                      : isDragActive
-                        ? 'border-[color:var(--action)] bg-[var(--action)]/10 scale-[1.02]'
-                        : 'border-[var(--border)] bg-[var(--paper)] sm:hover:border-[color:var(--accent)]'
-                  }`}
+                  className="jr-depot p-6 sm:p-10 text-center"
+                  data-glisse={isDragActive ? '' : undefined}
+                  data-ferme={isLocked ? '' : undefined}
                   onDragEnter={(e) => !isLocked && handleDrag(e, reportageName)}
                   onDragLeave={(e) => !isLocked && handleDrag(e, reportageName)}
                   onDragOver={(e) => !isLocked && handleDrag(e, reportageName)}
                   onDrop={(e) => !isLocked && handleDrop(e, reportageName, section.sujetId)}
                   aria-disabled={isLocked}
                 >
-                  <UploadCloud className={`mx-auto h-14 w-14 mb-4 transition-transform duration-200 ${
-                    isDragActive ? 'text-[color:var(--accent-deep)] scale-[1.05]' : 'text-[color:var(--muted)]'
-                  }`} />
-                  <h3 className="text-lg font-semibold text-[color:var(--ink)] mb-2">
+                  {/* Le bord en pointillés qui défile : un rectangle SVG, pour
+                      suivre les coins arrondis. */}
+                  <svg className="jr-depot-bord" aria-hidden="true">
+                    <rect x="0" y="0" width="100%" height="100%" rx="24" ry="24" />
+                  </svg>
+                  <div className="jr-depot-icones" aria-hidden="true">
+                    <span><Video size={20} /></span>
+                    <span><Mic size={20} /></span>
+                    <span className="jr-depot-nuage"><UploadCloud size={36} /></span>
+                    <span><ImageIcon size={20} /></span>
+                    <span><FileText size={20} /></span>
+                  </div>
+                  <h3 className="mt-4 text-lg sm:text-xl font-extrabold text-[color:var(--ink)]">
                     {t.uploader.dropTitle}
                   </h3>
-                  <p className="text-[color:var(--muted)] text-sm mb-6">
+                  <p className="mt-1.5 text-[color:var(--muted)] text-sm">
                     {t.uploader.dropHint}
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <label className={`btn btn-primary w-full sm:w-auto text-center active:scale-[0.98] ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                    <label className={`jr-bouton jr-bouton-vert ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
+                      <UploadCloud size={20} aria-hidden="true" />
                       {t.uploader.browse}
                       <input
                         type="file"
@@ -744,7 +753,8 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                         onChange={(e) => e.target.files && handleFiles(e.target.files, reportageName, section.sujetId)}
                       />
                     </label>
-                    <label className={`btn btn-primary w-full sm:w-auto text-center active:scale-[0.98] ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
+                    <label className={`jr-bouton jr-bouton-contour ${isLocked ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}>
+                      <Folder size={20} aria-hidden="true" />
                       {t.uploader.browseFolder}
                       <input
                         type="file"
@@ -759,97 +769,23 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                   </div>
                 </div>
 
-                {repUploading.length > 0 && (
-                  <div className="panel p-6">
-                    <h3 className="font-semibold text-[color:var(--ink)] mb-4">{t.uploader.transfers}</h3>
-                    <div className="space-y-4">
-                      {repUploading.map((f) => (
-                        <div key={f.id} className="bg-[var(--paper)] p-3 rounded-2xl border border-[var(--border)]">
-                          <div className="flex justify-between text-sm mb-2 gap-2">
-                            <span className="font-medium text-[color:var(--ink)] truncate pr-4">{f.name}</span>
-                            {f.status === 'completed' && (
-                              <span className="motion-rise text-[var(--accent)] flex items-center gap-1 shrink-0">
-                                <CheckCircle size={14} className="motion-check" /> {t.uploader.phaseDone}
-                              </span>
-                            )}
-                            {f.status === 'error' && (
-                              <span className="text-[var(--signal)] flex items-center gap-1 shrink-0">
-                                <AlertCircle size={14} /> {f.error}
-                              </span>
-                            )}
-                            {f.status === 'queued' && (
-                              <span className="text-[color:var(--muted)] flex items-center gap-1 shrink-0 text-xs sm:text-sm">
-                                <Clock size={14} /> {t.uploader.offlineBadge}
-                              </span>
-                            )}
-                            {f.status === 'uploading' && (
-                              <span className="text-[color:var(--accent-deep)] shrink-0 text-xs sm:text-sm">
-                                {f.phase === 'processing'
-                                  ? (f.isVideo ? t.uploader.phaseCompressing : t.uploader.phaseProcessing)
-                                  : `${t.uploader.phaseUploading} ${Math.round(f.progress)}%`}
-                              </span>
-                            )}
-                          </div>
-                          <div className="w-full bg-[var(--paper-2)] rounded-full h-2">
-                            <div
-                              className={`h-2 w-full rounded-full motion-gauge ${
-                                f.status === 'completed'
-                                  ? 'bg-[var(--action)]'
-                                  : f.status === 'error'
-                                  ? 'bg-[var(--signal)]'
-                                  : 'bg-[color:var(--accent)]'
-                              } ${f.status === 'uploading' && f.phase === 'processing' ? 'animate-pulse' : ''}`}
-                              style={{ transform: `scaleX(${f.progress / 100})` }}
-                            />
-                          </div>
-                          {f.status === 'error' && (
-                            // Le fichier est encore en mémoire : un clic
-                            // suffit, sans repasser par le sélecteur.
-                            <button
-                              type="button"
-                              onClick={() => handleRetryUpload(f.id)}
-                              className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--action)] text-white font-bold text-sm active:scale-[0.98] transition-transform"
-                            >
-                              <RotateCcw size={15} />
-                              {t.uploader.retryCta}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Le voyage des fichiers : du drapeau du pays jusqu'au logo
+                    ALWM, puis Envoi → Traitement → Reçu pour chacun. */}
+                <VoyageEnvoi pays={country} envois={repUploading} onReessayer={handleRetryUpload} />
 
                 <div id={i === 0 ? 'tour-script-box' : undefined} className="panel p-6">
                   <h3 className="font-semibold text-[color:var(--ink)] mb-3 flex items-center gap-2">
-                    <FileText size={18} className="text-[color:var(--signal)]" />
+                    <FileText size={18} className="text-[color:var(--accent)]" />
                     {t.uploader.scriptTitle}
                   </h3>
-                  <textarea
-                    className="w-full border border-[var(--border)] rounded-2xl p-4 text-sm focus:ring-2 focus:ring-[color:var(--accent)] outline-none mb-3 bg-[var(--paper)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    rows="4"
-                    placeholder={t.uploader.scriptPh}
-                    value={scriptText[reportageName] || ''}
-                    onChange={(e) => setScriptText(prev => ({ ...prev, [reportageName]: e.target.value }))}
-                    disabled={isLocked}
+                  <ChampScript
+                    valeur={scriptText[reportageName] || ''}
+                    onChange={(texte) => setScriptText(prev => ({ ...prev, [reportageName]: texte }))}
+                    onValider={() => handleScriptSubmit(reportageName, section.sujetId)}
+                    enCours={Boolean(submittingScripts[reportageName])}
+                    desactive={isLocked}
+                    lignes={4}
                   />
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleScriptSubmit(reportageName, section.sujetId)}
-                      disabled={isLocked || !(scriptText[reportageName] || '').trim() || submittingScripts[reportageName]}
-                      type="button"
-                      className="btn btn-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                      {submittingScripts[reportageName] ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          {t.uploader.sending}
-                        </>
-                      ) : (
-                        t.uploader.scriptSubmit
-                      )}
-                    </button>
-                  </div>
                 </div>
               </div>
 
@@ -886,7 +822,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                             <p className="text-sm font-medium text-[color:var(--ink)] truncate flex items-center gap-2">
                               {file.name}
                               {file.isLate && (
-                                <span className="text-[10px] bg-[var(--signal)] text-white px-2 py-0.5 rounded-full font-bold">
+                                <span className="text-[10px] bg-[var(--cta-orange)] text-white px-2 py-0.5 rounded-full font-bold">
                                   {t.uploader.late}
                                 </span>
                               )}
@@ -903,26 +839,27 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                               )}
                             </p>
                             {file.status === 'approved' && (
-                              <p className="text-xs font-medium text-[var(--accent)] mt-1 flex items-center gap-1">
+                              <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-[var(--action)]/10 px-2 py-0.5 text-xs font-bold text-[color:var(--action-deep)]">
                                 <CheckCircle size={12} /> {t.uploader.approved}
                               </p>
                             )}
                             {file.status === 'rejected' && (
-                              <div className="mt-2 p-2 bg-[var(--signal)]/10 rounded-lg border border-[var(--signal)]/20">
-                                <p className="text-xs font-bold text-[var(--signal)] flex items-center gap-1 mb-1">
+                              <div className="mt-2 p-2.5 bg-[var(--cta-orange)]/10 rounded-xl border border-[var(--cta-orange)]/30">
+                                <p className="text-xs font-bold text-[color:var(--cta-orange-deep)] flex items-center gap-1 mb-1">
                                   <AlertCircle size={12} /> {t.uploader.toFix}
                                 </p>
-                                <p className="text-xs text-[var(--signal)]/90">{file.feedback}</p>
+                                <p className="text-xs text-[color:var(--ink)]">{file.feedback}</p>
                               </div>
                             )}
                           </div>
                           <button
                             onClick={() => openDeleteDialog(file)}
                             type="button"
-                            className="text-[color:var(--muted)] hover:text-[var(--signal)] p-1 rounded transition-colors"
-                            title={t.dashboard.delete}
+                            className="h-11 w-11 shrink-0 flex items-center justify-center rounded-xl text-[color:var(--cta-red)] bg-[var(--cta-red)]/10 hover:bg-[var(--cta-red)]/20 active:scale-90 motion-tap"
+                            title={t.uploader.supprimerFichier(file.name)}
+                            aria-label={t.uploader.supprimerFichier(file.name)}
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={18} />
                           </button>
                         </li>
                       );

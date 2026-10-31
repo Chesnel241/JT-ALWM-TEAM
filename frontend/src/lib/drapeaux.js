@@ -108,3 +108,16 @@ export function urlDrapeau(pays) {
   const iso = isoDrapeau(pays);
   return iso ? `/flags/${iso}.svg` : null;
 }
+
+/**
+ * Le drapeau d'un code ISO 3166 à deux lettres, tel que le donne le champ
+ * téléphone (« CM », « GB »), ou `null`.
+ *
+ * Pas de codes maison ici : pour le champ téléphone, « GB » est le
+ * Royaume-Uni et « KY » les îles Caïmans, pas le Gabon et le Kenya de la
+ * rédaction.
+ */
+export function urlDrapeauIso(code) {
+  const iso = String(code || '').trim().toLowerCase();
+  return iso.length === 2 && DRAPEAUX_DISPONIBLES.has(iso) ? `/flags/${iso}.svg` : null;
+}

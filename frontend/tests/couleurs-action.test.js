@@ -49,3 +49,40 @@ describe('couleurs d’action', () => {
     expect(contraste(jeton(nom), IVOIRE)).toBeGreaterThanOrEqual(3);
   });
 });
+
+/**
+ * Les écrans journalistes n'utilisent plus l'ancien orange `--signal`.
+ *
+ * Il servait de fond aux boutons « Demander un délai », aux badges
+ * « Clôturé » et « En retard » et aux encadrés « À corriger », avec du texte
+ * blanc ou orange à 2,5:1. Chacun a reçu la couleur de son action : orange
+ * pour reprendre ou corriger, rouge pour clôturé ou en retard. La liste
+ * s'allonge à mesure que les écrans passent aux nouvelles couleurs.
+ */
+const ECRANS_JOURNALISTES = [
+  'ReporterHomeView.jsx',
+  'HomeView.jsx',
+  'CountdownTimer.jsx',
+  'MobileUploaderView.jsx',
+  'UploaderView.jsx',
+  'VoyageEnvoi.jsx',
+  'ChampWhatsApp.jsx',
+  'ChampScript.jsx',
+  'OfflineBanner.jsx',
+  'PendingUploadsCard.jsx',
+  'ReportagesSheet.jsx',
+];
+
+describe('écrans journalistes', () => {
+  it.each(ECRANS_JOURNALISTES)('%s n’emploie plus l’orange peu contrasté --signal', (fichier) => {
+    const source = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '../src/components', fichier),
+      'utf8',
+    );
+    const lignes = source
+      .split('\n')
+      .map((ligne, i) => `${i + 1}: ${ligne.trim()}`)
+      .filter((ligne) => ligne.includes('var(--signal)'));
+    expect(lignes).toEqual([]);
+  });
+});

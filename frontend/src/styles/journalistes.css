@@ -936,3 +936,415 @@
 		box-shadow: 0 20px 34px -24px var(--cta-orange);
 	}
 }
+
+/* ------------------------------------------------------------------ */
+/* Envoi : le voyage des fichiers                                      */
+/* ------------------------------------------------------------------ */
+
+.jr-voyage {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 1rem;
+	border-radius: 1.5rem;
+	border: 2px solid var(--border);
+	border-color: color-mix(in oklch, var(--accent) 25%, var(--border));
+	background: var(--paper-2);
+	background: linear-gradient(135deg, color-mix(in oklch, var(--brand-sky) 14%, var(--paper)) 0%, var(--paper) 70%);
+}
+
+/* Le point vert qui émet : « ça envoie ». */
+.jr-radar {
+	position: relative;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-radius: 9999px;
+	background: var(--action);
+}
+
+.jr-radar::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: var(--action);
+	animation: jr-onde 1.4s ease-out infinite;
+}
+
+.jr-liaison {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.jr-liaison-noeud {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+}
+
+.jr-liaison-alwm {
+	width: 3rem;
+	height: 3rem;
+	border-radius: 9999px;
+	background: #fff;
+	box-shadow: 0 0 0 4px #fff, 0 8px 18px -10px oklch(0.25 0.05 250 / 0.6);
+}
+
+/* La piste : des tirets qui défilent vers la rédaction tant qu'un envoi
+   est en route. */
+.jr-liaison-piste {
+	position: relative;
+	flex: 1;
+	height: 2.75rem;
+	min-width: 4rem;
+}
+
+.jr-liaison-piste::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	height: 4px;
+	transform: translateY(-50%);
+	border-radius: 9999px;
+	background-image: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 14px);
+	background-size: 14px 100%;
+	opacity: 0.4;
+}
+
+.jr-liaison-piste[data-actif]::before {
+	animation: jr-defile 0.7s linear infinite;
+}
+
+@keyframes jr-defile {
+	to {
+		background-position: 14px 0;
+	}
+}
+
+/* Chaque fichier glisse sur la piste : le rail fait la largeur de la piste,
+   et se décale de la part déjà envoyée (transform seul, pas de mise en page). */
+.jr-paquet-rail {
+	position: absolute;
+	inset: 0;
+	transform: translateX(calc(var(--p, 0) * (100% - 2.1rem)));
+	transition: transform 700ms var(--ease-out);
+	pointer-events: none;
+}
+
+.jr-paquet {
+	position: absolute;
+	left: 0;
+	top: 50%;
+	display: grid;
+	place-items: center;
+	width: 2.1rem;
+	height: 2.1rem;
+	margin-top: -1.05rem;
+	border-radius: 0.7rem;
+	background: var(--action);
+	color: #fff;
+	box-shadow: 0 8px 16px -8px var(--action);
+	animation: jr-flottement 1.3s ease-in-out infinite;
+}
+
+.jr-paquet-rail[data-etat='fait'] .jr-paquet {
+	background: var(--accent);
+	box-shadow: 0 8px 16px -8px var(--accent);
+}
+
+.jr-paquet-rail[data-etat='attente'] .jr-paquet {
+	background: var(--muted);
+	animation: none;
+}
+
+.jr-paquet-rail[data-etat='erreur'] .jr-paquet {
+	background: var(--cta-orange);
+	animation: none;
+}
+
+@keyframes jr-flottement {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+
+	50% {
+		transform: translateY(-5px);
+	}
+}
+
+/* Les trois étapes d'un fichier : Envoi, Traitement, Reçu. */
+.jr-etapes-envoi {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+}
+
+.jr-pas {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: 0.75rem;
+	font-weight: 800;
+	color: var(--muted);
+	white-space: nowrap;
+}
+
+.jr-pas-point {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 1.4rem;
+	height: 1.4rem;
+	border-radius: 9999px;
+	border: 2px solid var(--border);
+	background: #fff;
+	color: #fff;
+}
+
+.jr-pas[data-etat='actif'] {
+	color: var(--accent-deep);
+}
+
+/* L'étape en cours tourne : un quart de cercle bleu fait le tour. */
+.jr-pas[data-etat='actif'] .jr-pas-point::after {
+	content: '';
+	position: absolute;
+	inset: -2px;
+	border-radius: inherit;
+	border: 2px solid transparent;
+	border-top-color: var(--accent);
+	animation: cr-tour 0.9s linear infinite;
+}
+
+.jr-pas[data-etat='fait'] {
+	color: var(--action-deep);
+}
+
+.jr-pas[data-etat='fait'] .jr-pas-point {
+	background: var(--action);
+	border-color: var(--action);
+}
+
+.jr-pas[data-etat='attente'] .jr-pas-point {
+	border-style: dashed;
+	color: var(--muted);
+}
+
+.jr-pas[data-etat='erreur'] {
+	color: var(--cta-orange-deep);
+}
+
+.jr-pas[data-etat='erreur'] .jr-pas-point {
+	background: var(--cta-orange);
+	border-color: var(--cta-orange);
+}
+
+.jr-pas-trait {
+	flex: 1;
+	min-width: 0.6rem;
+	height: 3px;
+	border-radius: 9999px;
+	background: var(--border);
+	transition: background-color 400ms var(--ease-out);
+}
+
+.jr-pas-trait[data-fait] {
+	background: var(--action);
+}
+
+/* La zone de dépôt : un bord en pointillés qui défile, les types de
+   fichiers acceptés autour du nuage, et un soulèvement quand on y glisse
+   un fichier. */
+.jr-depot {
+	position: relative;
+	border-radius: 1.5rem;
+	background: var(--paper);
+	background: linear-gradient(160deg, color-mix(in oklch, var(--action) 7%, var(--paper)) 0%, var(--paper) 65%);
+	transition:
+		transform var(--motion-enter) var(--ease-out),
+		box-shadow var(--motion-enter) var(--ease-out);
+}
+
+.jr-depot-bord {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.jr-depot-bord rect {
+	fill: none;
+	stroke: var(--action);
+	stroke-width: 3;
+	stroke-dasharray: 12 9;
+	opacity: 0.55;
+	animation: jr-fourmis 1.6s linear infinite;
+}
+
+@keyframes jr-fourmis {
+	to {
+		stroke-dashoffset: -21;
+	}
+}
+
+.jr-depot[data-glisse] {
+	transform: translateY(-4px) scale(1.01);
+	box-shadow: 0 24px 40px -26px var(--action);
+}
+
+.jr-depot[data-glisse] .jr-depot-bord rect {
+	opacity: 1;
+	animation-duration: 0.5s;
+}
+
+.jr-depot[data-ferme] {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.jr-depot[data-ferme] .jr-depot-bord rect {
+	stroke: var(--border);
+	animation: none;
+}
+
+.jr-depot-icones {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.6rem;
+}
+
+.jr-depot-icones > span {
+	display: grid;
+	place-items: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 0.85rem;
+	background: #fff;
+	color: var(--accent);
+	border: 1px solid var(--border);
+	box-shadow: 0 6px 14px -10px oklch(0.25 0.05 250 / 0.6);
+	animation: jr-flottement 2.6s ease-in-out infinite;
+}
+
+.jr-depot-icones > span:nth-child(2) {
+	animation-delay: -0.6s;
+	color: var(--cta-red);
+}
+
+.jr-depot-icones > span:nth-child(4) {
+	animation-delay: -1.2s;
+	color: var(--cta-orange);
+}
+
+.jr-depot-icones > span:nth-child(5) {
+	animation-delay: -1.8s;
+}
+
+.jr-depot-icones > .jr-depot-nuage {
+	width: 4.5rem;
+	height: 4.5rem;
+	border-radius: 1.4rem;
+	background: var(--action);
+	color: #fff;
+	border: 0;
+	box-shadow: 0 14px 26px -14px var(--action);
+	animation: jr-monte 2.2s ease-in-out infinite;
+}
+
+/* Boutons d'action de l'espace journalistes. */
+.jr-bouton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	min-height: 3.25rem;
+	padding: 0.75rem 1.4rem;
+	border-radius: 1rem;
+	font-weight: 800;
+	font-size: 1rem;
+	transition:
+		transform var(--motion-tap) var(--ease-out),
+		box-shadow var(--motion-tap) var(--ease-out);
+}
+
+.jr-bouton:active {
+	transform: scale(0.98);
+}
+
+.jr-bouton-vert {
+	background: var(--action);
+	color: #fff;
+	box-shadow: 0 10px 22px -14px var(--action);
+}
+
+.jr-bouton-contour {
+	background: #fff;
+	color: var(--action-deep);
+	border: 2px solid var(--action);
+}
+
+/* ------------------------------------------------------------------ */
+/* Champs                                                              */
+/* ------------------------------------------------------------------ */
+
+/* Le numéro WhatsApp : très grand, et sa bordure dit si le format est bon
+   (vert) ou s'il manque des chiffres (orange). */
+.jr-champ-telephone .uploader-phone-input .PhoneInputInput {
+	min-height: 3.75rem;
+	padding: 0.85rem 1rem;
+	border-radius: 1rem;
+	border-width: 2px;
+	font-size: 1.25rem;
+	font-weight: 800;
+	letter-spacing: 0.02em;
+	background: #fff;
+}
+
+.jr-champ-telephone .uploader-phone-input .PhoneInputCountry {
+	min-height: 3.75rem;
+	padding: 0 0.75rem;
+	border-radius: 1rem;
+	border-width: 2px;
+	background: #fff;
+}
+
+.jr-champ-telephone[data-etat='ok'] .PhoneInputInput {
+	border-color: var(--action);
+	box-shadow: 0 0 0 4px color-mix(in oklch, var(--action) 15%, transparent);
+}
+
+.jr-champ-telephone[data-etat='incomplet'] .PhoneInputInput {
+	border-color: var(--cta-orange);
+}
+
+/* La pastille du pays (drapeau + code) prend sa place naturelle : la
+   bibliothèque l'enfermait dans un cadre de 1,5 × 1 em, prévu pour son
+   propre drapeau, qui rognait le code. */
+.jr-champ-telephone .PhoneInputCountryIcon,
+.jr-champ-telephone .PhoneInputCountryIcon--border {
+	width: auto;
+	height: auto;
+	background: none;
+	box-shadow: none;
+}
+
+/* Un numéro complet (« +237 6 99 00 00 00 ») tient sur un téléphone de
+   360 px sans défiler dans le champ. */
+@media (max-width: 420px) {
+	.jr-champ-telephone .uploader-phone-input .PhoneInputInput {
+		font-size: 1.0625rem;
+		letter-spacing: 0;
+		padding: 0.85rem 0.75rem;
+		margin-left: 0.5rem;
+	}
+	.jr-champ-telephone .uploader-phone-input .PhoneInputCountry {
+		padding: 0 0.5rem;
+	}
+}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { isoDrapeau, urlDrapeau, DRAPEAUX_DISPONIBLES } from '../src/lib/drapeaux.js';
+import { isoDrapeau, urlDrapeau, urlDrapeauIso, DRAPEAUX_DISPONIBLES } from '../src/lib/drapeaux.js';
 
 /**
  * Chaque pays retrouve son drapeau, servi par l'application.
@@ -60,5 +60,22 @@ describe('les fichiers de drapeaux', () => {
 
   it('la licence accompagne les fichiers', () => {
     expect(readFileSync(join(DOSSIER, 'LICENSE-flag-icons.txt'), 'utf8')).toMatch(/MIT License/);
+  });
+});
+
+describe('urlDrapeauIso — le champ téléphone', () => {
+  // Le champ téléphone parle ISO : « GB » y est le Royaume-Uni. Passer par
+  // les codes maison de la rédaction y aurait mis le drapeau du Gabon.
+  it('lit les codes ISO à deux lettres, sans les codes maison', () => {
+    expect(urlDrapeauIso('CM')).toBe('/flags/cm.svg');
+    expect(urlDrapeauIso('GB')).toBe('/flags/gb.svg');
+    expect(urlDrapeauIso('GA')).toBe('/flags/ga.svg');
+  });
+
+  it('ne montre rien pour un pays sans drapeau local', () => {
+    expect(urlDrapeauIso('KY')).toBeNull();
+    expect(urlDrapeauIso('')).toBeNull();
+    expect(urlDrapeauIso(undefined)).toBeNull();
+    expect(urlDrapeauIso('CMR')).toBeNull();
   });
 });

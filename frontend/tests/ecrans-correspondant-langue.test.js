@@ -32,6 +32,9 @@ const ECRANS = [
   'ConfirmDialog.jsx',
   'ReporterHomeView.jsx',
   'CountdownTimer.jsx',
+  'VoyageEnvoi.jsx',
+  'ChampScript.jsx',
+  'ChampWhatsApp.jsx',
 ];
 
 const LETTRES = /[A-Za-zÀ-ÿ]{2,}/;
