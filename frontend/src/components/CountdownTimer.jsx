@@ -30,7 +30,10 @@ import {
  * `compact` : la version en ligne du téléphone, qui garde la couleur, le
  * temps restant et le ruban.
  */
-export default function CountdownTimer({ week, compact = false }) {
+// `ancre` : l'identifiant visé par la visite guidée. L'accueil et l'espace
+// d'envoi sont montés en même temps ; un seul des deux doit le porter, sans
+// quoi la page aurait deux éléments de même identifiant.
+export default function CountdownTimer({ week, compact = false, ancre = 'tour-countdown' }) {
   const { t, lang } = useI18n();
   const maintenant = useHorloge();
   // La trotteuse est calée une fois, à l'affichage, sur les secondes réelles.
@@ -99,7 +102,7 @@ export default function CountdownTimer({ week, compact = false }) {
 
   return (
     <section
-      id="tour-countdown"
+      id={ancre || undefined}
       className="cr cr-carte p-5 sm:p-7 mb-6 sm:mb-8"
       data-phase={phase}
       data-pouls={pouls ? 1 : 0}

@@ -30,6 +30,8 @@ const ECRANS = [
   'Tutorial5W1H.jsx',
   'DeliveryView.jsx',
   'ConfirmDialog.jsx',
+  'ReporterHomeView.jsx',
+  'CountdownTimer.jsx',
 ];
 
 const LETTRES = /[A-Za-zÀ-ÿ]{2,}/;

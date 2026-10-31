@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ReporterHomeView from '../src/components/ReporterHomeView.jsx';
 import { I18nProvider } from '../src/i18n/I18nContext.jsx';
@@ -110,5 +110,59 @@ describe('ReporterHomeView', () => {
     expect(screen.getByText('Report space')).toBeInTheDocument();
     expect(screen.getByText('Record a voice-over')).toBeInTheDocument();
     expect(screen.getByText('Download the show')).toBeInTheDocument();
+  });
+});
+
+describe('ReporterHomeView — le parcours de la semaine', () => {
+  // LE BESOIN : sans compte utilisateur, rien ne disait au correspondant où
+  // il en était. Trois étapes reliées le lui montrent d'un coup d'œil.
+  const PAYS = { id: 'cm', name: 'Cameroun', code: 'CM' };
+  const SEMAINES = [{ id: '2026-w44', startDate: '2026-10-25T22:00:00.000Z', cutoffAt: '2099-11-01T08:30:00.000Z' }];
+
+  async function monterAvec(fichiers, livraisons = []) {
+    const { api } = await import('../src/api/index.js');
+    vi.spyOn(api, 'getUploads').mockResolvedValue(fichiers);
+    vi.spyOn(api, 'getDeliveries').mockResolvedValue(livraisons);
+    return renderHub({ homeCountry: PAYS, homeCountryConfirmed: true, weeks: SEMAINES, selectedWeek: '2026-w44' });
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('une semaine vide : « Vos fichiers » est à envoyer, et c’est à vous', async () => {
+    const { container } = await monterAvec([]);
+    expect(await screen.findByText('À envoyer')).toBeInTheDocument();
+    expect(screen.getByText('À vous')).toBeInTheDocument();
+    expect(container.querySelector('.jr-etape[data-avous]')?.dataset.etat).toBe('aFaire');
+  });
+
+  it('des fichiers reçus et validés : l’étape est faite, et le dit', async () => {
+    await monterAvec([{ id: 'a', name: 'rush.mp4', type: 'video', status: 'approved' }]);
+    expect(await screen.findByText('1 fichier envoyé cette semaine · 1 validé')).toBeInTheDocument();
+    expect(screen.queryByText('À vous')).toBeNull();
+  });
+
+  it('un fichier refusé : un bouton orange mène à la correction', async () => {
+    const onOpenReports = vi.fn();
+    const { api } = await import('../src/api/index.js');
+    vi.spyOn(api, 'getUploads').mockResolvedValue([{ id: 'a', name: 'rush.mp4', type: 'video', status: 'rejected' }]);
+    vi.spyOn(api, 'getDeliveries').mockResolvedValue([]);
+    renderHub({ homeCountry: PAYS, homeCountryConfirmed: true, weeks: SEMAINES, selectedWeek: '2026-w44', onOpenReports });
+    fireEvent.click(await screen.findByText('Voir ce qui est demandé'));
+    expect(onOpenReports).toHaveBeenCalled();
+  });
+
+  it('le JT publié : l’étape et la carte annoncent « Prêt à télécharger »', async () => {
+    await monterAvec([], [{ id: 'jt', name: 'JT.mp4' }]);
+    expect(await screen.findAllByText('Prêt à télécharger')).toHaveLength(2);
+  });
+
+  it('chaque étape ouvre l’écran qui la concerne', async () => {
+    const onOpenVoixOff = vi.fn();
+    const { api } = await import('../src/api/index.js');
+    vi.spyOn(api, 'getUploads').mockResolvedValue([]);
+    vi.spyOn(api, 'getDeliveries').mockResolvedValue([]);
+    renderHub({ homeCountry: PAYS, homeCountryConfirmed: true, weeks: SEMAINES, selectedWeek: '2026-w44', onOpenVoixOff });
+    fireEvent.click(await screen.findByText('Votre voix off'));
+    expect(onOpenVoixOff).toHaveBeenCalled();
   });
 });
