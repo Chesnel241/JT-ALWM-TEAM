@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, Clock } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
+import { echeanceLocale, fuseauNavigateur, phraseEcheance } from '../lib/echeance.js';
 
 // `compact` : version en une ligne pour le téléphone. Le grand cadran ne
 // tenait pas sur un petit écran, si bien que l'échéance — l'information la
 // plus utile au correspondant — n'y était tout simplement pas affichée.
 export default function CountdownTimer({ week, compact = false }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -22,6 +23,7 @@ export default function CountdownTimer({ week, compact = false }) {
   // selon l'endroit d'où regarde le correspondant.
   if (!week.cutoffAt) return null;
   const end = new Date(week.cutoffAt);
+  const echeance = phraseEcheance(echeanceLocale(week.cutoffAt, { lang, timeZone: fuseauNavigateur() }), t.echeance);
 
   const totalDuration = end.getTime() - start.getTime();
   const remaining = end.getTime() - now.getTime();
@@ -134,7 +136,7 @@ export default function CountdownTimer({ week, compact = false }) {
               {t.countdown.lateTitle}
             </h2>
             <p className="text-[var(--ink)] font-medium">
-              {t.countdown.lateDesc}
+              {t.countdown.lateDesc(echeance)}
             </p>
           </>
         ) : (
@@ -144,7 +146,7 @@ export default function CountdownTimer({ week, compact = false }) {
             </h2>
             <p className="text-[color:var(--muted)]">
               {t.countdown.normalDesc.before}
-              <strong className="text-[color:var(--ink)]">{t.countdown.normalDesc.bold}</strong>
+              <strong className="text-[color:var(--ink)]">{echeance}</strong>
               {t.countdown.normalDesc.after}
             </p>
           </>

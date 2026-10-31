@@ -1,64 +1,54 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { urlDrapeau } from '../lib/drapeaux.js';
 
-export default function CountryAvatar({ country, className = "w-10 h-10" }) {
+/**
+ * La pastille d'un pays : son drapeau, servi par l'application
+ * (`public/flags/`, voir lib/drapeaux.js), ou ses initiales à défaut.
+ *
+ * `ring` : un liseré blanc et une ombre, pour les grandes cartes où le
+ * drapeau sert de repère principal.
+ */
+export default function CountryAvatar({ country, className = 'w-10 h-10', ring = false }) {
   const [imgError, setImgError] = useState(false);
-  
+
   if (!country || (!country.id && !country.code)) {
-    return <div className={`${className} rounded-full bg-gray-200`}></div>;
+    return <div className={`${className} rounded-full bg-[var(--paper-2)]`} aria-hidden="true" />;
   }
 
-  const isSpecial = country.id === 'tj' || country.id === 'mj' || country.id === 'afrique';
-  
-  // Mapping intelligent pour corriger les codes personnalisés (ex: GB pour Gabon, RDC, DAGAN)
-  const codeToIso = {
-    'CM': 'cm', 'SN': 'sn', 'CI': 'ci', 'CD': 'cd', 'RDC': 'cd',
-    'CG': 'cg', 'CB': 'cg', 'DAGAN': 'cg', 'MA': 'ma', 'TG': 'tg',
-    'BJ': 'bj', 'BF': 'bf', 'GB': 'ga', 'GA': 'ga', 'UG': 'ug',
-    'TD': 'td', 'GH': 'gh', 'DP': 'un', 'KE': 'ke', 'KY': 'ke', '254': 'ke'
-  };
-  
-  const isoCode = (country.code && codeToIso[country.code.toUpperCase()]) 
-    ? codeToIso[country.code.toUpperCase()] 
-    : (country.id || '').toLowerCase();
-  
-  const isAfrique = country.name && (country.name.toLowerCase().trim() === 'afrique' || country.name.toLowerCase().trim() === 'bureau afrique' || country.id === 'afrique');
+  const contour = ring
+    ? 'ring-4 ring-white shadow-lg'
+    : 'border border-black/10 shadow-sm';
 
-  if (isAfrique) {
+  const nom = String(country.name || '').toLowerCase().trim();
+  if (country.id === 'afrique' || nom === 'afrique' || nom === 'bureau afrique') {
     return (
-      <div className={`${className} rounded-full overflow-hidden shrink-0 border border-black/10 shadow-sm bg-[var(--paper)] flex items-center justify-center`}>
-        <img 
-          src="/afrique.svg"
-          alt="Afrique"
-          className="w-full h-full object-cover"
-        />
+      <div className={`${className} rounded-full overflow-hidden shrink-0 ${contour} bg-[var(--paper)] flex items-center justify-center`}>
+        <img src="/afrique.svg" alt="" className="w-full h-full object-cover" />
       </div>
     );
   }
 
-  if (isSpecial || imgError) {
+  const src = country.id === 'tj' || country.id === 'mj' ? null : urlDrapeau(country);
+
+  if (!src || imgError) {
     // Fond OPAQUE : en translucide, cette pastille posée sur le chutier
     // sélectionné (fond bleu profond) rendait le code pays illisible.
     return (
-       <div className={`${className} rounded-full flex items-center justify-center font-semibold shrink-0 border ${
-          country.id === 'tj' || country.id === 'mj'
-            ? 'bg-[var(--signal)] text-[color:var(--ink)] border-black/10'
-            : 'bg-white text-[color:var(--accent-deep)] border-black/10'
-        }`}>
-          <span className="text-sm">{country.code}</span>
-       </div>
+      <div className={`${className} rounded-full flex items-center justify-center font-semibold shrink-0 ${contour} bg-white text-[color:var(--accent-deep)]`}>
+        <span className="text-sm">{country.code}</span>
+      </div>
     );
   }
 
   return (
-    <div className={`${className} rounded-full overflow-hidden shrink-0 border border-black/10 shadow-sm bg-[var(--paper)] flex items-center justify-center`}>
-      <img 
-        src={`https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.2.1/flags/4x3/${isoCode}.svg`}
-        alt={country.name}
+    <div className={`${className} rounded-full overflow-hidden shrink-0 ${contour} bg-[var(--paper)] flex items-center justify-center`}>
+      <img
+        src={src}
+        alt=""
         className="w-full h-full object-cover"
-        onError={(e) => {
-          console.error(`Failed to load flag for ${isoCode}`);
-          setImgError(true);
-        }}
+        loading="lazy"
+        decoding="async"
+        onError={() => setImgError(true)}
       />
     </div>
   );

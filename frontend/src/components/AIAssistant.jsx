@@ -30,7 +30,7 @@ export default function AIAssistant({ currentPage, showBubble = true }) {
   const [runTour, setRunTour] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [steps, setSteps] = useState([]);
-  const allTourSteps = getTourSteps(t);
+  const allTourSteps = getTourSteps(t, lang);
   const messagesEndRef = useRef(null);
 
   // Démarre le tour en ne gardant que les étapes dont la cible existe

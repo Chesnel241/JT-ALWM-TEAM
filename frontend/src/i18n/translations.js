@@ -312,7 +312,7 @@ export const translations = {
       deleted: (name) => `${name} supprimé`,
       uploadedAt: 'Envoyé',
       lockedTitle: 'Uploads clôturés pour cette semaine',
-      lockedDesc: "La date limite d'envoi (dimanche 10h30 GMT+2) est dépassée. Les uploads sont bloqués jusqu'à la prochaine semaine. Pour un envoi exceptionnel, contactez l'équipe montage directement.",
+      lockedDesc: (echeance) => `La date limite d'envoi (${echeance}) est dépassée. Les envois sont bloqués jusqu'à la semaine prochaine. Pour un envoi exceptionnel, demandez un délai à l'équipe montage.`,
       notifySuccess: 'Vous serez notifié !',
       mandatoryPhoneTitle: 'Un contact WhatsApp est obligatoire',
       mandatoryPhoneDesc: 'Afin de vous avertir rapidement en cas de problème (vidéo refusée, son inaudible, etc.) ou vous prévenir de la disponibilité du JT, veuillez renseigner le numéro WhatsApp de votre pays.',
@@ -436,6 +436,11 @@ export const translations = {
       late: 'En retard',
       notifyEmpty: 'Les correspondants inscrits aux alertes WhatsApp apparaîtront ici dès la publication du JT.',
     },
+    // L'heure limite, dite dans l'heure du correspondant (lib/echeance.js).
+    echeance: {
+      votreHeure: (court, fuseau) => `${court}, votre heure (${fuseau})`,
+      memeHeure: (court) => `${court}, heure de la rédaction`,
+    },
     countdown: {
       compactLabel: 'Temps restant pour envoyer',
       days: 'j',
@@ -444,11 +449,10 @@ export const translations = {
       seconds: 's',
       finished: 'TERMINE',
       lateTitle: 'VOUS êtes en retard, le JT est finalisé',
-      lateDesc: 'La date limite d\'envoi pour cette semaine (dimanche 10h30 GMT+2) est dépassée. Vos envois seront tout de même traités si nécessaire.',
+      lateDesc: (echeance) => `La date limite d'envoi pour cette semaine (${echeance}) est dépassée. Vos envois seront tout de même traités si nécessaire.`,
       normalTitle: 'Délai de soumission',
       normalDesc: {
         before: 'Le JT doit être finalisé avant ',
-        bold: 'dimanche 10h30 (GMT+2)',
         after: '. Le compteur ci-contre vous indique le temps restant pour uploader vos sujets sereinement.',
       },
     },
@@ -502,7 +506,7 @@ export const translations = {
       },
       tourUploader: {
         welcome: "Vous êtes dans votre Espace Reportages. C'est ici que vous envoyez vos fichiers à l'équipe de montage.",
-        countdown: "Ici, vous voyez le temps qu'il vous reste avant la clôture des envois pour cette semaine (dimanche 10h30 GMT+2).",
+        countdown: (echeance) => `Ici, vous voyez le temps qu'il vous reste avant la clôture des envois de la semaine : ${echeance}.`,
         weekSelector: "Assurez-vous toujours que la bonne semaine de diffusion est sélectionnée ici. Par défaut, c'est la semaine en cours.",
         dropzone: "Glissez et déposez simplement vos vidéos, images ou audios dans ce gros cadre ! Vous pouvez envoyer plusieurs fichiers en même temps.",
         scriptBox: "Vous n'avez pas le temps de faire un fichier Word ? Tapez ou collez directement le texte de votre voix off ou vos instructions pour le monteur ici.",
@@ -1297,7 +1301,7 @@ export const translations = {
       deleted: (name) => `${name} deleted`,
       uploadedAt: 'Sent',
       lockedTitle: 'Uploads closed for this week',
-      lockedDesc: "The submission deadline (Sunday 10:30, GMT+2) has passed. Uploads are blocked until next week. For an exceptional submission, contact the editing team directly.",
+      lockedDesc: (echeance) => `The submission deadline (${echeance}) has passed. Uploads are blocked until next week. For an exceptional submission, ask the editing team for more time.`,
       notifySuccess: 'You will be notified!',
       mandatoryPhoneTitle: 'A WhatsApp contact is mandatory',
       mandatoryPhoneDesc: 'To quickly notify you in case of a problem (rejected video, inaudible sound, etc.) or let you know when the newscast is ready, please provide your country\'s WhatsApp number.',
@@ -1414,6 +1418,10 @@ export const translations = {
       late: 'Late',
       notifyEmpty: 'Correspondents who signed up for WhatsApp alerts will appear here once the JT is published.',
     },
+    echeance: {
+      votreHeure: (court, fuseau) => `${court}, your time (${fuseau})`,
+      memeHeure: (court) => `${court}, newsroom time`,
+    },
     countdown: {
       compactLabel: 'Time left to send',
       days: 'd',
@@ -1422,11 +1430,10 @@ export const translations = {
       seconds: 's',
       finished: 'ENDED',
       lateTitle: 'YOU are late, the broadcast is finalized',
-      lateDesc: 'The submission deadline for this week (Sunday 10:30, GMT+2) has passed. Your uploads will still be processed if necessary.',
+      lateDesc: (echeance) => `The submission deadline for this week (${echeance}) has passed. Your uploads will still be processed if necessary.`,
       normalTitle: 'Submission Deadline',
       normalDesc: {
         before: 'The broadcast must be finalized before ',
-        bold: 'Sunday 10:30 (GMT+2)',
         after: '. The timer shows the remaining time to comfortably upload your files.',
       },
     },
@@ -1480,7 +1487,7 @@ export const translations = {
       },
       tourUploader: {
         welcome: "You are in your Reports Space. This is where you send your files to the editing team.",
-        countdown: "Here, you see the time you have left before submissions close for this week (Sunday 10:30, GMT+2).",
+        countdown: (echeance) => `Here, you see the time you have left before submissions close this week: ${echeance}.`,
         weekSelector: "Always make sure the correct broadcast week is selected here. By default, it's the current week.",
         dropzone: "Simply drag and drop your videos, images, or audios in this big frame! You can send multiple files at the same time.",
         scriptBox: "No time to make a Word file? Type or paste the text for your voice-over or your instructions for the editor directly here.",

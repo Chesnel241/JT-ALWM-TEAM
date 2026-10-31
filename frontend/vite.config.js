@@ -45,7 +45,10 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,ico,png,svg}'],
         // Ne pas précacher les gros chunks chargés à la demande (Whisper/ONNX,
         // Remotion) : ils restent récupérés au runtime, le SW reste léger.
-        globIgnores: ['**/transformers*', '**/ort*', '**/onnx*', '**/remotion*', '**/*whisper*', '**/habillage-logo.png'],
+        // Les drapeaux non plus : 66 fichiers, 320 Ko, dont un correspondant
+        // n'affiche que quelques-uns. Ils arrivent à la demande, et Caddy les
+        // garde un an en cache navigateur.
+        globIgnores: ['**/transformers*', '**/ort*', '**/onnx*', '**/remotion*', '**/*whisper*', '**/habillage-logo.png', '**/flags/**'],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
       },
       includeAssets: ['favicon.ico', 'logo-lwm.png'],

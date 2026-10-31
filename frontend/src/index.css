@@ -51,6 +51,28 @@
 	--success: var(--action);
 	--success-deep: var(--action-deep);
 	--signal: oklch(0.72 0.16 65);
+
+	/* Espace journalistes : une couleur par nature d'action, et une seule.
+	   Des correspondants peu familiers du numérique lisent la couleur avant
+	   le mot ; elle doit donc toujours dire la même chose.
+	     vert   (--action)      envoyer, valider, avancer, télécharger ;
+	     bleu   (--accent)      ouvrir, consulter, regarder, naviguer ;
+	     orange (--cta-orange)  à corriger, reprendre, demander un délai ;
+	     rouge  (--cta-red)     supprimer, clôturé, urgence, enregistrer.
+	   --signal reste pour les fonds teintés : en texte blanc il n'atteint
+	   que 2,5:1. Les deux nouvelles portent du blanc à 5,2:1 et 5,6:1 ; leurs
+	   versions -deep servent au texte sur fond clair (6,8:1 et 7:1 sur
+	   l'ivoire). Un test relit ces valeurs et refuse un contraste trop bas. */
+	--cta-orange: #c2410c;
+	--cta-orange-deep: #9a3412;
+	--cta-red: #c62828;
+	--cta-red-deep: #a61b1b;
+
+	/* Les trois couleurs du compte à rebours : des tracés, pas du texte, donc
+	   au moins 3:1 sur l'ivoire (critère des éléments graphiques). */
+	--jauge-serein: #059669;
+	--jauge-proche: #ea580c;
+	--jauge-urgent: #dc2626;
 	--app-bg: oklch(0.935 0.012 85);
 	--editor-bg: oklch(0.145 0.022 245);
 	--editor-panel: oklch(0.19 0.024 245);

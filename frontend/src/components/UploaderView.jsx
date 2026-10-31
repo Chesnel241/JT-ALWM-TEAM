@@ -11,6 +11,7 @@ import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js'
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import { classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
+import { echeanceLocale, fuseauNavigateur, phraseEcheance } from '../lib/echeance.js';
 import { buildSections, filesForSection, etatNombreReportages, nomAffiche, SECTIONS_FIXES } from '../lib/sujets.js';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
@@ -560,7 +561,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             <AlertCircle className="text-[var(--signal)] flex-shrink-0 mt-0.5" size={22} />
             <div>
               <p className="font-bold text-[var(--signal)]">{t.uploader.lockedTitle}</p>
-              <p className="text-sm text-[var(--signal)]/90 mt-1">{t.uploader.lockedDesc}</p>
+              <p className="text-sm text-[var(--signal)]/90 mt-1">{t.uploader.lockedDesc(phraseEcheance(echeanceLocale(currentWeek?.cutoffAt, { lang, timeZone: fuseauNavigateur() }), t.echeance))}</p>
             </div>
           </div>
           {/* Action délai directement dans la zone du timer verrouillé —
