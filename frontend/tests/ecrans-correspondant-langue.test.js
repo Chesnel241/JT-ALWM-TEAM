@@ -38,6 +38,9 @@ const ECRANS = [
   'JTPretJournaliste.jsx',
   'StudioVoixJournaliste.jsx',
   'RubriqueView.jsx',
+  'GrillePays.jsx',
+  'RedactionJournal.jsx',
+  'ParcoursPays.jsx',
 ];
 
 const LETTRES = /[A-Za-zÀ-ÿ]{2,}/;

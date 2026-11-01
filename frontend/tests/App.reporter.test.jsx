@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import App from '../src/App.jsx';
 import { api } from '../src/api/index.js';
 
 const COUNTRIES = [{ id: 'sn', name: 'Sénégal', code: 'SN' }];
+
+// Les drapeaux de l'accueil (la page « Espace reportage », montée mais
+// cachée, a les siens).
+const drapeauxAccueil = async () => within(await screen.findByRole('region', { name: 'Envoyer votre reportage' }));
 const WEEKS = [{ id: '2026-W34', status: 'active', startDate: '2026-08-18', cutoffAt: '2026-08-23T08:30:00.000Z' }];
 
 function stubMatchMedia() {
@@ -28,6 +32,7 @@ beforeEach(() => {
   vi.spyOn(api, 'getDeliveries').mockResolvedValue([]);
   vi.spyOn(api, 'getSubscriptions').mockResolvedValue([]);
   vi.spyOn(api, 'getDashboard').mockResolvedValue({});
+  vi.spyOn(api, 'getRubriques').mockResolvedValue({});
 });
 
 afterEach(() => {
@@ -35,14 +40,15 @@ afterEach(() => {
 });
 
 describe('App — URL /journalistes', () => {
-  it('ouvre l\'accueil journalistes avec reportage, voix off et JT prêt, sans onglet de montage', async () => {
+  it('ouvre l\'accueil journalistes avec les drapeaux, la voix off, le JT et la rédaction, sans onglet de montage', async () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
     expect(await screen.findByText('Que souhaitez-vous faire ?')).toBeInTheDocument();
-    expect(screen.getByText('Envoyer mes fichiers')).toBeInTheDocument();
-    expect(screen.getByText('Ouvrir le studio voix')).toBeInTheDocument();
-    expect(screen.getByText('Ouvrir le JT prêt')).toBeInTheDocument();
+    expect((await drapeauxAccueil()).getByRole('button', { name: /Sénégal/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Enregistrer une voix-off/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Télécharger le JT/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ouvrir le conducteur' })).toBeInTheDocument();
     expect(screen.queryByText('Espace Montage')).not.toBeInTheDocument();
     expect(screen.queryByText('Stats & Délais')).not.toBeInTheDocument();
   });
@@ -51,28 +57,28 @@ describe('App — URL /journalistes', () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
-    fireEvent.click(await screen.findByText('Ouvrir le studio voix'));
+    fireEvent.click(await screen.findByRole('button', { name: /Enregistrer une voix-off/ }));
 
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/voix-off'));
     expect(await screen.findByRole('heading', { name: 'Enregistrer votre voix off' })).toBeInTheDocument();
   });
 
-  it('mène à la liste des pays depuis « Espace reportage »', async () => {
+  it('toucher son drapeau sur l\'accueil ouvre l\'espace du pays', async () => {
+    vi.spyOn(api, 'getUploads').mockResolvedValue([]);
+    vi.spyOn(api, 'getDelays').mockResolvedValue(null);
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
-    fireEvent.click(await screen.findByText('Envoyer mes fichiers'));
+    fireEvent.click((await drapeauxAccueil()).getByRole('button', { name: /Sénégal/ }));
 
-    await waitFor(() => expect(window.location.pathname).toBe('/journalistes/reportage'));
-    // HomeView rend une variante mobile et une variante desktop.
-    expect(await screen.findAllByText('Sénégal')).not.toHaveLength(0);
+    await waitFor(() => expect(window.location.pathname).toBe('/journalistes/sn'));
   });
 
   it('mène au JT prêt depuis « Télécharger le JT »', async () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
-    fireEvent.click(await screen.findByText('Ouvrir le JT prêt'));
+    fireEvent.click(await screen.findByRole('button', { name: /Télécharger le JT/ }));
 
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/telecharger-le-jt'));
     expect(await screen.findByRole('heading', { name: /Votre JT est prêt|Le JT de la semaine/ })).toBeInTheDocument();
@@ -105,7 +111,7 @@ describe('App — URL /journalistes', () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
-    fireEvent.click(await screen.findByText('Ouvrir le JT prêt'));
+    fireEvent.click(await screen.findByRole('button', { name: /Télécharger le JT/ }));
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/telecharger-le-jt'));
 
     window.history.back();
@@ -149,16 +155,30 @@ describe('App — le lien personnel d\'un correspondant', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/reportage'));
   });
 
-  it('propose ensuite ce pays en raccourci sur l\'accueil', async () => {
+  it('« Pays » ramène à l\'accueil, où sont les drapeaux', async () => {
+    window.history.replaceState(null, '', '/journalistes/sn');
+    render(<App />);
+    await waitFor(() => expect(window.location.pathname).toBe('/journalistes/sn'));
+
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Pays' }))[0]);
+
+    await waitFor(() => expect(window.location.pathname).toBe('/journalistes'));
+    expect((await drapeauxAccueil()).getByRole('button', { name: /Sénégal/ })).toBeInTheDocument();
+  });
+
+  it('ne retient pas le pays du lien : l\'accueil reste ouvert à tous', async () => {
     window.history.replaceState(null, '', '/journalistes/sn');
     const { unmount } = render(<App />);
     await screen.findAllByText('Sénégal');
     unmount();
 
-    // Nouvelle visite sur l'accueil : l'appareil se souvient du pays.
+    // Nouvelle visite sur l'accueil : aucun pays n'est imposé, les drapeaux
+    // sont là pour tout le monde.
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
-    expect(await screen.findAllByText(/Continuer pour Sénégal/)).not.toHaveLength(0);
-    expect(screen.getAllByText(/Ce n’est pas mon pays/)).not.toHaveLength(0);
+    expect((await drapeauxAccueil()).getByRole('button', { name: /Sénégal/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Continuer pour|Ce n’est pas mon pays|Dernier accès/)).toBeNull();
+    expect(localStorage.getItem('reporter_home_country_id')).toBeNull();
+    expect(localStorage.getItem('last_selected_country_id')).toBeNull();
   });
 });

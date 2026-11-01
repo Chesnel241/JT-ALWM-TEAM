@@ -17,6 +17,7 @@ import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
 import ChampWhatsApp from './ChampWhatsApp.jsx';
 import ChampScript from './ChampScript.jsx';
+import ParcoursPays from './ParcoursPays.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
 import { readCountryPhone, saveCountryPhone, forgetCountryPhone, isUsablePhone } from '../lib/countryPhone.js';
 import {
@@ -43,7 +44,7 @@ import NombreReportages from './NombreReportages.jsx';
 import ReportagesSheet from './ReportagesSheet.jsx';
 import VoyageEnvoi from './VoyageEnvoi.jsx';
 
-export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack }) {
+export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack, onOpenVoixOff, onOpenDelivery }) {
   const { t, lang } = useI18n();
   const defaultPhoneCountry = phoneCountryFor(country.id);
   const { addToast } = useToast();
@@ -474,6 +475,24 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
     }
   };
 
+  // Le suivi de la semaine du pays : il était sur l'accueil, qui devinait le
+  // pays ; il est ici, où l'adresse le dit. Les deux vues (téléphone,
+  // ordinateur) sont montées ensemble : chacune a sa propre ancre.
+  const voirFichiers = (ancre) => () => {
+    document.getElementById(ancre)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const parcours = (ancre, compact = false) => (
+    <ParcoursPays
+      compact={compact}
+      fichiers={uploads}
+      chargement={isLoadingUploads}
+      weekId={selectedWeek}
+      onVoirFichiers={voirFichiers(ancre)}
+      onOpenVoixOff={onOpenVoixOff}
+      onOpenDelivery={onOpenDelivery}
+    />
+  );
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-10">
       {/* MOBILE VIEW (md:hidden) */}
@@ -513,6 +532,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           onRetryUpload={handleRetryUpload}
           isOnline={isOnline}
           queuedCount={queuedCount}
+          parcours={parcours('espace-fichiers-mobile', true)}
         />
       </div>
 
@@ -572,6 +592,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       </div>
 
       {currentWeek && <CountdownTimer week={currentWeek} />}
+      <div className="mb-8">{parcours('tour-uploader-accordion')}</div>
       {isLocked && (
         <div role="alert" className="panel p-5 mb-8 border-2 !border-[var(--cta-red)]/50 !bg-[var(--cta-red)]/10 flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-start gap-3 flex-1">
@@ -666,7 +687,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         const isDragActive = dragActive[reportageName];
 
         return (
-          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="mb-3 sm:mb-4 md:mb-12 bg-[var(--paper)] md:bg-black/5 md:dark:bg-white/5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] md:p-8 overflow-hidden md:overflow-visible shadow-sm md:shadow-none motion-enter">
+          <div key={section.id} id={i === 0 ? 'tour-uploader-accordion' : undefined} className="scroll-mt-40 mb-3 sm:mb-4 md:mb-12 bg-[var(--paper)] md:bg-black/5 md:dark:bg-white/5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] md:p-8 overflow-hidden md:overflow-visible shadow-sm md:shadow-none motion-enter">
             {/* Accordion Header (Mobile) / Normal Header (Desktop) */}
             <div
               onClick={() => {

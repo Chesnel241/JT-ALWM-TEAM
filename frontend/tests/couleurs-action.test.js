@@ -74,6 +74,9 @@ const ECRANS_JOURNALISTES = [
   'JTPretJournaliste.jsx',
   'StudioVoixJournaliste.jsx',
   'RubriqueView.jsx',
+  'GrillePays.jsx',
+  'RedactionJournal.jsx',
+  'ParcoursPays.jsx',
 ];
 
 describe('écrans journalistes', () => {

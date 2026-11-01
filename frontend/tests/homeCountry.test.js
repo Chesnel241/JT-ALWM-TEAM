@@ -1,12 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  readLastCountryId,
-  saveLastCountryId,
-  readHomeCountryId,
-  saveHomeCountryId,
-  forgetHomeCountry,
-  resolveCountry,
-} from '../src/lib/homeCountry.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { oublierPaysMemorises, resolveCountry } from '../src/lib/homeCountry.js';
 
 const COUNTRIES = [
   { id: 'ga', name: 'Gabon' },
@@ -17,56 +10,35 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-describe('homeCountry — mémoire par appareil', () => {
-  it('ne renvoie rien tant que rien n\'a été mémorisé', () => {
-    expect(readHomeCountryId()).toBe('');
-    expect(readLastCountryId()).toBe('');
-  });
-
-  it('sépare le pays confirmé du simple dernier pays ouvert', () => {
-    saveLastCountryId('ci');
-    expect(readHomeCountryId()).toBe('');
-    expect(readLastCountryId()).toBe('ci');
-
-    saveHomeCountryId('ga');
-    expect(readHomeCountryId()).toBe('ga');
-    expect(readLastCountryId()).toBe('ci');
-  });
-
-  it('oublie le pays confirmé sans toucher au dernier ouvert', () => {
-    saveLastCountryId('ci');
-    saveHomeCountryId('ga');
-    forgetHomeCountry();
-    expect(readHomeCountryId()).toBe('');
-    expect(readLastCountryId()).toBe('ci');
-  });
-
-  it('normalise la casse et les espaces', () => {
-    saveHomeCountryId('  GA ');
-    expect(readHomeCountryId()).toBe('ga');
+describe('homeCountry — plus de pays mémorisé', () => {
+  // L'appareil retenait le dernier pays ouvert et l'imposait à l'accueil.
+  // L'accès se fait sans compte : ces traces sont effacées au démarrage.
+  it('efface les pays laissés par les versions précédentes, et rien d’autre', () => {
+    localStorage.setItem('last_selected_country_id', 'ga');
+    localStorage.setItem('reporter_home_country_id', 'ga');
+    localStorage.setItem('jt-alwm-lang', 'fr');
+    oublierPaysMemorises();
+    expect(localStorage.getItem('last_selected_country_id')).toBeNull();
+    expect(localStorage.getItem('reporter_home_country_id')).toBeNull();
+    expect(localStorage.getItem('jt-alwm-lang')).toBe('fr');
   });
 
   it('survit à un stockage indisponible', () => {
-    const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      get() { throw new Error('storage blocked'); },
+    const espion = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('bloqué');
     });
-    expect(() => saveHomeCountryId('ga')).not.toThrow();
-    expect(readHomeCountryId()).toBe('');
-    if (original) Object.defineProperty(window, 'localStorage', original);
+    expect(() => oublierPaysMemorises()).not.toThrow();
+    espion.mockRestore();
   });
 });
 
 describe('homeCountry — résolution', () => {
-  it('retrouve le pays dans la liste courante', () => {
-    expect(resolveCountry(COUNTRIES, 'ga')).toEqual({ id: 'ga', name: 'Gabon' });
-    expect(resolveCountry(COUNTRIES, 'GA')).toEqual({ id: 'ga', name: 'Gabon' });
+  it('retrouve le pays dans la liste courante, sans tenir compte de la casse', () => {
+    expect(resolveCountry(COUNTRIES, 'ga')).toEqual(COUNTRIES[0]);
+    expect(resolveCountry(COUNTRIES, ' CI ')).toEqual(COUNTRIES[1]);
   });
 
   it('renvoie null pour un pays supprimé ou inconnu', () => {
-    // Un pays personnalisé peut disparaître côté serveur : on préfère la
-    // liste complète à un raccourci qui mène nulle part.
     expect(resolveCountry(COUNTRIES, 'zz')).toBeNull();
     expect(resolveCountry(COUNTRIES, '')).toBeNull();
     expect(resolveCountry(null, 'ga')).toBeNull();

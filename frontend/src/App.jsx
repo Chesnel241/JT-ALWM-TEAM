@@ -20,14 +20,7 @@ import { readTextSize, saveTextSize, applyTextSize, TEXT_SIZES } from './lib/tex
 import { readLastWorkspace, saveLastWorkspace } from './lib/lastWorkspace.js';
 import { adoptTokenFromSearch } from './lib/reporterIdentity.js';
 import { withViewTransition } from './lib/viewTransition.js';
-import {
-  readLastCountryId,
-  saveLastCountryId,
-  readHomeCountryId,
-  saveHomeCountryId,
-  forgetHomeCountry,
-  resolveCountry,
-} from './lib/homeCountry.js';
+import { oublierPaysMemorises, resolveCountry } from './lib/homeCountry.js';
 
 const HomeView = lazy(() => import('./components/HomeView.jsx'));
 const UploaderView = lazy(() => import('./components/UploaderView.jsx'));
@@ -173,8 +166,11 @@ function AppShell() {
   // le même lien partagé n'expose donc jamais le choix d'un correspondant à un
   // autre. Repli sur le dernier pays ouvert quand rien n'a encore été confirmé.
   const [textSize, setTextSizeState] = useState(() => readTextSize());
-  const [homeCountryId, setHomeCountryId] = useState(() => readHomeCountryId());
-  const [lastCountryId, setLastCountryId] = useState(() => readLastCountryId());
+  // Plus de pays mémorisé sur l'appareil (« dernier accès ») : l'accès se
+  // fait sans compte, chacun entre par son drapeau ou par son lien
+  // personnel. Les traces laissées par les versions précédentes sont
+  // effacées une fois, au démarrage.
+  useEffect(() => { oublierPaysMemorises(); }, []);
   const [selectedWeek, setSelectedWeekState] = useState(() => {
     try {
       return localStorage.getItem('jt-selected-week') || '';
@@ -305,14 +301,6 @@ function AppShell() {
     const match = resolveCountry(countries, wanted);
     if (match) {
       setSelectedCountry(match);
-      saveLastCountryId(match.id);
-      setLastCountryId(match.id);
-      // Un lien personnel reçu par WhatsApp vaut confirmation : c'est
-      // quelqu'un qui a été désigné pour ce pays.
-      if (isReporter) {
-        saveHomeCountryId(match.id);
-        setHomeCountryId(match.id);
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countries, route.countryId]);
@@ -333,29 +321,7 @@ function AppShell() {
 
   const handleSelectCountry = (country) => {
     setSelectedCountry(country);
-    saveLastCountryId(country.id);
-    setLastCountryId(country.id);
     navigate('uploader', { countryId: country.id });
-  };
-
-  // Raccourci de l'accueil journalistes. Un pays seulement « déjà ouvert » est
-  // proposé, jamais imposé : sur un poste partagé en rédaction, le voisin doit
-  // pouvoir passer outre en un geste.
-  const homeCountry = isReporter
-    ? resolveCountry(countries, homeCountryId || lastCountryId)
-    : null;
-  const homeCountryConfirmed = Boolean(homeCountry) && homeCountry.id === homeCountryId;
-
-  const handleConfirmHomeCountry = (country) => {
-    saveHomeCountryId(country.id);
-    setHomeCountryId(country.id);
-    handleSelectCountry(country);
-  };
-
-  const handleForgetHomeCountry = () => {
-    forgetHomeCountry();
-    setHomeCountryId('');
-    navigate('home');
   };
 
   const isEditorWorkspace = isEditorStudio;
@@ -395,15 +361,14 @@ function AppShell() {
             {canRender('hub') && (
               <div className={currentView === 'hub' ? 'block' : 'hidden'}>
                 <ReporterHomeView
-                  onOpenReports={() => navigate('home')}
+                  countries={countries}
+                  onSelectCountry={handleSelectCountry}
+                  onCountryAdded={(c) => setCountries((prev) => [...prev, c])}
                   onOpenVoixOff={() => navigate('voixoff')}
                   onOpenConducteur={() => navigate('conducteur')}
                   onOpenMotDuJt={() => navigate('motDuJt')}
                   onOpenDelivery={() => navigate('delivery')}
-                  homeCountry={homeCountry}
-                  homeCountryConfirmed={homeCountryConfirmed}
-                  onContinueWithCountry={handleConfirmHomeCountry}
-                  onChangeCountry={handleForgetHomeCountry}
+                  isActive={currentView === 'hub'}
                   weeks={weeks}
                   selectedWeek={selectedWeek}
                   textSize={textSize}
@@ -425,7 +390,11 @@ function AppShell() {
                   weeks={weeks}
                   selectedWeek={selectedWeek}
                   setSelectedWeek={setSelectedWeek}
-                  onBack={() => navigate('home')}
+                  // Côté journalistes, les drapeaux sont sur l'accueil :
+                  // « Retour » y ramène. Le montage garde sa liste de pays.
+                  onBack={() => navigate(isReporter ? 'hub' : 'home')}
+                  onOpenVoixOff={() => navigate('voixoff')}
+                  onOpenDelivery={() => navigate('delivery')}
                   isActive={currentView === 'uploader'}
                 />
               </div>
@@ -462,7 +431,7 @@ function AppShell() {
                   setSelectedWeek={setSelectedWeek}
                   countries={countries}
                   isActive={currentView === 'voixoff'}
-                  initialCountryId={homeCountry?.id || route.countryId || selectedCountry?.id}
+                  initialCountryId={route.countryId || selectedCountry?.id}
                   isReporter={isReporter}
                 />
               </div>
