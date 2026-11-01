@@ -218,9 +218,12 @@ export default function Nav({
             )}
             {/* Cloche push : utile aux deux équipes (les journalistes veulent
                 être prévenus dès que le JT est prêt). */}
+            {/* Côté journalistes, la cloche disparaît là où les notifications
+                sont impossibles, au lieu d'afficher un bouton mort. */}
             <NotificationToggle
               compact={compactActions}
               audience={isReporter ? 'reporter' : 'editor'}
+              cadre={isReporter ? (bouton) => bouton : null}
             />
             {/* Confort de lecture : proposé aux deux équipes, sauf dans le
                 studio où l'interface est dense par nature. */}

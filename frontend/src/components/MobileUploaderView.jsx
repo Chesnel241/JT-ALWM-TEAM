@@ -71,6 +71,7 @@ export default function MobileUploaderView({
   onResumeUpload,
   onDismissPending,
   onRetryUpload,
+  parcours = null,
   isOnline = true,
   queuedCount = 0,
 }) {
@@ -219,6 +220,10 @@ export default function MobileUploaderView({
         )}
       </div>
 
+      {/* Où en est le pays cette semaine (ParcoursPays, fourni par
+          UploaderView). */}
+      {parcours}
+
       {!isOnline && <OfflineBanner queuedCount={queuedCount} />}
 
       {/* Reprise d'un envoi coupé : placé haut, c'est la première chose à
@@ -256,7 +261,7 @@ export default function MobileUploaderView({
 
       {/* 4. MANDATORY WHATSAPP SCREEN (If missing) */}
       {!hasPhoneNumber ? (
-        <div className="p-5 rounded-2xl bg-[var(--paper)] border-2 border-[color:var(--accent)] shadow-sm space-y-4">
+        <div id="espace-fichiers-mobile" className="p-5 rounded-2xl bg-[var(--paper)] border-2 border-[color:var(--accent)] shadow-sm space-y-4 scroll-mt-24">
           <div className="flex items-center gap-3">
             <div className="bg-[color:var(--accent)] text-white p-2.5 rounded-full shrink-0">
               <AlertCircle size={20} />
@@ -288,7 +293,7 @@ export default function MobileUploaderView({
       ) : (
         /* 5. STANDARD REPORTAGES VIEW — le conducteur et le Mot du JT ont
            leur propre écran (RubriqueView) : ce ne sont plus des pays. */
-        <div className="space-y-4">
+        <div id="espace-fichiers-mobile" className="space-y-4 scroll-mt-24">
           {/* Étape 1 : combien de reportages. Le choix se fait d'abord et
               reste visible ; il remplace le bouton « Ajouter un reportage »
               que plusieurs correspondants ne comprenaient pas. */}

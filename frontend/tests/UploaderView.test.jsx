@@ -45,6 +45,16 @@ beforeEach(() => {
 });
 
 describe('UploaderView — ordinateur', () => {
+  it('ouvre l’espace du pays sur son suivi de la semaine, sur téléphone comme sur ordinateur', async () => {
+    // Le suivi vivait sur l'accueil, qui devinait le pays. Il est ici, où
+    // l'adresse le dit — une fois pour le téléphone, une fois pour l'ordinateur.
+    vi.spyOn(api, 'getDeliveries').mockResolvedValue([]);
+    monter('fr');
+    await screen.findAllByText('interview.mp4');
+    expect(screen.getAllByRole('region', { name: 'Votre semaine en un coup d’œil' })).toHaveLength(2);
+    expect(screen.getAllByText('1 fichier envoyé cette semaine · 1 validé')).toHaveLength(2);
+  });
+
   it('se charge et affiche un envoi vidéo avec son icône', async () => {
     monter('fr');
     expect((await screen.findAllByText('interview.mp4')).length).toBeGreaterThan(0);

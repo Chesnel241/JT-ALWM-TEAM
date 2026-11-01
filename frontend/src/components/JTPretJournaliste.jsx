@@ -5,6 +5,7 @@ import { API_BASE } from '../api/index.js';
 import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js';
 import SkeletonCard from './SkeletonCard.jsx';
 import WaitingBroadcast from './illustrations/WaitingBroadcast.jsx';
+import { lireVus, ecrireVus } from '../lib/jtVus.js';
 
 /**
  * Le JT de la semaine, côté journalistes.
@@ -21,26 +22,6 @@ import WaitingBroadcast from './illustrations/WaitingBroadcast.jsx';
  * mémoire du téléphone avant de l'enregistrer. L'écran dit donc que le
  * téléchargement a commencé, et où le fichier arrive.
  */
-
-const CLE_VUS = 'jt-alwm-jt-vus';
-
-function lireVus() {
-  try {
-    const brut = JSON.parse(localStorage.getItem(CLE_VUS) || '[]');
-    return new Set(Array.isArray(brut) ? brut : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function ecrireVus(vus) {
-  try {
-    // Les cinquante derniers suffisent : un an de JT, sans encombrer.
-    localStorage.setItem(CLE_VUS, JSON.stringify([...vus].slice(-50)));
-  } catch {
-    // Stockage indisponible : la pastille reviendra, rien de plus.
-  }
-}
 
 export function estVideo(fichier) {
   return fichier?.type === 'video' || /\.(mp4|mov|m4v|webm)$/i.test(fichier?.name || '');

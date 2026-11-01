@@ -65,13 +65,19 @@ describe('HomeView — tuiles à drapeau', () => {
     expect(sources).toEqual(expect.arrayContaining(['/flags/sn.svg', '/flags/cm.svg']));
   });
 
-  it('propose le dernier pays ouvert en tête, pour y revenir en un geste', () => {
-    localStorage.setItem('last_selected_country_id', 'cm');
+  it('ne met aucun pays en avant : plus de « dernier accès »', () => {
+    // L'accès se fait sans compte : le pays ouvert en dernier sur un
+    // appareil ne disait rien de la personne qui arrivait.
+    localStorage.setItem('last_selected_country_id', 'sn');
     const onSelect = vi.fn();
-    renderHome({ onSelectCountry: onSelect });
-    expect(screen.getByText('Dernier accès')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Ouvrir'));
+    const { container } = renderHome({ onSelectCountry: onSelect });
+    expect(screen.queryByText('Dernier accès')).toBeNull();
+    expect(container.querySelector('[data-dernier]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Cameroun/ }));
     expect(onSelect).toHaveBeenCalledWith(COUNTRIES[1]);
+    // Choisir un pays ne le mémorise plus : l'ancienne valeur n'est pas
+    // remplacée par le pays choisi.
+    expect(localStorage.getItem('last_selected_country_id')).toBe('sn');
   });
 
   it('compte les pays dans la langue choisie', () => {

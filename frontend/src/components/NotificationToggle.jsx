@@ -53,7 +53,13 @@ function estIOSHorsEcranAccueil() {
  * la seule diffusion possible est « tout le monde reçoit tout » : un
  * correspondant était réveillé à chaque dépôt de fichier d'un autre pays.
  */
-export default function NotificationToggle({ compact = false, audience = '', countryId = '' }) {
+/**
+ * `cadre` : une fonction qui reçoit le bouton et l'habille (libellé,
+ * explication). Avec elle, le réglage disparaît entièrement là où les
+ * notifications sont impossibles — l'accueil affichait sinon un bouton mort
+ * « Notifications indisponibles », qui n'apprenait rien à personne.
+ */
+export default function NotificationToggle({ compact = false, audience = '', countryId = '', cadre = null }) {
   const { t } = useI18n();
   const { addToast } = useOptionalToast();
   const n = t.notifsPush || {};
@@ -171,6 +177,7 @@ export default function NotificationToggle({ compact = false, audience = '', cou
   };
 
   if (indisponible) {
+    if (cadre) return null;
     const court = n.indisponible || 'Notifications indisponibles';
     if (compact) {
       return (
@@ -197,10 +204,14 @@ export default function NotificationToggle({ compact = false, audience = '', cou
     );
   }
 
+  // Avec un cadre, rien ne s'affiche tant qu'on ne sait pas si le réglage
+  // est possible : la ligne apparaîtrait puis disparaîtrait.
+  if (cadre && occupe && !clePublique) return null;
+
   const libelle = abonne ? (n.activees || '') : (n.activer || '');
   const Icone = abonne ? BellRing : Bell;
 
-  return (
+  const bouton = (
     <button
       type="button"
       onClick={abonne ? desabonner : abonner}
@@ -222,4 +233,6 @@ export default function NotificationToggle({ compact = false, audience = '', cou
       {!compact && libelle}
     </button>
   );
+
+  return cadre ? cadre(bouton) : bouton;
 }
