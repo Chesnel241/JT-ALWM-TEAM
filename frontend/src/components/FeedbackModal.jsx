@@ -30,14 +30,16 @@ export default function FeedbackModal({
   onStatusUpdated,
 }) {
   const { addToast } = useToast();
-  const [status, setStatus] = useState('rejected');
+  // Jamais « Refusé » par défaut : on n'ouvre sur un refus que si l'on a
+  // choisi « Refuser » (ou si le fichier l'est déjà).
+  const [status, setStatus] = useState('approved');
   const [phone, setPhone] = useState('');
   const [comment, setComment] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (file) {
-      setStatus(file.status === 'approved' ? 'approved' : 'rejected');
+      setStatus(file.status === 'rejected' ? 'rejected' : 'approved');
       setComment(file.feedback || '');
     }
   }, [file]);

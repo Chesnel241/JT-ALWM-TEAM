@@ -432,7 +432,8 @@ router.post('/:weekId/:countryId', porteeCountry(), uploadMiddleware, asyncHandl
       }, { audiences: [AUDIENCES.EDITOR] })
         .catch(err => logger.error('Push notification failed', { error: err.message }));
       
-      io?.emit('upload_update', { weekId, countryId });
+      // Un vrai dépôt (cf. tus.js) : seul ce motif fait dire « nouveau fichier ».
+      io?.emit('upload_update', { weekId, countryId, motif: 'depot' });
 
       // Durée mesurée après coup, comme sur la voie TUS : la réponse part
       // avant, et le chiffre rejoint la fiche du fichier quand il est prêt.
@@ -557,7 +558,7 @@ router.post('/:weekId/:countryId/script', porteeCountry(), asyncHandler(async (r
         contentLength: content.length,
       },
     });
-    io?.emit('upload_update', { weekId, countryId });
+    io?.emit('upload_update', { weekId, countryId, motif: 'depot' });
     return res.status(201).json(result);
   } catch (storeErr) {
     // ROLLBACK: Supprimer le fichier en cas d'erreur DB

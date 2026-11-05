@@ -48,6 +48,8 @@ import FeedbackModal from './FeedbackModal.jsx';
 import ContactPaysDialog from './ContactPaysDialog.jsx';
 import { tailleLisible } from '../lib/taille.js';
 import { fusionnerInspecteur } from './editor/fusionInspecteur.js';
+import { statutDe, estARevoir, compterARevoir, recentsDabord, ordreAffichage } from '../lib/revue.js';
+import { previewUrl } from '../lib/mediaSource.js';
 import ReporterLinkDialog from './ReporterLinkDialog.jsx';
 import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
@@ -269,12 +271,31 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, o
   );
 }
 
-function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword, onContentChange }) {
+function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPassword, onContentChange, fichiers = [], onNaviguer, onValider, onRefuser }) {
   // Troisième copie du même piège de focus, après `ConfirmDialog` et
   // `AdminUploadDialog`. Trois copies de quarante lignes pour un geste que
   // sept autres panneaux n'avaient pas du tout : c'est exactement ce que le
   // hook commun corrige.
   const dialogRef = usePiegeFocus(Boolean(file), onClose);
+  const { t } = useI18n();
+
+  // Regarder dix rushes, c'était fermer et rouvrir dix fois. La visionneuse
+  // passe au suivant (flèches du clavier comprises) et porte Valider /
+  // Refuser dans son pied.
+  const index = file ? fichiers.findIndex((f) => f.id === file.id) : -1;
+  const precedent = index > 0 ? fichiers[index - 1] : null;
+  const suivant = index >= 0 && index < fichiers.length - 1 ? fichiers[index + 1] : null;
+
+  useEffect(() => {
+    if (!file || !onNaviguer) return undefined;
+    const surTouche = (e) => {
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (e.key === 'ArrowRight' && suivant) { e.preventDefault(); onNaviguer(suivant); }
+      if (e.key === 'ArrowLeft' && precedent) { e.preventDefault(); onNaviguer(precedent); }
+    };
+    window.addEventListener('keydown', surTouche);
+    return () => window.removeEventListener('keydown', surTouche);
+  }, [file, onNaviguer, precedent, suivant]);
 
   if (!file) return null;
 
@@ -308,7 +329,9 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
             const url = `${API_BASE}/uploads/${file?.filename}`;
 
             if (famille === MEDIA_TYPES.VIDEO) {
-              return <video src={url} controls autoPlay className="max-w-full max-h-[60vh] rounded shadow-lg" playsInline />;
+              // L'aperçu léger (720p) quand il existe : sur la connexion d'un
+              // monteur en déplacement, le master de 2 Go ne démarrait pas.
+              return <video key={file.id} src={previewUrl(file) || url} controls autoPlay className="max-w-full max-h-[60vh] rounded shadow-lg" playsInline />;
             }
             if (famille === MEDIA_TYPES.AUDIO) {
               return <audio src={url} controls autoPlay className="w-full mt-4" />;
@@ -346,6 +369,61 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
             );
           })()}
         </div>
+        {(fichiers.length > 1 || onValider) && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--paper-2)] px-4 py-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!precedent}
+                onClick={() => precedent && onNaviguer?.(precedent)}
+                className="min-h-[40px] rounded-lg border border-[var(--border)] px-3 text-sm font-semibold text-[color:var(--ink)] hover:bg-[var(--paper)] disabled:opacity-40"
+                title="←"
+              >
+                ← {t.revue.precedent}
+              </button>
+              {index >= 0 && (
+                <span className="text-xs font-semibold text-[color:var(--muted)] tabular-nums">{t.revue.position(index + 1, fichiers.length)}</span>
+              )}
+              <button
+                type="button"
+                disabled={!suivant}
+                onClick={() => suivant && onNaviguer?.(suivant)}
+                className="min-h-[40px] rounded-lg border border-[var(--border)] px-3 text-sm font-semibold text-[color:var(--ink)] hover:bg-[var(--paper)] disabled:opacity-40"
+                title="→"
+              >
+                {t.revue.suivant} →
+              </button>
+            </div>
+            {onValider && (
+              <div className="flex items-center gap-2">
+                <span
+                  data-statut={statutDe(file)}
+                  className="text-xs font-bold text-[color:var(--muted)]"
+                >
+                  {t.revue.statuts[statutDe(file)]}
+                </span>
+                {statutDe(file) !== 'rejected' && onRefuser && (
+                  <button
+                    type="button"
+                    onClick={() => onRefuser(file)}
+                    className="min-h-[40px] rounded-lg border border-[var(--cta-red)]/40 bg-[var(--cta-red)]/10 px-3 text-sm font-bold text-[color:var(--cta-red-deep)] hover:bg-[var(--cta-red)]/20"
+                  >
+                    {t.revue.refuser}
+                  </button>
+                )}
+                {statutDe(file) !== 'approved' && (
+                  <button
+                    type="button"
+                    onClick={() => onValider(file, suivant)}
+                    className="min-h-[40px] rounded-lg bg-[var(--action)] px-4 text-sm font-bold text-white hover:bg-[var(--action-deep)]"
+                  >
+                    {t.revue.valider}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1091,9 +1169,27 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       }
     });
 
+    // « Nouveau fichier ! » partait à chaque rafraîchissement — durée
+    // mesurée, aperçu prêt, suppression —, trois fois par vidéo, sans dire
+    // d'où. On n'annonce plus que les vrais dépôts, avec le pays, et on
+    // regroupe ceux qui arrivent ensemble.
+    const depots = new Map();
+    let minuteurDepots = null;
+    const annoncerDepots = () => {
+      for (const [paysId, n] of depots) {
+        const nom = countries.find((c) => c.id === paysId)?.name || paysId;
+        addToast(t.revue.nouveauxFichiers(n, nom), 'info', 6000);
+      }
+      depots.clear();
+      minuteurDepots = null;
+    };
+
     socket.on('upload_update', (data) => {
       if (data.weekId === selectedWeek) {
-        addToast('Nouveau fichier !', 'info');
+        if (data.motif === 'depot' && data.countryId) {
+          depots.set(data.countryId, (depots.get(data.countryId) || 0) + 1);
+          if (!minuteurDepots) minuteurDepots = setTimeout(annoncerDepots, 2500);
+        }
         api.getDashboard(selectedWeek, adminPasswordRef.current).then(setDashboard).catch(console.error);
         api.getDeliveries(selectedWeek).then(setDeliveries).catch(console.error);
         api.getSujets(selectedWeek, null, adminPasswordRef.current).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
@@ -1142,6 +1238,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     });
 
     return () => {
+      if (minuteurDepots) clearTimeout(minuteurDepots);
       socket.emit('leave_week', selectedWeek);
       socket.disconnect();
     };
@@ -1502,11 +1599,21 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   };
 
   const openDownloadDialog = (file) => {
+    if (!file) return;
+    // Seule l'archive d'un chutier entier demande confirmation : c'est elle
+    // qui pèse des gigaoctets.
+    if (!String(file.filename || '').endsWith('/archive')) {
+      handleConfirmDownload(file);
+      return;
+    }
     setFileToDownload(file);
     setDownloadDialogOpen(true);
   };
 
-  const handleConfirmDownload = async () => {
+  // `cible` : un fichier seul part directement, sans fenêtre « Êtes-vous
+  // sûr de vouloir télécharger… ? » — un geste demandé ne se confirme pas.
+  const handleConfirmDownload = async (cible = fileToDownload) => {
+    const fileToDownload = cible?.filename ? cible : null;
     if (!fileToDownload) return;
     const isArchive = fileToDownload.filename.endsWith('/archive');
 
@@ -1613,6 +1720,76 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }
   };
 
+  /**
+   * Change le statut de plusieurs fichiers d'un pays, tout de suite à l'écran,
+   * et rend l'état d'avant pour pouvoir l'annuler. En cas d'échec, l'écran
+   * revient en arrière et le dit.
+   */
+  const changerStatuts = async (countryId, fichiers, statut) => {
+    const avant = fichiers.map((f) => ({ id: f.id, status: statutDe(f), feedback: f.feedback || '' }));
+    const ids = new Set(avant.map((f) => f.id));
+    const poser = (etat) => setDashboard((prev) => ({
+      ...prev,
+      [countryId]: (prev[countryId] || []).map((f) => {
+        if (!ids.has(f.id)) return f;
+        const cible = etat.find((e) => e.id === f.id);
+        return { ...f, status: cible.status, feedback: cible.feedback };
+      }),
+    }));
+    poser(avant.map((f) => ({ ...f, status: statut, feedback: statut === 'approved' || statut === 'pending' ? '' : f.feedback })));
+    try {
+      await Promise.all(avant.map((f) => api.updateFileStatus(
+        selectedWeek, f.id, statut, statut === 'rejected' ? f.feedback : '', adminPasswordRef.current,
+      )));
+      return avant;
+    } catch (err) {
+      console.error(err);
+      poser(avant);
+      addToast(t.revue.echec, 'error');
+      return null;
+    }
+  };
+
+  /** Rétablit des statuts d'avant (le bouton « Annuler » des messages). */
+  const retablirStatuts = async (countryId, avant) => {
+    setDashboard((prev) => ({
+      ...prev,
+      [countryId]: (prev[countryId] || []).map((f) => {
+        const e = avant.find((x) => x.id === f.id);
+        return e ? { ...f, status: e.status, feedback: e.feedback } : f;
+      }),
+    }));
+    try {
+      await Promise.all(avant.map((e) => api.updateFileStatus(selectedWeek, e.id, e.status, e.feedback, adminPasswordRef.current)));
+    } catch (err) {
+      console.error(err);
+      addToast(t.revue.echec, 'error');
+      api.getDashboard(selectedWeek, adminPasswordRef.current).then(setDashboard).catch(console.error);
+    }
+  };
+
+  /** Valider en un geste — sans fenêtre —, annulable depuis le message. */
+  const validerFichiers = async (countryId, fichiers) => {
+    const cibles = fichiers.filter((f) => statutDe(f) !== 'approved');
+    if (!cibles.length) return;
+    const avant = await changerStatuts(countryId, cibles, 'approved');
+    if (!avant) return;
+    addToast(
+      cibles.length === 1 ? t.revue.valide(cibles[0].name) : t.revue.tousValides(cibles.length),
+      'success',
+      8000,
+      { action: { libelle: t.revue.annuler, onClick: () => retablirStatuts(countryId, avant) } },
+    );
+  };
+
+  const remettreARevoir = async (countryId, fichier) => {
+    const avant = await changerStatuts(countryId, [fichier], 'pending');
+    if (!avant) return;
+    addToast(t.revue.remisARevoir(fichier.name), 'info', 6000, {
+      action: { libelle: t.revue.annuler, onClick: () => retablirStatuts(countryId, avant) },
+    });
+  };
+
   const openFeedbackDialog = (countryId, fileId, status) => {
     const file = dashboard[countryId]?.find(f => f.id === fileId);
     if (file) {
@@ -1621,7 +1798,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       // plus personne ne consommait.
       setFileToFeedback({
         ...file,
-        status: status || file.status || 'rejected',
+        // Jamais « Refusé » par défaut : la fenêtre s'ouvrait sur un refus
+        // même pour un rush qu'on venait regarder sans rien lui reprocher.
+        status: status || statutDe(file),
         countryId,
         fileId,
         fileName: file.name,
@@ -1781,13 +1960,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 Assemblé
               </div>
             )}
-            {(file.status === 'approved' || file.status === 'rejected') && (
-              <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md text-white ${
-                file.status === 'approved' ? 'bg-[var(--action)]' : 'bg-[var(--signal)]'
-              }`}>
-                {file.status === 'approved' ? 'Approuvé' : 'Refusé'}
-              </div>
-            )}
+            {/* Un terme par statut, une couleur par sens : vert validé,
+                rouge refusé, bleu « à revoir ». Le neuf n'avait aucun
+                repère : on ne savait pas ce qui restait à regarder. */}
+            <div
+              data-statut={statutDe(file)}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm text-white ${
+                statutDe(file) === 'approved' ? 'bg-[var(--action)]' : statutDe(file) === 'rejected' ? 'bg-[var(--cta-red)]' : 'bg-[var(--accent)]'
+              }`}
+            >
+              {t.revue.statuts[statutDe(file)]}
+            </div>
           </div>
 
           {/* La pastille de la vignette : la durée quand on la connaît, le
@@ -1838,7 +2021,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             <div
               onClick={(e) => {
                 e.stopPropagation();
-                openFeedbackDialog(selectedBin, file.id, file.status || 'rejected');
+                openFeedbackDialog(selectedBin, file.id, statutDe(file));
               }}
               className="mt-0.5 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-[11px] font-medium flex items-center gap-1.5 cursor-pointer border border-red-500/20 transition-colors"
               title={`Motif : ${file.feedback} (Cliquer pour modifier/notifier)`}
@@ -1848,25 +2031,49 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             </div>
           )}
 
-          {/* Bouton WhatsApp direct / Statut */}
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              openFeedbackDialog(selectedBin, file.id, file.status || 'rejected');
-            }}
-            className={`mt-1.5 w-full text-xs font-semibold py-1.5 px-2 rounded-lg border motion-tap flex items-center justify-center gap-1.5 active:scale-95 shadow-sm ${
-              file.status === 'rejected'
-                ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20'
-                : file.status === 'approved'
-                ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-500/20'
-                : 'bg-[var(--paper-2)] border-[var(--border)] text-[color:var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)]'
-            }`}
-            title="Refuser ou valider le rush et notifier sur WhatsApp"
-          >
-            <MessageSquare size={13} className={file.status === 'rejected' ? 'text-red-500' : file.status === 'approved' ? 'text-green-600' : 'text-[#25D366]'} />
-            <span>{file.status === 'rejected' ? 'Refusé (WhatsApp)' : file.status === 'approved' ? 'Validé (WhatsApp)' : 'Statut & WhatsApp'}</span>
-          </button>
+          {/* La revue en un geste. « Valider » ne demande rien : c'est le
+              geste le plus fréquent, il coûtait cinq clics et une fenêtre.
+              « Refuser » ouvre la fenêtre du motif et du message WhatsApp. */}
+          {estARevoir(file) ? (
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); validerFichiers(selectedBin, [file]); }}
+                className="min-h-[36px] rounded-lg bg-[var(--action)] px-2 text-xs font-bold text-white hover:bg-[var(--action-deep)] motion-tap active:scale-95 inline-flex items-center justify-center gap-1"
+              >
+                <CheckCircle size={13} aria-hidden="true" /> {t.revue.valider}
+              </button>
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); openFeedbackDialog(selectedBin, file.id, 'rejected'); }}
+                className="min-h-[36px] rounded-lg border border-[var(--cta-red)]/40 bg-[var(--cta-red)]/10 px-2 text-xs font-bold text-[color:var(--cta-red-deep)] hover:bg-[var(--cta-red)]/20 motion-tap active:scale-95 inline-flex items-center justify-center gap-1"
+              >
+                <XCircle size={13} aria-hidden="true" /> {t.revue.refuser}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-1.5 flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); openFeedbackDialog(selectedBin, file.id, statutDe(file)); }}
+                className={`w-full min-h-[36px] text-xs font-semibold py-1.5 px-2 rounded-lg border motion-tap flex items-center justify-center gap-1.5 active:scale-95 ${
+                  statutDe(file) === 'rejected'
+                    ? 'bg-[var(--cta-red)]/10 border-[var(--cta-red)]/40 text-[color:var(--cta-red-deep)] hover:bg-[var(--cta-red)]/20'
+                    : 'bg-[var(--action)]/10 border-[var(--action)]/40 text-[color:var(--action-deep)] hover:bg-[var(--action)]/20'
+                }`}
+              >
+                <MessageSquare size={13} aria-hidden="true" />
+                <span>{statutDe(file) === 'rejected' ? t.revue.motifRefus : t.revue.prevenirValide}</span>
+              </button>
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); remettreARevoir(selectedBin, file); }}
+                className="self-center min-h-[32px] px-2 text-[11px] font-semibold text-[color:var(--muted)] underline underline-offset-2 hover:text-[color:var(--ink)]"
+              >
+                {t.revue.remettreEnAttente}
+              </button>
+            </div>
+          )}
 
           {isVideo && isDesktopEditorAvailable && (
             <button
@@ -2082,8 +2289,24 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           Attendu
                         </span>
                       ) : (
-                        <span className={`ml-3 text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)]'}`}>
-                          {fileCount}
+                        <span className="ml-3 flex shrink-0 items-center gap-1">
+                          {/* Ce qui reste à regarder dans ce pays : sans ce
+                              compte, il fallait ouvrir chaque chutier. */}
+                          {/* Une seule pastille : « 2 à revoir » tant qu'il en
+                              reste, le total sinon. Deux pastilles côte à côte
+                              coupaient le nom du pays. */}
+                          {compterARevoir(dashboard[countryId]) > 0 ? (
+                            <span
+                              title={`${t.revue.aRevoir(compterARevoir(dashboard[countryId]))} · ${fileCount}`}
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${isActive ? 'bg-white text-[color:var(--accent-deep)]' : 'bg-[var(--accent)] text-white'}`}
+                            >
+                              {t.revue.aRevoir(compterARevoir(dashboard[countryId]))}
+                            </span>
+                          ) : (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)]'}`}>
+                              {fileCount}
+                            </span>
+                          )}
                         </span>
                       )}
                     </button>
@@ -2878,8 +3101,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
                   return groups.map((group) => {
                     const tone = reportageTone(group.index);
+                    const aValider = group.files.filter(estARevoir);
                     const sections = MEDIA_ORDER
-                      .map((type) => ({ type, files: group.byType[type] }))
+                      .map((type) => ({ type, files: [...group.byType[type]].sort(recentsDabord) }))
                       .filter(({ type, files }) => (
                         files.length > 0 && (mobileRushFilter === 'all' || mobileRushFilter === type)
                       ));
@@ -2923,6 +3147,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             {formaterTotal(group.files) && <>{formaterTotal(group.files)} · </>}
                             {group.files.length} {group.files.length > 1 ? 'fichiers' : 'fichier'}
                           </span>
+                          {/* Tout un reportage relu d'un coup : un geste au
+                              lieu d'un par fichier, annulable 8 s. */}
+                          {aValider.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => validerFichiers(selectedBin, aValider)}
+                              className="min-h-[32px] rounded-full bg-white px-3 text-[11px] font-extrabold text-[color:var(--action-deep)] shadow-sm hover:bg-white/90 motion-tap active:scale-95 inline-flex items-center gap-1"
+                            >
+                              <CheckCircle size={13} aria-hidden="true" /> {t.revue.toutValider(aValider.length)}
+                            </button>
+                          )}
                         </header>
 
                         <div className="p-4 space-y-5">
@@ -3117,7 +3352,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         confirmText="Télécharger"
         cancelText={t.uploader.cancel}
         variant="primary"
-        onConfirm={handleConfirmDownload}
+        onConfirm={() => handleConfirmDownload()}
         onCancel={() => {
           setDownloadDialogOpen(false);
           setFileToDownload(null);
@@ -3173,7 +3408,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
       {/* Script Viewer Modal */}
       <ScriptViewerModal 
-        file={viewingScript} 
+        // La fiche à jour (son statut change pendant qu'on regarde), pas la
+        // copie prise à l'ouverture.
+        file={viewingScript ? ((dashboard[selectedBin] || []).find((f) => f.id === viewingScript.id) || viewingScript) : null}
+        fichiers={ordreAffichage(dashboard[selectedBin] || [], sujets)}
+        onNaviguer={setViewingScript}
+        onValider={SPECIAL_BINS.includes(selectedBin) ? undefined : (f, suivant) => {
+          validerFichiers(selectedBin, [f]);
+          if (suivant) setViewingScript(suivant);
+        }}
+        onRefuser={(f) => { setViewingScript(null); openFeedbackDialog(selectedBin, f.id, 'rejected'); }}
         onClose={() => setViewingScript(null)}
         selectedWeek={selectedWeek}
         selectedBin={selectedBin}
@@ -3197,9 +3441,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         file={actionSheetFile}
         isAudio={actionSheetFile?.type === 'audio' || !!actionSheetFile?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i)}
         isVideo={actionSheetFile?.type === 'video' || !!actionSheetFile?.name?.match(/\.(mp4|mov|avi|mkv)$/i)}
-        onApprove={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'approved')}
+        onApprove={() => actionSheetFile && validerFichiers(selectedBin, [actionSheetFile])}
         onReject={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, 'rejected')}
-        onOpenFeedback={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, actionSheetFile?.status || 'rejected')}
+        onOpenFeedback={() => openFeedbackDialog(selectedBin, actionSheetFile?.id, actionSheetFile ? statutDe(actionSheetFile) : undefined)}
         onDownload={() => openDownloadDialog(actionSheetFile)}
         onDelete={() => openDeleteDialog(selectedBin, actionSheetFile?.id)}
         onViewScript={(f) => setViewingScript(f)}

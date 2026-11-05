@@ -81,7 +81,21 @@ export default function ActionSheet({
             </button>
           )}
 
-          {/* Main WhatsApp Feedback / Rejection Action */}
+          {/* Valider d'abord : c'est le geste le plus fréquent. Il se fait
+              en un toucher, sans fenêtre ; le refus ouvre le motif. */}
+          <button
+            onClick={() => { onClose(); onApprove(); }}
+            className="flex items-center gap-3.5 w-full p-3 rounded-2xl bg-[var(--action)]/10 hover:bg-[var(--action)]/20 transition-colors active:scale-[0.98] text-left"
+          >
+            <div className="p-2.5 bg-[var(--action)] text-white rounded-xl shadow-sm">
+              <CheckCircle size={20} />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-sm text-[color:var(--action-deep)]">Valider le rush</span>
+              <span className="text-[11px] text-[color:var(--muted)]">En un geste, annulable</span>
+            </div>
+          </button>
+
           <button
             onClick={() => { onClose(); onReject ? onReject() : onOpenFeedback && onOpenFeedback(); }}
             className="flex items-center gap-3.5 w-full p-3 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors active:scale-[0.98] text-left"
@@ -95,15 +109,6 @@ export default function ActionSheet({
             </div>
           </button>
 
-          <button
-            onClick={() => { onClose(); onApprove(); }}
-            className="flex items-center gap-3.5 w-full p-3 rounded-2xl hover:bg-[var(--paper-2)] transition-colors active:scale-[0.98] text-left"
-          >
-            <div className="p-2.5 bg-green-100 text-green-600 dark:bg-green-900/40 rounded-xl">
-              <CheckCircle size={20} />
-            </div>
-            <span className="font-semibold text-green-700 dark:text-green-400 text-sm">Valider / Approuver le rush</span>
-          </button>
 
           {onDownloadHref ? (
             <a

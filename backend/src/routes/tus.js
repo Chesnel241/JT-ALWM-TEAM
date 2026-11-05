@@ -330,7 +330,10 @@ export const tusServer = new Server({
       }, { audiences: [AUDIENCES.EDITOR] })
         .catch(err => logger.error('Push notification failed', { error: err.message }));
 
-      io?.emit('upload_update', { weekId, countryId });
+      // `motif: 'depot'` : un vrai fichier arrivé. Les autres émissions (durée
+      // mesurée, aperçu prêt) ne font que rafraîchir l'écran ; sans ce motif,
+      // le montage annonçait « Nouveau fichier ! » trois fois par vidéo.
+      io?.emit('upload_update', { weekId, countryId, motif: 'depot' });
 
       // Compression 720p côté serveur, en arrière-plan et une à la fois.
       // Elle se faisait auparavant dans le navigateur du correspondant :
