@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { Download, Play, Sparkles, CheckCircle, FileVideo, FileAudio, FileText } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
+import { tailleLisible } from '../lib/taille.js';
 import { API_BASE } from '../api/index.js';
 import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js';
 import SkeletonCard from './SkeletonCard.jsx';
@@ -150,7 +151,13 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
                       className="jr-bouton jr-bouton-vert w-full min-h-[56px] text-base"
                     >
                       <Download size={20} className="jr-jt-fleche" aria-hidden="true" />
-                      <span>{j.telecharger}</span>
+                      {/* La taille sur le bouton : 450 Mo sur une 4G payée au
+                          mégaoctet, c'est une décision qu'on prend avant de
+                          toucher, pas après. */}
+                      <span className="flex flex-col items-start leading-tight text-left">
+                        <span>{tailleLisible(fichier.size) ? j.telechargerTaille(tailleLisible(fichier.size)) : j.telecharger}</span>
+                        {tailleLisible(fichier.size) && <span className="text-xs font-semibold opacity-90">{j.wifiConseil}</span>}
+                      </span>
                     </a>
                     {video && (
                       <button

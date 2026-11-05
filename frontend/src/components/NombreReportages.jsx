@@ -1,5 +1,5 @@
-import { useId } from 'react';
-import { Pencil } from 'lucide-react';
+import { useId, useState } from 'react';
+import { ChevronDown, Pencil } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 
 /**
@@ -19,7 +19,9 @@ import { useI18n } from '../i18n/I18nContext.jsx';
  *
  * Tant que rien n'est choisi, la carte est l'étape 1 de l'écran : bordure
  * d'accent, pastille numérotée, consigne « Commencez ici ». Une fois les
- * reportages nommés, elle redevient discrète.
+ * reportages nommés, elle se replie en une ligne — « 2 reportages ·
+ * Changer le nombre » : ouverte, elle repoussait le bouton d'envoi sous la
+ * ligne de flottaison du téléphone pour une décision déjà prise.
  */
 export default function NombreReportages({ etat, onChoisir, onModifierTitres, disabled = false, max = 5 }) {
   const { t } = useI18n();
@@ -29,6 +31,26 @@ export default function NombreReportages({ etat, onChoisir, onModifierTitres, di
   // des fichiers ont déjà été déposés dans « Reportage 1 ». C'est justement le
   // correspondant qui a commencé sans choisir qui doit voir la consigne.
   const aDecider = !nommes;
+  const [deplie, setDeplie] = useState(false);
+
+  if (!aDecider && !deplie) {
+    return (
+      <section aria-labelledby={titreId} className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--paper)] border border-[var(--border)] px-4 py-2 shadow-sm">
+        <h2 id={titreId} className="font-bold text-sm text-[color:var(--ink)]">
+          {t.uploader.nbReportagesOption(actuel)}
+        </h2>
+        <button
+          type="button"
+          aria-expanded="false"
+          onClick={() => setDeplie(true)}
+          className="inline-flex min-h-[44px] items-center gap-1 px-1 text-sm font-bold text-[color:var(--accent-deep)] underline underline-offset-2"
+        >
+          {t.uploader.nbReportagesChanger}
+          <ChevronDown size={16} aria-hidden="true" />
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -56,6 +78,16 @@ export default function NombreReportages({ etat, onChoisir, onModifierTitres, di
             {aDecider ? t.uploader.nbReportagesStart : t.uploader.nbReportagesChange}
           </p>
         </div>
+        {!aDecider && (
+          <button
+            type="button"
+            aria-expanded="true"
+            onClick={() => setDeplie(false)}
+            className="shrink-0 min-h-[44px] px-1 text-sm font-bold text-[color:var(--accent-deep)] underline underline-offset-2"
+          >
+            {t.uploader.nbReportagesReplier}
+          </button>
+        )}
       </div>
 
       <div role="group" aria-labelledby={titreId} className="grid grid-cols-5 gap-2">

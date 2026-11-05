@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 import './styles/journalistes.css';
+// Écoute `beforeinstallprompt` dès le démarrage : Chrome ne l'émet qu'une fois.
+import './lib/installation.js';
 
 // Auto-update du Service Worker, avec la MÊME règle que useVersionCheck : on
 // n'applique jamais la nouvelle version tant que l'onglet est au premier plan.

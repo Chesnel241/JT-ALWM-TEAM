@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   UploadCloud, Folder, FileText, Video, Mic, Image as ImageIcon,
-  CheckCircle, Clock, ChevronRight, ChevronDown, Trash2, AlertCircle,
+  CheckCircle, Clock, ChevronRight, ChevronDown, Trash2, AlertCircle, Info,
 } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js';
+import { mesurerDebit, estEnVol } from '../lib/envoi.js';
+import { formatRelative, formatAbsolute, formatWeekFull, formatWeekLabel } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SkeletonCard from './SkeletonCard.jsx';
 import { classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
@@ -19,7 +20,7 @@ import ChampWhatsApp from './ChampWhatsApp.jsx';
 import ChampScript from './ChampScript.jsx';
 import ParcoursPays from './ParcoursPays.jsx';
 import { phoneCountryFor } from '../lib/phone.js';
-import { readCountryPhone, saveCountryPhone, forgetCountryPhone, isUsablePhone } from '../lib/countryPhone.js';
+import { readCountryPhone, saveCountryPhone, isUsablePhone } from '../lib/countryPhone.js';
 import {
   rememberUpload,
   forgetUpload,
@@ -43,6 +44,8 @@ import ReportageChecklist from './ReportageChecklist.jsx';
 import NombreReportages from './NombreReportages.jsx';
 import ReportagesSheet from './ReportagesSheet.jsx';
 import VoyageEnvoi from './VoyageEnvoi.jsx';
+import PrevenirRedaction from './PrevenirRedaction.jsx';
+import OutilsCorrespondant from './OutilsCorrespondant.jsx';
 
 export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack, onOpenVoixOff, onOpenDelivery }) {
   const { t, lang } = useI18n();
@@ -83,8 +86,17 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const [expandedSection, setExpandedSection] = useState(null);
 
   // Notifications
-  const [hasPhoneNumber, setHasPhoneNumber] = useState(true); // default true before check
-  const [phone, setPhone] = useState('');
+  // Lu tout de suite, et non après le premier rendu : la valeur par défaut
+  // « vrai » faisait apparaître l'écran d'envoi une fraction de seconde,
+  // puis le remplaçait par le formulaire du numéro — un clignotement.
+  const [hasPhoneNumber, setHasPhoneNumber] = useState(() => isUsablePhone(readCountryPhone(country.id)));
+  const [phone, setPhone] = useState(() => {
+    const enregistre = readCountryPhone(country.id);
+    return isUsablePhone(enregistre) ? enregistre : '';
+  });
+  // « Modifier » ouvre le formulaire sans effacer le numéro : « Annuler »
+  // le rend tel quel.
+  const [modifPhone, setModifPhone] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
   useEffect(() => {
@@ -285,10 +297,19 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           reportage: reportageName,
           sujetId,
           tailleMorceau,
-          onProgress: (pct) => {
+          onProgress: (pct, envoyes, total) => {
+            const maintenant = Date.now();
             setUploading((prev) =>
               prev.map((f) =>
-                f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f
+                f.id === tempId
+                  ? {
+                    ...f,
+                    progress: Math.min(pct, 99),
+                    envoyes,
+                    total,
+                    mesure: mesurerDebit(f.mesure, envoyes, maintenant),
+                  }
+                  : f
               )
             );
           },
@@ -452,10 +473,15 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   };
 
   const handleEditPhone = () => {
-    // On garde le numéro dans le champ pour le corriger d'un chiffre, mais on
-    // efface l'enregistrement : sans ça, quitter la page le faisait revenir.
-    forgetCountryPhone(country.id);
-    setHasPhoneNumber(false);
+    // Le numéro reste enregistré tant qu'un nouveau n'est pas validé :
+    // effacer d'abord, c'était perdre l'ancien sur un simple « Annuler ».
+    setModifPhone(true);
+  };
+
+  const annulerModifPhone = () => {
+    const enregistre = readCountryPhone(country.id);
+    setPhone(isUsablePhone(enregistre) ? enregistre : '');
+    setModifPhone(false);
   };
 
   const handleSubscribe = async (customPhone) => {
@@ -467,6 +493,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       saveCountryPhone(country.id, phoneToSub);
       setPhone(phoneToSub);
       setHasPhoneNumber(true);
+      setModifPhone(false);
       addToast(t.uploader.notifySuccess, 'success', 3000);
     } catch (err) {
       addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
@@ -516,9 +543,10 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           handleScriptSubmit={handleScriptSubmit}
           submittingScripts={submittingScripts}
           openDeleteDialog={openDeleteDialog}
-          hasPhoneNumber={hasPhoneNumber}
+          hasPhoneNumber={hasPhoneNumber && !modifPhone}
           setHasPhoneNumber={setHasPhoneNumber}
           onEditPhone={handleEditPhone}
+          onAnnulerModifPhone={modifPhone ? annulerModifPhone : null}
           phone={phone}
           setPhone={setPhone}
           handleSubscribe={handleSubscribe}
@@ -593,6 +621,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
 
       {currentWeek && <CountdownTimer week={currentWeek} />}
       <div className="mb-8">{parcours('tour-uploader-accordion')}</div>
+      <div className="mb-8 max-w-xl">
+        <OutilsCorrespondant pays={country} semaine={weeks.find((w) => w.status === 'active') || currentWeek} />
+      </div>
       {isLocked && (
         <div role="alert" className="panel p-5 mb-8 border-2 !border-[var(--cta-red)]/50 !bg-[var(--cta-red)]/10 flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-start gap-3 flex-1">
@@ -626,19 +657,21 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         </div>
       )}
 
-      {!hasPhoneNumber ? (
+      {!hasPhoneNumber || modifPhone ? (
         <div className="panel p-6 sm:p-8 mb-8 border-2 border-[color:var(--accent)] bg-[color:var(--accent)]/5">
           <div className="flex items-start gap-4 mb-6">
+            {/* Une information, pas une alarme : l'icône d'alerte faisait
+                croire à une erreur avant même d'avoir commencé. */}
             <div className="bg-[color:var(--accent)] text-white p-3 rounded-full flex-shrink-0">
-              <AlertCircle size={24} />
+              <Info size={24} aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[color:var(--ink)] mb-2">
+              {/* Une seule phrase d'explication, celle du champ (« On vous
+                  écrit seulement si un fichier pose problème ») : le long
+                  paragraphe d'ici la répétait autrement. */}
+              <h2 className="text-xl font-bold text-[color:var(--ink)]">
                 {t.uploader.mandatoryPhoneTitle}
               </h2>
-              <p className="text-[color:var(--muted)]">
-                {t.uploader.mandatoryPhoneDesc}
-              </p>
             </div>
           </div>
           
@@ -649,6 +682,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
               onValider={() => handleSubscribe()}
               enCours={isSubscribing}
               paysDefaut={defaultPhoneCountry}
+              onAnnuler={modifPhone ? annulerModifPhone : null}
             />
           </div>
         </div>
@@ -793,6 +827,14 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 {/* Le voyage des fichiers : du drapeau du pays jusqu'au logo
                     ALWM, puis Envoi → Traitement → Reçu pour chacun. */}
                 <VoyageEnvoi pays={country} envois={repUploading} onReessayer={handleRetryUpload} />
+                {repUploads.length > 0 && !repUploading.some(estEnVol) && (
+                  <PrevenirRedaction
+                    pays={country.name}
+                    semaine={formatWeekLabel(weeks.find((w) => w.id === selectedWeek), lang)}
+                    nombre={repUploads.length}
+                    titre={nomAffiche(section, t)}
+                  />
+                )}
 
                 <div id={i === 0 ? 'tour-script-box' : undefined} className="panel p-6">
                   <h3 className="font-semibold text-[color:var(--ink)] mb-3 flex items-center gap-2">
@@ -901,10 +943,15 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title={t.uploader.deleteTitle}
-        message={t.uploader.deleteMsg(fileToDelete?.name || '')}
+        message={fileToDelete ? t.uploader.deleteMsgFichier(
+          t.uploader.natures[classifyFile(fileToDelete)] || t.uploader.natures.document,
+          fileToDelete.name || '',
+          sujets.find((sj) => sj.id === fileToDelete.sujetId)?.titre || fileToDelete.reportage || '',
+        ) : ''}
         confirmText={t.uploader.deleteConfirm}
         cancelText={t.uploader.cancel}
         variant="danger"
+        grand
         isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
         onCancel={() => {

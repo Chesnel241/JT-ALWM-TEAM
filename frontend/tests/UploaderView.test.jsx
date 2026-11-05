@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import UploaderView from '../src/components/UploaderView.jsx';
 import { api } from '../src/api/index.js';
 import { I18nProvider } from '../src/i18n/I18nContext.jsx';
@@ -92,5 +93,52 @@ describe('UploaderView — fin d’un envoi', () => {
     // montre une seconde fois, avec sa taille.
     expect(await screen.findAllByText(/3 MB/)).not.toHaveLength(0);
     expect(api.getUploads).toHaveBeenLastCalledWith('2026-W34', 'ga');
+  });
+});
+
+describe('le numéro WhatsApp', () => {
+  it('ne fait pas clignoter l’écran d’envoi quand aucun numéro n’est enregistré', () => {
+    // L'INCIDENT : l'état partait à « vrai » avant la lecture du numéro :
+    // l'écran d'envoi apparaissait une fraction de seconde, puis cédait la
+    // place au formulaire. Dès le premier rendu, c'est le formulaire.
+    // Le rendu serveur ne joue aucun effet : c'est exactement la première
+    // image que voit le correspondant.
+    localStorage.setItem('jt-alwm-lang', 'fr');
+    const premiereImage = renderToString(
+      <I18nProvider>
+        <ToastProvider>
+          <UploaderView country={PAYS} weeks={SEMAINES} selectedWeek="2026-W34" setSelectedWeek={vi.fn()} onBack={vi.fn()} />
+        </ToastProvider>
+      </I18nProvider>
+    );
+    expect(premiereImage).toContain('Votre numéro WhatsApp, avant le premier envoi');
+    expect(premiereImage).not.toContain('Envoyer un fichier');
+  });
+
+  it('« Modifier » puis « Annuler » garde l’ancien numéro', async () => {
+    // L'INCIDENT : « Modifier » effaçait le numéro avant même qu'un nouveau
+    // soit donné ; il n'y avait pas d'« Annuler », et quitter la page le
+    // perdait.
+    monter('fr');
+    await screen.findAllByText('interview.mp4');
+    fireEvent.click(screen.getByTitle('Modifier le numéro WhatsApp'));
+    expect(localStorage.getItem('uploader_phone_ga')).toBe('+24177000000');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Annuler' })[0]);
+    expect(localStorage.getItem('uploader_phone_ga')).toBe('+24177000000');
+    expect(screen.queryByText('Votre numéro WhatsApp, avant le premier envoi')).toBeNull();
+  });
+});
+
+describe('supprimer un fichier', () => {
+  it('dit quoi, d’où, et ce que cela coûte, avec de grands boutons', async () => {
+    // « Êtes-vous sûr… irréversible » ne disait ni quel fichier, ni de quel
+    // reportage, ni qu'il faudrait le renvoyer ; les deux petits boutons
+    // côte à côte se touchaient l'un pour l'autre sur un téléphone.
+    monter('fr');
+    await screen.findAllByText('interview.mp4');
+    fireEvent.click(screen.getAllByRole('button', { name: /Supprimer.*interview\.mp4/ })[0]);
+    const boite = (await screen.findAllByRole('dialog')).find((d) => d.textContent.includes('Supprimer ce fichier'));
+    expect(boite).toHaveTextContent('Vous allez supprimer la vidéo « interview.mp4 » de « Marché de Libreville ». Si vous changez d’avis, vous devrez la renvoyer.');
+    expect(within(boite).getByRole('button', { name: 'Supprimer' }).className).toContain('min-h-[52px]');
   });
 });

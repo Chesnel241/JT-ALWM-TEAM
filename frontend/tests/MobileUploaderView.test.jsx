@@ -21,6 +21,17 @@ const MOCK_UPLOADS = [
   { id: 'file-2', name: 'script_gabon.txt', type: 'script', size: '1.2 KB', sujetId: 's1', status: 'pending', content: 'Texte du script' }
 ];
 
+function defaultPropsPourRerendu() {
+  return {
+    country: MOCK_COUNTRY, weeks: MOCK_WEEKS, selectedWeek: '2026-W34', setSelectedWeek: vi.fn(),
+    uploads: MOCK_UPLOADS, setUploads: vi.fn(), uploading: [], setUploading: vi.fn(), isLoadingUploads: false,
+    sujets: MOCK_SUJETS, onFixerReportages: vi.fn(), isLocked: false, extensionStatus: null,
+    handleRequestDelay: vi.fn(), handleFiles: vi.fn(), handleScriptSubmit: vi.fn(), submittingScripts: {},
+    openDeleteDialog: vi.fn(), hasPhoneNumber: true, setHasPhoneNumber: vi.fn(), phone: '+33612345678',
+    setPhone: vi.fn(), handleSubscribe: vi.fn(), isSubscribing: false, onBack: vi.fn(), scriptText: {}, setScriptText: vi.fn(),
+  };
+}
+
 function renderMobileUploader(props = {}) {
   const defaultProps = {
     country: MOCK_COUNTRY,
@@ -71,7 +82,13 @@ function sectionTab(label) {
     .find((btn) => !btn.hasAttribute('aria-pressed'));
 }
 
-const choix = (n) => screen.getByRole('button', { name: new RegExp(`^${n} reportages?$`, 'i') });
+// Une fois les reportages nommés, le choix est replié en une ligne : on le
+// déplie d'abord, comme le ferait le correspondant.
+const choix = (n) => {
+  const replie = screen.queryByRole('button', { name: /Changer le nombre/, expanded: false });
+  if (replie) fireEvent.click(replie);
+  return screen.getByRole('button', { name: new RegExp(`^${n} reportages?$`, 'i') });
+};
 
 beforeEach(() => {
   localStorage.clear();
@@ -83,7 +100,19 @@ describe('MobileUploaderView', () => {
   it('renders country header and week selector', () => {
     renderMobileUploader();
     expect(screen.getByText('Gabon')).toBeInTheDocument();
-    expect(screen.getByText('Pays')).toBeInTheDocument();
+    expect(screen.getByText('Retour')).toBeInTheDocument();
+  });
+
+  it('la semaine se lit en texte ; « changer » ouvre le choix', () => {
+    // Le sélecteur ouvert en permanence prenait une ligne entière pour un
+    // réglage qu'on ne touche presque jamais.
+    const setSelectedWeek = vi.fn();
+    renderMobileUploader({ setSelectedWeek });
+    expect(screen.queryByRole('combobox', { name: /semaine/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'changer' }));
+    fireEvent.change(screen.getByRole('combobox', { name: /semaine/i }), { target: { value: '2026-W33' } });
+    expect(setSelectedWeek).toHaveBeenCalledWith('2026-W33');
+    expect(screen.queryByRole('combobox', { name: /semaine/i })).toBeNull();
   });
 
   it('renders reportage tabs and allows switching active tab', () => {
@@ -104,7 +133,7 @@ describe('MobileUploaderView', () => {
 
   it('renders 2 quick action buttons (Video / Media and Script)', () => {
     renderMobileUploader();
-    expect(screen.getByText('Envoyer une vidéo')).toBeInTheDocument();
+    expect(screen.getByText('Envoyer un fichier')).toBeInTheDocument();
     expect(screen.getByText('Écrire le script')).toBeInTheDocument();
   });
 
@@ -119,7 +148,7 @@ describe('MobileUploaderView', () => {
   it('calls onBack when back button is clicked', () => {
     const onBack = vi.fn();
     renderMobileUploader({ onBack });
-    fireEvent.click(screen.getByText('Pays').closest('button'));
+    fireEvent.click(screen.getByText('Retour').closest('button'));
     expect(onBack).toHaveBeenCalled();
   });
 });
@@ -223,6 +252,18 @@ describe('choisir le nombre de reportages', () => {
   it('n’a plus de bouton « Ajouter un reportage »', () => {
     renderMobileUploader();
     expect(screen.queryByText('Ajouter un reportage')).toBeNull();
+  });
+
+  it('se replie en une ligne une fois les reportages nommés', () => {
+    // Ouvert, le choix repoussait le bouton d'envoi sous la ligne de
+    // flottaison pour une décision déjà prise.
+    renderMobileUploader();
+    expect(screen.getByRole('heading', { name: '2 reportages' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^3 reportages$/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Changer le nombre/ }));
+    expect(screen.getByRole('button', { name: /^3 reportages$/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Replier' }));
+    expect(screen.queryByRole('button', { name: /^3 reportages$/ })).toBeNull();
   });
 
   it('montre le nombre retenu une fois les reportages nommés', () => {
@@ -334,5 +375,53 @@ describe('ce que la page d’envoi dit, reportage par reportage', () => {
     });
     expect(screen.queryByText(/Vous pouvez fermer la page/)).not.toBeInTheDocument();
     expect(screen.getByText(/gardez la page ouverte/)).toBeInTheDocument();
+  });
+});
+
+describe('prévenir la rédaction', () => {
+  // LE BESOIN : après l'envoi, les correspondants écrivaient à la main à la
+  // rédaction pour dire « c'est parti », souvent sans dire quel reportage.
+  it('propose un message WhatsApp déjà écrit : pays, semaine, nombre, titre', () => {
+    renderMobileUploader();
+    const lien = screen.getByRole('link', { name: /Prévenir la rédaction/ });
+    const texte = decodeURIComponent(new URL(lien.href).searchParams.get('text'));
+    expect(texte).toBe('Gabon, Semaine 34 : 2 fichiers envoyés pour « Marché de Libreville ».');
+  });
+
+  it('se tait pendant un envoi en cours dans ce reportage', () => {
+    renderMobileUploader({
+      uploading: [{ id: 'u1', name: 'b.mp4', sujetId: 's1', reportage: 'Marché de Libreville', progress: 40, status: 'uploading' }],
+    });
+    expect(screen.queryByRole('link', { name: /Prévenir la rédaction/ })).toBeNull();
+  });
+});
+
+describe('après un envoi', () => {
+  it('dit qu’un autre reportage est encore vide, et y mène', () => {
+    // Sans cela, le correspondant croyait avoir tout envoyé.
+    renderMobileUploader();
+    expect(screen.getByText('« Rentrée scolaire » n’a encore aucun fichier.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Y aller' }));
+    expect(sectionTab('Rentrée scolaire')).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('amène la progression à l’écran quand un envoi démarre', () => {
+    const defiler = vi.fn();
+    Element.prototype.scrollIntoView = defiler;
+    const { rerender } = renderMobileUploader();
+    expect(defiler).not.toHaveBeenCalled();
+    const props = { ...defaultPropsPourRerendu(), uploading: [{ id: 'u1', name: 'b.mp4', sujetId: 's1', reportage: 'Marché de Libreville', progress: 1, status: 'uploading' }] };
+    rerender(
+      <I18nProvider><ToastProvider><MobileUploaderView {...props} /></ToastProvider></I18nProvider>,
+    );
+    expect(defiler).toHaveBeenCalled();
+  });
+
+  it('range annonces et séminaires sous « Autres envois (facultatif) »', () => {
+    renderMobileUploader();
+    const etiquette = screen.getByText('Autres envois (facultatif)');
+    const annonces = sectionTab('Annonces');
+    expect(etiquette.compareDocumentPosition(annonces) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sectionTab('Rentrée scolaire').compareDocumentPosition(etiquette) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

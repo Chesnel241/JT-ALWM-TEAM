@@ -65,3 +65,32 @@ describe('VoyageEnvoi', () => {
     expect(container.firstChild).toBeNull();
   });
 });
+
+describe('le temps d’envoi estimé', () => {
+  // LE BESOIN : « 37 % » ne dit pas si l'on attendra deux minutes ou une heure.
+  const Mo = 1024 * 1024;
+
+  it('dit la quantité envoyée et le temps restant', () => {
+    monter([{
+      id: 'a', name: 'rush.mp4', status: 'uploading', phase: 'uploading', progress: 14,
+      envoyes: 12 * Mo, total: 85 * Mo, mesure: { debit: (73 * Mo) / 360 },
+    }]);
+    expect(screen.getByText(/12 Mo sur 85 Mo/)).toBeInTheDocument();
+    expect(screen.getByText(/environ 6 min/)).toBeInTheDocument();
+    expect(screen.queryByText(/Wi-Fi/)).toBeNull();
+  });
+
+  it('au-delà d’une demi-heure, conseille le Wi-Fi', () => {
+    monter([{
+      id: 'a', name: 'rush.mp4', status: 'uploading', phase: 'uploading', progress: 2,
+      envoyes: 10 * Mo, total: 900 * Mo, mesure: { debit: 100 * 1024 },
+    }]);
+    expect(screen.getByText('En Wi-Fi, ce sera plus rapide.')).toBeInTheDocument();
+  });
+
+  it('ne promet rien avant d’avoir mesuré le débit', () => {
+    monter([{ id: 'a', name: 'rush.mp4', status: 'uploading', phase: 'uploading', progress: 0, envoyes: 0, total: 85 * Mo }]);
+    expect(screen.getByText('0 Ko sur 85 Mo')).toBeInTheDocument();
+    expect(screen.queryByText(/environ/)).toBeNull();
+  });
+});

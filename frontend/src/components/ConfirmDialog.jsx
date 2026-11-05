@@ -13,6 +13,7 @@ export default function ConfirmDialog({
   onCancel,
   isLoading = false,
   extraActions = null,
+  grand = false,
 }) {
   // Le piège de focus vivait ici, en quarante-cinq lignes, et une deuxième
   // copie presque identique vivait dans `AdminUploadDialog`. Deux copies
@@ -39,7 +40,7 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 bg-[var(--ink)]/30 flex items-center justify-center z-[10001] p-4"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[10001] p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="dialog-title"
@@ -64,12 +65,15 @@ export default function ConfirmDialog({
           {message}
         </div>
 
-        <div className="flex gap-3 justify-end flex-wrap">
+        {/* `grand` : côté correspondants, deux boutons pleine largeur de
+            52 px, l'action d'abord — de petits boutons côte à côte se
+            touchaient l'un pour l'autre sur un téléphone. */}
+        <div className={grand ? 'flex flex-col gap-3' : 'flex gap-3 justify-end flex-wrap'}>
           {extraActions}
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--paper-2)] transition-colors disabled:opacity-50 font-medium text-sm focus:outline-none focus-ring"
+            className={`${grand ? 'order-2 w-full min-h-[52px] rounded-2xl text-base font-bold' : 'px-4 py-2 rounded-lg font-medium text-sm'} border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--paper-2)] transition-colors disabled:opacity-50 focus:outline-none focus-ring`}
             type="button"
           >
             {cancelText}
@@ -77,7 +81,7 @@ export default function ConfirmDialog({
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-lg ${config.buttonColor} text-[var(--paper)] transition-colors disabled:opacity-50 font-medium text-sm flex items-center gap-2 focus:outline-none focus-ring`}
+            className={`${grand ? 'order-1 w-full min-h-[52px] rounded-2xl text-base font-bold justify-center' : 'px-4 py-2 rounded-lg font-medium text-sm'} ${grand && variant === 'danger' ? 'bg-[var(--cta-red)] hover:bg-[var(--cta-red-deep)]' : config.buttonColor} text-[var(--paper)] transition-colors disabled:opacity-50 flex items-center gap-2 focus:outline-none focus-ring`}
             type="button"
           >
             {isLoading ? (

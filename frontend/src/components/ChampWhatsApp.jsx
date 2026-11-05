@@ -15,7 +15,7 @@ import 'react-phone-number-input/style.css';
  * le numéro a le bon nombre de chiffres — en vert quand c'est bon, en
  * orange quand il en manque.
  */
-export default function ChampWhatsApp({ valeur, onChange, onValider, enCours = false, paysDefaut }) {
+export default function ChampWhatsApp({ valeur, onChange, onValider, enCours = false, paysDefaut, onAnnuler = null }) {
   const { t } = useI18n();
   const u = t.uploader;
   const idChamp = useId();
@@ -67,6 +67,12 @@ export default function ChampWhatsApp({ valeur, onChange, onValider, enCours = f
           : <Send size={20} aria-hidden="true" />}
         <span>{u.mandatoryPhoneSubmit}</span>
       </button>
+      {/* En modification seulement : on garde l'ancien numéro. */}
+      {onAnnuler && (
+        <button type="button" onClick={onAnnuler} className="jr-bouton jr-bouton-contour w-full">
+          {u.annulerModifNumero}
+        </button>
+      )}
     </div>
   );
 }

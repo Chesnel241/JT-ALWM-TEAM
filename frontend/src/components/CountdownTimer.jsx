@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Flag, Lock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock, Flag, Lock } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import {
   echeanceLocale,
@@ -33,9 +33,13 @@ import {
 // `ancre` : l'identifiant visé par la visite guidée. L'accueil et l'espace
 // d'envoi sont montés en même temps ; un seul des deux doit le porter, sans
 // quoi la page aurait deux éléments de même identifiant.
-export default function CountdownTimer({ week, compact = false, ancre = 'tour-countdown' }) {
+export default function CountdownTimer({ week, compact = false, ligne = false, ancre = 'tour-countdown' }) {
   const { t, lang } = useI18n();
   const maintenant = useHorloge();
+  // `ligne` : une seule ligne en tête de la page d'envoi, le détail au
+  // toucher. La carte, même compacte, repoussait le bouton d'envoi sous la
+  // ligne de flottaison d'un téléphone.
+  const [deplie, setDeplie] = useState(false);
   // La trotteuse est calée une fois, à l'affichage, sur les secondes réelles.
   const [departTrotteuse] = useState(() => -(new Date().getSeconds()));
 
@@ -64,7 +68,30 @@ export default function CountdownTimer({ week, compact = false, ancre = 'tour-co
   const IconePhase = phase === 'clos' ? Lock : phase === 'urgent' ? AlertTriangle : phase === 'proche' ? Clock : CheckCircle2;
   const deux = (n) => String(n).padStart(2, '0');
 
-  if (compact) {
+  // En urgence ou une fois clos, la ligne s'efface devant la carte : ces
+  // moments-là doivent se voir sans rien toucher.
+  if (ligne && !deplie && (phase === 'serein' || phase === 'proche')) {
+    const tempsCourt = jours > 0 ? `${jours}${c.days} ${deux(heures)}${c.hours}` : `${deux(heures)}${c.hours} ${deux(minutes)}`;
+    return (
+      <button
+        type="button"
+        onClick={() => setDeplie(true)}
+        aria-expanded="false"
+        aria-label={ariaLabel}
+        className="cr cr-ligne flex w-full items-center gap-2 rounded-xl px-1 py-1.5 text-left"
+        data-phase={phase}
+      >
+        <IconePhase size={18} className="shrink-0 text-[color:var(--cr-plein)]" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate text-sm font-bold text-[color:var(--ink)]">
+          {c.clotureLe(e.court)}
+          <span className="font-semibold text-[color:var(--cr-plein)]"> · {tempsCourt}</span>
+        </span>
+        <ChevronDown size={16} className="shrink-0 text-[color:var(--muted)]" aria-hidden="true" />
+      </button>
+    );
+  }
+
+  if (compact || ligne) {
     const temps = phase === 'clos'
       ? c.finished
       : jours > 0

@@ -68,6 +68,11 @@ export default function VoixOffView({
   // Reportage context (1, 2, 3)
   const [reportageNum, setReportageNum] = useState(1);
   const [reportageTitle, setReportageTitle] = useState('');
+  // Les reportages de la semaine, tels que le correspondant les a nommés.
+  // Les boutons disaient « Reportage 1 / 2 / 3 » quel que soit le nombre
+  // réel, et sans leur titre : on ne savait pas à quel sujet la voix irait.
+  const [sujetsPays, setSujetsPays] = useState([]);
+  const titreAutoRef = useRef('');
   const [script, setScript] = useState('');
 
   // Audio recording state
@@ -412,11 +417,28 @@ export default function VoixOffView({
     setIsAutoScrolling(false);
   };
 
+  useEffect(() => {
+    if (!selectedCountry?.id || !selectedWeek) { setSujetsPays([]); return undefined; }
+    let annule = false;
+    Promise.resolve(api.getSujets?.(selectedWeek, selectedCountry.id))
+      .then((liste) => { if (!annule) setSujetsPays(Array.isArray(liste) ? liste : []); })
+      .catch(() => { if (!annule) setSujetsPays([]); });
+    return () => { annule = true; };
+  }, [selectedCountry?.id, selectedWeek]);
+
+  // Jusqu'à cinq reportages nommés ; trois numérotés tant qu'aucun n'est nommé.
+  const reportages = sujetsPays.length
+    ? sujetsPays.slice(0, 5).map((sujet, i) => ({ num: i + 1, titre: sujet.titre || null }))
+    : [1, 2, 3].map((num) => ({ num, titre: null }));
+
   const choisirReportage = (num) => {
     setReportageNum(num);
-    if (!reportageTitle || reportageTitle.startsWith('Reportage ')) {
-      setReportageTitle(`Reportage ${num}`);
+    const auto = reportages[num - 1]?.titre || `Reportage ${num}`;
+    // On ne remplace le titre que s'il n'a pas été tapé à la main.
+    if (!reportageTitle || reportageTitle === titreAutoRef.current || reportageTitle.startsWith('Reportage ')) {
+      setReportageTitle(auto);
     }
+    titreAutoRef.current = auto;
   };
 
   // Les journalistes ont leur propre studio, clair et en trois étapes ; la
@@ -434,6 +456,7 @@ export default function VoixOffView({
           mode={inputMode}
           setMode={setInputMode}
           reportageNum={reportageNum}
+          reportages={reportages}
           choisirReportage={choisirReportage}
           titre={reportageTitle}
           setTitre={setReportageTitle}
@@ -612,23 +635,19 @@ export default function VoixOffView({
                 Rattacher au sujet :
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((num) => (
+                {reportages.map(({ num, titre }) => (
                   <button
                     key={num}
                     type="button"
-                    onClick={() => {
-                      setReportageNum(num);
-                      if (!reportageTitle || reportageTitle.startsWith('Reportage ')) {
-                        setReportageTitle(`Reportage ${num}`);
-                      }
-                    }}
+                    title={titre || undefined}
+                    onClick={() => choisirReportage(num)}
                     className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
                       reportageNum === num
                         ? 'bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-300 font-extrabold'
                         : 'border-[var(--border)] text-[color:var(--muted)] hover:bg-[var(--paper-2)]'
                     }`}
                   >
-                    Sujet {num}
+                    <span className="block truncate">{titre || `Sujet ${num}`}</span>
                   </button>
                 ))}
               </div>

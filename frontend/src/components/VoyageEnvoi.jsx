@@ -1,6 +1,9 @@
 import { Check, CheckCircle, FileVideo, FileAudio, FileImage, FileText, AlertTriangle, WifiOff, RotateCcw } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { etapesEnvoi, positionSurLiaison, estEnVol } from '../lib/envoi.js';
+import {
+  etapesEnvoi, positionSurLiaison, estEnVol,
+  secondesRestantes, dureeRestante, octetsLisibles, SEUIL_CONSEIL_WIFI,
+} from '../lib/envoi.js';
 import { classifyFile, MEDIA_TYPES } from '../lib/mediaTypes.js';
 import CountryAvatar from './CountryAvatar.jsx';
 
@@ -86,8 +89,19 @@ export default function VoyageEnvoi({ pays, envois = [], onReessayer }) {
 }
 
 function LigneEnvoi({ envoi, u, onReessayer }) {
+  const { t, lang } = useI18n();
   const etapes = etapesEnvoi(envoi);
   const [envoiEtape, traitement] = etapes;
+
+  // Le temps restant, tant que l'envoi avance : « 12 Mo sur 85 Mo ·
+  // environ 6 min ». Rien tant que le débit n'est pas mesuré — mieux vaut
+  // se taire que d'annoncer « 3 h » sur la première seconde.
+  const restant = envoiEtape.etat === 'actif'
+    ? secondesRestantes(envoi.total, envoi.envoyes, envoi.mesure?.debit)
+    : null;
+  const quantites = envoiEtape.etat === 'actif' && envoi.total > 0
+    ? t.estimation.progression(octetsLisibles(envoi.envoyes, lang), octetsLisibles(envoi.total, lang))
+    : '';
 
   let etat = u.phaseDone;
   if (envoiEtape.etat === 'actif') etat = `${Math.round(Number(envoi.progress) || 0)}%`;
@@ -109,6 +123,16 @@ function LigneEnvoi({ envoi, u, onReessayer }) {
         <span className="min-w-0 truncate font-bold text-[color:var(--ink)]">{envoi.name}</span>
         <span className={`shrink-0 text-xs font-extrabold ${ton}`}>{etat}</span>
       </div>
+
+      {quantites && (
+        <p className="text-xs font-semibold text-[color:var(--muted)]" aria-live="off">
+          {quantites}
+          {restant != null && <> · {dureeRestante(restant, t.estimation)}</>}
+        </p>
+      )}
+      {restant != null && restant > SEUIL_CONSEIL_WIFI && (
+        <p className="text-xs font-bold text-[color:var(--accent-deep)]">{t.estimation.wifi}</p>
+      )}
 
       <ol className="jr-etapes-envoi">
         {etapes.map((etape, i) => (

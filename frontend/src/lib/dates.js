@@ -71,7 +71,9 @@ export function formatAbsolute(iso, locale = 'fr') {
 export function formatWeekLabel(week, locale = 'fr') {
   const redaction = String(week?.libelle || '').trim();
   if (redaction) return redaction;
-  const num = week?.num ?? week?.name?.match(/\d+/)?.[0] ?? '';
+  // L'identifiant (« 2026-w45 ») porte aussi le numéro : dernier recours
+  // plutôt que « Semaine  » sans rien.
+  const num = week?.num ?? week?.name?.match(/\d+/)?.[0] ?? String(week?.id || '').match(/w(\d+)$/i)?.[1] ?? '';
   return locale === 'en' ? `Week ${num}` : `Semaine ${num}`;
 }
 

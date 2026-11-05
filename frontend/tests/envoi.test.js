@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { etapesEnvoi, positionSurLiaison, estEnVol } from '../src/lib/envoi.js';
+import {
+  etapesEnvoi, positionSurLiaison, estEnVol,
+  mesurerDebit, secondesRestantes, dureeRestante, octetsLisibles, SEUIL_CONSEIL_WIFI,
+} from '../src/lib/envoi.js';
+import { translations } from '../src/i18n/translations.js';
 
 /**
  * Le voyage d'un fichier en trois étapes nommées.
@@ -60,5 +64,43 @@ describe('estEnVol', () => {
     expect(estEnVol({ status: 'error' })).toBe(false);
     expect(estEnVol({ phase: 'processing' })).toBe(true);
     expect(estEnVol({ phase: 'done' })).toBe(false);
+  });
+});
+
+
+describe('le temps d’envoi estimé', () => {
+  // LE BESOIN : « 37 % » ne dit pas si l'on attendra deux minutes ou une heure.
+  it('mesure le débit et le lisse au lieu de suivre chaque à-coup', () => {
+    let m = mesurerDebit(null, 0, 0);
+    m = mesurerDebit(m, 1_000_000, 1000); // 1 Mo/s
+    expect(m.debit).toBe(1_000_000);
+    m = mesurerDebit(m, 1_100_000, 2000); // à-coup à 0,1 Mo/s
+    expect(m.debit).toBeGreaterThan(600_000);
+    expect(m.debit).toBeLessThan(1_000_000);
+  });
+
+  it('ignore les mesures trop rapprochées et les reprises en arrière', () => {
+    const m = mesurerDebit(mesurerDebit(null, 0, 0), 500_000, 1000);
+    expect(mesurerDebit(m, 600_000, 1100)).toBe(m);
+    expect(mesurerDebit(m, 100_000, 3000).debit).toBe(m.debit);
+  });
+
+  it('ne promet rien tant que le débit est inconnu', () => {
+    expect(secondesRestantes(85e6, 12e6, 0)).toBeNull();
+    expect(secondesRestantes(85e6, 25e6, 100_000)).toBe(600);
+  });
+
+  it('dit la durée comme on la dirait, et conseille le Wi-Fi au-delà de 30 min', () => {
+    const d = translations.fr.estimation;
+    expect(dureeRestante(30, d)).toBe('moins d’une minute');
+    expect(dureeRestante(360, d)).toBe('environ 6 min');
+    expect(dureeRestante(4800, d)).toBe('environ 1 h 20');
+    expect(4800 > SEUIL_CONSEIL_WIFI).toBe(true);
+  });
+
+  it('écrit les quantités en Mo à la française', () => {
+    expect(octetsLisibles(12.4 * 1024 * 1024, 'fr')).toBe('12 Mo');
+    expect(octetsLisibles(2.5 * 1024 * 1024, 'fr')).toBe('2,5 Mo');
+    expect(octetsLisibles(2.5 * 1024 * 1024, 'en')).toBe('2.5 MB');
   });
 });

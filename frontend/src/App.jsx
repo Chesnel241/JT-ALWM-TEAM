@@ -324,6 +324,18 @@ function AppShell() {
     navigate('uploader', { countryId: country.id });
   };
 
+  // L'onglet « Reportage » d'un correspondant : il menait à un second
+  // sélecteur de pays, alors que le pays venait d'être choisi. Il mène
+  // maintenant à l'espace du pays ouvert pendant cette visite — rien n'est
+  // retenu d'une visite à l'autre : l'accueil reste ouvert à tous.
+  const naviguerDepuisNav = (view, options) => {
+    if (isReporter && view === 'home' && selectedCountry) {
+      navigate('uploader', { countryId: selectedCountry.id });
+      return;
+    }
+    navigate(view, options);
+  };
+
   const isEditorWorkspace = isEditorStudio;
   // L'accueil journalistes doit rester un écran à deux boutons : les bulles
   // flottantes (aide WhatsApp, assistant) recouvraient les cartes sur mobile
@@ -345,7 +357,7 @@ function AppShell() {
     }`}>
       <Nav
         currentView={currentView}
-        setCurrentView={navigate}
+        setCurrentView={naviguerDepuisNav}
         newUploadsCount={newUploadsCount}
         isDesktopEditorAvailable={isDesktopEditorAvailable}
         workspace={workspace}

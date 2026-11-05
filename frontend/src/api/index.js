@@ -493,7 +493,9 @@ export const api = {
         onProgress: function (bytesUploaded, bytesTotal) {
           const percentage = (bytesUploaded / bytesTotal) * 100;
           if (typeof onProgress === 'function') {
-            onProgress(percentage);
+            // Les octets suivent le pourcentage : c'est d'eux qu'on tire le
+            // temps restant affiché au correspondant.
+            onProgress(percentage, bytesUploaded, bytesTotal);
           }
         },
         onSuccess: function () {
@@ -550,7 +552,7 @@ export const api = {
         headers,
         onUploadProgress: (e) => {
           if (e.lengthComputable && typeof onProgress === 'function') {
-            onProgress((e.loaded / e.total) * 100);
+            onProgress((e.loaded / e.total) * 100, e.loaded, e.total);
           }
         },
         signal,

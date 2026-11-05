@@ -69,6 +69,7 @@ export default function StudioVoixJournaliste({
   mode,
   setMode,
   reportageNum,
+  reportages = [1, 2, 3].map((num) => ({ num, titre: null })),
   choisirReportage,
   titre,
   setTitre,
@@ -176,8 +177,8 @@ export default function StudioVoixJournaliste({
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
         <div className="space-y-5">
           <Etape numero={1} titre={v.etapeReportage}>
-            <div className="grid grid-cols-3 gap-2.5" role="group" aria-label={v.etapeReportage}>
-              {[1, 2, 3].map((n) => (
+            <div className={`grid ${reportages.some((r) => r.titre) ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-3'} gap-2.5`} role="group" aria-label={v.etapeReportage}>
+              {reportages.map(({ num: n, titre: nom }) => (
                 <button
                   key={n}
                   type="button"
@@ -189,7 +190,7 @@ export default function StudioVoixJournaliste({
                       : 'bg-[var(--paper)] border-[var(--border)] text-[color:var(--ink)] hover:border-[color:var(--accent)]'
                   }`}
                 >
-                  {v.reportage(n)}
+                  <span className="block truncate">{nom || v.reportage(n)}</span>
                 </button>
               ))}
             </div>

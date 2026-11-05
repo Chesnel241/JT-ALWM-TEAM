@@ -88,3 +88,25 @@ describe('CountdownTimer', () => {
     expect(minuteur).toHaveAccessibleName(/Time left to send: 3 days 20 hours\. Deadline: Sunday, Nov 1 at 5:30 AM, your time \(GMT-3\)/);
   });
 });
+
+describe('CountdownTimer en une ligne (page d’envoi sur téléphone)', () => {
+  // La carte, même compacte, repoussait le bouton d'envoi sous la ligne de
+  // flottaison. Une ligne suffit tant qu'on a le temps ; le détail au toucher.
+  it('tient sur une ligne, et se déplie au toucher', async () => {
+    vi.setSystemTime(new Date('2026-10-28T12:00:00Z'));
+    const { fireEvent } = await import('@testing-library/react');
+    const { container } = monter({ ligne: true });
+    const ligne = screen.getByRole('button', { expanded: false });
+    expect(ligne).toHaveTextContent(/Clôture.*05h30/);
+    expect(container.querySelector('.cr-compact')).toBeNull();
+    fireEvent.click(ligne);
+    expect(container.querySelector('.cr-compact')).not.toBeNull();
+  });
+
+  it('montre la carte d’emblée dans la dernière ligne droite', () => {
+    // Moins de deux heures : ce moment-là doit se voir sans rien toucher.
+    vi.setSystemTime(new Date('2026-11-01T07:30:00Z'));
+    const { container } = monter({ ligne: true });
+    expect(container.querySelector('.cr-compact')).not.toBeNull();
+  });
+});

@@ -149,6 +149,19 @@ describe('StudioVoixJournaliste', () => {
     expect(screen.getByRole('button', { name: 'Commencer l’enregistrement' })).toBeEnabled();
   });
 
+  it('propose les vrais reportages de la semaine, avec leur titre (jusqu’à cinq)', async () => {
+    // Les boutons disaient « Reportage 1 / 2 / 3 » quel que soit le nombre
+    // réel : on ne savait pas à quel sujet la voix irait.
+    const titres = ['Marché de Mokolo', 'Rentrée scolaire', 'Pont de Kango', 'Pêche', 'Élections', 'Sixième'];
+    vi.spyOn(api, 'getSujets').mockResolvedValue(titres.map((titre, i) => ({ id: `s${i}`, titre })));
+    renderVoixOff({ initialCountryId: 'ga', isReporter: true });
+    const pont = await screen.findByRole('button', { name: 'Pont de Kango' });
+    expect(screen.queryByRole('button', { name: 'Sixième' })).toBeNull();
+    fireEvent.click(pont);
+    expect(pont).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Titre du reportage')).toHaveValue('Pont de Kango');
+  });
+
   it('choisir « Reportage 2 » le marque et pré-remplit le titre', () => {
     renderVoixOff({ initialCountryId: 'ga', isReporter: true });
     fireEvent.click(screen.getByRole('button', { name: 'Reportage 2' }));

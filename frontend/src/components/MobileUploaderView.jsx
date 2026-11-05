@@ -1,12 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   FileText, Video, Mic, CheckCircle,
   Clock, Trash2, AlertCircle,
-  HelpCircle, X, ArrowLeft, MessageCircle, Image as ImageIcon
+  HelpCircle, X, ArrowLeft, MessageCircle, Image as ImageIcon, Info,
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { formatRelative, formatWeekFull, formatExpiry } from '../lib/dates.js';
+import { formatRelative, formatWeekFull, formatWeekLabel, formatExpiry } from '../lib/dates.js';
 import SkeletonCard from './SkeletonCard.jsx';
 import CountdownTimer from './CountdownTimer.jsx';
 import CountryAvatar from './CountryAvatar.jsx';
@@ -26,6 +26,8 @@ import { reportageTone } from '../lib/branding.js';
 import { buildSections, filesForSection, etatNombreReportages, nomAffiche, SECTIONS_FIXES } from '../lib/sujets.js';
 import { estEnVol } from '../lib/envoi.js';
 import VoyageEnvoi from './VoyageEnvoi.jsx';
+import PrevenirRedaction from './PrevenirRedaction.jsx';
+import OutilsCorrespondant from './OutilsCorrespondant.jsx';
 
 // Charte : bleus du logo et neutres. Le texte coloré sur aplat coloré de la
 // version précédente (bleu 500 sur bleu 100, ambre sur ambre) descendait sous
@@ -60,6 +62,7 @@ export default function MobileUploaderView({
   // « Modifier » du numéro levait une erreur au lieu de rouvrir le champ.
   setHasPhoneNumber,
   onEditPhone,
+  onAnnulerModifPhone = null,
   phone,
   setPhone,
   handleSubscribe,
@@ -80,6 +83,11 @@ export default function MobileUploaderView({
   const currentWeek = weeks.find((w) => w.id === selectedWeek);
   const defaultPhoneCountry = phoneCountryFor(country.id);
   const [activeTabId, setActiveTabId] = useState('reportage-0');
+  const [choixSemaine, setChoixSemaine] = useState(false);
+  // Après un choix de fichiers, la progression apparaît plus bas que le
+  // bouton : on l'amène à l'écran, sinon rien ne semble se passer.
+  const progressionRef = useRef(null);
+  const nbEnVolRef = useRef(0);
   const [scriptModalOpen, setScriptModalOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   // Nombre choisi dont on demande les titres ; `null` quand la feuille est fermée.
@@ -101,6 +109,7 @@ export default function MobileUploaderView({
     const reportage = !SECTIONS_FIXES.some((fixe) => fixe.id === section.id);
     return {
       ...section,
+      reportage,
       // Un titre de sujet peut être long : l'onglet en montre le début, la
       // carte de section le donne en entier.
       label: nomAffiche(section, t),
@@ -130,6 +139,71 @@ export default function MobileUploaderView({
   const activeUploading = uploading.filter((u) => (
     currentSection.sujetId ? u.sujetId === currentSection.sujetId : u.reportage === activeReportageName
   ));
+
+  const renderOnglet = (sec) => {
+    // L'onglet surligné est celui qu'on affiche. Au retour sur la
+    // page, `activeTabId` valait encore 'reportage-0' alors que
+    // les sections portaient les identifiants du serveur : aucun
+    // onglet n'était surligné, et la page montrait le premier.
+    const isActive = sec.id === currentSection.id;
+    // Par `sujetId`, comme la section elle-même : comparer
+    // l'étiquette au titre donnait 0 dès qu'un reportage était
+    // renommé, alors que ses fichiers étaient bien là.
+    const count = filesForSection(uploads, sec).length;
+
+    return (
+      <button
+        key={sec.id}
+        onClick={() => setActiveTabId(sec.id)}
+        type="button"
+        aria-current={isActive ? 'true' : undefined}
+        style={isActive && sec.tone ? { backgroundColor: sec.tone.fill, color: sec.tone.onFill } : undefined}
+        className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs motion-tap active:scale-95 ${
+          isActive
+            ? (sec.tone ? 'shadow-md scale-[1.02]' : 'bg-[var(--accent)] text-white shadow-md scale-[1.02]')
+            : 'bg-[var(--paper)] text-[color:var(--ink)] border border-[var(--border)]'
+        }`}
+      >
+        {/* La pastille garde la teinte du reportage même quand
+            l'onglet n'est pas actif : c'est elle qui distingue
+            Reportage 1 de Reportage 2 d'un coup d'œil. */}
+        <span
+          style={sec.tone && !isActive ? { backgroundColor: sec.tone.fill, color: sec.tone.onFill } : undefined}
+          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold ${
+            isActive
+              ? 'bg-white/25'
+              : (sec.tone ? '' : 'bg-[var(--accent)]/15 text-[color:var(--accent-deep)]')
+          }`}
+        >
+          {sec.badge}
+        </span>
+        {/* Un titre long tronqué, entier au survol et dans la carte : il
+          étirait l'onglet sur toute la largeur. */}
+      <span className="max-w-[9.5rem] truncate" title={sec.label}>{sec.shortName}</span>
+        {count > 0 && (
+          <span
+            className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+              isActive ? 'bg-white text-[color:var(--accent-deep)]' : 'bg-[var(--paper-2)] text-[color:var(--muted)]'
+            }`}
+          >
+            {count}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  useEffect(() => {
+    const enVol = activeUploading.filter(estEnVol).length;
+    if (enVol > nbEnVolRef.current && progressionRef.current?.scrollIntoView) {
+      const sobre = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+      progressionRef.current.scrollIntoView({ behavior: sobre ? 'auto' : 'smooth', block: 'nearest' });
+    }
+    nbEnVolRef.current = enVol;
+  }, [activeUploading]);
+
+  // Le premier reportage encore vide, pour le dire une fois celui-ci reçu.
+  const reportageVide = sections.find((sec) => sec.reportage && sec.id !== currentSection.id && filesForSection(uploads, sec).length === 0);
 
   const handleTriggerFileInput = () => {
     if (isLocked) {
@@ -176,53 +250,55 @@ export default function MobileUploaderView({
             type="button"
             className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
           >
-            <HelpCircle size={14} />
-            <span>{t.uploader.guide}</span>
+            <HelpCircle size={14} aria-hidden="true" />
+            {/* Le libellé court : « Conseils d'écriture » en entier coupait
+                le nom du pays en « Came… ». */}
+            <span>{t.uploader.guideCourt}</span>
           </button>
         </div>
 
+        {/* La semaine en texte, avec « changer » : le sélecteur ouvert en
+            permanence prenait une ligne entière pour un réglage qu'on ne
+            touche presque jamais — la semaine en cours est la bonne. */}
         <div className="flex items-center gap-2">
-          <select
-            value={selectedWeek}
-            onChange={(e) => setSelectedWeek(e.target.value)}
-            aria-label={t.uploader.weekLabel}
-            className="min-w-0 flex-1 bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-sm font-semibold rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[color:var(--ink)]" title={currentWeek ? formatWeekFull(currentWeek, lang) : undefined}>
+            {currentWeek ? formatWeekLabel(currentWeek, lang) : ''}
+            {currentWeek?.status === 'active' ? t.uploader.weekActiveTag : ''}
+          </p>
+          <button
+            type="button"
+            onClick={() => setChoixSemaine((v) => !v)}
+            aria-expanded={choixSemaine}
+            className="shrink-0 min-h-[44px] px-2 text-sm font-bold text-[color:var(--accent-deep)] underline underline-offset-2"
           >
-            {/* Le libellé de la rédaction (« Sem. 18 ») tient là où « Semaine
-                37 » débordait : les dates reviennent dans le champ, et ce
-                sont elles qui disent de quelle semaine on parle. La mention
-                « en cours » suit la langue de l'interface — écrite en dur,
-                elle restait en français au milieu d'un écran anglais. */}
-            {weeks.map((w) => (
-              <option key={w.id} value={w.id}>
-                {formatWeekFull(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
-              </option>
-            ))}
-          </select>
+            {t.uploader.changerSemaine}
+          </button>
           {isLocked && (
             <span className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--cta-red)] text-white">
               {t.uploader.lockedBadge}
             </span>
           )}
         </div>
+        {choixSemaine && (
+          <select
+            value={selectedWeek}
+            onChange={(e) => { setSelectedWeek(e.target.value); setChoixSemaine(false); }}
+            aria-label={t.uploader.weekLabel}
+            className="w-full bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-base font-semibold rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--accent)]"
+          >
+            {weeks.map((w) => (
+              <option key={w.id} value={w.id}>
+                {formatWeekFull(w, lang)}{w.status === 'active' ? t.uploader.weekActiveTag : ''}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* L'échéance n'existait que sur ordinateur : sur téléphone, le
             correspondant ne découvrait le retard qu'une fois clôturé. */}
-        {currentWeek && <CountdownTimer week={currentWeek} compact />}
-
-        {/* Date réelle d'effacement, au lieu du « 48 h » affiché ailleurs :
-            la règle est ancrée à la semaine, pas à l'envoi. */}
-        {currentWeek?.expiresAt && (
-          <p className="flex items-center gap-1.5 text-[11px] text-[color:var(--muted)]">
-            <Clock size={12} className="shrink-0" />
-            {t.home.retentionOn(formatExpiry(currentWeek, lang))}
-          </p>
-        )}
+        {currentWeek && <CountdownTimer week={currentWeek} ligne />}
       </div>
 
-      {/* Où en est le pays cette semaine (ParcoursPays, fourni par
-          UploaderView). */}
-      {parcours}
 
       {!isOnline && <OfflineBanner queuedCount={queuedCount} />}
 
@@ -264,7 +340,7 @@ export default function MobileUploaderView({
         <div id="espace-fichiers-mobile" className="p-5 rounded-2xl bg-[var(--paper)] border-2 border-[color:var(--accent)] shadow-sm space-y-4 scroll-mt-24">
           <div className="flex items-center gap-3">
             <div className="bg-[color:var(--accent)] text-white p-2.5 rounded-full shrink-0">
-              <AlertCircle size={20} />
+              <Info size={20} aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <h3 className="text-lg font-extrabold text-[color:var(--ink)] leading-snug">
@@ -283,11 +359,8 @@ export default function MobileUploaderView({
               onValider={handleSubscribe}
               enCours={isSubscribing}
               paysDefaut={defaultPhoneCountry}
+              onAnnuler={onAnnulerModifPhone}
             />
-            {/* Dire ce qui vient après : l'écran était un mur sans horizon. */}
-            <p className="text-center text-xs text-[color:var(--muted)]">
-              {t.uploader.phoneNext}
-            </p>
           </div>
         </div>
       ) : (
@@ -315,57 +388,14 @@ export default function MobileUploaderView({
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              {sections.map((sec) => {
-                // L'onglet surligné est celui qu'on affiche. Au retour sur la
-                // page, `activeTabId` valait encore 'reportage-0' alors que
-                // les sections portaient les identifiants du serveur : aucun
-                // onglet n'était surligné, et la page montrait le premier.
-                const isActive = sec.id === currentSection.id;
-                // Par `sujetId`, comme la section elle-même : comparer
-                // l'étiquette au titre donnait 0 dès qu'un reportage était
-                // renommé, alors que ses fichiers étaient bien là.
-                const count = filesForSection(uploads, sec).length;
-
-                return (
-                  <button
-                    key={sec.id}
-                    onClick={() => setActiveTabId(sec.id)}
-                    type="button"
-                    aria-current={isActive ? 'true' : undefined}
-                    style={isActive && sec.tone ? { backgroundColor: sec.tone.fill, color: sec.tone.onFill } : undefined}
-                    className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs motion-tap active:scale-95 ${
-                      isActive
-                        ? (sec.tone ? 'shadow-md scale-[1.02]' : 'bg-[var(--accent)] text-white shadow-md scale-[1.02]')
-                        : 'bg-[var(--paper)] text-[color:var(--ink)] border border-[var(--border)]'
-                    }`}
-                  >
-                    {/* La pastille garde la teinte du reportage même quand
-                        l'onglet n'est pas actif : c'est elle qui distingue
-                        Reportage 1 de Reportage 2 d'un coup d'œil. */}
-                    <span
-                      style={sec.tone && !isActive ? { backgroundColor: sec.tone.fill, color: sec.tone.onFill } : undefined}
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold ${
-                        isActive
-                          ? 'bg-white/25'
-                          : (sec.tone ? '' : 'bg-[var(--accent)]/15 text-[color:var(--accent-deep)]')
-                      }`}
-                    >
-                      {sec.badge}
-                    </span>
-                    <span>{sec.shortName}</span>
-                    {count > 0 && (
-                      <span
-                        className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                          isActive ? 'bg-white text-[color:var(--accent-deep)]' : 'bg-[var(--paper-2)] text-[color:var(--muted)]'
-                        }`}
-                      >
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-
+              {sections.filter((sec) => sec.reportage).map((sec) => renderOnglet(sec))}
+            </div>
+            {/* Annonces et séminaires ne sont pas des reportages : rangés à
+                part, sous une étiquette qui dit qu'ils sont facultatifs. Mêlés
+                aux reportages, ils passaient pour une étape obligatoire. */}
+            <p className="pt-1 text-xs font-bold text-[color:var(--muted)]">{t.uploader.autresEnvois}</p>
+            <div className="flex flex-wrap gap-2">
+              {sections.filter((sec) => !sec.reportage).map((sec) => renderOnglet(sec))}
             </div>
 
           </div>
@@ -446,7 +476,9 @@ export default function MobileUploaderView({
 
             {/* Le voyage des fichiers : du drapeau du pays jusqu'au logo ALWM,
                 puis Envoi → Traitement → Reçu pour chacun. */}
-            <VoyageEnvoi pays={country} envois={activeUploading} onReessayer={onRetryUpload} />
+            <div ref={progressionRef} className="scroll-mt-24">
+              <VoyageEnvoi pays={country} envois={activeUploading} onReessayer={onRetryUpload} />
+            </div>
 
             {/* Pense-bête : ce que ce reportage contient déjà. */}
             <ReportageChecklist files={activeUploads} />
@@ -470,6 +502,28 @@ export default function MobileUploaderView({
                     {uploading.some(estEnVol) ? t.uploader.sectionDoneAutreEnvoi : t.uploader.sectionDoneHint}
                   </p>
                 </div>
+              </div>
+            )}
+            {activeUploads.length > 0 && !activeUploading.some(estEnVol) && (
+              <PrevenirRedaction
+                pays={country.name}
+                semaine={formatWeekLabel(currentWeek, lang)}
+                nombre={activeUploads.length}
+                titre={currentSection.label}
+              />
+            )}
+            {/* Un reportage encore vide : le dire, et y mener d'un geste. Sans
+                cela, le correspondant croyait avoir tout envoyé. */}
+            {activeUploads.length > 0 && !activeUploading.some(estEnVol) && reportageVide && (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-[var(--cta-orange)]/40 bg-[var(--cta-orange)]/10 p-3">
+                <p className="min-w-0 text-sm font-bold text-[color:var(--ink)]">{t.uploader.reportageVide(reportageVide.label)}</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTabId(reportageVide.id)}
+                  className="jr-bouton jr-bouton-orange shrink-0 !min-h-[44px] px-4 text-sm"
+                >
+                  {t.uploader.yAller}
+                </button>
               </div>
             )}
 
@@ -587,6 +641,25 @@ export default function MobileUploaderView({
                 {t.uploader.edit}
               </button>
             </div>
+          )}
+
+          {/* Où en est le pays cette semaine (ParcoursPays, fourni par
+              UploaderView) : sous la liste, comme la date d'effacement. En
+              tête, il repoussait le bouton d'envoi hors du premier écran. */}
+          {parcours}
+
+          {/* Les gestes « une fois pour toutes » : garder l'accès, poser le
+              rappel. Ils vivent sous le travail de la semaine, pas devant. */}
+          <OutilsCorrespondant pays={country} semaine={weeks.find((w) => w.status === 'active') || currentWeek} />
+
+          {/* Date réelle d'effacement, au lieu du « 48 h » affiché ailleurs :
+              la règle est ancrée à la semaine, pas à l'envoi. Sous la liste :
+              c'est une information, pas une étape. */}
+          {currentWeek?.expiresAt && (
+            <p className="flex items-center gap-1.5 text-xs text-[color:var(--muted)]">
+              <Clock size={13} className="shrink-0" />
+              {t.home.retentionOn(formatExpiry(currentWeek, lang))}
+            </p>
           )}
         </div>
       )}

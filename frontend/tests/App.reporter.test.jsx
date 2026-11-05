@@ -155,15 +155,27 @@ describe('App — le lien personnel d\'un correspondant', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/reportage'));
   });
 
-  it('« Pays » ramène à l\'accueil, où sont les drapeaux', async () => {
+  it('« Retour » ramène à l\'accueil, où sont les drapeaux', async () => {
     window.history.replaceState(null, '', '/journalistes/sn');
     render(<App />);
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/sn'));
 
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Pays' }))[0]);
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Retour' }))[0]);
 
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes'));
     expect((await drapeauxAccueil()).getByRole('button', { name: /Sénégal/ })).toBeInTheDocument();
+  });
+
+  it('l’onglet « Reportage » ramène au pays ouvert, pas à un second choix de pays', async () => {
+    // L'INCIDENT : depuis la voix off, l'onglet menait à une liste de pays,
+    // alors que le correspondant venait de choisir le sien.
+    window.history.replaceState(null, '', '/journalistes/sn');
+    render(<App />);
+    await screen.findAllByText('Sénégal');
+    fireEvent.click(screen.getAllByRole('button', { name: /Voix off/i })[0]);
+    await waitFor(() => expect(window.location.pathname).toBe('/journalistes/voix-off'));
+    fireEvent.click(screen.getAllByRole('button', { name: /^(Espace reportage|Reportage)$/i })[0]);
+    await waitFor(() => expect(window.location.pathname).toBe('/journalistes/sn'));
   });
 
   it('ne retient pas le pays du lien : l\'accueil reste ouvert à tous', async () => {

@@ -226,7 +226,10 @@ body {
 	outline-offset: 2px;
 }
 
-.focus-ring {
+/* L'anneau ne vaut que pour le focus au clavier. Posé sans condition, il
+   cernait en permanence chaque bouton qui portait la classe — les deux
+   boutons d'une confirmation semblaient sélectionnés à la fois. */
+.focus-ring:focus-visible {
 	box-shadow: 0 0 0 2px rgb(81 181 231 / 0.45), 0 0 0 4px rgb(13 77 139 / 0.45);
 }
 
