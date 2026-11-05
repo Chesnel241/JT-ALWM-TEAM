@@ -42,6 +42,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(api, 'getRelances').mockResolvedValue([]);
   vi.spyOn(api, 'getDemandesDelai').mockResolvedValue([]);
+  vi.spyOn(api, 'getDelays').mockResolvedValue({ global: null, requests: {} });
 });
 
 describe('quand le panneau s’affiche', () => {
@@ -137,5 +138,38 @@ describe('langue', () => {
     const lien = await screen.findByRole('link', { name: /Ghana/ });
     const message = decodeURIComponent(lien.getAttribute('href').split('text=')[1]);
     expect(message).toMatch(/Hello Ghana/);
+  });
+});
+
+describe('le message de relance et les délais', () => {
+  it('ne dit pas « rien reçu » à un pays qui a envoyé des photos sans vidéo', async () => {
+    api.getRelances.mockResolvedValue([{ countryId: 'cm', nom: 'Cameroun', manque: 'sans_video', phone: '+237671234567' }]);
+    poser();
+    fireEvent.click(await screen.findByRole('button', { name: /Pays à relancer/ }));
+    const lien = await screen.findByRole('link', { name: /Cameroun/ });
+    const texte = new URL(lien.href).searchParams.get('text');
+    expect(texte).toContain('pas encore de vidéo');
+    expect(texte).not.toContain('rien reçu');
+  });
+
+  it('une fois la clôture passée, ne dit plus « Il reste  avant la clôture »', async () => {
+    api.getRelances.mockResolvedValue([{ countryId: 'sn', nom: 'Sénégal', manque: 'rien_recu', phone: '+221770000000' }]);
+    poser({ week: { id: SEMAINE, cutoffAt: new Date(Date.now() - 3600 * 1000).toISOString() } });
+    fireEvent.click(await screen.findByRole('button', { name: /Pays à relancer/ }));
+    const texte = new URL((await screen.findByRole('link', { name: /Sénégal/ })).href).searchParams.get('text');
+    expect(texte).not.toMatch(/Il reste\s+avant/);
+    expect(texte).toContain('La clôture est passée');
+  });
+
+  it('accorde un délai depuis la demande elle-même', async () => {
+    // Il fallait aller dans l'onglet Statistiques, que personne n'ouvre le
+    // dimanche matin.
+    api.getDemandesDelai.mockResolvedValue([{ countryId: 'sn', nom: 'Sénégal' }]);
+    api.getDelays.mockResolvedValue({ global: null, requests: { sn: { status: 'pending' } } });
+    const accord = vi.spyOn(api, 'approveDelay').mockResolvedValue({ requests: { sn: { status: 'approved', extendedUntil: new Date(Date.now() + 7 * 3600 * 1000).toISOString() } } });
+    poser();
+    fireEvent.click(await screen.findByRole('button', { name: /demande de délai/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^\+1 h · jusqu’à/ }));
+    await waitFor(() => expect(accord).toHaveBeenCalledWith(SEMAINE, 'sn', 60, 'montage2026'));
   });
 });

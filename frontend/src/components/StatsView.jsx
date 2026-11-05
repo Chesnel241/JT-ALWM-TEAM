@@ -5,11 +5,16 @@ import { useOptionalToast } from '../hooks/useToast.jsx';
 import { Lock, Clock, CheckCircle, BarChart2 } from 'lucide-react';
 import { formatAbsolute } from '../lib/dates.js';
 import { echeanceApresDelai, heureCourte } from '../lib/delais.js';
+import { readAdminPassword, saveAdminPassword } from '../lib/adminSession.js';
 
-export default function StatsView({ weeks, selectedWeek }) {
+export default function StatsView({ weeks, selectedWeek, countries = [] }) {
   const { lang, t } = useI18n();
   const { addToast } = useOptionalToast();
-  const [adminPassword, setAdminPassword] = useState('');
+  // Le mot de passe de la session montage : on le redemandait ici alors que
+  // le monteur venait de le taper dans l'espace montage.
+  const [adminPassword, setAdminPassword] = useState(() => readAdminPassword());
+  // Les pays par leur nom : « SN » ou « CM » obligeaient à traduire de tête.
+  const nomPays = (id) => countries.find((c) => c.id === id)?.name || String(id || '').toUpperCase();
   const [isAuthenticatedAdmin, setIsAuthenticatedAdmin] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -25,6 +30,7 @@ export default function StatsView({ weeks, selectedWeek }) {
       const ok = await api.checkAdminPassword(adminPassword);
       if (ok) {
         setIsAuthenticatedAdmin(true);
+        saveAdminPassword(adminPassword);
       } else {
         setAuthError('Mot de passe incorrect');
       }
@@ -35,6 +41,16 @@ export default function StatsView({ weeks, selectedWeek }) {
     }
   };
   
+  useEffect(() => {
+    const enSession = readAdminPassword();
+    if (!enSession) return undefined;
+    let annule = false;
+    api.checkAdminPassword(enSession)
+      .then((ok) => { if (ok && !annule) setIsAuthenticatedAdmin(true); })
+      .catch(() => {});
+    return () => { annule = true; };
+  }, []);
+
   const loadStats = async () => {
     setIsLoading(true);
     try {
@@ -57,7 +73,7 @@ export default function StatsView({ weeks, selectedWeek }) {
     try {
       const ext = await api.approveDelay(selectedWeek, countryId, minutes, adminPassword);
       if (ext?.extendedUntil) {
-        addToast(t.delais.accorde(countryId.toUpperCase(), heureCourte(new Date(ext.extendedUntil), lang)), 'success', 5000);
+        addToast(t.delais.accorde(nomPays(countryId), heureCourte(new Date(ext.extendedUntil), lang)), 'success', 5000);
       }
       loadStats();
     } catch (err) {
@@ -174,7 +190,7 @@ export default function StatsView({ weeks, selectedWeek }) {
                   {requests.map(([countryId, req]) => (
                     <div key={countryId} className="bg-[var(--paper-2)] p-4 rounded-xl border border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <div className="font-semibold text-[color:var(--ink)] text-lg uppercase tracking-wider">{countryId}</div>
+                        <div className="font-semibold text-[color:var(--ink)] text-lg">{nomPays(countryId)}</div>
                         <div className="text-sm text-[color:var(--muted)] mt-1">
                           Statut : <span className={`font-medium ${req.status === 'approved' ? 'text-[var(--accent)]' : 'text-amber-500'}`}>
                             {req.status === 'approved' ? 'Validé' : 'En attente'}
@@ -210,7 +226,7 @@ export default function StatsView({ weeks, selectedWeek }) {
                 {sortedExtensionStats.map(([countryId, count]) => (
                   <div key={countryId}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="font-semibold uppercase text-[color:var(--ink)]">{countryId}</span>
+                      <span className="font-semibold text-[color:var(--ink)]">{nomPays(countryId)}</span>
                       <span className="text-[color:var(--muted)] font-medium">{count} demande{count > 1 ? 's' : ''}</span>
                     </div>
                     <div className="w-full bg-[var(--paper-2)] rounded-full h-3">
@@ -234,7 +250,7 @@ export default function StatsView({ weeks, selectedWeek }) {
                 {sortedLateStats.map(([countryId, count]) => (
                   <div key={countryId}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="font-semibold uppercase text-[color:var(--ink)]">{countryId}</span>
+                      <span className="font-semibold text-[color:var(--ink)]">{nomPays(countryId)}</span>
                       <span className="text-[color:var(--muted)] font-medium">{count} fichier{count > 1 ? 's' : ''}</span>
                     </div>
                     <div className="w-full bg-[var(--paper-2)] rounded-full h-3">

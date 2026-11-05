@@ -479,6 +479,7 @@ function AppShell() {
               <div className={currentView === 'stats' ? 'block' : 'hidden'}>
                 <StatsView
                   weeks={weeks}
+                  countries={countries}
                   selectedWeek={selectedWeek}
                   setSelectedWeek={setSelectedWeek}
                   isActive={currentView === 'stats'}

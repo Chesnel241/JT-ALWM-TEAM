@@ -532,6 +532,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const adminPasswordRef = useRef(authenticatedAdminPassword);
   // Semaine dont l'écran montre les fichiers (voir le chargement par semaine).
   const semaineAfficheeRef = useRef(null);
+  // Change à chaque dépôt reçu : le panneau de relance se recharge.
+  const [tickRelance, setTickRelance] = useState(0);
   const isGeneratingVideoRef = useRef(false);
   useEffect(() => { adminPasswordRef.current = authenticatedAdminPassword; }, [authenticatedAdminPassword]);
   useEffect(() => { isGeneratingVideoRef.current = isGeneratingVideo; }, [isGeneratingVideo]);
@@ -784,8 +786,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setOverlayTarget(null);
     setSubtitleTarget(null);
     setShowGlobalPanel(false);
-    setSelectedBin('studio');
-    addToast('Clip ajouté directement à la timeline', 'success', 2000);
+    // On reste dans le chutier : le monteur ajoute souvent plusieurs rushs
+    // d'affilée, et chaque ajout le projetait dans le studio, d'où il fallait
+    // revenir au pays — et retrouver sa place dans la liste.
+    addToast(t.revue.ajouteTimeline(file.name), 'success', 6000, {
+      action: { libelle: t.revue.voirStudio, onClick: () => setSelectedBin('studio') },
+    });
 
     // La carte possède généralement déjà la durée grâce à sa miniature. Si
     // ce n'est pas le cas, on complète silencieusement le clip dès que les
@@ -1187,6 +1193,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     socket.on('upload_update', (data) => {
       if (data.weekId === selectedWeek) {
         if (data.motif === 'depot' && data.countryId) {
+          setTickRelance((n) => n + 1);
           depots.set(data.countryId, (depots.get(data.countryId) || 0) + 1);
           if (!minuteurDepots) minuteurDepots = setTimeout(annoncerDepots, 2500);
         }
@@ -1513,7 +1520,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     addToast('Texte coupé en deux !', 'success');
   };
 
+  // Publier prévient tous les correspondants (notification) : un fichier
+  // lâché par erreur dans la zone partait aussitôt chez tout le monde. On
+  // demande d'abord, en nommant le fichier.
+  const [aPublier, setAPublier] = useState(null);
   const handleDeliveryFiles = (filesList) => {
+    const fichiers = Array.from(filesList || []);
+    if (fichiers.length) setAPublier(fichiers);
+  };
+
+  const publierFichiers = (filesList) => {
     Array.from(filesList).forEach((file) => {
       const tempId = Math.random().toString(36).slice(2);
       setDeliveryUploading((prev) => [
@@ -2213,6 +2229,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             selectedWeek={selectedWeek}
             adminPassword={authenticatedAdminPassword}
             week={(weeks || []).find((w) => w.id === selectedWeek)}
+            rafraichir={tickRelance}
           />
         )}
 
@@ -2959,6 +2976,46 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </div>
             ) : (
               <div className="mt-4 flex flex-col gap-6">
+                {/* Sur ordinateur aussi : filtrer par type et émettre le lien
+                    du correspondant. Les deux n'existaient que sur téléphone,
+                    alors que c'est sur ordinateur qu'on revoit cinquante rushs. */}
+                {selectedBin && !SPECIAL_BINS.includes(selectedBin) && (
+                  <div className="hidden md:flex items-center justify-between gap-3 px-1">
+                    <div className="flex gap-1.5" role="group" aria-label="Filtrer par type">
+                      {[
+                        { id: 'all', label: 'Tous' },
+                        { id: MEDIA_TYPES.VIDEO, label: 'Vidéos' },
+                        { id: MEDIA_TYPES.IMAGE, label: 'Images' },
+                        { id: MEDIA_TYPES.AUDIO, label: 'Audios' },
+                        { id: MEDIA_TYPES.DOCUMENT, label: 'Textes' },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          aria-pressed={mobileRushFilter === f.id}
+                          onClick={() => setMobileRushFilter(f.id)}
+                          className={`min-h-[36px] px-3 rounded-full text-xs font-bold motion-tap ${
+                            mobileRushFilter === f.id
+                              ? 'bg-[color:var(--ink)] text-[var(--paper)]'
+                              : 'bg-[var(--paper-2)] text-[color:var(--muted)] border border-[var(--border)] hover:text-[color:var(--ink)]'
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLinkDialogOpen(true)}
+                      className="inline-flex min-h-[36px] items-center gap-1.5 px-3 rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[color:var(--accent-deep)] font-semibold text-xs border border-[color:var(--accent)]/25 motion-tap"
+                      title="Émettre le lien personnel de ce correspondant"
+                    >
+                      <Link2 size={13} aria-hidden="true" />
+                      <span>Lien du correspondant</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Mobile Country Bar & Rush Filters */}
                 <div className="md:hidden px-2 pt-1 pb-3 space-y-2 border-b border-[var(--border)]">
                   <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 custom-scrollbar">
@@ -3337,6 +3394,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         variant="danger"
         onConfirm={confirmerSuppressionMontage}
         onCancel={() => setMontageASupprimer(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(aPublier)}
+        title={t.publication.titre}
+        message={aPublier ? t.publication.message(aPublier.map((f) => f.name).join(', ')) : ''}
+        confirmText={t.publication.confirmer}
+        cancelText={t.uploader.cancel}
+        onConfirm={() => { const fichiers = aPublier; setAPublier(null); publierFichiers(fichiers); }}
+        onCancel={() => setAPublier(null)}
       />
 
       <ConfirmDialog

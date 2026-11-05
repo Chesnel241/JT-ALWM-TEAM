@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useOptionalToast } from '../hooks/useToast.jsx';
+import { echeanceApresDelai, heureCourte } from '../lib/delais.js';
 import { MessageCircle, AlertCircle, Clock, ChevronDown, Check } from 'lucide-react';
 import { api } from '../api/index.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -18,9 +20,12 @@ import { useI18n } from '../i18n/I18nContext.jsx';
  * Le panneau se referme de lui-même quand il n'y a rien à faire : un bandeau
  * permanent qui dit « rien à signaler » finit par ne plus être lu.
  */
-export default function RelancePanel({ selectedWeek, adminPassword, week }) {
-  const { t } = useI18n();
+export default function RelancePanel({ selectedWeek, adminPassword, week, rafraichir = 0 }) {
+  const { t, lang } = useI18n();
   const r = t.relance;
+  const { addToast } = useOptionalToast();
+  const [ext, setExt] = useState(null);
+  const [accordEnCours, setAccordEnCours] = useState('');
 
   const [aRelancer, setARelancer] = useState([]);
   const [demandes, setDemandes] = useState([]);
@@ -37,14 +42,41 @@ export default function RelancePanel({ selectedWeek, adminPassword, week }) {
     Promise.all([
       api.getRelances(selectedWeek, adminPassword).catch(() => []),
       api.getDemandesDelai(selectedWeek, adminPassword).catch(() => []),
-    ]).then(([relances, delais]) => {
+      Promise.resolve(api.getDelays?.(selectedWeek)).catch(() => null),
+    ]).then(([relances, delais, extensions]) => {
       setARelancer(Array.isArray(relances) ? relances : []);
       setDemandes(Array.isArray(delais) ? delais : []);
+      setExt(extensions && typeof extensions === 'object' ? extensions : null);
       setCharge(true);
     });
   }, [selectedWeek, adminPassword]);
 
-  useEffect(() => { recharger(); }, [recharger]);
+  // `rafraichir` change à chaque dépôt reçu (tableau de bord) : la liste ne
+  // se mettait à jour qu'en rechargeant la page, et l'on relançait un pays
+  // qui venait d'envoyer.
+  useEffect(() => { recharger(); }, [recharger, rafraichir]);
+
+  // Accorder le délai depuis la demande elle-même : il fallait aller dans
+  // l'onglet Statistiques, que personne n'ouvre le dimanche matin.
+  const apres = (countryId, minutes) => echeanceApresDelai({
+    cutoffAt: week?.cutoffAt,
+    global: ext?.global,
+    demande: ext?.requests?.[countryId],
+    minutes,
+  });
+  const accorder = async (demande, minutes) => {
+    setAccordEnCours(`${demande.countryId}:${minutes}`);
+    try {
+      const reponse = await api.approveDelay(selectedWeek, demande.countryId, minutes, adminPassword);
+      const jusqua = reponse?.requests?.[demande.countryId]?.extendedUntil || apres(demande.countryId, minutes);
+      addToast(t.delais.accorde(demande.nom, heureCourte(jusqua, lang)), 'success', 6000);
+      recharger();
+    } catch {
+      addToast(t.delais.echecApprobation, 'error');
+    } finally {
+      setAccordEnCours('');
+    }
+  };
 
   // Rien à afficher tant qu'on ne sait pas, ou quand tout va bien.
   if (!charge || (aRelancer.length === 0 && demandes.length === 0)) return null;
@@ -91,7 +123,11 @@ export default function RelancePanel({ selectedWeek, adminPassword, week }) {
               <ul className="flex flex-wrap gap-2">
                 {aRelancer.map((pays) => {
                   const numero = String(pays.phone || '').replace(/[^\d+]/g, '').replace(/^\+/, '');
-                  const message = r.message(pays.nom, reste);
+                  // Le message suit la situation réelle : rien reçu ou pas
+                  // de vidéo, clôture à venir ou passée. Il disait « Il reste
+                  // avant la clôture » sans durée une fois l'heure passée, et
+                  // « rien reçu » à un pays qui avait envoyé des photos.
+                  const message = r.message(pays.nom, pays.manque, reste);
                   return (
                     <li key={pays.countryId}>
                       {numero ? (
@@ -136,10 +172,22 @@ export default function RelancePanel({ selectedWeek, adminPassword, week }) {
                 {demandes.map((d) => (
                   <li
                     key={d.countryId}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--paper)] px-3 py-1.5 text-xs text-[color:var(--ink)]"
+                    className="inline-flex flex-wrap items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--paper)] px-3 py-1.5 text-xs text-[color:var(--ink)]"
                   >
                     <Clock size={13} aria-hidden="true" className="text-[color:var(--muted)]" />
-                    {d.nom}
+                    <span className="font-semibold">{d.nom}</span>
+                    {adminPassword && [60, 180].map((minutes) => (
+                      <button
+                        key={minutes}
+                        type="button"
+                        disabled={Boolean(accordEnCours)}
+                        onClick={() => accorder(d, minutes)}
+                        title={t.delais.jusqua(heureCourte(apres(d.countryId, minutes), lang))}
+                        className="rounded-full bg-[var(--accent)]/10 px-2 py-1 font-bold text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/20 disabled:opacity-50"
+                      >
+                        +{minutes / 60} h · {t.delais.jusqua(heureCourte(apres(d.countryId, minutes), lang))}
+                      </button>
+                    ))}
                   </li>
                 ))}
               </ul>

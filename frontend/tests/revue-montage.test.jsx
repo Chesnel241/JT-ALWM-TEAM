@@ -43,6 +43,7 @@ vi.mock('../src/api/index.js', () => ({
     checkAdminPassword: vi.fn().mockResolvedValue({ ok: true }),
     getSubscriptions: vi.fn().mockResolvedValue([]),
     updateFileStatus: vi.fn().mockResolvedValue({ ok: true }),
+    uploadDelivery: vi.fn().mockResolvedValue({ id: 'jt', name: 'JT_S45.mp4' }),
     getWeekActiveJob: vi.fn().mockResolvedValue({ job: null }),
     getSujets: vi.fn().mockResolvedValue([{ id: 's1', countryId: 'cm', titre: 'Marché de Mokolo', etat: 'recu' }]),
   },
@@ -164,5 +165,53 @@ describe('la fenêtre de retour', () => {
     );
     expect(screen.getByText('Valider le rush')).toBeInTheDocument();
     expect(screen.queryByText('Refuser / Commenter le rush')).toBeNull();
+  });
+});
+
+describe('relances et publication', () => {
+  it('« Ajouter à la timeline » laisse le monteur dans le chutier', async () => {
+    // Chaque ajout le projetait dans le studio, d'où il fallait revenir.
+    await ouvrir();
+    const carte = screen.getAllByText('vendeuse.mp4')[0].closest('.group');
+    fireEvent.click(within(carte).getByRole('button', { name: /Ajouter à la timeline/ }));
+    expect(await screen.findByText('« vendeuse.mp4 » ajouté à la timeline')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voir le studio' })).toBeInTheDocument();
+    expect(screen.getAllByText('marche.mp4').length).toBeGreaterThan(0);
+  });
+
+  it('demande avant de publier le JT à tous les correspondants', async () => {
+    localStorage.setItem('jt-bin-2026-w45', 'delivery');
+    render(
+      <I18nProvider>
+        <ToastProvider>
+          <DashboardView weeks={SEMAINES} selectedWeek="2026-w45" setSelectedWeek={() => {}} countries={PAYS} isActive isDesktopEditorAvailable />
+        </ToastProvider>
+      </I18nProvider>,
+    );
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'secret' } });
+    fireEvent.click(screen.getByRole('button', { name: /Déverrouiller/i }));
+    fireEvent.click((await screen.findAllByText(/Livraison JT/i))[0]);
+    const entree = await waitFor(() => {
+      const el = document.querySelector('input[type="file"][accept*="video"]') || document.querySelector('input[type="file"]');
+      if (!el) throw new Error('pas encore');
+      return el;
+    });
+    fireEvent.change(entree, { target: { files: [new File(['x'], 'JT_S45.mp4', { type: 'video/mp4' })] } });
+    expect(await screen.findByText('Publier le JT ?')).toBeInTheDocument();
+    expect(api.uploadDelivery).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Publier et prévenir' }));
+    await waitFor(() => expect(api.uploadDelivery).toHaveBeenCalled());
+  });
+});
+
+describe('sur ordinateur aussi', () => {
+  it('filtre par type et propose le lien du correspondant', async () => {
+    // Les deux n'existaient que sur téléphone.
+    await ouvrir();
+    const filtres = screen.getAllByRole('group', { name: 'Filtrer par type' })[0];
+    fireEvent.click(within(filtres).getByRole('button', { name: 'Images' }));
+    expect(screen.queryAllByText('marche.mp4')).toHaveLength(0);
+    expect(screen.getAllByText('plan.jpg').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Lien du correspondant/ }).length).toBeGreaterThan(0);
   });
 });

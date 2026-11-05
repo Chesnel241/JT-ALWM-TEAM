@@ -184,6 +184,11 @@ export const translations = {
       erreurReseau: 'Vérification impossible. Réessayez.',
       tropDEssais: 'Trop d’essais depuis cet appareil. Attendez un quart d’heure avant de réessayer.',
     },
+    publication: {
+      titre: 'Publier le JT ?',
+      message: (noms) => `« ${noms} » sera visible dans l’espace des correspondants, et tous seront prévenus.`,
+      confirmer: 'Publier et prévenir',
+    },
     revue: {
       valider: 'Valider',
       refuser: 'Refuser',
@@ -202,6 +207,8 @@ export const translations = {
       precedent: 'Précédent',
       suivant: 'Suivant',
       position: (i, n) => `${i} sur ${n}`,
+      ajouteTimeline: (nom) => `« ${nom} » ajouté à la timeline`,
+      voirStudio: 'Voir le studio',
     },
     estimation: {
       moinsDuneMinute: 'moins d’une minute',
@@ -265,7 +272,7 @@ export const translations = {
       aucun: 'Tous les pays ont envoyé quelque chose. Rien à relancer.',
       ouvrir: 'Relancer sur WhatsApp',
       sansNumero: 'Pas de numéro enregistré',
-      message: (pays, reste) => `Bonjour ${pays}, ici l’équipe de montage ALWM. Nous n’avons encore rien reçu pour le JT de cette semaine. Il reste ${reste} avant la clôture de dimanche 10h30 (GMT+2). Merci de nous envoyer votre reportage.`,
+      message: (pays, manque, reste) => `Bonjour ${pays}, ici l’équipe de montage ALWM. ${manque === 'sans_video' ? 'Nous avons bien reçu vos fichiers, mais pas encore de vidéo pour le JT de cette semaine.' : 'Nous n’avons encore rien reçu pour le JT de cette semaine.'} ${reste ? `Il reste ${reste} avant la clôture de dimanche 10h30 (GMT+2).` : 'La clôture est passée : envoyez dès que possible, ou demandez un délai depuis votre espace.'} Merci de nous envoyer votre reportage.`,
     },
     duree: {
       inconnue: 'durée inconnue',
@@ -1366,6 +1373,11 @@ export const translations = {
       erreurReseau: 'We could not check it. Try again.',
       tropDEssais: 'Too many attempts from this device. Wait fifteen minutes before trying again.',
     },
+    publication: {
+      titre: 'Publish the newscast?',
+      message: (noms) => `“${noms}” will appear in the correspondents’ space, and all of them will be notified.`,
+      confirmer: 'Publish and notify',
+    },
     revue: {
       valider: 'Approve',
       refuser: 'Reject',
@@ -1384,6 +1396,8 @@ export const translations = {
       precedent: 'Previous',
       suivant: 'Next',
       position: (i, n) => `${i} of ${n}`,
+      ajouteTimeline: (nom) => `“${nom}” added to the timeline`,
+      voirStudio: 'Open the studio',
     },
     estimation: {
       moinsDuneMinute: 'less than a minute',
@@ -1444,7 +1458,7 @@ export const translations = {
       aucun: 'Every country has sent something. Nobody to remind.',
       ouvrir: 'Remind them on WhatsApp',
       sansNumero: 'No number saved',
-      message: (pays, reste) => `Hello ${pays}, this is the ALWM editing team. We have not received anything yet for the newscast this week. You have ${reste} left before the deadline on Sunday at 10:30 (GMT+2). Please send us your report.`,
+      message: (pays, manque, reste) => `Hello ${pays}, this is the ALWM editing team. ${manque === 'sans_video' ? 'We have received your files, but no video yet for the newscast this week.' : 'We have not received anything yet for the newscast this week.'} ${reste ? `You have ${reste} left before the deadline on Sunday at 10:30 (GMT+2).` : 'The deadline has passed: send as soon as you can, or ask for an extension from your space.'} Please send us your report.`,
     },
     duree: {
       inconnue: 'length unknown',
