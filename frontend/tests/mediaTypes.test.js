@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  estTexte,
+  estTexteModifiable,
   classifyFile,
   splitByMediaType,
   groupByReportage,
@@ -154,5 +156,27 @@ describe('regroupement par sujet', () => {
     // Sujet supprimé entre-temps : le fichier doit rester visible.
     const groups = groupByReportage([{ name: 'a.mp4', sujetId: 'disparu', reportage: 'Reportage 1' }], { sujets: SUJETS });
     expect(groups[0].label).toBe('Reportage 1');
+  });
+});
+
+describe('la visionneuse du montage', () => {
+  // L'INCIDENT : tout ce qui n'était ni vidéo ni audio s'affichait comme du
+  // texte — une photo en caractères illisibles — et « Éditer » puis
+  // « Sauvegarder » pouvait réécrire le fichier en `text/plain`.
+  it('ne lit comme du texte ni une photo, ni un PDF, ni une archive', () => {
+    expect(estTexte({ name: 'marche.jpg', type: 'image' })).toBe(false);
+    expect(estTexte({ name: 'conducteur.pdf', type: 'document' })).toBe(false);
+    expect(estTexte({ name: 'rushs.zip', type: 'document' })).toBe(false);
+  });
+
+  it('lit comme du texte les scripts et les sous-titres', () => {
+    expect(estTexte({ name: 'Script_1.txt', type: 'script' })).toBe(true);
+    expect(estTexte({ name: 'sous-titres.srt' })).toBe(true);
+  });
+
+  it('ne laisse modifier que les .txt', () => {
+    expect(estTexteModifiable({ name: 'Script_1.txt', type: 'script' })).toBe(true);
+    expect(estTexteModifiable({ name: 'sous-titres.srt' })).toBe(false);
+    expect(estTexteModifiable({ name: 'marche.jpg', type: 'image' })).toBe(false);
   });
 });

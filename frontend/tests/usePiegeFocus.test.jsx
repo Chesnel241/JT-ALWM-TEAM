@@ -224,7 +224,7 @@ describe('aucun panneau ne repart sans piège', () => {
     expect(detaches, 'le piège est déclaré mais posé sur rien').toEqual([]);
   });
 
-  it('en couvre bien onze', () => {
+  it('en couvre bien douze', () => {
     // Un balayage qui ne voit rien passe toujours. Si ce compte tombe, c'est
     // qu'un panneau a disparu — ou que le balayage ne le trouve plus.
     // `= usePiegeFocus(` plutôt que le simple nom : sinon le fichier du hook
@@ -233,7 +233,8 @@ describe('aucun panneau ne repart sans piège', () => {
     // Onze depuis la feuille des titres de reportages (`ReportagesSheet`).
     // Elle remplace `SujetTitleSheet`, qui s'affichait en boîte modale sans
     // l'annoncer ni retenir le focus — et que ce balayage ne voyait donc pas.
+    // Douze avec la fenêtre du numéro WhatsApp d'un pays (`ContactPaysDialog`).
     const avec = fichiers(RACINE).filter((f) => readFileSync(f, 'utf8').includes('= usePiegeFocus(')).length;
-    expect(avec).toBe(11);
+    expect(avec).toBe(12);
   });
 });

@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import {
   Mic, Square, Pause, Play, Send, RotateCcw, FileAudio, CheckCircle, AlertTriangle, ZoomIn, ZoomOut, UploadCloud,
 } from 'lucide-react';
@@ -106,6 +106,8 @@ export default function StudioVoixJournaliste({
   const idTexte = useId();
   const aDuTexte = Boolean(script?.trim());
   const etatMicro = enregistre ? (enPause ? 'pause' : 'rec') : 'pret';
+  // « Recommencer » efface la prise : un appui de trop, et la voix est perdue.
+  const [confirmeEffacer, setConfirmeEffacer] = useState(false);
 
   return (
     <div className="space-y-5 pb-10">
@@ -312,15 +314,10 @@ export default function StudioVoixJournaliste({
                     {etapeEnvoi}
                   </p>
                 )}
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    disabled={envoiEnCours}
-                    onClick={onRecommencer}
-                    className="jr-bouton jr-bouton-orange w-full disabled:opacity-50"
-                  >
-                    <RotateCcw size={18} aria-hidden="true" /> {v.recommencer}
-                  </button>
+                {/* L'INCIDENT : « Recommencer » venait avant « Envoyer » et
+                    effaçait la prise sans rien demander. Le geste attendu
+                    vient d'abord ; l'effacement demande une confirmation. */}
+                <div className="space-y-3">
                   <button
                     type="button"
                     disabled={envoiEnCours || !pays}
@@ -332,6 +329,32 @@ export default function StudioVoixJournaliste({
                       : <Send size={20} aria-hidden="true" />}
                     {v.envoyer}
                   </button>
+                  {confirmeEffacer ? (
+                    <div role="group" aria-label={v.effacerQuestion} className="motion-rise rounded-2xl border-2 border-[var(--cta-orange)]/40 bg-[var(--cta-orange)]/10 p-3 space-y-3">
+                      <p className="font-bold text-[color:var(--ink)]">{v.effacerQuestion}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setConfirmeEffacer(false)} className="jr-bouton jr-bouton-contour w-full">
+                          {v.garder}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setConfirmeEffacer(false); onRecommencer(); }}
+                          className="jr-bouton jr-bouton-orange w-full"
+                        >
+                          {v.effacerOui}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={envoiEnCours}
+                      onClick={() => setConfirmeEffacer(true)}
+                      className="jr-bouton jr-bouton-contour w-full disabled:opacity-50"
+                    >
+                      <RotateCcw size={18} aria-hidden="true" /> {v.recommencer}
+                    </button>
+                  )}
                 </div>
               </div>
             ) : mode === 'upload' ? (
@@ -379,7 +402,9 @@ export default function StudioVoixJournaliste({
                     etatMicro === 'rec' ? 'text-[color:var(--cta-red-deep)]' : etatMicro === 'pause' ? 'text-[color:var(--cta-orange-deep)]' : 'text-[color:var(--muted)]'
                   }`}>
                     {etatMicro === 'rec' && <span className="jr-micro-point" aria-hidden="true" />}
-                    {demarrage ? v.demarrage : etatMicro === 'rec' ? v.enCours : etatMicro === 'pause' ? v.enPause : v.appuyer}
+                    {/* Sans pays, le bouton rouge est grisé : « appuyez sur le
+                        bouton rouge » envoyait vers un bouton qui ne répond pas. */}
+                    {demarrage ? v.demarrage : etatMicro === 'rec' ? v.enCours : etatMicro === 'pause' ? v.enPause : !pays ? v.erreurPays : v.appuyer}
                   </span>
                 </p>
 

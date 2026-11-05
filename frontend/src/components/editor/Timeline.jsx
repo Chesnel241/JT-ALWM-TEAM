@@ -234,11 +234,20 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
       tabIndex={0}
       onPointerDown={beginDrag('move')}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onOpen();
+        } else if (event.key === 'Delete' || event.key === 'Backspace') {
+          // L'INCIDENT : Suppr sur un titre supprimait le **plan vidéo**
+          // sélectionné. Le titre focalisé est ce qu'on vise : c'est lui
+          // qu'on retire, et le raccourci global ne voit plus la touche.
+          event.preventDefault();
+          event.stopPropagation();
+          onChange(overlays.filter((_, itemIndex) => itemIndex !== index));
         }
       }}
+      data-titre-piste
       aria-label={t.studio.timeline.etiquetteTitre(label, formatTimecode(startTime), formatTimecode(duration))}
       title={t.studio.timeline.clipGlisser}
       className="absolute inset-y-1 rounded border border-[var(--editor-title)] bg-[var(--editor-title)]/75 text-[var(--editor-text)] shadow-sm cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
@@ -958,8 +967,24 @@ export default function Timeline({
         else nudgePlayhead(direction, event.shiftKey);
       }
     };
+    // L'INCIDENT : après un clic sur « Supprimer », le bouton gardait le
+    // focus. Espace — lecture/pause pour un monteur — le réactivait alors
+    // nativement et supprimait le clip suivant. Un clic à la souris
+    // (`detail > 0`) rend donc le focus au studio ; un bouton activé au
+    // clavier (`detail === 0`) le garde, pour qui navigue à la tabulation.
+    // Écouté sur `window`, en bulle : le geste du bouton est déjà fait.
+    const rendreLeFocus = (event) => {
+      if (event.detail === 0) return;
+      const bouton = event.target instanceof Element ? event.target.closest('button') : null;
+      if (!bouton || !bouton.closest('[data-timeline-root], .studio-shell')) return;
+      if (document.activeElement === bouton) bouton.blur();
+    };
     window.addEventListener('keydown', handleShortcut);
-    return () => window.removeEventListener('keydown', handleShortcut);
+    window.addEventListener('click', rendreLeFocus);
+    return () => {
+      window.removeEventListener('keydown', handleShortcut);
+      window.removeEventListener('click', rendreLeFocus);
+    };
   }, [compact, decalerSelection, nudgePlayhead, playheadSec, redo, removeSelected, splitAt, togglePlayback, undo]);
 
   const playheadX = clamp(playheadSec, 0, layout.total) * pxPerSec;

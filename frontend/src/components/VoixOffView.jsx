@@ -39,7 +39,10 @@ export default function VoixOffView({
   isReporter = false,
   isActive = true,
 }) {
-  const { addToast } = useToast();
+  const { addToast, removeToast } = useToast();
+  // Le message « ce n'est pas un son » reste jusqu'au geste : on le retire
+  // dès qu'un bon fichier arrive, sans quoi il contredirait « voix prête ».
+  const erreurFichierRef = useRef(null);
   const { lang, t } = useI18n();
 
   const selectableCountries = countries.filter((c) => c.id !== '_subscriptions');
@@ -137,9 +140,12 @@ export default function VoixOffView({
   const stopVisualizer = useCallback(() => {
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
     if (canvasRef.current) {
+      // `getContext` rend `null` quand le contexte est perdu (et en test).
       const ctx = canvasRef.current.getContext('2d');
-      ctx.fillStyle = '#121212';
-      ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      if (ctx) {
+        ctx.fillStyle = '#121212';
+        ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
     }
     setAudioLevel(0);
     setIsAudioClipping(false);
@@ -321,11 +327,27 @@ export default function VoixOffView({
     }
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = (e) => accepterFichier(e.target.files?.[0]);
+
+  // L'INCIDENT : la zone disait « Glissez » sans gérer le dépôt. Lâcher un
+  // fichier dessus faisait ouvrir le fichier par le navigateur — la page
+  // partait, et le script en cours de saisie avec elle.
+  const [survolDepot, setSurvolDepot] = useState(false);
+  const surDepot = (e) => {
+    e.preventDefault();
+    setSurvolDepot(false);
+    accepterFichier(e.dataTransfer?.files?.[0]);
+  };
+
+  function accepterFichier(file) {
     if (!file) return;
     if (!file.type.startsWith('audio/') && !/\.(mp3|m4a|wav|aac|ogg|webm)$/i.test(file.name)) {
-      return addToast(t.voix.erreurFichier, 'error');
+      erreurFichierRef.current = addToast(t.voix.erreurFichier, 'error');
+      return;
+    }
+    if (erreurFichierRef.current) {
+      removeToast(erreurFichierRef.current);
+      erreurFichierRef.current = null;
     }
     setVoixEnvoyee(false);
     setAudioBlob(file);
@@ -335,7 +357,7 @@ export default function VoixOffView({
       const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
       setReportageTitle(baseName);
     }
-  };
+  }
 
   const handleUpload = async () => {
     if (!audioBlob || !selectedCountry || !selectedWeek) return;
@@ -760,7 +782,11 @@ export default function VoixOffView({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full py-6 px-4 rounded-2xl border-2 border-dashed border-slate-700 hover:border-purple-500 bg-slate-900/50 flex flex-col items-center justify-center gap-2 text-slate-300 hover:text-white transition-all motion-tap"
+                  onDragOver={(e) => { e.preventDefault(); setSurvolDepot(true); }}
+                  onDragLeave={() => setSurvolDepot(false)}
+                  onDrop={surDepot}
+                  data-survol={survolDepot || undefined}
+                  className="w-full py-6 px-4 rounded-2xl border-2 border-dashed border-slate-700 hover:border-purple-500 data-[survol]:border-purple-400 data-[survol]:bg-purple-950/40 bg-slate-900/50 flex flex-col items-center justify-center gap-2 text-slate-300 hover:text-white transition-all motion-tap"
                 >
                   <FileAudio size={28} className="text-purple-400" />
                   <span className="text-xs font-bold">Glissez ou sélectionnez un fichier audio</span>

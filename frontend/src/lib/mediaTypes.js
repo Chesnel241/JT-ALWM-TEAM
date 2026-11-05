@@ -51,6 +51,30 @@ export function classifyFile(file) {
   return MEDIA_TYPES.DOCUMENT;
 }
 
+/**
+ * Un document qu'on peut lire comme du texte.
+ *
+ * L'INCIDENT : la visionneuse du montage lisait **tout** ce qui n'était ni
+ * vidéo ni audio comme du texte. Une photo s'affichait en caractères
+ * illisibles, un PDF aussi — et « Éditer » puis « Sauvegarder » pouvait
+ * renvoyer ce charabia au serveur en `text/plain`, à la place du fichier.
+ */
+const TEXTE_EXT = /\.(txt|md|srt|vtt|csv)$/i;
+
+export function estTexte(file) {
+  if (!file) return false;
+  const name = String(file.name || file.filename || '');
+  const declared = String(file.type || '').toLowerCase();
+  return TEXTE_EXT.test(name) || declared === 'script' || declared.startsWith('text/');
+}
+
+/** Seuls les `.txt` (et les scripts saisis dans la plateforme) se modifient. */
+export function estTexteModifiable(file) {
+  if (!estTexte(file)) return false;
+  const name = String(file.name || file.filename || '');
+  return /\.txt$/i.test(name) || String(file.type || '').toLowerCase() === 'script';
+}
+
 /** Répartit une liste de fichiers dans les quatre familles. */
 export function splitByMediaType(files) {
   const out = {

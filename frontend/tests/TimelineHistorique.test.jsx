@@ -301,3 +301,36 @@ describe('ce qu’un lecteur d’écran annonce', () => {
     expect(screen.getByLabelText(/^Title .*, starts .*, lasts /)).toBeInTheDocument();
   });
 });
+
+describe('les touches du studio visent ce qu’on regarde', () => {
+  it('après un clic sur « Supprimer », Espace ne réactive pas le bouton', () => {
+    // L'INCIDENT : le bouton gardait le focus ; Espace (lecture/pause) le
+    // réactivait nativement et supprimait le clip suivant.
+    const au = poser();
+    const bouton = screen.getByRole('button', { name: new RegExp(dit.supprimer, 'i') });
+    bouton.focus();
+    fireEvent.click(bouton, { detail: 1 });
+    expect(au.current.montage.clips.length).toBe(1);
+    expect(document.activeElement).not.toBe(bouton);
+  });
+
+  it('au clavier, le bouton garde le focus (navigation à la tabulation)', () => {
+    poser();
+    const bouton = screen.getByRole('button', { name: new RegExp(dit.supprimer, 'i') });
+    bouton.focus();
+    fireEvent.click(bouton, { detail: 0 });
+    expect(document.activeElement).toBe(bouton);
+  });
+
+  it('Suppr sur un titre retire le titre, pas le plan vidéo sélectionné', () => {
+    // L'INCIDENT : la touche partait au raccourci global, qui supprimait le
+    // clip sélectionné — une vidéo — alors qu'on regardait un titre.
+    const au = poser();
+    au.modifier({ overlays: [{ id: 'o1', type: 'lower-third', startTime: 0, duration: 3, fields: { titre: 'Marché' } }] });
+    const titre = screen.getByRole('button', { name: /Marché/ });
+    titre.focus();
+    fireEvent.keyDown(titre, { key: 'Delete' });
+    expect(au.current.montage.overlays).toHaveLength(0);
+    expect(au.current.montage.clips).toHaveLength(2);
+  });
+});

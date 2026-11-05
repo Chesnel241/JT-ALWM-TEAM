@@ -430,6 +430,28 @@ body {
 		animation: fadeIn 200ms var(--ease-out) forwards;
 	}
 
+	/* Les messages montent d'en bas, là où ils vivent. Une transition plutôt
+	   qu'une animation : deux messages rapprochés ne repartent pas de zéro.
+	   Sur un navigateur sans `@starting-style`, ils apparaissent sans
+	   mouvement — rien n'est caché. */
+	.toast-zone {
+		bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+	}
+	@media (min-width: 640px) {
+		.toast-zone {
+			bottom: 1.5rem;
+		}
+	}
+	.toast-item {
+		transition: opacity var(--motion-enter) var(--ease-out), transform var(--motion-enter) var(--ease-out);
+	}
+	@starting-style {
+		.toast-item {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+	}
+
 	/* L'arrivée d'une boîte modale et de son voile.
 
 	   Dix composants portaient `animate-in fade-in zoom-in-95 duration-200` et

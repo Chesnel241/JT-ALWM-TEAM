@@ -122,9 +122,13 @@ export function retablir(historique, etatCourant) {
  * Repart de zéro.
  *
  * Réservé à ce qui vient d'ailleurs : hydratation d'une semaine, notification
- * socket d'un collègue, adoption de la copie serveur après un 409. Annuler
- * l'arrivée d'un collègue réécraserait son travail en silence — et lui, il ne
- * verrait rien.
+ * socket d'un collègue. Annuler l'arrivée d'un collègue réécraserait son
+ * travail en silence — et lui, il ne verrait rien.
+ *
+ * Le conflit de sauvegarde (409) fait exception, et ce n'est pas un oubli :
+ * repartir de zéro y jetait **notre** version sans recours. Elle devient
+ * l'étape précédente, et le monteur est prévenu par un message qui offre de
+ * la reprendre — un choix annoncé, donc rien de silencieux.
  */
 export function reinitialiser() {
   return creerHistorique();

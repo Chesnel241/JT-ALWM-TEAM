@@ -4,6 +4,7 @@ import { useI18n } from '../i18n/I18nContext.jsx';
 import { useOptionalToast } from '../hooks/useToast.jsx';
 import { Lock, Clock, CheckCircle, BarChart2 } from 'lucide-react';
 import { formatAbsolute } from '../lib/dates.js';
+import { echeanceApresDelai, heureCourte } from '../lib/delais.js';
 
 export default function StatsView({ weeks, selectedWeek }) {
   const { lang, t } = useI18n();
@@ -54,7 +55,10 @@ export default function StatsView({ weeks, selectedWeek }) {
   
   const handleApprove = async (countryId, minutes) => {
     try {
-      await api.approveDelay(selectedWeek, countryId, minutes, adminPassword);
+      const ext = await api.approveDelay(selectedWeek, countryId, minutes, adminPassword);
+      if (ext?.extendedUntil) {
+        addToast(t.delais.accorde(countryId.toUpperCase(), heureCourte(new Date(ext.extendedUntil), lang)), 'success', 5000);
+      }
       loadStats();
     } catch (err) {
       console.error(err);
@@ -64,7 +68,10 @@ export default function StatsView({ weeks, selectedWeek }) {
   
   const handleGlobalDelay = async (minutes) => {
     try {
-      await api.setGlobalDelay(selectedWeek, minutes, adminPassword);
+      const ext = await api.setGlobalDelay(selectedWeek, minutes, adminPassword);
+      if (ext?.extendedUntil) {
+        addToast(t.delais.accorde(t.delais.tousLesPays, heureCourte(new Date(ext.extendedUntil), lang)), 'success', 5000);
+      }
       loadStats();
     } catch (err) {
       console.error(err);
@@ -113,6 +120,14 @@ export default function StatsView({ weeks, selectedWeek }) {
   const extensionStats = statsData?.extensionsByCountry || {};
   const sortedExtensionStats = Object.entries(extensionStats).sort((a, b) => b[1] - a[1]);
   
+  // Chaque bouton dit l'heure qu'il donnera, calculée comme le serveur le
+  // fera : on ne découvre plus après coup qu'un « +1 h » a raccourci un délai.
+  const cutoffAt = weeks?.find((w) => w.id === selectedWeek)?.cutoffAt;
+  const apres = (minutes, demande = null) => t.delais.jusqua(heureCourte(
+    echeanceApresDelai({ cutoffAt, global: currentDelays.global, demande, minutes }),
+    lang,
+  ));
+
   const maxLate = sortedLateStats[0]?.[1] || 1;
   const maxExt = sortedExtensionStats[0]?.[1] || 1;
   
@@ -138,9 +153,9 @@ export default function StatsView({ weeks, selectedWeek }) {
             <div className="mb-6 pb-6 border-b border-[var(--border)]">
               <h3 className="font-semibold text-[color:var(--ink)] mb-3">Délai Global (Tous les pays)</h3>
               <div className="flex gap-2 flex-wrap">
-                <button onClick={() => handleGlobalDelay(60)} className="btn bg-[var(--paper-2)] border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-colors">+ 1h</button>
-                <button onClick={() => handleGlobalDelay(180)} className="btn bg-[var(--paper-2)] border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-colors">+ 3h</button>
-                <button onClick={() => handleGlobalDelay(720)} className="btn bg-[var(--paper-2)] border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-colors">+ 12h</button>
+                <button onClick={() => handleGlobalDelay(60)} title={apres(60)} className="btn bg-[var(--paper-2)] border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-colors flex flex-col items-center leading-tight"><span>+ 1h</span><span className="text-[11px] font-medium opacity-80">{apres(60)}</span></button>
+                <button onClick={() => handleGlobalDelay(180)} title={apres(180)} className="btn bg-[var(--paper-2)] border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-colors flex flex-col items-center leading-tight"><span>+ 3h</span><span className="text-[11px] font-medium opacity-80">{apres(180)}</span></button>
+                <button onClick={() => handleGlobalDelay(720)} title={apres(720)} className="btn bg-[var(--paper-2)] border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-colors flex flex-col items-center leading-tight"><span>+ 12h</span><span className="text-[11px] font-medium opacity-80">{apres(720)}</span></button>
               </div>
               {currentDelays.global?.extendedUntil && (
                 <p className="mt-2 text-sm text-[color:var(--muted)] flex items-center gap-1">
@@ -173,9 +188,9 @@ export default function StatsView({ weeks, selectedWeek }) {
                       </div>
                       
                       <div className="flex gap-2">
-                        <button onClick={() => handleApprove(countryId, 60)} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400">+ 1h</button>
-                        <button onClick={() => handleApprove(countryId, 180)} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400">+ 3h</button>
-                        <button onClick={() => handleApprove(countryId, 720)} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400">+ 12h</button>
+                        <button onClick={() => handleApprove(countryId, 60)} title={apres(60, req)} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 flex flex-col items-center leading-tight"><span>+ 1h</span><span className="text-[11px] font-medium opacity-80">{apres(60, req)}</span></button>
+                        <button onClick={() => handleApprove(countryId, 180)} title={apres(180, req)} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 flex flex-col items-center leading-tight"><span>+ 3h</span><span className="text-[11px] font-medium opacity-80">{apres(180, req)}</span></button>
+                        <button onClick={() => handleApprove(countryId, 720)} title={apres(720, req)} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 flex flex-col items-center leading-tight"><span>+ 12h</span><span className="text-[11px] font-medium opacity-80">{apres(720, req)}</span></button>
                       </div>
                     </div>
                   ))}

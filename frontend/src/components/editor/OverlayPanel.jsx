@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { X, Plus, Trash2, Layers, Clock, Search } from 'lucide-react';
 import { COULEURS } from '../../../../remotion/src/identite.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
@@ -70,7 +70,10 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           <span aria-hidden="true">{template.emoji}</span> {dit.label}
         </span>
         <button
+          type="button"
           onClick={onRemove}
+          aria-label={`${t.studio.panneaux.supprimer} — ${dit.label}`}
+          title={t.studio.panneaux.supprimer}
           className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
         >
           <Trash2 size={14} />
@@ -457,6 +460,8 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
   const { t } = useI18n();
   const [overlays, setOverlays] = useState(clip.overlays || []);
   const [picking, setPicking] = useState(false);
+  // Ce qu'il y avait à l'ouverture : « Annuler » y revient.
+  const initiales = useRef(clip.overlays || []);
 
   // Trigger real-time preview
   useEffect(() => {
@@ -496,6 +501,13 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
 
   const handleSave = () => {
     onSave({ ...clip, overlays });
+    onClose();
+  };
+
+  // L'INCIDENT : « Annuler » fermait seulement le panneau. Les changements,
+  // déjà appliqués en direct à l'aperçu, restaient dans le montage.
+  const handleCancel = () => {
+    if (overlays !== initiales.current) onChangePreview?.({ ...clip, overlays: initiales.current });
     onClose();
   };
 
@@ -554,7 +566,8 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
         {/* Footer */}
         <div className="flex gap-3 p-5 border-t border-[var(--border)] bg-[var(--paper-2)]">
           <button
-            onClick={onClose}
+            type="button"
+            onClick={handleCancel}
             className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)] text-sm transition-colors"
           >
             {t.studio.panneaux.annuler}

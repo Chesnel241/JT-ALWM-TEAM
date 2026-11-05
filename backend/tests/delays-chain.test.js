@@ -99,3 +99,46 @@ describe('POST /api/delays/request — body JSON parsé (Content-Type)', () => {
     }
   });
 });
+
+/**
+ * Un délai s'ajoute à l'échéance en vigueur, il ne repart pas de l'heure du clic.
+ *
+ * L'INCIDENT : « +1 h » donné après « +12 h » raccourcissait le délai de onze
+ * heures, et un délai accordé avant la clôture tombait avant elle.
+ */
+describe('délais — calcul de la nouvelle échéance', () => {
+  const H = 60 * 60 * 1000;
+
+  it('avant la clôture, +1 h repousse la clôture d’une heure', async () => {
+    const { weekUploadCutoff } = await import('../src/data/constants.js');
+    const cloture = weekUploadCutoff(weekId).getTime();
+    const ext = approveExtension(weekId, 'bj', 60, new Date(cloture - 5 * H));
+    expect(new Date(ext.extendedUntil).getTime()).toBe(cloture + H);
+  });
+
+  it('+1 h après +12 h prolonge encore, il ne raccourcit pas', async () => {
+    const { weekUploadCutoff } = await import('../src/data/constants.js');
+    const cloture = weekUploadCutoff(weekId).getTime();
+    const apres = new Date(cloture + 2 * H);
+    approveExtension(weekId, 'ga', 12 * 60, apres);
+    const ext = approveExtension(weekId, 'ga', 60, new Date(cloture + 3 * H));
+    expect(new Date(ext.extendedUntil).getTime()).toBe(cloture + 2 * H + 12 * H + H);
+  });
+
+  it('échéance déjà passée : le délai part de maintenant', async () => {
+    const { weekUploadCutoff } = await import('../src/data/constants.js');
+    const cloture = weekUploadCutoff(weekId).getTime();
+    const maintenant = new Date(cloture + 30 * H);
+    const ext = approveExtension(weekId, 'ml', 180, maintenant);
+    expect(new Date(ext.extendedUntil).getTime()).toBe(maintenant.getTime() + 3 * H);
+  });
+
+  it('le délai global suit la même règle', async () => {
+    const { setGlobalExtension } = await import('../src/data/store.js');
+    const { weekUploadCutoff } = await import('../src/data/constants.js');
+    const cloture = weekUploadCutoff(weekId).getTime();
+    setGlobalExtension(weekId, 120, new Date(cloture - H));
+    const ext = setGlobalExtension(weekId, 60, new Date(cloture));
+    expect(new Date(ext.extendedUntil).getTime()).toBe(cloture + 2 * H + H);
+  });
+});

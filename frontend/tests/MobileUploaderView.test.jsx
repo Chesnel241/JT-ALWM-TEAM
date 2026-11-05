@@ -316,3 +316,23 @@ describe('choisir le nombre de reportages', () => {
     expect(sectionTab('Titre corrigé')).toHaveTextContent('2');
   });
 });
+
+describe('ce que la page d’envoi dit, reportage par reportage', () => {
+  it('au retour, surligne l’onglet du reportage affiché', () => {
+    // L'INCIDENT : l'onglet actif valait encore « reportage-0 » alors que les
+    // sections portaient les identifiants du serveur — aucun n'était surligné.
+    renderMobileUploader();
+    const onglet = sectionTab('Marché de Libreville');
+    expect(onglet).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('ne dit pas « vous pouvez fermer la page » pendant un envoi dans un autre reportage', () => {
+    // L'INCIDENT : l'encadré ne regardait que le reportage affiché. Fermer la
+    // page aurait interrompu l'envoi en cours ailleurs.
+    renderMobileUploader({
+      uploading: [{ id: 'u1', name: 'rentree.mp4', sujetId: 's2', reportage: 'Rentrée scolaire', progress: 40, status: 'uploading' }],
+    });
+    expect(screen.queryByText(/Vous pouvez fermer la page/)).not.toBeInTheDocument();
+    expect(screen.getByText(/gardez la page ouverte/)).toBeInTheDocument();
+  });
+});

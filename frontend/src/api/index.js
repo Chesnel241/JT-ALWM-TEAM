@@ -1,6 +1,7 @@
 import { tStatic } from '../i18n/runtime.js';
 import axios from 'axios';
 import { readReporterToken } from '../lib/reporterIdentity.js';
+import { messageErreur } from '../lib/erreursReseau.js';
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const BASE = `${API_BASE}/api`;
@@ -24,16 +25,20 @@ async function request(url, options = {}) {
   try {
     res = await fetch(`${BASE}${url}`, { ...options, headers });
   } catch (error) {
-    throw new Error("Échec de connexion : le serveur redémarre peut-être suite à une mise à jour. Veuillez patienter 30 secondes.");
+    // Chez un correspondant sur 4G, c'est presque toujours son réseau — pas
+    // « le serveur redémarre peut-être ».
+    throw new Error(messageErreur(0, tStatic().errors));
   }
 
   if (!res.ok) {
     if (res.status === 502 || res.status === 503 || res.status === 504) {
-      const gatewayError = new Error("La plateforme est en cours de mise à jour (redémarrage). Veuillez réessayer dans 30 secondes.");
+      const gatewayError = new Error(messageErreur(res.status, tStatic().errors));
       gatewayError.status = res.status;
       throw gatewayError;
     }
-    const body = await res.json().catch(() => ({ message: res.statusText }));
+    // Sans message du serveur, `statusText` (« Bad Request »…) s'affichait
+    // en anglais : on dit le cas, dans la langue de l'écran.
+    const body = await res.json().catch(() => ({ message: messageErreur(res.status, tStatic().errors) }));
     // Le statut et le corps sont attachés à l'erreur : certains échecs se
     // rattrapent au lieu de s'afficher (409 TIMELINE_CONFLICT renvoie le
     // workspace à recharger), et un message seul ne permet pas de les
@@ -479,9 +484,8 @@ export const api = {
           // s'il suffit d'attendre. `definitif` à faux signifie « le réseau
           // a lâché » — on remet en file, sans rien afficher de rouge.
           const statut = error?.originalResponse?.getStatus?.() || 0;
-          const echec = new Error(
-            statut && error.message ? error.message : (error.message || tStatic().errors.networkError),
-          );
+          // Jamais le message brut de tus (anglais, technique, avec l'URL).
+          const echec = new Error(messageErreur(statut, tStatic().errors));
           echec.statut = statut;
           echec.definitif = Boolean(statut) && REFUS_DEFINITIFS.has(statut);
           reject(echec);
@@ -554,7 +558,7 @@ export const api = {
       return res.data;
     } catch (err) {
       if (axios.isCancel(err)) throw new Error(tStatic().errors.uploadCancelled);
-      throw new Error(err.response?.data?.message || tStatic().errors.networkError);
+      throw new Error(err.response?.data?.message || messageErreur(err.response?.status || 0, tStatic().errors));
     }
   },
 

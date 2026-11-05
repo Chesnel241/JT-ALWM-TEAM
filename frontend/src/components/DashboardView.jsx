@@ -8,7 +8,7 @@ import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekDates } from
 import RelancePanel from './RelancePanel.jsx';
 import RubriquePanel from './RubriquePanel.jsx';
 import { formaterDuree, formaterTotal } from '../lib/duree.js';
-import { MEDIA_ORDER, MEDIA_TYPES, groupByReportage, classifyFile } from '../lib/mediaTypes.js';
+import { MEDIA_ORDER, MEDIA_TYPES, groupByReportage, classifyFile, estTexte, estTexteModifiable } from '../lib/mediaTypes.js';
 import { reportageTone } from '../lib/branding.js';
 
 // Les quatre familles de rushes, dans l'ordre où l'équipe montage les
@@ -45,6 +45,9 @@ import {
 } from './editor/historiqueMontage.js';
 import ActionSheet from './ActionSheet.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
+import ContactPaysDialog from './ContactPaysDialog.jsx';
+import { tailleLisible } from '../lib/taille.js';
+import { fusionnerInspecteur } from './editor/fusionInspecteur.js';
 import ReporterLinkDialog from './ReporterLinkDialog.jsx';
 import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
@@ -165,7 +168,7 @@ function HoverPreviewVideo({ src, className }) {
   );
 }
 
-function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, onContentChange }) {
+function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, onContentChange, modifiable = false }) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -247,7 +250,7 @@ function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, o
         </>
       ) : (
         <>
-          {adminPassword && (
+          {adminPassword && modifiable && (
             <div className="flex justify-end mb-2">
               <button
                 onClick={() => setIsEditing(true)}
@@ -280,9 +283,11 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
       <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] motion-boite">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
           <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
-            {file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i) ? (
+            {classifyFile(file) === MEDIA_TYPES.VIDEO ? (
               <Video className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
-            ) : file?.type === 'audio' || !!file?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i) ? (
+            ) : classifyFile(file) === MEDIA_TYPES.IMAGE ? (
+              <ImageIcon className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
+            ) : classifyFile(file) === MEDIA_TYPES.AUDIO ? (
               <Mic className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
             ) : (
               <FileText className="text-[color:var(--accent)]" size={20} aria-hidden="true" />
@@ -299,17 +304,46 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
         </div>
         <div className="p-6 overflow-y-auto flex-1 bg-[var(--paper)] min-h-[300px] relative flex flex-col items-center justify-center">
           {(() => {
-            const isVideo = file?.type === 'video' || !!file?.name?.match(/\.(mp4|mov|avi|mkv)$/i);
-            const isAudio = file?.type === 'audio' || !!file?.name?.match(/\.(mp3|wav|m4a|webm|ogg)$/i);
+            const famille = classifyFile(file);
             const url = `${API_BASE}/uploads/${file?.filename}`;
-            
-            if (isVideo) {
+
+            if (famille === MEDIA_TYPES.VIDEO) {
               return <video src={url} controls autoPlay className="max-w-full max-h-[60vh] rounded shadow-lg" playsInline />;
-            } else if (isAudio) {
-              return <audio src={url} controls autoPlay className="w-full mt-4" />;
-            } else {
-              return <ScriptViewerContent file={file} selectedWeek={selectedWeek} selectedBin={selectedBin} adminPassword={adminPassword} onContentChange={onContentChange} />;
             }
+            if (famille === MEDIA_TYPES.AUDIO) {
+              return <audio src={url} controls autoPlay className="w-full mt-4" />;
+            }
+            if (famille === MEDIA_TYPES.IMAGE) {
+              return <img src={url} alt={file?.name || ''} className="max-w-full max-h-[60vh] rounded object-contain shadow-lg" />;
+            }
+            if (estTexte(file)) {
+              return (
+                <ScriptViewerContent
+                  file={file}
+                  selectedWeek={selectedWeek}
+                  selectedBin={selectedBin}
+                  adminPassword={adminPassword}
+                  modifiable={estTexteModifiable(file)}
+                  onContentChange={onContentChange}
+                />
+              );
+            }
+            // PDF, Word, ZIP… : pas d'aperçu dans le navigateur, on les
+            // télécharge plutôt que de les lire comme du texte.
+            return (
+              <div className="flex flex-col items-center gap-4 text-center">
+                <FileText size={40} className="text-[color:var(--muted)]" aria-hidden="true" />
+                <p className="text-[color:var(--muted)]">Pas d’aperçu pour ce type de fichier.</p>
+                <a
+                  href={url}
+                  download={file?.name || true}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--action)] px-5 font-semibold text-white hover:bg-[var(--action-deep)]"
+                >
+                  <Download size={18} aria-hidden="true" />
+                  Télécharger {file?.size ? `(${tailleLisible(file.size)})` : ''}
+                </a>
+              </div>
+            );
           })()}
         </div>
       </div>
@@ -358,6 +392,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [feedbackPhone, setFeedbackPhone] = useState(null);
   const [fileToFeedback, setFileToFeedback] = useState(null);
   const [subscriptions, setSubscriptions] = useState([]);
+  // Pays dont on saisit le numéro WhatsApp (fenêtre « + Ajouter »).
+  const [contactPaysId, setContactPaysId] = useState(null);
   
   // Editor State
   const [timelineClips, setTimelineClips] = useState([]);
@@ -416,6 +452,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // gestionnaires socket). Les mettre en dépendance d'effet reconnecterait la
   // socket ou relancerait l'hydratation à chaque changement.
   const adminPasswordRef = useRef(authenticatedAdminPassword);
+  // Semaine dont l'écran montre les fichiers (voir le chargement par semaine).
+  const semaineAfficheeRef = useRef(null);
   const isGeneratingVideoRef = useRef(false);
   useEffect(() => { adminPasswordRef.current = authenticatedAdminPassword; }, [authenticatedAdminPassword]);
   useEffect(() => { isGeneratingVideoRef.current = isGeneratingVideo; }, [isGeneratingVideo]);
@@ -464,7 +502,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       return;
     }
     modifierMontage(
-      (m) => ({ ...m, clips: m.clips.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)) }),
+      (m) => ({ ...m, clips: fusionnerInspecteur(m.clips, updatedClip, ['overlays']) }),
       etiquetteSaisie(updatedClip.instanceId, 'inspecteur'),
     );
   }, [modifierMontage]);
@@ -476,6 +514,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       return recul.historique;
     });
   }, [poserMontage]);
+
+  // Le message de conflit est créé avant que ces fonctions ne changent : il
+  // passe par une référence pour toujours appeler la version courante.
+  const annulerMontageRef = useRef(null);
+  annulerMontageRef.current = annulerMontage;
 
   const retablirMontage = useCallback(() => {
     setHistorique((h) => {
@@ -807,6 +850,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     if (!selectedWeek) return;
     let cancelled = false;
     setLoading(true);
+    // Une autre semaine : on vide ce qui appartenait à la précédente. (Le
+    // même effet repasse quand le mot de passe change ; là, on garde l'écran.)
+    if (semaineAfficheeRef.current !== selectedWeek) {
+      semaineAfficheeRef.current = selectedWeek;
+      setDashboard({});
+      setSujets([]);
+      setDeliveries([]);
+    }
     setGeneratedVideoUrl(null);
     setTimelineSyncState('loading');
     timelineHydratedWeekRef.current = null;
@@ -854,7 +905,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         workspace = readLegacyWorkspace();
         if (!cancelled) {
           setTimelineSyncState('error');
-          addToast('Sauvegarde en ligne indisponible, montage conservé sur ce poste', 'error');
+          // Le message promettait « montage conservé sur ce poste » : rien
+          // n'était gardé localement. On dit ce qui est vrai, et quoi faire.
+          addToast('Le montage en ligne n’a pas pu être chargé. Vérifiez la connexion, puis rechargez la page.', 'error');
         }
       }
       if (cancelled) return;
@@ -887,20 +940,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
     hydrateTimeline();
 
+    // Une réponse lente de la semaine précédente ne doit pas écraser celle
+    // qu'on vient d'ouvrir.
     api.getDashboard(selectedWeek, adminPasswordRef.current)
-      .then(setDashboard)
+      .then((data) => { if (!cancelled) setDashboard(data); })
       .catch((err) => {
         console.error(err);
-        addToast(err.message || t.uploader.errorPrefix, 'error');
+        if (!cancelled) addToast(err.message || t.uploader.errorPrefix, 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
 
     api.getSujets(selectedWeek, null, adminPasswordRef.current)
-      .then((list) => setSujets(Array.isArray(list) ? list : []))
-      .catch(() => setSujets([]));
+      .then((list) => { if (!cancelled) setSujets(Array.isArray(list) ? list : []); })
+      .catch(() => { if (!cancelled) setSujets([]); });
 
     api.getDeliveries(selectedWeek)
-      .then(setDeliveries)
+      .then((list) => { if (!cancelled) setDeliveries(list); })
       .catch(console.error);
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -941,19 +996,32 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       } catch (error) {
         console.error(error);
         if (error?.status === 409 && error?.code === 'TIMELINE_CONFLICT' && error.body?.workspace) {
-          // Conflit : on abandonne notre envoi plutôt que d'écraser le travail
-          // de l'autre monteur, et on repart de sa version.
+          // Conflit : on n'écrase pas le travail de l'autre monteur, on
+          // affiche sa version. L'INCIDENT : la nôtre était jetée, avec tout
+          // l'historique — des minutes de coupe perdues sans recours. Elle
+          // devient maintenant l'étape précédente : « Annuler » (ou le
+          // bouton du message) la reprend, et elle repart alors au serveur.
           pendingTimelineSaveRef.current = null;
-          applyWorkspace(error.body.workspace);
+          const mienne = montageRef.current;
+          const leur = normalizeWorkspace(error.body.workspace);
+          timelineRevisionRef.current = leur.revision;
+          lastSyncedTimelineRef.current = JSON.stringify(leur.payload);
+          setHistorique((h) => enregistrer(h, mienne, { etiquette: null, maintenant: Date.now() }));
+          poserMontage({ clips: leur.clips, overlays: leur.overlays, branding: leur.branding });
           setTimelineSyncState('saved');
-          addToast('Un autre monteur a modifié le montage. Votre vue a été actualisée.', 'error');
+          addToast(
+            'Un autre monteur a modifié le montage : sa version est affichée.',
+            'info',
+            15000,
+            { action: { libelle: 'Reprendre ma version', onClick: () => annulerMontageRef.current?.() } },
+          );
           return;
         }
         setTimelineSyncState('error');
         addToast('Le montage n’a pas pu être sauvegardé en ligne', 'error');
       }
     }, 600);
-  }, [timelineClips, timelineOverlays, branding, selectedWeek, applyWorkspace, addToast]);
+  }, [timelineClips, timelineOverlays, branding, selectedWeek, poserMontage, addToast]);
 
   useEffect(() => () => {
     window.clearTimeout(timelineSaveTimerRef.current);
@@ -983,13 +1051,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   // Refresh dashboard quietly when becoming active
   useEffect(() => {
-    if (!selectedWeek || !isActive) return;
+    if (!selectedWeek || !isActive) return undefined;
+    let cancelled = false;
     api.getDashboard(selectedWeek, adminPasswordRef.current)
-      .then(setDashboard)
+      .then((data) => { if (!cancelled) setDashboard(data); })
       .catch(console.error);
     api.getDeliveries(selectedWeek)
-      .then(setDeliveries)
+      .then((list) => { if (!cancelled) setDeliveries(list); })
       .catch(console.error);
+    return () => { cancelled = true; };
   }, [isActive, selectedWeek, authenticatedAdminPassword]);
 
   // Connect socket.io for real-time updates when authenticated as admin
@@ -2262,7 +2332,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       onClose={() => setSubtitleTarget(null)}
                       onSave={(updatedClip) => {
                         modifierMontage(
-                          (m) => ({ ...m, clips: m.clips.map((c) => (c.instanceId === updatedClip.instanceId ? updatedClip : c)) }),
+                          (m) => ({ ...m, clips: fusionnerInspecteur(m.clips, updatedClip, ['subtitles', 'subtitleStyle']) }),
                         );
                         addToast('Sous-titres appliqués', 'success', 2000);
                       }}
@@ -2412,10 +2482,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                           ) : (
                             <button
                               type="button"
-                              onClick={() => {
-                                setFileToFeedback({ id: 'general', name: `Contact ${countries.find(c => c.id === selectedBin)?.name || selectedBin}`, countryId: selectedBin });
-                                setFeedbackDialogOpen(true);
-                              }}
+                              onClick={() => setContactPaysId(selectedBin)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[var(--signal)]/15 text-[color:var(--ink)] text-xs font-semibold border border-[var(--signal)]/40 hover:bg-[var(--signal)]/25 motion-tap"
                               title="Ajouter un contact WhatsApp pour ce pays"
                             >
@@ -2636,8 +2703,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               </h4>
                               <p className="text-xs text-[color:var(--muted)] flex items-center gap-1.5 mt-0.5">
                                 <span>{file.uploadedAt ? formatAbsolute(file.uploadedAt, lang) : ''}</span>
-                                <span>•</span>
-                                <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                                {tailleLisible(file.size) && <span aria-hidden="true">•</span>}
+                                <span>{tailleLisible(file.size)}</span>
                               </p>
                             </div>
                           </div>
@@ -2765,10 +2832,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       ) : (
                         <button
                           type="button"
-                          onClick={() => {
-                            setFileToFeedback({ id: 'general', name: `Contact ${countries.find(c => c.id === selectedBin)?.name || selectedBin}`, countryId: selectedBin });
-                            setFeedbackDialogOpen(true);
-                          }}
+                          onClick={() => setContactPaysId(selectedBin)}
                           className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-800 dark:text-amber-300 text-xs font-bold shrink-0"
                         >
                           + Ajouter
@@ -2786,6 +2850,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 )}
 
                 {(() => {
+                  // Pendant le chargement d'une autre semaine, la grille ne
+                  // montre plus les fichiers de la précédente : on validait,
+                  // refusait ou supprimait sans savoir dans quelle semaine.
+                  if (loading) {
+                    return (
+                      <div className="space-y-3 py-4" aria-busy="true" aria-label="Chargement des fichiers">
+                        <SkeletonCard count={3} />
+                      </div>
+                    );
+                  }
                   const allFiles = Array.isArray(dashboard[selectedBin]) ? dashboard[selectedBin] : [];
                   if (allFiles.length === 0) {
                     return (
@@ -3005,7 +3079,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         title={t.uploader.deleteTitle}
         message={
           <div className="mt-2 text-left">
-            <p className="text-[color:var(--muted)] mb-4">{t.uploader.deleteMsg(fileToDelete?.name || '')}</p>
+            <p className="text-[color:var(--muted)] mb-4">{t.uploader.deleteMsg(fileToDelete?.fileName || '')}</p>
           </div>
         }
         confirmText={t.uploader.deleteConfirm}
@@ -3059,6 +3133,20 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         adminPassword={authenticatedAdminPassword}
       />
 
+      <ContactPaysDialog
+        ouvert={Boolean(contactPaysId)}
+        pays={contactPaysId ? { id: contactPaysId, name: countries.find((c) => c.id === contactPaysId)?.name || contactPaysId } : null}
+        adminPassword={authenticatedAdminPassword}
+        onFermer={() => setContactPaysId(null)}
+        onEnregistre={({ countryId, phone }) => {
+          setSubscriptions((avant) => [
+            ...avant.filter((s) => s.countryId !== countryId),
+            { countryId, phone, origine: 'contact' },
+          ]);
+          addToast(t.contactPays.enregistre(countries.find((c) => c.id === countryId)?.name || countryId), 'success');
+          setContactPaysId(null);
+        }}
+      />
       <FeedbackModal
         isOpen={feedbackDialogOpen}
         onClose={() => {

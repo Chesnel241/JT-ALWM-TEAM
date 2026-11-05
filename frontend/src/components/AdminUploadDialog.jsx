@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { UploadCloud, X, Lock } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
@@ -13,6 +13,15 @@ export default function AdminUploadDialog({ isOpen, onClose, onUpload, isLoading
   // qui porte en réalité `sr-only` : il ne l'écartait donc pas. Le hook s'en
   // remet à `tabIndex={-1}`, que ce champ déclare déjà.
   const dialogRef = usePiegeFocus(isOpen, onClose);
+
+  // L'INCIDENT : la fenêtre gardait le fichier choisi pour le pays
+  // précédent. Rouverte sur un autre pays, « Envoyer » y déposait la vidéo
+  // du premier. Chaque ouverture repart d'un choix vide.
+  useEffect(() => {
+    if (!isOpen) return;
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [isOpen, countryName]);
 
   if (!isOpen) return null;
 

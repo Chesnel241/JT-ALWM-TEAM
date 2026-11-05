@@ -60,6 +60,21 @@ describe('VoixOffView', () => {
     expect(screen.getByText(/Glissez ou sélectionnez un fichier audio/i)).toBeInTheDocument();
   });
 
+  it('accepte un fichier lâché sur la zone « Glissez » (montage)', () => {
+    // L'INCIDENT : la zone disait « Glissez » sans gérer le dépôt ; le
+    // navigateur ouvrait le fichier et le script saisi était perdu.
+    const creer = vi.fn(() => 'blob:voix');
+    globalThis.URL.createObjectURL = creer;
+    renderVoixOff({ initialCountryId: 'ga' });
+    fireEvent.click(screen.getByText('Fichier audio'));
+    const zone = screen.getByText(/Glissez ou sélectionnez un fichier audio/i).closest('button');
+    const voix = new File(['x'], 'voix-libreville.mp3', { type: 'audio/mpeg' });
+    const depot = fireEvent.drop(zone, { dataTransfer: { files: [voix] } });
+    expect(depot, 'le dépôt n’a pas été intercepté : le navigateur ouvrirait le fichier').toBe(false);
+    expect(creer).toHaveBeenCalledWith(voix);
+    expect(screen.getByText('Audio prêt')).toBeInTheDocument();
+  });
+
   it('allows switching between reportage subjects (1, 2, 3) (montage)', () => {
     renderVoixOff({ initialCountryId: 'ga' });
     fireEvent.click(screen.getByRole('button', { name: 'Sujet 2' }));
@@ -153,6 +168,35 @@ describe('StudioVoixJournaliste', () => {
     expect(screen.getByRole('button', { name: 'Commencer l’enregistrement' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: /Côte d'Ivoire/ }));
     expect(screen.getByRole('button', { name: 'Commencer l’enregistrement' })).toBeEnabled();
+  });
+
+  it('sans pays, ne dit pas « appuyez sur le bouton rouge » (il est grisé)', () => {
+    renderVoixOff({ isReporter: true });
+    expect(screen.queryByText(/Appuyez sur le bouton rouge/)).toBeNull();
+    expect(screen.getByText('Choisissez d’abord votre pays.')).toBeInTheDocument();
+  });
+
+  it('voix prête : « Envoyer » d’abord, et « Recommencer » demande avant d’effacer', () => {
+    // L'INCIDENT : « Recommencer » venait en premier et effaçait la prise
+    // sans rien demander.
+    URL.createObjectURL = vi.fn(() => 'blob:voix');
+    URL.revokeObjectURL = vi.fn();
+    const { container } = renderVoixOff({ initialCountryId: 'ga', isReporter: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Avec un fichier audio' }));
+    const voix = new File(['x'], 'voix.mp3', { type: 'audio/mpeg' });
+    fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [voix] } });
+
+    const envoyer = screen.getByRole('button', { name: /Envoyer au monteur/ });
+    const recommencer = screen.getByRole('button', { name: /Recommencer/ });
+    expect(envoyer.compareDocumentPosition(recommencer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(recommencer);
+    fireEvent.click(screen.getByRole('button', { name: 'Garder' }));
+    expect(screen.getByRole('button', { name: /Envoyer au monteur/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Recommencer/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Oui, effacer/ }));
+    expect(screen.queryByRole('button', { name: /Envoyer au monteur/ })).toBeNull();
   });
 
   it('micro refusé : le message dit quoi faire, dans la langue de l’écran', async () => {

@@ -1422,7 +1422,38 @@ export function requestExtension(weekId, countryId) {
   return reqs[countryId];
 }
 
-export function approveExtension(weekId, countryId, minutes) {
+/**
+ * L'échéance qui s'applique aujourd'hui : la clôture de la semaine, repoussée
+ * par un délai global ou par le délai déjà accordé au pays.
+ */
+function echeanceEnVigueur(weekId, countryId = null) {
+  const ext = db._extensions?.[weekId] || {};
+  const demande = countryId ? ext.requests?.[countryId] : null;
+  const dates = [
+    weekUploadCutoff(weekId),
+    ext.global?.extendedUntil,
+    demande?.status === 'approved' ? demande.extendedUntil : null,
+  ]
+    .filter(Boolean)
+    .map((d) => new Date(d).getTime())
+    .filter(Number.isFinite);
+  return dates.length ? Math.max(...dates) : NaN;
+}
+
+/**
+ * Le nouveau délai : `minutes` ajoutées à l'échéance en vigueur, ou à
+ * maintenant si elle est déjà passée.
+ *
+ * L'INCIDENT : le délai partait toujours de l'heure du clic. Un « +1 h »
+ * donné après un « +12 h » raccourcissait le délai de onze heures ; accordé
+ * avant la clôture, il tombait même avant elle et n'avait aucun effet.
+ */
+function repousser(echeance, minutes, maintenant) {
+  const base = Math.max(maintenant.getTime(), Number.isFinite(echeance) ? echeance : 0);
+  return new Date(base + minutes * 60 * 1000);
+}
+
+export function approveExtension(weekId, countryId, minutes, maintenant = new Date()) {
   if (!db._extensions) db._extensions = {};
   if (!db._extensions[weekId]) db._extensions[weekId] = { global: null, requests: {} };
   
@@ -1430,35 +1461,33 @@ export function approveExtension(weekId, countryId, minutes) {
   if (!cutoff) throw new Error('Invalid weekId for extension');
   
   const reqs = db._extensions[weekId].requests;
-  const extendedDate = new Date();
-  extendedDate.setMinutes(extendedDate.getMinutes() + minutes); // from now!
+  const extendedDate = repousser(echeanceEnVigueur(weekId, countryId), minutes, maintenant);
 
   reqs[countryId] = {
     ...reqs[countryId],
     status: 'approved',
     durationMinutes: minutes,
     extendedUntil: extendedDate.toISOString(),
-    approvedAt: new Date().toISOString()
+    approvedAt: maintenant.toISOString()
   };
   
   persistDb();
   return reqs[countryId];
 }
 
-export function setGlobalExtension(weekId, minutes) {
+export function setGlobalExtension(weekId, minutes, maintenant = new Date()) {
   if (!db._extensions) db._extensions = {};
   if (!db._extensions[weekId]) db._extensions[weekId] = { global: null, requests: {} };
   
   const cutoff = weekUploadCutoff(weekId);
   if (!cutoff) throw new Error('Invalid weekId for extension');
   
-  const extendedDate = new Date();
-  extendedDate.setMinutes(extendedDate.getMinutes() + minutes); // from now
+  const extendedDate = repousser(echeanceEnVigueur(weekId), minutes, maintenant);
   
   db._extensions[weekId].global = {
     durationMinutes: minutes,
     extendedUntil: extendedDate.toISOString(),
-    setAt: new Date().toISOString()
+    setAt: maintenant.toISOString()
   };
   
   persistDb();

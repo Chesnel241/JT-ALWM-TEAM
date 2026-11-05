@@ -316,7 +316,11 @@ export default function MobileUploaderView({
             )}
             <div className="flex flex-wrap gap-2">
               {sections.map((sec) => {
-                const isActive = sec.id === activeTabId;
+                // L'onglet surligné est celui qu'on affiche. Au retour sur la
+                // page, `activeTabId` valait encore 'reportage-0' alors que
+                // les sections portaient les identifiants du serveur : aucun
+                // onglet n'était surligné, et la page montrait le premier.
+                const isActive = sec.id === currentSection.id;
                 // Par `sujetId`, comme la section elle-même : comparer
                 // l'étiquette au titre donnait 0 dès qu'un reportage était
                 // renommé, alors que ses fichiers étaient bien là.
@@ -327,6 +331,7 @@ export default function MobileUploaderView({
                     key={sec.id}
                     onClick={() => setActiveTabId(sec.id)}
                     type="button"
+                    aria-current={isActive ? 'true' : undefined}
                     style={isActive && sec.tone ? { backgroundColor: sec.tone.fill, color: sec.tone.onFill } : undefined}
                     className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs motion-tap active:scale-95 ${
                       isActive
@@ -458,8 +463,11 @@ export default function MobileUploaderView({
                   <p className="text-sm font-bold text-[color:var(--success-deep)]">
                     {t.uploader.sectionDone(activeUploads.length)}
                   </p>
+                  {/* L'INCIDENT : « Vous pouvez fermer la page » s'affichait
+                      alors qu'un envoi tournait encore dans un autre
+                      reportage. Fermer l'aurait interrompu. */}
                   <p className="text-xs text-[color:var(--ink)]/75">
-                    {t.uploader.sectionDoneHint}
+                    {uploading.some(estEnVol) ? t.uploader.sectionDoneAutreEnvoi : t.uploader.sectionDoneHint}
                   </p>
                 </div>
               </div>
