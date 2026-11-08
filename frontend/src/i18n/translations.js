@@ -184,6 +184,11 @@ export const translations = {
       erreurReseau: 'Vérification impossible. Réessayez.',
       tropDEssais: 'Trop d’essais depuis cet appareil. Attendez un quart d’heure avant de réessayer.',
     },
+    studioEtroit: {
+      titre: 'Agrandissez la fenêtre',
+      texte: 'Le studio a besoin d’au moins 1 180 pixels de large. Votre montage est intact : il reprend dès que la fenêtre est assez grande.',
+      chutiers: 'Revenir aux chutiers',
+    },
     publication: {
       titre: 'Publier le JT ?',
       message: (noms) => `« ${noms} » sera visible dans l’espace des correspondants, et tous seront prévenus.`,
@@ -819,6 +824,7 @@ export const translations = {
         trimOut: 'Déplacer le point OUT',
         trimAjouter: 'Ajouter à la timeline',
         exportEchec: 'L’assemblage a échoué',
+        exportReplier: 'Réduire',
         exportReessayer: 'Réessayer',
         exportPret: 'Master assemblé',
         exportTelecharger: 'Télécharger le MP4',
@@ -1372,6 +1378,11 @@ export const translations = {
       erreur: 'Wrong password',
       erreurReseau: 'We could not check it. Try again.',
       tropDEssais: 'Too many attempts from this device. Wait fifteen minutes before trying again.',
+    },
+    studioEtroit: {
+      titre: 'Make the window wider',
+      texte: 'The studio needs at least 1,180 pixels of width. Your edit is safe: it comes back as soon as the window is wide enough.',
+      chutiers: 'Back to the bins',
     },
     publication: {
       titre: 'Publish the newscast?',
@@ -1981,6 +1992,7 @@ export const translations = {
         trimOut: 'Move the OUT point',
         trimAjouter: 'Add to the timeline',
         exportEchec: 'The build failed',
+        exportReplier: 'Collapse',
         exportReessayer: 'Try again',
         exportPret: 'Master built',
         exportTelecharger: 'Download the MP4',

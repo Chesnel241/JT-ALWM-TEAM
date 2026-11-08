@@ -517,6 +517,7 @@ function SortableClip({
 export default function Timeline({
   clips,
   setClips,
+  libelleSemaine = "",
   timelineOverlays = [],
   setTimelineOverlays,
   onGenerate,
@@ -1018,14 +1019,17 @@ export default function Timeline({
               <span className="font-mono text-sm font-semibold tabular-nums text-[var(--editor-text)]">{formatTimecode(playheadSec)}</span>
               <span className="text-[10px] text-[var(--editor-muted)]">{t.studio.timeline.surDuree} {formatTimecode(layout.total)}</span>
             </div>
+            {/* La semaine montée, visible dans le studio : on la confondait
+                en passant d'un onglet à l'autre. */}
+            {libelleSemaine && <span className="shrink-0 rounded-md border border-[var(--editor-border)] px-2 py-1 text-[11px] font-semibold text-[var(--editor-muted)]">{libelleSemaine}</span>}
             {onBrowseRushes && <ToolButton icon={<FolderOpen size={16} />} label={t.studio.timeline.rushs} onClick={onBrowseRushes} title={t.studio.timeline.rushsTitre} />}
             <ToolButton icon={<MousePointer2 size={16} />} label={t.studio.timeline.selection} shortcut="V" active={toolMode === 'select'} onClick={() => setToolMode('select')} />
             <ToolButton icon={<Scissors size={16} />} label={t.studio.timeline.lame} shortcut="B" active={toolMode === 'blade'} onClick={() => setToolMode('blade')} />
             <ToolButton icon={<Scissors size={16} />} label={t.studio.timeline.couperCurseur} shortcut="⌘K" disabled={clips.length === 0} onClick={() => splitAt(playheadSec)} />
             <span className="mx-0.5 h-7 w-px shrink-0 bg-[var(--editor-border)]" aria-hidden="true" />
             <ToolButton icon={<Magnet size={16} />} label={t.studio.timeline.magnetisme} shortcut="M" active={snapping} onClick={() => setSnapping((value) => !value)} />
-            <ToolButton icon={<Undo2 size={16} />} label={t.studio.timeline.annuler} disabled={!annulationPossible} onClick={undo} compact title="Annuler" />
-            <ToolButton icon={<Redo2 size={16} />} label={t.studio.timeline.retablir} disabled={!retablissementPossible} onClick={redo} compact title={t.studio.timeline.retablir} />
+            <ToolButton icon={<Undo2 size={16} />} label={t.studio.timeline.annuler} disabled={!annulationPossible} onClick={undo} compact shortcut="⌘Z" />
+            <ToolButton icon={<Redo2 size={16} />} label={t.studio.timeline.retablir} disabled={!retablissementPossible} onClick={redo} compact shortcut="⇧⌘Z" />
             {onSplitText && <ToolButton icon={<Type size={16} />} label={t.studio.timeline.couperTitre} disabled={timelineOverlays.length === 0} onClick={onSplitText} title={t.studio.timeline.couperTitreTitre} responsiveCompact />}
             {onGlobalLayer && <ToolButton icon={<Newspaper size={16} />} label={t.studio.timeline.habillageJT} active={!!brandingActive} onClick={onGlobalLayer} responsiveCompact />}
             
@@ -1094,7 +1098,7 @@ export default function Timeline({
                     {TRANSITIONS.map((id) => <option key={id} value={id}>{t.studio.transitions[id]}</option>)}
                   </select>
                 </label>
-                <ToolButton icon={<Trash2 size={15} />} label={t.studio.timeline.supprimer} danger onClick={removeSelected} />
+                <ToolButton icon={<Trash2 size={15} />} label={t.studio.timeline.supprimer} danger onClick={removeSelected} shortcut="Suppr" />
               </>
             ) : (
               <span className="px-1.5 text-xs text-[var(--editor-muted)]">{t.studio.timeline.aideClip}</span>

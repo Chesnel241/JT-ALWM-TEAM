@@ -677,7 +677,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const binIsValid = (bin) =>
     bin && (SPECIAL_BINS.includes(bin) || countriesWithUploads.includes(bin));
 
-  const isStudioActive = isDesktopEditorAvailable && selectedBin === 'studio';
+  // Le studio reste monté si la fenêtre rétrécit pendant le montage (une
+  // fenêtre posée sur la moitié d'un écran de portable) : avant, il se
+  // démontait d'un coup, renvoyait aux chutiers et perdait les réglages en
+  // cours dans les panneaux. Un message demande d'agrandir la fenêtre.
+  const [studioMonte, setStudioMonte] = useState(false);
+  useEffect(() => {
+    if (selectedBin !== 'studio') { setStudioMonte(false); return; }
+    if (isDesktopEditorAvailable) setStudioMonte(true);
+  }, [selectedBin, isDesktopEditorAvailable]);
+  const isStudioActive = selectedBin === 'studio' && (isDesktopEditorAvailable || studioMonte);
 
   const getCountryPhone = (cId) => {
     const sub = subscriptions.find((s) => s.countryId === cId);
@@ -1870,10 +1879,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   };
 
   useEffect(() => {
-    if (!isDesktopEditorAvailable && selectedBin === 'studio') openRushes();
+    if (!isDesktopEditorAvailable && selectedBin === 'studio' && !studioMonte) openRushes();
     // openRushes est volontairement recalculé avec les chutiers disponibles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDesktopEditorAvailable, selectedBin, selectedWeek, countriesWithUploads]);
+  }, [isDesktopEditorAvailable, selectedBin, selectedWeek, countriesWithUploads, studioMonte]);
 
   useEffect(() => {
     if (binIsValid(selectedBin)) return;
@@ -2365,6 +2374,22 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             <div ref={studioWorkspaceRef} className={`studio-shell flex h-full w-full flex-col overflow-hidden bg-[var(--editor-bg)] ${isResizingTimeline ? 'select-none cursor-row-resize' : ''}`}>
               <h2 className="sr-only">Studio de montage</h2>
 
+              {!isDesktopEditorAvailable && (
+                <div role="alert" className="fixed inset-0 z-[10010] flex items-center justify-center bg-[var(--editor-bg)]/95 p-6">
+                  <div className="max-w-md space-y-4 text-center text-[var(--editor-text)]">
+                    <p className="text-xl font-bold">{t.studioEtroit.titre}</p>
+                    <p className="text-sm text-[var(--editor-muted)]">{t.studioEtroit.texte}</p>
+                    <button
+                      type="button"
+                      onClick={openRushes}
+                      className="min-h-[44px] rounded-xl border border-[var(--editor-border)] px-4 text-sm font-semibold hover:bg-[var(--editor-panel-raised)]"
+                    >
+                      {t.studioEtroit.chutiers}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* MODAL / DRAWER BIBLIOTHÈQUE DE RUSHS DU STUDIO */}
               {showRushesDrawer && (
                 <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm motion-voile">
@@ -2509,7 +2534,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               )}
               
               {/* Zone Supérieure : Player (Centre) + Inspecteur (Droite) */}
-              <div className="flex h-auto xl:h-[55vh] xl:min-h-[450px] border-b border-[var(--border)] bg-[var(--paper-2)] shrink-0">
+              {/* Sur un portable 1366×768, le lecteur (450 px au moins)
+                  ne laissait à la timeline qu'une bande : sous 820 px de
+                  haut, il se resserre et la timeline respire. */}
+              <div className="flex h-auto xl:h-[55vh] xl:min-h-[450px] [@media(max-height:820px)]:xl:h-[44vh] [@media(max-height:820px)]:xl:min-h-[280px] border-b border-[var(--border)] bg-[var(--paper-2)] shrink-0">
                 
                 {/* PLAYER CENTER */}
                 <div className="relative flex min-w-0 flex-1 items-center justify-center bg-[oklch(0.11_0.018_245)] p-2 shadow-[inset_0_0_32px_oklch(0.05_0.02_245/0.6)]">
@@ -2668,6 +2696,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   playerRef={playerRef}
                   onSplitText={handleSplitTextAtPlayhead}
                   onBrowseRushes={openRushes}
+                  libelleSemaine={formatWeekLabel((weeks || []).find((w) => w.id === selectedWeek) || { id: selectedWeek }, lang)}
                   modifierMontage={modifierMontage}
                   annulerMontage={annulerMontage}
                   retablirMontage={retablirMontage}

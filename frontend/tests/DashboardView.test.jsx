@@ -231,3 +231,37 @@ describe('le conflit de sauvegarde du studio', () => {
     api.saveTimelineWorkspace.mockResolvedValue({ ok: true });
   });
 });
+
+describe('le studio dans une fenêtre qui rétrécit', () => {
+  // L'INCIDENT : une fenêtre posée sur la moitié de l'écran faisait
+  // démonter le studio d'un coup — retour aux chutiers, réglages perdus.
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('jt-alwm-lang', 'fr');
+    localStorage.setItem('jt-bin-2026-w34', 'studio');
+  });
+
+  it('garde le studio monté et demande d’agrandir la fenêtre', async () => {
+    const plan = (n) => ({ instanceId: `c${n}`, name: `rush-${n}.mp4`, filename: `rush-${n}.mp4`, durationSec: 5, overlays: [] });
+    api.getTimelineWorkspace.mockResolvedValue({ workspace: { clips: [plan(1)], overlays: [], branding: {}, revision: 1 } });
+    const vue = (large) => (
+      <I18nProvider>
+        <ToastProvider>
+          <DashboardView weeks={mockWeeks} selectedWeek="2026-w34" setSelectedWeek={() => {}} countries={mockCountries} isActive isDesktopEditorAvailable={large} />
+        </ToastProvider>
+      </I18nProvider>
+    );
+    const { rerender } = render(vue(true));
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'secret' } });
+    fireEvent.click(screen.getByRole('button', { name: /Déverrouiller/i }));
+    await screen.findByRole('button', { name: /^Supprimer/i }, { timeout: 3000 });
+
+    rerender(vue(false));
+    expect(await screen.findByText('Agrandissez la fenêtre')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Supprimer/i })).toBeInTheDocument();
+
+    rerender(vue(true));
+    await waitFor(() => expect(screen.queryByText('Agrandissez la fenêtre')).toBeNull());
+    api.getTimelineWorkspace.mockResolvedValue({ clips: [], overlays: [], branding: {} });
+  });
+});

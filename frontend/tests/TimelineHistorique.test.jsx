@@ -334,3 +334,12 @@ describe('les touches du studio visent ce qu’on regarde', () => {
     expect(au.current.montage.clips).toHaveLength(2);
   });
 });
+
+describe('ce que la barre d’outils dit', () => {
+  it('donne les raccourcis dans les infobulles d’Annuler, Rétablir et Supprimer', () => {
+    poser();
+    expect(screen.getByRole('button', { name: new RegExp(dit.annuler, 'i') })).toHaveAttribute('title', expect.stringContaining('⌘Z'));
+    expect(screen.getByRole('button', { name: new RegExp(dit.retablir, 'i') })).toHaveAttribute('title', expect.stringContaining('⇧⌘Z'));
+    expect(screen.getByRole('button', { name: new RegExp(dit.supprimer, 'i') })).toHaveAttribute('title', expect.stringContaining('Suppr'));
+  });
+});

@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertCircle, CheckCircle, Download, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, CheckCircle, ChevronDown, Download, Loader2 } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 
 /**
@@ -44,8 +44,38 @@ export default function ExportStatus({
   onReessayer,
 }) {
   const { t } = useI18n();
+  // Repliable : posée en bas du lecteur, la bannière couvrait ses commandes
+  // (lecture, barre de temps) pendant tout le rendu.
+  const [replie, setReplie] = useState(false);
   // Rien à dire tant que personne n'a lancé de rendu.
   if (!enCours && !erreur && !urlVideo) return null;
+
+  if (replie) {
+    const pourcentReplie = Math.round(progression);
+    return (
+      <button
+        type="button"
+        onClick={() => setReplie(false)}
+        aria-expanded="false"
+        className="absolute right-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-[var(--editor-accent-strong)] bg-[oklch(0.16_0.02_245/0.94)] px-3 py-1.5 text-xs font-semibold text-[color:var(--editor-text)]"
+      >
+        {enCours ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : erreur ? <AlertCircle size={14} aria-hidden="true" /> : <CheckCircle size={14} aria-hidden="true" />}
+        {enCours ? `${pourcentReplie} %` : erreur ? t.studio.panneaux.exportEchec : t.studio.panneaux.exportPret}
+      </button>
+    );
+  }
+
+  const boutonReplier = (
+    <button
+      type="button"
+      onClick={() => setReplie(true)}
+      aria-label={t.studio.panneaux.exportReplier}
+      title={t.studio.panneaux.exportReplier}
+      className="shrink-0 rounded-lg p-1.5 text-[color:var(--editor-muted)] hover:bg-[var(--editor-panel-raised)]"
+    >
+      <ChevronDown size={16} aria-hidden="true" />
+    </button>
+  );
 
   const cadre = 'absolute inset-x-4 bottom-4 z-20 rounded-2xl border px-4 py-3 '
     + 'bg-[oklch(0.16_0.02_245/0.94)] backdrop-blur-sm shadow-[0_12px_32px_-12px_oklch(0.05_0.02_245/0.8)]';
@@ -64,6 +94,7 @@ export default function ExportStatus({
               {t.studio.panneaux.exportReessayer}
             </button>
           )}
+          {boutonReplier}
         </div>
       </div>
     );
@@ -86,6 +117,7 @@ export default function ExportStatus({
           >
             <Download size={15} /> {t.studio.panneaux.exportTelecharger}
           </a>
+          {boutonReplier}
         </div>
       </div>
     );
@@ -125,6 +157,7 @@ export default function ExportStatus({
         <span className="shrink-0 font-mono text-base font-bold tabular-nums text-[color:var(--editor-accent)]">
           {pourcent} %
         </span>
+        {boutonReplier}
       </div>
       <p className="mt-1.5 text-[11px] text-[color:var(--editor-muted)]">
         {t.studio.panneaux.exportContinue}
