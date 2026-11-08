@@ -300,7 +300,7 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
   if (!file) return null;
 
   return (
-    <div ref={dialogRef} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
+    <div ref={dialogRef} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="script-viewer-title">
       <div className="bg-[var(--paper)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-[var(--border)] motion-boite">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--paper-2)]">
           <h3 id="script-viewer-title" className="font-bold text-lg text-[color:var(--ink)] flex items-center gap-2">
@@ -406,7 +406,7 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
                   <button
                     type="button"
                     onClick={() => onRefuser(file)}
-                    className="min-h-[40px] rounded-lg border border-[var(--cta-red)]/40 bg-[var(--cta-red)]/10 px-3 text-sm font-bold text-[color:var(--cta-red-deep)] hover:bg-[var(--cta-red)]/20"
+                    className="min-h-[40px] rounded-lg border border-v-cta-red/40 bg-v-cta-red/10 px-3 text-sm font-bold text-[color:var(--cta-red-deep)] hover:bg-v-cta-red/20"
                   >
                     {t.revue.refuser}
                   </button>
@@ -1951,7 +1951,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           
           {isVideo ? (
             <>
-              <div className="absolute inset-0 flex items-center justify-center text-[color:var(--ink)]/10 z-0">
+              <div className="absolute inset-0 flex items-center justify-center text-v-ink/10 z-0">
                 <Video size={48} />
               </div>
               <LazyVideoThumbnail
@@ -1970,11 +1970,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           ) : isAudio ? (
-            <div className="absolute inset-0 flex items-center justify-center z-0 bg-[var(--accent-soft)]/15">
+            <div className="absolute inset-0 flex items-center justify-center z-0 bg-v-accent-soft/15">
                <Mic className="w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10 text-[color:var(--accent-deep)]" />
             </div>
           ) : (
-            <FileText className="text-[color:var(--accent-deep)]/60 w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10" />
+            <FileText className="text-v-accent-deep/60 w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10" />
           )}
 
           {/* Status Badge */}
@@ -2032,7 +2032,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           <div className="text-[13px] font-semibold text-[color:var(--ink)] truncate w-full flex items-center gap-2" title={file.name}>
             <span>{file.name}</span>
             {file.isLate && (
-              <span className="text-[10px] bg-[var(--signal)] text-white px-2 py-0.5 rounded-full font-bold">
+              <span className="text-[10px] bg-[var(--cta-orange-deep)] text-white px-2 py-0.5 rounded-full font-bold">
                 EN RETARD
               </span>
             )}
@@ -2071,7 +2071,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <button
                 type="button"
                 onClick={(event) => { event.stopPropagation(); openFeedbackDialog(selectedBin, file.id, 'rejected'); }}
-                className="min-h-[36px] rounded-lg border border-[var(--cta-red)]/40 bg-[var(--cta-red)]/10 px-2 text-xs font-bold text-[color:var(--cta-red-deep)] hover:bg-[var(--cta-red)]/20 motion-tap active:scale-95 inline-flex items-center justify-center gap-1"
+                className="min-h-[36px] rounded-lg border border-v-cta-red/40 bg-v-cta-red/10 px-2 text-xs font-bold text-[color:var(--cta-red-deep)] hover:bg-v-cta-red/20 motion-tap active:scale-95 inline-flex items-center justify-center gap-1"
               >
                 <XCircle size={13} aria-hidden="true" /> {t.revue.refuser}
               </button>
@@ -2083,8 +2083,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 onClick={(event) => { event.stopPropagation(); openFeedbackDialog(selectedBin, file.id, statutDe(file)); }}
                 className={`w-full min-h-[36px] text-xs font-semibold py-1.5 px-2 rounded-lg border motion-tap flex items-center justify-center gap-1.5 active:scale-95 ${
                   statutDe(file) === 'rejected'
-                    ? 'bg-[var(--cta-red)]/10 border-[var(--cta-red)]/40 text-[color:var(--cta-red-deep)] hover:bg-[var(--cta-red)]/20'
-                    : 'bg-[var(--action)]/10 border-[var(--action)]/40 text-[color:var(--action-deep)] hover:bg-[var(--action)]/20'
+                    ? 'bg-v-cta-red/10 border-v-cta-red/40 text-[color:var(--cta-red-deep)] hover:bg-v-cta-red/20'
+                    : 'bg-v-action/10 border-v-action/40 text-[color:var(--action-deep)] hover:bg-v-action/20'
                 }`}
               >
                 <MessageSquare size={13} aria-hidden="true" />
@@ -2311,7 +2311,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                       </div>
                       {countriesAttendus.has(countryId) ? (
                         // Sujet annoncé, rien reçu : c'est le pays à relancer.
-                        <span className={`ml-3 text-[10px] px-1.5 py-0.5 rounded font-bold ${isActive ? 'bg-black/20 text-white' : 'bg-[var(--signal)]/15 border border-[var(--signal)]/40 text-[color:var(--ink)]'}`}>
+                        <span className={`ml-3 text-[10px] px-1.5 py-0.5 rounded font-bold ${isActive ? 'bg-black/20 text-white' : 'bg-v-signal/15 border border-v-signal/40 text-[color:var(--ink)]'}`}>
                           Attendu
                         </span>
                       ) : (
@@ -2375,7 +2375,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <h2 className="sr-only">Studio de montage</h2>
 
               {!isDesktopEditorAvailable && (
-                <div role="alert" className="fixed inset-0 z-[10010] flex items-center justify-center bg-[var(--editor-bg)]/95 p-6">
+                <div role="alert" className="fixed inset-0 z-[10010] flex items-center justify-center bg-v-editor-bg/95 p-6">
                   <div className="max-w-md space-y-4 text-center text-[var(--editor-text)]">
                     <p className="text-xl font-bold">{t.studioEtroit.titre}</p>
                     <p className="text-sm text-[var(--editor-muted)]">{t.studioEtroit.texte}</p>
@@ -2392,12 +2392,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
               {/* MODAL / DRAWER BIBLIOTHÈQUE DE RUSHS DU STUDIO */}
               {showRushesDrawer && (
-                <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm motion-voile">
+                <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm motion-voile">
                   <div className="bg-[var(--paper)] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
                     {/* Header */}
                     <div className="px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center font-bold">
+                        <div className="w-8 h-8 rounded-xl bg-v-accent/10 text-[var(--accent)] flex items-center justify-center font-bold">
                           <FolderOpen size={18} />
                         </div>
                         <div>
@@ -2752,7 +2752,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                             <button
                               type="button"
                               onClick={() => setContactPaysId(selectedBin)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[var(--signal)]/15 text-[color:var(--ink)] text-xs font-semibold border border-[var(--signal)]/40 hover:bg-[var(--signal)]/25 motion-tap"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-v-signal/15 text-[color:var(--ink)] text-xs font-semibold border border-v-signal/40 hover:bg-v-signal/25 motion-tap"
                               title="Ajouter un contact WhatsApp pour ce pays"
                             >
                               <span>📱 Aucun WhatsApp (+ Ajouter)</span>
@@ -2878,7 +2878,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 <div
                   className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-10 text-center transition-colors ${
                     deliveryDragActive
-                      ? 'border-[color:var(--action)] bg-[var(--action)]/10'
+                      ? 'border-[color:var(--action)] bg-v-action/10'
                       : 'border-[var(--border)] bg-[var(--paper)] hover:border-[color:var(--accent)]'
                   }`}
                   onDragEnter={handleDeliveryDrag}
@@ -2965,7 +2965,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               <h4 className="font-semibold text-[color:var(--ink)] text-sm md:text-base truncate flex items-center gap-2" title={file.name}>
                                 <span>{file.name}</span>
                                 {file.isLate && (
-                                  <span className="text-[10px] bg-[var(--signal)] text-white px-2 py-0.5 rounded-full font-bold">
+                                  <span className="text-[10px] bg-[var(--cta-orange-deep)] text-white px-2 py-0.5 rounded-full font-bold">
                                     EN RETARD
                                   </span>
                                 )}
@@ -2983,7 +2983,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                               download={file.name}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 md:p-2 rounded-lg text-[color:var(--muted)] hover:text-[color:var(--accent)] hover:bg-[var(--accent)]/10 motion-tap"
+                              className="p-1.5 md:p-2 rounded-lg text-[color:var(--muted)] hover:text-[color:var(--accent)] hover:bg-v-accent/10 motion-tap"
                               title={t.delivery.download}
                             >
                               <Download size={16} />
@@ -3036,7 +3036,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <button
                       type="button"
                       onClick={() => setLinkDialogOpen(true)}
-                      className="inline-flex min-h-[36px] items-center gap-1.5 px-3 rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[color:var(--accent-deep)] font-semibold text-xs border border-[color:var(--accent)]/25 motion-tap"
+                      className="inline-flex min-h-[36px] items-center gap-1.5 px-3 rounded-xl bg-v-accent/10 hover:bg-v-accent/20 text-[color:var(--accent-deep)] font-semibold text-xs border border-v-accent/25 motion-tap"
                       title="Émettre le lien personnel de ce correspondant"
                     >
                       <Link2 size={13} aria-hidden="true" />
@@ -3098,7 +3098,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     {selectedBin && (
                       <button
                         onClick={() => openDownloadDialog({ filename: `${selectedWeek}/${selectedBin}/archive`, name: `uploads_${selectedWeek}_${selectedBin}.zip` })}
-                        className="px-2.5 py-1 rounded-xl bg-[var(--action)]/10 text-[color:var(--action-deep)] text-xs font-bold shrink-0 flex items-center gap-1 active:scale-95"
+                        className="px-2.5 py-1 rounded-xl bg-v-action/10 text-[color:var(--action-deep)] text-xs font-bold shrink-0 flex items-center gap-1 active:scale-95"
                         title="Télécharger tout le pays en ZIP"
                       >
                         <Download size={12} /> ZIP
@@ -3112,7 +3112,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     <button
                       type="button"
                       onClick={() => setLinkDialogOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[color:var(--accent-deep)] font-semibold text-xs border border-[color:var(--accent)]/25 motion-tap active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-v-accent/10 hover:bg-v-accent/20 text-[color:var(--accent-deep)] font-semibold text-xs border border-v-accent/25 motion-tap active:scale-95"
                       title="Émettre le lien personnel de ce correspondant"
                     >
                       <Link2 size={13} />
@@ -3270,10 +3270,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             
             {/* EXPORT PROGRESS (réel : download → encodage → upload) */}
             {isGeneratingVideo && (
-              <div className="mt-8 bg-[var(--action)]/5 border border-[var(--action)] rounded-2xl p-6 shadow-md" role="status" aria-live="polite">
+              <div className="mt-8 bg-v-action/5 border border-[var(--action)] rounded-2xl p-6 shadow-md" role="status" aria-live="polite">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 border-4 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin shrink-0" />
+                    <div className="w-6 h-6 border-4 border-v-accent/30 border-t-[var(--accent)] rounded-full animate-spin shrink-0" />
                     <span className="text-lg font-bold text-[color:var(--ink)]">
                       {exportPhase === 'downloading' && 'Récupération des rushes…'}
                       {exportPhase === 'encoding' && 'Encodage en cours…'}
@@ -3305,7 +3305,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
             {/* Erreur d'assemblage : message clair + relance. */}
             {exportError && !isGeneratingVideo && (
-              <div className="mt-8 bg-[var(--signal)]/10 border-2 border-[var(--signal)]/40 rounded-2xl p-5 shadow-sm" role="alert">
+              <div className="mt-8 bg-v-signal/10 border-2 border-v-signal/40 rounded-2xl p-5 shadow-sm" role="alert">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="text-[var(--signal)] shrink-0 mt-0.5" size={20} />
                   <div className="flex-1">

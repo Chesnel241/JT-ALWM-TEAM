@@ -282,7 +282,7 @@ export default function PlanningView({ selectedWeek, isActive = true }) {
                       </span>
                     </span>
                     {courante && (
-                      <span className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] text-[10px] font-bold ml-1">
+                      <span className="badge bg-v-accent/10 text-[color:var(--accent-deep)] text-[10px] font-bold ml-1">
                         {pl.badgeEnCours}
                       </span>
                     )}

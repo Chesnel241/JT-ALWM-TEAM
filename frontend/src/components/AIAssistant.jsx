@@ -261,7 +261,7 @@ export default function AIAssistant({ currentPage, showBubble = true }) {
         {!isChatOpen && (
           <button 
             onClick={() => setIsChatOpen(true)}
-            className="w-14 h-14 bg-[var(--ink)] text-[color:var(--paper)] rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform focus:outline-none focus:ring-4 focus:ring-[var(--ink)]/30"
+            className="w-14 h-14 bg-[var(--ink)] text-[color:var(--paper)] rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform focus:outline-none focus:ring-4 focus:ring-v-ink/30"
           >
             <MessageSquare size={24} />
           </button>

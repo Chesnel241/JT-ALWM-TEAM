@@ -88,12 +88,12 @@ export default function RemotionLivePreview({ clips, branding, timelineOverlays,
   }
 
   return (
-    <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 bg-[var(--ink)]/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <div className="bg-[var(--paper)] rounded-2xl w-full max-w-5xl flex flex-col shadow-2xl border border-[var(--border)] max-h-[95vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
           <h2 className="font-bold text-[color:var(--ink)]">{t.studio.panneaux.apercuTitre}</h2>
-          <button onClick={onClose} className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] rounded-lg transition-colors bg-[var(--border)] hover:bg-[var(--muted)]/30">
+          <button onClick={onClose} className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] rounded-lg transition-colors bg-[var(--border)] hover:bg-v-muted/30">
             <X size={20} />
           </button>
         </div>

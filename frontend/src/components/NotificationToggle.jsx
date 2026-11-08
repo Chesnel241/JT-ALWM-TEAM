@@ -221,7 +221,7 @@ export default function NotificationToggle({ compact = false, audience = '', cou
       aria-pressed={abonne}
       className={`${compact ? 'h-9 w-9 justify-center p-0' : 'px-4 py-2'} text-sm font-semibold rounded-lg transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] flex items-center gap-2 disabled:opacity-60 ${
         abonne
-          ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/80'
+          ? 'bg-[var(--accent)] text-white hover:bg-v-accent/80'
           : 'bg-transparent border border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:border-[var(--muted)]'
       }`}
     >

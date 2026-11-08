@@ -38,7 +38,7 @@ export default function ReportageChecklist({ files = [] }) {
               key={key}
               className={`flex items-center gap-2 rounded-xl px-2.5 py-2 border ${
                 done
-                  ? 'border-[var(--success)]/40 bg-[var(--success)]/10'
+                  ? 'border-v-success/40 bg-v-success/10'
                   : 'border-[var(--border)] bg-[var(--paper-2)]'
               }`}
             >

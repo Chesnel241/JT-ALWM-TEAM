@@ -280,7 +280,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
             >
               {/* Selected range (IN→OUT) */}
               <div
-                className="absolute top-0 bottom-0 bg-[var(--accent)]/20 border-x-2 border-[var(--accent)]"
+                className="absolute top-0 bottom-0 bg-v-accent/20 border-x-2 border-[var(--accent)]"
                 style={{ left: `${inPct}%`, width: `${outPct - inPct}%` }}
               />
               {/* Playhead */}
@@ -342,7 +342,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
                 step="0.1"
                 value={Number(inPoint.toFixed(2))}
                 onChange={(e) => updateMarker('in', Number(e.target.value))}
-                className="mt-1 w-full h-10 rounded-lg border border-[var(--border)] bg-[var(--paper-2)] px-3 font-mono tabular-nums text-[color:var(--ink)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+                className="mt-1 w-full h-10 rounded-lg border border-[var(--border)] bg-[var(--paper-2)] px-3 font-mono tabular-nums text-[color:var(--ink)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-v-accent/30"
               />
             </label>
             <label className="text-xs font-semibold text-[color:var(--ink)]">
@@ -354,7 +354,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
                 step="0.1"
                 value={Number((outPoint ?? duration).toFixed(2))}
                 onChange={(e) => updateMarker('out', Number(e.target.value))}
-                className="mt-1 w-full h-10 rounded-lg border border-[var(--border)] bg-[var(--paper-2)] px-3 font-mono tabular-nums text-[color:var(--ink)] focus:border-[var(--signal)] focus:outline-none focus:ring-2 focus:ring-[var(--signal)]/30"
+                className="mt-1 w-full h-10 rounded-lg border border-[var(--border)] bg-[var(--paper-2)] px-3 font-mono tabular-nums text-[color:var(--ink)] focus:border-[var(--signal)] focus:outline-none focus:ring-2 focus:ring-v-signal/30"
               />
             </label>
           </div>
@@ -389,14 +389,14 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={setIn}
-              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[color:var(--accent)] rounded-xl font-semibold text-sm hover:bg-[var(--accent)]/20 transition-colors"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-v-accent/10 border border-v-accent/30 text-[color:var(--accent)] rounded-xl font-semibold text-sm hover:bg-v-accent/20 transition-colors"
             >
               <SkipBack size={15} />
               Marquer IN ({formatTime(currentTime)})
             </button>
             <button
               onClick={setOut}
-              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-[var(--signal)]/10 border border-[var(--signal)]/30 text-[var(--signal)] rounded-xl font-semibold text-sm hover:bg-[var(--signal)]/20 transition-colors"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-v-signal/10 border border-v-signal/30 text-[var(--signal)] rounded-xl font-semibold text-sm hover:bg-v-signal/20 transition-colors"
             >
               Marquer OUT ({formatTime(currentTime)})
               <SkipForward size={15} />
@@ -433,7 +433,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
   return (
     <div
       ref={boiteModale}
-      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
     >

@@ -123,7 +123,7 @@ export default function NombreReportages({ etat, onChoisir, onModifierTitres, di
           type="button"
           onClick={onModifierTitres}
           disabled={disabled}
-          className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 active:scale-95 disabled:opacity-45"
+          className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold text-[color:var(--accent-deep)] bg-v-accent/10 active:scale-95 disabled:opacity-45"
         >
           <Pencil size={13} aria-hidden="true" />
           {t.uploader.nbReportagesEditTitles}

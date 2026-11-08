@@ -49,7 +49,7 @@ export function RecherchePays({ valeur, onChange }) {
         onChange={(e) => onChange(e.target.value)}
         placeholder={t.home.searchPh}
         aria-label={t.home.searchPh}
-        className="w-full min-h-[60px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] pl-14 pr-14 text-base sm:text-lg font-semibold text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--muted)] shadow-sm focus:outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15"
+        className="w-full min-h-[60px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] pl-14 pr-14 text-base sm:text-lg font-semibold text-[color:var(--ink)] placeholder:font-normal placeholder:text-[color:var(--muted)] shadow-sm focus:outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-v-accent/15"
       />
       {valeur && (
         <button
@@ -109,7 +109,7 @@ export default function GrillePays({
               onClick={() => onSelectCountry(pays)}
               aria-label={t.home.enterAria(pays.name)}
               data-variante={variante}
-              className="jr-tuile focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40"
+              className="jr-tuile focus:outline-none focus-visible:ring-4 focus-visible:ring-v-accent/40"
             >
               <span className="jr-tuile-drapeau">
                 <CountryAvatar country={pays} ring className={taille} />
@@ -142,7 +142,7 @@ export default function GrillePays({
             onClick={() => setAjoutOuvert(true)}
             aria-label={t.home.addCountryAria}
             data-variante={variante}
-            className="jr-tuile jr-tuile-ajout focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--cta-orange)]/40"
+            className="jr-tuile jr-tuile-ajout focus:outline-none focus-visible:ring-4 focus-visible:ring-v-cta-orange/40"
           >
             <span className={`${taille} rounded-full flex items-center justify-center bg-[var(--cta-orange)] text-white shadow-md`}>
               <Plus size={compacte ? 24 : 32} />

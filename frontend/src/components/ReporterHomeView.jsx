@@ -43,7 +43,7 @@ function TuileAcces({ ton, Icone, anim, titre, statut, badge, index, onClick, cl
       data-anim={anim}
       style={{ '--i': index }}
       onClick={onClick}
-      className={`jr-acces focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40 ${className}`}
+      className={`jr-acces focus:outline-none focus-visible:ring-4 focus-visible:ring-v-accent/40 ${className}`}
     >
       {badge && <span className="jr-nouveau">{badge}</span>}
       <span className="jr-acces-icone" aria-hidden="true">

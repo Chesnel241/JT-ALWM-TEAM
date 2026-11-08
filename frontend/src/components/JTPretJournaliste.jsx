@@ -173,7 +173,7 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
                   </div>
 
                   {lances.has(fichier.id) && (
-                    <div role="status" className="jr-jt-lance flex items-start gap-3 rounded-2xl bg-[var(--action)]/10 border border-[var(--action)]/30 p-3">
+                    <div role="status" className="jr-jt-lance flex items-start gap-3 rounded-2xl bg-v-action/10 border border-v-action/30 p-3">
                       <span className="jr-jt-plateau" aria-hidden="true">
                         <Download size={18} />
                       </span>

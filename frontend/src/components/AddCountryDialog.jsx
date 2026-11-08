@@ -66,7 +66,7 @@ export default function AddCountryDialog({ isOpen, onCancel, onConfirm }) {
         onSubmit={handleSubmit}
         className="bg-[var(--paper)] rounded-2xl shadow-lg max-w-md w-full p-6 border border-[var(--border)]"
       >
-        <div className="bg-[var(--accent)]/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+        <div className="bg-v-accent/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
           <Plus className="text-[var(--accent-deep)]" size={24} />
         </div>
 

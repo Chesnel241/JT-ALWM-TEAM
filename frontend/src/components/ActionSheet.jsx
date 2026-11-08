@@ -45,7 +45,7 @@ export default function ActionSheet({
     <div className="fixed inset-0 z-[10001] flex items-end justify-center sm:items-center p-4">
       {/* Backdrop */}
       <div 
-        className={`absolute inset-0 bg-[var(--ink)]/40 backdrop-blur-sm transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
         onClick={onClose}
       />
       
@@ -85,7 +85,7 @@ export default function ActionSheet({
               en un toucher, sans fenêtre ; le refus ouvre le motif. */}
           <button
             onClick={() => { onClose(); onApprove(); }}
-            className="flex items-center gap-3.5 w-full p-3 rounded-2xl bg-[var(--action)]/10 hover:bg-[var(--action)]/20 transition-colors active:scale-[0.98] text-left"
+            className="flex items-center gap-3.5 w-full p-3 rounded-2xl bg-v-action/10 hover:bg-v-action/20 transition-colors active:scale-[0.98] text-left"
           >
             <div className="p-2.5 bg-[var(--action)] text-white rounded-xl shadow-sm">
               <CheckCircle size={20} />

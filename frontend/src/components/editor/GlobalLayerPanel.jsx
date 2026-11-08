@@ -288,7 +288,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
               <>
                 <div className="flex gap-2">
                   {['LIVE', 'DIRECT'].map((l) => (
-                    <button key={l} onClick={() => setLive({ label: l })} className={`px-3 py-1.5 rounded-lg text-sm border ${v.live.label === l ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border)] text-[color:var(--muted)]'}`}>{l}</button>
+                    <button key={l} onClick={() => setLive({ label: l })} className={`px-3 py-1.5 rounded-lg text-sm border ${v.live.label === l ? 'border-[var(--accent)] text-[var(--accent)] bg-v-accent/10' : 'border-[var(--border)] text-[color:var(--muted)]'}`}>{l}</button>
                   ))}
                 </div>
                 <div className="grid grid-cols-3 gap-3 mt-2">
@@ -534,7 +534,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
 
   return (
     <div
-      ref={boiteModale} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+      ref={boiteModale} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true">
       {content}
       {boiteConfirmation}
     </div>

@@ -33,9 +33,9 @@ import OutilsCorrespondant from './OutilsCorrespondant.jsx';
 // version précédente (bleu 500 sur bleu 100, ambre sur ambre) descendait sous
 // le seuil de lisibilité ; on passe au bleu profond, à 8:1 sur ces fonds.
 const FILE_ICONS = {
-  video: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent)]/10' },
-  image: { Icon: ImageIcon, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
-  audio: { Icon: Mic, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
+  video: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-v-accent/10' },
+  image: { Icon: ImageIcon, color: 'text-[color:var(--accent-deep)]', bg: 'bg-v-accent-soft/25' },
+  audio: { Icon: Mic, color: 'text-[color:var(--accent-deep)]', bg: 'bg-v-accent-soft/25' },
   script: { Icon: FileText, color: 'text-[color:var(--ink)]', bg: 'bg-[var(--paper-2)]' },
 };
 
@@ -172,7 +172,7 @@ export default function MobileUploaderView({
           className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold ${
             isActive
               ? 'bg-white/25'
-              : (sec.tone ? '' : 'bg-[var(--accent)]/15 text-[color:var(--accent-deep)]')
+              : (sec.tone ? '' : 'bg-v-accent/15 text-[color:var(--accent-deep)]')
           }`}
         >
           {sec.badge}
@@ -248,7 +248,7 @@ export default function MobileUploaderView({
           <button
             onClick={() => setTutorialOpen(true)}
             type="button"
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
+            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-v-accent/10 text-[color:var(--accent-deep)] font-semibold text-xs active:scale-95 transition-transform"
           >
             <HelpCircle size={14} aria-hidden="true" />
             {/* Le libellé court : « Conseils d'écriture » en entier coupait
@@ -312,7 +312,7 @@ export default function MobileUploaderView({
 
       {/* 3. LATE / LOCK NOTIFICATION */}
       {isLocked && (
-        <div className="p-4 rounded-2xl bg-[var(--cta-red)]/10 border-2 border-[var(--cta-red)]/40 text-center space-y-2">
+        <div className="p-4 rounded-2xl bg-v-cta-red/10 border-2 border-v-cta-red/40 text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-[color:var(--cta-red-deep)] font-bold text-base">
             <AlertCircle size={18} />
             <span>{t.uploader.lateTitle}</span>
@@ -321,7 +321,7 @@ export default function MobileUploaderView({
             {t.uploader.lateText}
           </p>
           {extensionStatus === 'pending' ? (
-            <div className="inline-block px-3 py-1.5 rounded-xl bg-[var(--cta-orange)]/10 border border-[var(--cta-orange)]/40 text-[color:var(--ink)] text-sm font-bold">
+            <div className="inline-block px-3 py-1.5 rounded-xl bg-v-cta-orange/10 border border-v-cta-orange/40 text-[color:var(--ink)] text-sm font-bold">
               {t.delais.accuse}
             </div>
           ) : (
@@ -427,7 +427,7 @@ export default function MobileUploaderView({
                 onClick={handleTriggerFileInput}
                 disabled={isLocked}
                 type="button"
-                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-[var(--action)]/25 active:scale-[0.98] motion-tap text-left disabled:opacity-50"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--action)] text-white font-bold text-base shadow-md shadow-v-action/25 active:scale-[0.98] motion-tap text-left disabled:opacity-50"
               >
                 <span className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
                   <Video size={24} />
@@ -461,7 +461,7 @@ export default function MobileUploaderView({
                 type="button"
                 className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--paper-2)] border-2 border-[var(--border)] text-[color:var(--ink)] font-bold text-base active:scale-[0.98] motion-tap text-left disabled:opacity-50"
               >
-                <span className="w-12 h-12 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center shrink-0">
+                <span className="w-12 h-12 rounded-2xl bg-v-accent/10 text-[color:var(--accent-deep)] flex items-center justify-center shrink-0">
                   <FileText size={24} />
                 </span>
                 <span className="min-w-0">
@@ -489,7 +489,7 @@ export default function MobileUploaderView({
                 la condition « plus rien en cours » ne pouvait jamais être vraie
                 après un envoi fait dans la même séance. */}
             {activeUploads.length > 0 && !activeUploading.some(estEnVol) && (
-              <div className="motion-rise flex items-start gap-2.5 p-3.5 rounded-2xl bg-[var(--success)]/10 border border-[var(--success)]/30">
+              <div className="motion-rise flex items-start gap-2.5 p-3.5 rounded-2xl bg-v-success/10 border border-v-success/30">
                 <CheckCircle size={20} className="motion-check shrink-0 text-[color:var(--success-deep)]" />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-[color:var(--success-deep)]">
@@ -498,7 +498,7 @@ export default function MobileUploaderView({
                   {/* L'INCIDENT : « Vous pouvez fermer la page » s'affichait
                       alors qu'un envoi tournait encore dans un autre
                       reportage. Fermer l'aurait interrompu. */}
-                  <p className="text-xs text-[color:var(--ink)]/75">
+                  <p className="text-xs text-v-ink/75">
                     {uploading.some(estEnVol) ? t.uploader.sectionDoneAutreEnvoi : t.uploader.sectionDoneHint}
                   </p>
                 </div>
@@ -515,7 +515,7 @@ export default function MobileUploaderView({
             {/* Un reportage encore vide : le dire, et y mener d'un geste. Sans
                 cela, le correspondant croyait avoir tout envoyé. */}
             {activeUploads.length > 0 && !activeUploading.some(estEnVol) && reportageVide && (
-              <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-[var(--cta-orange)]/40 bg-[var(--cta-orange)]/10 p-3">
+              <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-v-cta-orange/40 bg-v-cta-orange/10 p-3">
                 <p className="min-w-0 text-sm font-bold text-[color:var(--ink)]">{t.uploader.reportageVide(reportageVide.label)}</p>
                 <button
                   type="button"
@@ -595,7 +595,7 @@ export default function MobileUploaderView({
                             <button
                               onClick={() => setPreviewScriptFile(file)}
                               type="button"
-                              className="p-2 text-xs font-semibold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 rounded-xl active:scale-90"
+                              className="p-2 text-xs font-semibold text-[color:var(--accent-deep)] bg-v-accent/10 rounded-xl active:scale-90"
                               title={t.uploader.readScript}
                               aria-label={t.uploader.readScript}
                             >
@@ -608,7 +608,7 @@ export default function MobileUploaderView({
                           <button
                             onClick={() => openDeleteDialog(file)}
                             type="button"
-                            className="h-11 w-11 flex items-center justify-center rounded-xl text-[color:var(--cta-red)] bg-[var(--cta-red)]/10 hover:bg-[var(--cta-red)]/20 active:scale-90 motion-tap"
+                            className="h-11 w-11 flex items-center justify-center rounded-xl text-[color:var(--cta-red)] bg-v-cta-red/10 hover:bg-v-cta-red/20 active:scale-90 motion-tap"
                             title={t.uploader.supprimerFichier(file.name)}
                             aria-label={t.uploader.supprimerFichier(file.name)}
                           >
@@ -636,7 +636,7 @@ export default function MobileUploaderView({
               <button
                 type="button"
                 onClick={() => (onEditPhone ? onEditPhone() : setHasPhoneNumber?.(false))}
-                className="shrink-0 rounded-lg px-2.5 py-1.5 font-bold text-[color:var(--accent-deep)] bg-[var(--accent)]/10 active:scale-95"
+                className="shrink-0 rounded-lg px-2.5 py-1.5 font-bold text-[color:var(--accent-deep)] bg-v-accent/10 active:scale-95"
               >
                 {t.uploader.edit}
               </button>

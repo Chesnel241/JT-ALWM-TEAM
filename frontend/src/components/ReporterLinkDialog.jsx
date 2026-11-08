@@ -62,7 +62,7 @@ export default function ReporterLinkDialog({ isOpen, onClose, countryId, country
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="h-10 w-10 shrink-0 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center">
+            <span className="h-10 w-10 shrink-0 rounded-2xl bg-v-accent/10 text-[color:var(--accent-deep)] flex items-center justify-center">
               <Link2 size={20} />
             </span>
             <div className="min-w-0">

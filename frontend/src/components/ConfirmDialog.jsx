@@ -26,12 +26,12 @@ export default function ConfirmDialog({
   const variantConfig = {
     default: {
       buttonColor: 'bg-[var(--accent)] hover:bg-[var(--accent-deep)]',
-      iconBg: 'bg-[var(--accent)]/10',
+      iconBg: 'bg-v-accent/10',
       iconColor: 'text-[var(--accent-deep)]',
     },
     danger: {
       buttonColor: 'bg-[var(--signal)] hover:opacity-80',
-      iconBg: 'bg-[var(--signal)]/10',
+      iconBg: 'bg-v-signal/10',
       iconColor: 'text-[var(--signal)]',
     },
   };

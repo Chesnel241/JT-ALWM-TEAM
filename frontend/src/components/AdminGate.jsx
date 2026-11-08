@@ -66,7 +66,7 @@ export default function AdminGate({ onDeverrouille, titre, sous }) {
   return (
     <div className="max-w-md mx-auto px-4 py-16">
       <div className="panel p-6 sm:p-8 border-t-4 border-t-[color:var(--accent)]">
-        <div className="mx-auto mb-5 h-14 w-14 rounded-full bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center">
+        <div className="mx-auto mb-5 h-14 w-14 rounded-full bg-v-accent/10 text-[color:var(--accent-deep)] flex items-center justify-center">
           <Lock size={26} aria-hidden="true" />
         </div>
 

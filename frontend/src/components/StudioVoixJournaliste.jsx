@@ -115,7 +115,7 @@ export default function StudioVoixJournaliste({
       <header className="jr-ciel px-4 py-6 sm:py-9 text-center">
         {/* Une pastille teintée, pas un rond rouge plein : celui-là est le
             bouton d'enregistrement, plus bas, et ne doit pas avoir de sosie. */}
-        <span className="mx-auto h-14 w-14 rounded-2xl bg-[var(--cta-red)]/10 text-[color:var(--cta-red-deep)] flex items-center justify-center" aria-hidden="true">
+        <span className="mx-auto h-14 w-14 rounded-2xl bg-v-cta-red/10 text-[color:var(--cta-red-deep)] flex items-center justify-center" aria-hidden="true">
           <Mic size={28} />
         </span>
         <h2 className="mt-3 text-2xl sm:text-4xl font-extrabold text-[color:var(--ink)] leading-tight">{v.titre}</h2>
@@ -164,7 +164,7 @@ export default function StudioVoixJournaliste({
                 key={c.id}
                 type="button"
                 onClick={() => choisirPays(c)}
-                className="jr-tuile !min-h-0 !py-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40"
+                className="jr-tuile !min-h-0 !py-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-v-accent/40"
               >
                 <CountryAvatar country={c} ring className="h-12 w-12" />
                 <span className="font-extrabold text-[color:var(--ink)] break-words">{c.name}</span>
@@ -203,7 +203,7 @@ export default function StudioVoixJournaliste({
                 onChange={(e) => setTitre(e.target.value)}
                 placeholder={v.titrePh}
                 maxLength={120}
-                className="w-full min-h-[56px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-4 text-base font-semibold text-[color:var(--ink)] outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15"
+                className="w-full min-h-[56px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-4 text-base font-semibold text-[color:var(--ink)] outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-v-accent/15"
               />
             </div>
           </Etape>
@@ -241,7 +241,7 @@ export default function StudioVoixJournaliste({
               onChange={(e) => setScript(e.target.value)}
               placeholder={v.textePh}
               style={{ fontSize: `${tailleTexte}px` }}
-              className="w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] p-4 leading-relaxed text-[color:var(--ink)] outline-none resize-y focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15"
+              className="w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] p-4 leading-relaxed text-[color:var(--ink)] outline-none resize-y focus:border-[color:var(--accent)] focus:ring-4 focus:ring-v-accent/15"
             />
           </Etape>
         </div>
@@ -272,7 +272,7 @@ export default function StudioVoixJournaliste({
             </div>
 
             {voixEnvoyee && !audioUrl && !enregistre && (
-              <div role="status" className="rounded-2xl bg-[var(--action)]/10 border-2 border-[var(--action)]/30 p-4 flex items-start gap-3">
+              <div role="status" className="rounded-2xl bg-v-action/10 border-2 border-v-action/30 p-4 flex items-start gap-3">
                 <CheckCircle size={24} className="motion-check shrink-0 text-[color:var(--action)]" aria-hidden="true" />
                 <div>
                   <p className="font-extrabold text-[color:var(--action-deep)]">{v.envoyee}</p>
@@ -310,7 +310,7 @@ export default function StudioVoixJournaliste({
                 </p>
                 <audio src={audioUrl} controls className="w-full" />
                 {envoiEnCours && (
-                  <p role="status" className="flex items-center gap-3 rounded-2xl bg-[var(--accent)]/10 px-4 py-3 font-bold text-[color:var(--accent-deep)]">
+                  <p role="status" className="flex items-center gap-3 rounded-2xl bg-v-accent/10 px-4 py-3 font-bold text-[color:var(--accent-deep)]">
                     <span className="jr-radar" aria-hidden="true" />
                     {etapeEnvoi}
                   </p>
@@ -331,7 +331,7 @@ export default function StudioVoixJournaliste({
                     {v.envoyer}
                   </button>
                   {confirmeEffacer ? (
-                    <div role="group" aria-label={v.effacerQuestion} className="motion-rise rounded-2xl border-2 border-[var(--cta-orange)]/40 bg-[var(--cta-orange)]/10 p-3 space-y-3">
+                    <div role="group" aria-label={v.effacerQuestion} className="motion-rise rounded-2xl border-2 border-v-cta-orange/40 bg-v-cta-orange/10 p-3 space-y-3">
                       <p className="font-bold text-[color:var(--ink)]">{v.effacerQuestion}</p>
                       <div className="grid grid-cols-2 gap-2">
                         <button type="button" onClick={() => setConfirmeEffacer(false)} className="jr-bouton jr-bouton-contour w-full">
@@ -412,7 +412,7 @@ export default function StudioVoixJournaliste({
                 <Onde niveau={niveau} actif={etatMicro === 'rec'} />
 
                 {microRefuse && !enregistre && (
-                  <div role="alert" className="w-full rounded-2xl bg-[var(--cta-orange)]/10 border-2 border-[var(--cta-orange)]/40 p-4 space-y-3">
+                  <div role="alert" className="w-full rounded-2xl bg-v-cta-orange/10 border-2 border-v-cta-orange/40 p-4 space-y-3">
                     <p className="flex items-start gap-2 text-sm font-bold text-[color:var(--ink)]">
                       <AlertTriangle size={18} className="shrink-0 mt-0.5 text-[color:var(--cta-orange)]" aria-hidden="true" />
                       {v.erreurMicro}
@@ -424,7 +424,7 @@ export default function StudioVoixJournaliste({
                 )}
 
                 {sature && etatMicro === 'rec' && (
-                  <p role="alert" className="flex items-center gap-2 rounded-2xl bg-[var(--cta-orange)]/10 border-2 border-[var(--cta-orange)]/40 px-4 py-2.5 text-sm font-bold text-[color:var(--ink)]">
+                  <p role="alert" className="flex items-center gap-2 rounded-2xl bg-v-cta-orange/10 border-2 border-v-cta-orange/40 px-4 py-2.5 text-sm font-bold text-[color:var(--ink)]">
                     <AlertTriangle size={18} className="shrink-0 text-[color:var(--cta-orange)]" aria-hidden="true" />
                     {v.sature}
                   </p>

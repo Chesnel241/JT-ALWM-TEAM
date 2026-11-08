@@ -100,9 +100,9 @@ const formatShortTime = (seconds) => {
 
 function ToolButton({ icon, label, active = false, disabled = false, onClick, title, shortcut, danger = false, compact = false, responsiveCompact = false }) {
   const colors = danger
-    ? 'border-[var(--editor-danger)]/55 text-[var(--editor-danger)] hover:bg-[var(--editor-danger)]/15'
+    ? 'border-v-editor-danger/55 text-[var(--editor-danger)] hover:bg-v-editor-danger/15'
     : active
-      ? 'border-[var(--editor-accent)] bg-[var(--editor-accent)]/14 text-[var(--editor-text)]'
+      ? 'border-[var(--editor-accent)] bg-v-editor-accent/14 text-[var(--editor-text)]'
       : 'border-[var(--editor-border)] text-[var(--editor-text)] hover:border-[var(--editor-accent)] hover:bg-[var(--editor-panel-raised)]';
   return (
     <button
@@ -250,7 +250,7 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
       data-titre-piste
       aria-label={t.studio.timeline.etiquetteTitre(label, formatTimecode(startTime), formatTimecode(duration))}
       title={t.studio.timeline.clipGlisser}
-      className="absolute inset-y-1 rounded border border-[var(--editor-title)] bg-[var(--editor-title)]/75 text-[var(--editor-text)] shadow-sm cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
+      className="absolute inset-y-1 rounded border border-[var(--editor-title)] bg-v-editor-title/75 text-[var(--editor-text)] shadow-sm cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
       style={{ left: `${startTime * pxPerSec}px`, width: `${Math.max(6, duration * pxPerSec)}px`, touchAction: 'none' }}
     >
       <span
@@ -260,14 +260,14 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
         onPointerDown={beginDrag('left')}
         className="absolute inset-y-0 -left-2 z-20 w-5 cursor-ew-resize touch-none"
       >
-        <span className="absolute inset-y-1 left-2 w-1 rounded bg-[var(--editor-text)]/85" />
+        <span className="absolute inset-y-1 left-2 w-1 rounded bg-v-editor-text/85" />
       </span>
       <span className="pointer-events-none block truncate py-2 pl-3 pr-16 text-xs font-semibold">{label}</span>
       <span className="absolute inset-y-0 right-1 z-30 flex items-center gap-1">
         <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={duplicate} title={t.studio.timeline.titreDupliquer} aria-label={t.studio.timeline.titreDupliquer} className="flex h-7 w-7 items-center justify-center rounded bg-[var(--editor-panel)] text-[var(--editor-text)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]">
           <Copy size={13} />
         </button>
-        <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onChange(overlays.filter((_, itemIndex) => itemIndex !== index)); }} title={t.studio.timeline.titreSupprimer} aria-label={t.studio.timeline.titreSupprimer} className="flex h-7 w-7 items-center justify-center rounded bg-[var(--editor-panel)] text-[var(--editor-danger)] hover:bg-[var(--editor-danger)]/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-danger)]">
+        <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onChange(overlays.filter((_, itemIndex) => itemIndex !== index)); }} title={t.studio.timeline.titreSupprimer} aria-label={t.studio.timeline.titreSupprimer} className="flex h-7 w-7 items-center justify-center rounded bg-[var(--editor-panel)] text-[var(--editor-danger)] hover:bg-v-editor-danger/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-danger)]">
           <Trash2 size={13} />
         </button>
       </span>
@@ -278,7 +278,7 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
         onPointerDown={beginDrag('right')}
         className="absolute inset-y-0 -right-2 z-20 w-5 cursor-ew-resize touch-none"
       >
-        <span className="absolute inset-y-1 right-2 w-1 rounded bg-[var(--editor-text)]/85" />
+        <span className="absolute inset-y-1 right-2 w-1 rounded bg-v-editor-text/85" />
       </span>
     </div>
   );
@@ -435,7 +435,7 @@ function SortableClip({
             ))}
           </div>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-[var(--editor-muted)]/40">
+          <div className="absolute inset-0 flex items-center justify-center text-v-editor-muted/40">
             <Video size={24} />
           </div>
         )}
@@ -450,12 +450,12 @@ function SortableClip({
           }}
           aria-label={`Déplacer ${clip.name || clip.filename || 'le clip'}`}
           title={t.studio.timeline.reordonner}
-          className="absolute left-5 top-1.5 z-20 flex h-7 w-7 cursor-grab items-center justify-center rounded bg-[var(--editor-bg)]/90 text-[var(--editor-text)] active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+          className="absolute left-5 top-1.5 z-20 flex h-7 w-7 cursor-grab items-center justify-center rounded bg-v-editor-bg/90 text-[var(--editor-text)] active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
         >
           <GripVertical size={15} />
         </button>
 
-        <div className="absolute inset-x-0 bottom-0 z-10 flex h-6 items-center justify-between gap-2 bg-[var(--editor-bg)]/90 px-2.5 text-[11px] text-[var(--editor-text)] pointer-events-none">
+        <div className="absolute inset-x-0 bottom-0 z-10 flex h-6 items-center justify-between gap-2 bg-v-editor-bg/90 px-2.5 text-[11px] text-[var(--editor-text)] pointer-events-none">
           <span className="truncate font-semibold">{clip.name || clip.filename || `Clip ${index + 1}`}</span>
           {widthPx > 90 && <span className="shrink-0 font-mono tabular-nums text-[var(--editor-muted)]">{formatShortTime(displayRange.durationSec)}</span>}
         </div>
@@ -505,7 +505,7 @@ function SortableClip({
 
       {clip.transition && (
         <span
-          className="absolute -right-2 top-1 z-40 flex h-4 w-4 rotate-45 items-center justify-center rounded-sm border border-[var(--editor-text)]/70 bg-[var(--editor-title)]"
+          className="absolute -right-2 top-1 z-40 flex h-4 w-4 rotate-45 items-center justify-center rounded-sm border border-v-editor-text/70 bg-[var(--editor-title)]"
           title={`${t.studio.timeline.transitionApresCe} : ${t.studio.transitions[clip.transition.type] || clip.transition.type}`}
           aria-hidden="true"
         />
@@ -1086,7 +1086,7 @@ export default function Timeline({
                 <ToolButton icon={<Layers size={15} />} label={t.studio.timeline.habillageClip} active={(selectedClip.overlays?.length || 0) > 0} onClick={() => onOverlayClip?.(selectedClip)} />
                 <ToolButton icon={<ZoomIn size={15} />} label={selectedClip.kenBurns?.mode === 'in' ? t.studio.timeline.zoomAvant : selectedClip.kenBurns?.mode === 'out' ? t.studio.timeline.zoomArriere : t.studio.timeline.zoomLent} active={!!selectedClip.kenBurns?.mode} onClick={cycleKenBurns} />
                 <ToolButton icon={<Captions size={15} />} label={t.studio.timeline.sousTitres} active={(selectedClip.subtitles?.length || 0) > 0} onClick={() => onSubtitleClip?.(selectedClip)} />
-                <label className="flex h-10 shrink-0 items-center gap-2 rounded-md border border-[var(--editor-border)] px-2.5 text-xs font-semibold text-[var(--editor-text)] focus-within:border-[var(--editor-accent)] focus-within:ring-2 focus-within:ring-[var(--editor-accent)]/40">
+                <label className="flex h-10 shrink-0 items-center gap-2 rounded-md border border-[var(--editor-border)] px-2.5 text-xs font-semibold text-[var(--editor-text)] focus-within:border-[var(--editor-accent)] focus-within:ring-2 focus-within:ring-v-editor-accent/40">
                   {t.studio.timeline.transitionApres}
                   <select
                     value={selectedClip.transition?.type || 'none'}
@@ -1117,7 +1117,7 @@ export default function Timeline({
               <button
                 type="button"
                 onClick={onBrowseRushes}
-                className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-[var(--editor-accent)] px-3 text-xs font-bold text-[var(--editor-accent)] transition-[transform,background-color] duration-150 ease-[var(--ease-out)] hover:bg-[var(--editor-accent)]/10 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+                className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-[var(--editor-accent)] px-3 text-xs font-bold text-[var(--editor-accent)] transition-[transform,background-color] duration-150 ease-[var(--ease-out)] hover:bg-v-editor-accent/10 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
               >
                 <FolderOpen size={15} /> {t.studio.timeline.videCta}
               </button>
@@ -1148,7 +1148,7 @@ export default function Timeline({
 
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={layout.items.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
-                  <div role="listbox" aria-label={t.studio.timeline.pisteVideo} className="relative flex border-b border-[var(--editor-border)] bg-[var(--editor-panel-raised)]/35" style={{ height: `${videoTrackHeight}px`, width: `${contentWidth}px` }}>
+                  <div role="listbox" aria-label={t.studio.timeline.pisteVideo} className="relative flex border-b border-[var(--editor-border)] bg-v-editor-panel-raised/35" style={{ height: `${videoTrackHeight}px`, width: `${contentWidth}px` }}>
                     {layout.items.map((item, index) => (
                       <SortableClip
                         key={item.id}
@@ -1173,7 +1173,7 @@ export default function Timeline({
               </DndContext>
 
               {!compact && (
-                <div role="region" aria-label={t.studio.timeline.pisteTitres} className="relative border-b border-[var(--editor-border)] bg-[var(--editor-panel)]/75" style={{ height: `${titleTrackHeight}px`, width: `${contentWidth}px` }}>
+                <div role="region" aria-label={t.studio.timeline.pisteTitres} className="relative border-b border-[var(--editor-border)] bg-v-editor-panel/75" style={{ height: `${titleTrackHeight}px`, width: `${contentWidth}px` }}>
                   {/* Il n'existait aucun moyen de créer un titre ici : le
                       message renvoyait vers « Habillage JT », qui écrit en
                       réalité dans `branding.overlays`, un autre tableau qui

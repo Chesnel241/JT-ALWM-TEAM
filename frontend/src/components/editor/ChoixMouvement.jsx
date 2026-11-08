@@ -184,8 +184,8 @@ export function ChoixEntree({ valeur, onChange, recommandee }) {
                     aria-pressed={actif}
                     className={`flex flex-col gap-1 p-1.5 rounded-lg border text-left motion-tap ${
                       actif
-                        ? 'border-[var(--accent)] bg-[var(--accent)]/10'
-                        : 'border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)]/50'
+                        ? 'border-[var(--accent)] bg-v-accent/10'
+                        : 'border-[var(--border)] bg-[var(--paper)] hover:border-v-accent/50'
                     }`}
                   >
                     <Scene>

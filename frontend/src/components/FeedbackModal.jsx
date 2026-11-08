@@ -270,7 +270,7 @@ export default function FeedbackModal({
                     key={idx}
                     type="button"
                     onClick={() => handleApplyPreset(preset.text)}
-                    className="text-[11px] px-2.5 py-1 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] hover:text-[color:var(--accent-deep)] transition-colors text-left"
+                    className="text-[11px] px-2.5 py-1 rounded-lg bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] hover:bg-v-accent/10 hover:border-[var(--accent)] hover:text-[color:var(--accent-deep)] transition-colors text-left"
                   >
                     {preset.label}
                   </button>

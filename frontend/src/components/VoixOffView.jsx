@@ -551,7 +551,7 @@ export default function VoixOffView({
 
         {selectedCountry && isReporter ? (
           // Affichage épuré pour le journaliste : son pays est mis en valeur sans liste interminable
-          <div className="p-4 bg-[var(--paper)] border-2 border-[color:var(--accent)]/40 rounded-2xl flex items-center justify-between">
+          <div className="p-4 bg-[var(--paper)] border-2 border-v-accent/40 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <CountryAvatar country={selectedCountry} className="w-10 h-10 shadow-sm" />
               <div>
@@ -579,7 +579,7 @@ export default function VoixOffView({
                   onClick={() => setSelectedCountry(c)}
                   className={`shrink-0 flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs motion-tap active:scale-95 transition-all ${
                     isSelected
-                      ? 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/30 scale-105'
+                      ? 'bg-[var(--accent)] text-white shadow-md shadow-v-accent/30 scale-105'
                       : 'bg-[var(--paper)] text-[color:var(--ink)] border border-[var(--border)] hover:border-[color:var(--accent)]'
                   }`}
                 >

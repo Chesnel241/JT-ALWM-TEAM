@@ -77,7 +77,7 @@ export default function ParcoursPays({
               key={etape.cle}
               type="button"
               onClick={ouvrir[etape.cle]}
-              className="jr-etape focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40"
+              className="jr-etape focus:outline-none focus-visible:ring-4 focus-visible:ring-v-accent/40"
               data-etat={etape.etat}
               data-avous={aVous ? '' : undefined}
             >

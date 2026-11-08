@@ -136,7 +136,7 @@ export default function SubtitlePanel({ clip, onClose, onSave, inline = false })
 
   return (
     <div
-      ref={boiteModale} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+      ref={boiteModale} className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true">
       {content}
     </div>
   );

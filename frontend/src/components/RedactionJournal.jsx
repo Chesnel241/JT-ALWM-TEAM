@@ -126,7 +126,7 @@ export default function RedactionJournal({ week, actif = true, onOpenConducteur,
                 aria-label={aria}
                 aria-describedby={`${base}-${cle}`}
                 data-etat={etatLigne}
-                className="jr-conducteur-ligne focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/40"
+                className="jr-conducteur-ligne focus:outline-none focus-visible:ring-4 focus-visible:ring-v-accent/40"
               >
                 <span className="jr-conducteur-num" aria-hidden="true">{numero}</span>
                 <span className="jr-conducteur-icone" aria-hidden="true">

@@ -17,9 +17,9 @@ import JTPretJournaliste from './JTPretJournaliste.jsx';
 // Charte : bleus du logo et neutres, avec un texte à fort contraste sur
 // chaque aplat (le bleu 500 sur bleu 100 précédent était illisible).
 const FILE_ICONS = {
-  video: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent)]/10' },
-  image: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
-  audio: { Icon: Music, color: 'text-[color:var(--accent-deep)]', bg: 'bg-[var(--accent-soft)]/25' },
+  video: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-v-accent/10' },
+  image: { Icon: Video, color: 'text-[color:var(--accent-deep)]', bg: 'bg-v-accent-soft/25' },
+  audio: { Icon: Music, color: 'text-[color:var(--accent-deep)]', bg: 'bg-v-accent-soft/25' },
   document: { Icon: FileText, color: 'text-[color:var(--ink)]', bg: 'bg-[var(--paper-2)]' },
 };
 
@@ -137,11 +137,11 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
         {/* Top Header Card */}
         <div className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent)]/10 text-[color:var(--accent-deep)] text-xs font-bold">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-v-accent/10 text-[color:var(--accent-deep)] text-xs font-bold">
               <Sparkles size={13} /> {t.nav.delivery}
             </div>
             {deliveries.length > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--success)]/12 text-[color:var(--success-deep)] border border-[var(--success)]/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-v-success/12 text-[color:var(--success-deep)] border border-v-success/30">
                 {t.delivery.available}
               </span>
             )}
@@ -195,7 +195,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                   className="p-4 bg-[var(--paper)] rounded-3xl border border-[var(--border)] shadow-sm space-y-3.5"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-v-accent/10 text-[color:var(--accent-deep)] flex items-center justify-center shrink-0">
                       <Video size={20} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -219,7 +219,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                     {isVideo && (
                       <button
                         onClick={() => setPreviewVideo(file)}
-                        className="py-2.5 px-3 rounded-2xl bg-[var(--accent)]/10 text-[color:var(--accent-deep)] font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                        className="py-2.5 px-3 rounded-2xl bg-v-accent/10 text-[color:var(--accent-deep)] font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                       >
                         <Play size={14} className="fill-current" />
                         <span>{t.delivery.watch}</span>
@@ -230,7 +230,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                       download={file.name}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`py-2.5 px-3 rounded-2xl bg-[var(--action)] text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-[var(--action)]/30 transition-transform ${
+                      className={`py-2.5 px-3 rounded-2xl bg-[var(--action)] text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-v-action/30 transition-transform ${
                         !isVideo ? 'col-span-2' : ''
                       }`}
                     >
@@ -284,7 +284,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
       <div className="hidden md:block">
         <div className="flex flex-wrap justify-between items-end gap-6 mb-8">
           <div>
-            <div className="badge bg-[var(--accent)]/10 text-[color:var(--accent-deep)] mb-3 inline-flex items-center gap-1">
+            <div className="badge bg-v-accent/10 text-[color:var(--accent-deep)] mb-3 inline-flex items-center gap-1">
               <Sparkles size={14} /> {t.nav.delivery}
             </div>
             <h2 className="text-3xl md:text-4xl font-semibold text-[color:var(--ink)] mb-2">
@@ -319,7 +319,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                 {week ? formatWeekLabel(week, lang) : ''}
               </h3>
               {deliveries.length > 0 && (
-                <span className="badge bg-[var(--accent)]/10 text-[var(--accent)]">
+                <span className="badge bg-v-accent/10 text-[var(--accent)]">
                   {t.delivery.published}
                 </span>
               )}
@@ -350,7 +350,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                         <p className="text-sm font-medium text-[color:var(--ink)] truncate flex items-center gap-2">
                           <span>{file.name}</span>
                           {file.isLate && (
-                            <span className="text-[10px] bg-[var(--signal)] text-white px-2 py-0.5 rounded-full font-bold">
+                            <span className="text-[10px] bg-[var(--cta-orange-deep)] text-white px-2 py-0.5 rounded-full font-bold">
                               {t.delivery.late}
                             </span>
                           )}
@@ -373,7 +373,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                           download={file.name}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[color:var(--action-deep)] hover:bg-[var(--action)]/10 p-1.5 rounded-lg"
+                          className="text-[color:var(--action-deep)] hover:bg-v-action/10 p-1.5 rounded-lg"
                           title={t.delivery.downloadFile}
                         >
                           <Download size={16} />

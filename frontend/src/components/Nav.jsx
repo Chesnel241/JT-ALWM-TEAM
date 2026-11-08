@@ -145,7 +145,7 @@ export default function Nav({
       <div className={keyPrefix === 'mobile' ? 'relative mb-1 shrink-0' : 'relative shrink-0'}>
         {item.icon}
         {item.badge && item.match.includes('dashboard') && currentView !== 'dashboard' && (
-          <span className="absolute -top-2 -right-2 bg-[var(--signal)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-pulse min-w-[20px] text-center">
+          <span className="absolute -top-2 -right-2 bg-[var(--cta-red)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-pulse min-w-[20px] text-center">
             {item.badge}
           </span>
         )}

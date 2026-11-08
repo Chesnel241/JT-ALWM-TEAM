@@ -74,7 +74,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           onClick={onRemove}
           aria-label={`${t.studio.panneaux.supprimer} — ${dit.label}`}
           title={t.studio.panneaux.supprimer}
-          className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-[var(--signal)]/10 rounded-lg transition-colors"
+          className="p-1.5 text-[color:var(--muted)] hover:text-[var(--signal)] hover:bg-v-signal/10 rounded-lg transition-colors"
         >
           <Trash2 size={14} />
         </button>
@@ -209,7 +209,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
               key={theme.id}
               type="button"
               onClick={() => onChange({ ...overlay, colors: { ...(overlay.colors || {}), ...theme.colors } })}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-[var(--accent)]/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 motion-tap"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--paper)] hover:bg-v-accent/10 text-[color:var(--ink)] border border-[var(--border)] active:scale-95 motion-tap"
             >
               <span
                 aria-hidden="true"
@@ -393,7 +393,7 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
   const total = groupes.reduce((n, g) => n + g.liste.length, 0);
 
   return (
-    <div className="border border-[var(--accent)]/40 rounded-xl p-4 bg-[var(--accent)]/5 flex flex-col gap-3">
+    <div className="border border-v-accent/40 rounded-xl p-4 bg-v-accent/5 flex flex-col gap-3">
       <div className="flex items-center gap-2 px-3 py-2 bg-[var(--paper)] border border-[var(--border)] rounded-lg">
         <Search size={14} className="text-[color:var(--muted)] shrink-0" aria-hidden="true" />
         <input
@@ -427,7 +427,7 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
                 key={modele.id}
                 type="button"
                 onClick={() => onChoisir(modele.id)}
-                className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 motion-tap text-left"
+                className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-v-accent/5 motion-tap text-left"
               >
                 <span className="text-2xl" aria-hidden="true">{modele.emoji}</span>
                 <div className="min-w-0">
@@ -587,7 +587,7 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
   return (
     <div
       ref={boiteModale}
-      className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[var(--ink)]/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
     >

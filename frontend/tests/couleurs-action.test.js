@@ -88,7 +88,7 @@ describe('écrans journalistes', () => {
     const lignes = source
       .split('\n')
       .map((ligne, i) => `${i + 1}: ${ligne.trim()}`)
-      .filter((ligne) => ligne.includes('var(--signal)'));
+      .filter((ligne) => ligne.includes('var(--signal)') || /\bv-signal\b/.test(ligne));
     expect(lignes).toEqual([]);
   });
 });

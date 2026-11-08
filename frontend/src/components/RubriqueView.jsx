@@ -321,7 +321,7 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
 
       {/* Un brouillon plus récent que le serveur : proposé, jamais imposé. */}
       {brouillonPropose && (
-        <div className="mb-5 rounded-2xl border border-[var(--accent)]/40 bg-[var(--paper)] p-4">
+        <div className="mb-5 rounded-2xl border border-v-accent/40 bg-[var(--paper)] p-4">
           <p className="text-sm font-bold text-[color:var(--ink)]">{r.brouillonLocal}</p>
           <p className="text-xs text-[color:var(--muted)] mt-0.5">
             {r.modifieLe(formatRelative(brouillonPropose.le, lang))}
@@ -339,7 +339,7 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
 
       {/* Conflit : la saisie reste à l'écran, rien n'est écrasé. */}
       {etat === 'conflit' && (
-        <div role="alert" className="mb-5 rounded-2xl border-2 border-[var(--cta-orange)]/40 bg-[var(--cta-orange)]/10 p-4">
+        <div role="alert" className="mb-5 rounded-2xl border-2 border-v-cta-orange/40 bg-v-cta-orange/10 p-4">
           <p className="text-base font-bold text-[color:var(--ink)] flex items-center gap-2">
             <AlertCircle size={18} className="shrink-0 text-[color:var(--cta-orange)]" aria-hidden="true" /> {r.conflitTitre}
           </p>
@@ -366,7 +366,7 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
                 maxLength={champ.max}
                 value={champs[champ.cle] || ''}
                 onChange={(e) => modifier(champ.cle, e.target.value)}
-                className="w-full bg-[var(--paper)] border-2 border-[var(--border)] rounded-2xl px-4 py-3 text-base text-[color:var(--ink)] leading-relaxed resize-y outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15"
+                className="w-full bg-[var(--paper)] border-2 border-[var(--border)] rounded-2xl px-4 py-3 text-base text-[color:var(--ink)] leading-relaxed resize-y outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-v-accent/15"
               />
             ) : (
               <input
@@ -374,7 +374,7 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
                 maxLength={champ.max}
                 value={champs[champ.cle] || ''}
                 onChange={(e) => modifier(champ.cle, e.target.value)}
-                className="w-full min-h-[56px] bg-[var(--paper)] border-2 border-[var(--border)] rounded-2xl px-4 text-base font-semibold text-[color:var(--ink)] outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15"
+                className="w-full min-h-[56px] bg-[var(--paper)] border-2 border-[var(--border)] rounded-2xl px-4 text-base font-semibold text-[color:var(--ink)] outline-none focus:border-[color:var(--accent)] focus:ring-4 focus:ring-v-accent/15"
               />
             )}
             {champ.max > 0 && (
@@ -470,7 +470,7 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
             {fichiers.map((f) => {
               const duree = formaterDuree(f.duree);
               return (
-                <li key={f.id} className="flex items-center gap-2.5 text-sm rounded-2xl bg-[var(--paper)] border-2 border-[var(--action)]/25 px-3.5 py-2.5">
+                <li key={f.id} className="flex items-center gap-2.5 text-sm rounded-2xl bg-[var(--paper)] border-2 border-v-action/25 px-3.5 py-2.5">
                   <span className="h-7 w-7 shrink-0 rounded-full bg-[var(--action)] text-white flex items-center justify-center" aria-hidden="true">
                     <Check size={15} strokeWidth={3} />
                   </span>

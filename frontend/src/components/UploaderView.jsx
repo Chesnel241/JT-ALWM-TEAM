@@ -597,7 +597,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
             <button
               onClick={handleEditPhone}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--success)]/10 text-[color:var(--success-deep)] border border-[var(--success)]/30 text-xs font-semibold hover:bg-[var(--success)]/20 transition-colors active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-v-success/10 text-[color:var(--success-deep)] border border-v-success/30 text-xs font-semibold hover:bg-v-success/20 transition-colors active:scale-95"
               title={t.uploader.phoneEdit}
             >
               <span>📱 {t.uploader.whatsappLabel} {phone}</span>
@@ -625,7 +625,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
         <OutilsCorrespondant pays={country} semaine={weeks.find((w) => w.status === 'active') || currentWeek} />
       </div>
       {isLocked && (
-        <div role="alert" className="panel p-5 mb-8 border-2 !border-[var(--cta-red)]/50 !bg-[var(--cta-red)]/10 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div role="alert" className="panel p-5 mb-8 border-2 !border-v-cta-red/50 !bg-v-cta-red/10 flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-start gap-3 flex-1">
             <AlertCircle className="text-[color:var(--cta-red)] flex-shrink-0 mt-0.5" size={22} />
             <div>
@@ -658,7 +658,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
       )}
 
       {!hasPhoneNumber || modifPhone ? (
-        <div className="panel p-6 sm:p-8 mb-8 border-2 border-[color:var(--accent)] bg-[color:var(--accent)]/5">
+        <div className="panel p-6 sm:p-8 mb-8 border-2 border-[color:var(--accent)] bg-v-accent/5">
           <div className="flex items-start gap-4 mb-6">
             {/* Une information, pas une alarme : l'icône d'alerte faisait
                 croire à une erreur avant même d'avoir commencé. */}
@@ -902,12 +902,12 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                               )}
                             </p>
                             {file.status === 'approved' && (
-                              <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-[var(--action)]/10 px-2 py-0.5 text-xs font-bold text-[color:var(--action-deep)]">
+                              <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-v-action/10 px-2 py-0.5 text-xs font-bold text-[color:var(--action-deep)]">
                                 <CheckCircle size={12} /> {t.uploader.approved}
                               </p>
                             )}
                             {file.status === 'rejected' && (
-                              <div className="mt-2 p-2.5 bg-[var(--cta-orange)]/10 rounded-xl border border-[var(--cta-orange)]/30">
+                              <div className="mt-2 p-2.5 bg-v-cta-orange/10 rounded-xl border border-v-cta-orange/30">
                                 <p className="text-xs font-bold text-[color:var(--cta-orange-deep)] flex items-center gap-1 mb-1">
                                   <AlertCircle size={12} /> {t.uploader.toFix}
                                 </p>
@@ -918,7 +918,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                           <button
                             onClick={() => openDeleteDialog(file)}
                             type="button"
-                            className="h-11 w-11 shrink-0 flex items-center justify-center rounded-xl text-[color:var(--cta-red)] bg-[var(--cta-red)]/10 hover:bg-[var(--cta-red)]/20 active:scale-90 motion-tap"
+                            className="h-11 w-11 shrink-0 flex items-center justify-center rounded-xl text-[color:var(--cta-red)] bg-v-cta-red/10 hover:bg-v-cta-red/20 active:scale-90 motion-tap"
                             title={t.uploader.supprimerFichier(file.name)}
                             aria-label={t.uploader.supprimerFichier(file.name)}
                           >

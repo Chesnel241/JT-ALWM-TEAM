@@ -137,10 +137,10 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
   if (selectedBin !== 'tj') return null;
 
   return (
-    <div className="mb-6 bg-[var(--paper)] border border-[var(--accent)]/30 rounded-2xl shadow-sm overflow-hidden relative">
+    <div className="mb-6 bg-[var(--paper)] border border-v-accent/30 rounded-2xl shadow-sm overflow-hidden relative">
       <div className="absolute top-0 left-0 w-1 h-full bg-[var(--accent)]"></div>
       
-      <div className="p-4 border-b border-[var(--border)] bg-[var(--accent)]/5 flex items-center justify-between">
+      <div className="p-4 border-b border-[var(--border)] bg-v-accent/5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="text-[color:var(--accent-deep)]" size={20} />
           <h3 className="font-bold text-[color:var(--ink)]">Assistant IA : Suivi des Reportages</h3>
@@ -169,7 +169,7 @@ export default function AIChecklist({ dashboard, countries, selectedBin }) {
                 const isReady = countryFiles.some(f => f.type === 'video' || f.filename.toLowerCase().endsWith('.zip'));
                 
                 return (
-                  <div key={country.id} className={`flex flex-col p-3 rounded-xl border ${isReady ? 'border-[var(--accent)]/30 bg-[var(--accent)]/10' : 'border-[var(--signal)]/30 bg-[var(--signal)]/10'}`}>
+                  <div key={country.id} className={`flex flex-col p-3 rounded-xl border ${isReady ? 'border-v-accent/30 bg-v-accent/10' : 'border-v-signal/30 bg-v-signal/10'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <CountryAvatar country={country} className="w-6 h-6" />

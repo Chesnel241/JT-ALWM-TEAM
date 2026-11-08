@@ -57,7 +57,7 @@ export default function ChampScript({
           aria-label={libelle ? undefined : u.scriptTitle}
           aria-describedby={idCompte}
           disabled={desactive}
-          className="w-full min-h-[132px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] p-4 pr-14 text-base leading-relaxed text-[color:var(--ink)] placeholder:text-[color:var(--muted)] outline-none resize-y focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--accent)]/15 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full min-h-[132px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] p-4 pr-14 text-base leading-relaxed text-[color:var(--ink)] placeholder:text-[color:var(--muted)] outline-none resize-y focus:border-[color:var(--accent)] focus:ring-4 focus:ring-v-accent/15 disabled:opacity-50 disabled:cursor-not-allowed"
         />
         {texte && !desactive && (
           <button

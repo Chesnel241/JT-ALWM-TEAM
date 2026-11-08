@@ -43,12 +43,12 @@ export default function PendingUploadsCard({ entries = [], onResume, onDismiss }
       {entries.map((entry) => (
         <div
           key={entry.key}
-          className="motion-rise rounded-2xl border-2 border-[var(--cta-orange)]/40 bg-[var(--cta-orange)]/10 p-4"
+          className="motion-rise rounded-2xl border-2 border-v-cta-orange/40 bg-v-cta-orange/10 p-4"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-bold text-sm text-[color:var(--ink)]">{t.uploader.resumeTitle}</p>
-              <p className="mt-1 text-sm text-[color:var(--ink)]/80 break-words">
+              <p className="mt-1 text-sm text-v-ink/80 break-words">
                 {t.uploader.resumeText(entry.name)}
               </p>
             </div>

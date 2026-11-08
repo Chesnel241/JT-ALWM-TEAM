@@ -106,7 +106,7 @@ function FeuilleAcces({ ouvert, onFermer, pays, adresse }) {
           <Smartphone size={20} aria-hidden="true" /> {p.accesEcran}
         </button>
         {aide ? (
-          <p role="status" className="-mt-2 rounded-2xl bg-[var(--accent)]/10 p-3 text-sm font-semibold text-[color:var(--ink)]">
+          <p role="status" className="-mt-2 rounded-2xl bg-v-accent/10 p-3 text-sm font-semibold text-[color:var(--ink)]">
             {estAppareilApple() ? p.accesIphone : p.accesAndroid}
           </p>
         ) : (

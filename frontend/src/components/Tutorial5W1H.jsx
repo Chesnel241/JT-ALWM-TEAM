@@ -45,7 +45,7 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
   const items = [
     { id: 'who', color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-200 dark:border-blue-800' },
     { id: 'what', color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30', border: 'border-purple-200 dark:border-purple-800' },
-    { id: 'where', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/10 dark:bg-[var(--accent)]/30', border: 'border-[var(--accent)]/20 dark:border-[var(--accent)]/80' },
+    { id: 'where', color: 'text-[var(--accent)]', bg: 'bg-v-accent/10 dark:bg-v-accent/30', border: 'border-v-accent/20 dark:border-v-accent/80' },
     { id: 'when', color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30', border: 'border-amber-200 dark:border-amber-800' },
     { id: 'why', color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30', border: 'border-rose-200 dark:border-rose-800' },
     { id: 'how', color: 'text-cyan-500', bg: 'bg-cyan-100 dark:bg-cyan-900/30', border: 'border-cyan-200 dark:border-cyan-800' },
@@ -93,14 +93,14 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
               
               <button 
                 onClick={handleDismiss}
-                className="hidden md:flex shrink-0 items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30 motion-tap hover:scale-105 active:scale-95"
+                className="hidden md:flex shrink-0 items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-v-accent/30 motion-tap hover:scale-105 active:scale-95"
               >
                 <CheckCircle size={20} />
                 <span>{t.tutorial.gotIt}</span>
               </button>
             </div>
 
-            <div className="mb-4 sm:mb-6 p-3.5 sm:p-4 bg-[var(--accent)]/10 border border-[var(--accent)] rounded-xl flex gap-3 items-start">
+            <div className="mb-4 sm:mb-6 p-3.5 sm:p-4 bg-v-accent/10 border border-[var(--accent)] rounded-xl flex gap-3 items-start">
               <Info className="text-[var(--accent)] shrink-0 mt-0.5" size={18} />
               <p className="text-xs sm:text-sm text-[var(--ink)]">
                 <strong className="text-[var(--accent)]">{t.tutorial.important}</strong> {t.tutorial.whatsappRequired}
@@ -136,7 +136,7 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
             <div className="mt-6 flex justify-center md:hidden pb-2">
               <button 
                 onClick={handleDismiss}
-                className="w-full flex justify-center items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-[var(--accent)]/30 motion-tap active:scale-95 text-sm"
+                className="w-full flex justify-center items-center gap-2 bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] px-6 py-3 rounded-xl font-bold shadow-lg shadow-v-accent/30 motion-tap active:scale-95 text-sm"
               >
                 <CheckCircle size={18} />
                 <span>{t.tutorial.gotIt}</span>

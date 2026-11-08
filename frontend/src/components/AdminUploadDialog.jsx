@@ -124,7 +124,7 @@ export default function AdminUploadDialog({ isOpen, onClose, onUpload, isLoading
             >
               {isLoading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-[var(--paper)]/30 border-t-[var(--paper)] rounded-full animate-spin" aria-hidden="true" />
+                  <div className="w-4 h-4 border-2 border-v-paper/30 border-t-[var(--paper)] rounded-full animate-spin" aria-hidden="true" />
                   <span className="sr-only">Chargement</span>
                   Upload en cours...
                 </>

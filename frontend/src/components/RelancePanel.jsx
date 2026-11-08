@@ -98,7 +98,7 @@ export default function RelancePanel({ selectedWeek, adminPassword, week, rafrai
           {aRelancer.length > 0 ? r.titre : t.delais.enAttente(demandes.length)}
         </span>
         {aRelancer.length > 0 && (
-          <span className="rounded-full bg-[var(--signal)]/15 px-2 py-0.5 text-xs font-bold text-[var(--signal)] tabular-nums">
+          <span className="rounded-full bg-v-signal/15 px-2 py-0.5 text-xs font-bold text-[var(--signal)] tabular-nums">
             {aRelancer.length}
           </span>
         )}
@@ -183,7 +183,7 @@ export default function RelancePanel({ selectedWeek, adminPassword, week, rafrai
                         disabled={Boolean(accordEnCours)}
                         onClick={() => accorder(d, minutes)}
                         title={t.delais.jusqua(heureCourte(apres(d.countryId, minutes), lang))}
-                        className="rounded-full bg-[var(--accent)]/10 px-2 py-1 font-bold text-[color:var(--accent-deep)] hover:bg-[var(--accent)]/20 disabled:opacity-50"
+                        className="rounded-full bg-v-accent/10 px-2 py-1 font-bold text-[color:var(--accent-deep)] hover:bg-v-accent/20 disabled:opacity-50"
                       >
                         +{minutes / 60} h · {t.delais.jusqua(heureCourte(apres(d.countryId, minutes), lang))}
                       </button>
