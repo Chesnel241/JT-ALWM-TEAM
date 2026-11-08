@@ -81,7 +81,7 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
             id={idSemaine}
             value={selectedWeek}
             onChange={(e) => setSelectedWeek(e.target.value)}
-            className="w-full min-h-[52px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 sm:px-4 text-sm sm:text-base font-bold text-[color:var(--ink)] shadow-sm focus:outline-none focus:border-[color:var(--accent)] cursor-pointer"
+            className="w-full min-h-[52px] rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 sm:px-4 text-base font-bold text-[color:var(--ink)] shadow-sm focus:outline-none focus:border-[color:var(--accent)] cursor-pointer"
           >
             {weeks.map((w) => (
               <option key={w.id} value={w.id}>

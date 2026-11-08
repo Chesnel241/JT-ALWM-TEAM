@@ -15,6 +15,9 @@
  */
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Le survol ne s'applique qu'aux appareils qui survolent vraiment : sur un
+  // téléphone, toucher un bouton laissait son état « survolé » collé.
+  future: { hoverOnlyWhenSupported: true },
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {

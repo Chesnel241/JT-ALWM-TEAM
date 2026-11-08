@@ -2316,3 +2316,16 @@
 .jr-parcours-carte[data-compact] .jr-etape .text-xs {
 	font-size: 0.72rem;
 }
+
+/* Mode connexion faible (lib/connexion.js) : les boucles décoratives
+   s'arrêtent. L'envoi en cours, le compte à rebours et les indicateurs
+   d'attente gardent leur mouvement : ils disent quelque chose. */
+html[data-econome] .jr-ciel::after,
+html[data-econome] .jr-depot-bord rect,
+html[data-econome] .jr-depot-icones > span,
+html[data-econome] .jr-depot-icones > .jr-depot-nuage,
+html[data-econome] .jr-jt-ecran::before,
+html[data-econome] .jr-jt-lecture::after,
+html[data-econome] .jr-micro[data-etat='pret'] .jr-micro-halo {
+	animation: none !important;
+}

@@ -5,6 +5,10 @@ import './index.css';
 import './styles/journalistes.css';
 // Écoute `beforeinstallprompt` dès le démarrage : Chrome ne l'émet qu'une fois.
 import './lib/installation.js';
+import { suivreConnexion } from './lib/connexion.js';
+
+// Connexion lente ou économie de données : les boucles décoratives s'arrêtent.
+suivreConnexion();
 
 // Auto-update du Service Worker, avec la MÊME règle que useVersionCheck : on
 // n'applique jamais la nouvelle version tant que l'onglet est au premier plan.
