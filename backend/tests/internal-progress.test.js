@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
 import { TEST_UPLOADS_DIR } from './setup.js';
 import { createApp } from '../src/app.js';
-import { setProgress, getJobState } from '../src/services/editorProgress.js';
+import { setProgress, getJobState, getWeekActiveJob } from '../src/services/editorProgress.js';
 
 let app;
 const ORIG_KEY = process.env.WORKER_KEY;
@@ -81,7 +81,7 @@ describe('POST /api/editor/internal/progress (callback worker Cloud Run)', () =>
       .set('X-Worker-Key', 'test-secret-key')
       .send({ jobId, status: 'done', url });
     expect(res.status).toBe(200);
-    expect(getJobState(jobId)).toEqual({ percent: 100, status: 'done', url });
+    expect(getJobState(jobId)).toEqual({ percent: 100, status: 'done', url, message: null });
   });
 
   it('rejette une URL de résultat d\'origine non autorisée (anti-injection)', async () => {
@@ -104,6 +104,29 @@ describe('POST /api/editor/internal/progress (callback worker Cloud Run)', () =>
       .set('X-Worker-Key', 'test-secret-key')
       .send({ jobId, status: 'error', error: 'boom' });
     expect(getJobState(jobId).status).toBe('error');
+  });
+
+  // Incident : le monteur ne lisait que « Erreur serveur lors du montage »,
+  // sans savoir quel passage corriger.
+  it('garde la raison de l’échec pour la montrer au monteur', async () => {
+    const jobId = `job-raison-${Math.random()}`;
+    setProgress(jobId, 30, 'encoding');
+    await request(app)
+      .post('/api/editor/internal/progress')
+      .set('X-Worker-Key', 'test-secret-key')
+      .send({ jobId, status: 'error', error: 'Le passage de 11:00 à 12:00 n’a pas pu être rendu.' });
+    expect(getJobState(jobId).message).toBe('Le passage de 11:00 à 12:00 n’a pas pu être rendu.');
+  });
+
+  // Incident : après un redémarrage du serveur en plein rendu (il dure des
+  // heures), le studio ne retrouvait plus le rendu de sa semaine.
+  it('retrouve la semaine d’un rendu que le serveur avait oublié', async () => {
+    const jobId = `job-oubli-${Math.random()}`;
+    await request(app)
+      .post('/api/editor/internal/progress')
+      .set('X-Worker-Key', 'test-secret-key')
+      .send({ jobId, weekId: '2031-W07', percent: 40, status: 'encoding' });
+    expect(getWeekActiveJob('2031-W07')).toMatchObject({ jobId, percent: 40 });
   });
 
   it('est accessible AVANT le middleware requireAuth (pas de cookie session requis)', async () => {

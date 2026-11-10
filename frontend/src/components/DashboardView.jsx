@@ -56,6 +56,7 @@ import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 // Clés localStorage : la timeline et le job de montage en cours survivent au
 // refresh/changement d'onglet (le rendu continue côté serveur).
 const JOB_STORE_KEY = 'jt-editor-job';
+const renduEnCours = (statut) => Boolean(statut) && statut !== 'done' && statut !== 'error' && statut !== 'unknown';
 const STUDIO_TIMELINE_HEIGHT_KEY = 'jt-studio-timeline-height';
 const STUDIO_TIMELINE_MIN_HEIGHT = 340;
 const STUDIO_PREVIEW_MIN_HEIGHT = 220;
@@ -1131,7 +1132,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     } else if (selectedWeek && isAuthenticatedAdmin) {
       api.getWeekActiveJob(selectedWeek)
         .then((res) => {
-          if (res?.job && res.job.status === 'processing') {
+          if (res?.job && renduEnCours(res.job.status)) {
             trackJob(res.job.jobId, { resume: true });
           } else if (res?.job && res.job.status === 'done' && res.job.url) {
             setGeneratedVideoUrl(/^https?:\/\//.test(res.job.url) ? res.job.url : `${API_BASE}${res.job.url}`);
@@ -1242,7 +1243,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       if (data.weekId === selectedWeek) {
         // Lu dans une ref : mettre isGeneratingVideo en dépendance de l'effet
         // rouvrirait la socket à chaque changement d'état de rendu.
-        if (data.status === 'processing' && !isGeneratingVideoRef.current) {
+        // Le moteur annonce « encoding », « downloading »… : tout ce qui n'est
+        // pas fini est un rendu en cours. Ne guetter que « processing » laissait
+        // les collègues sans aucune barre d'avancement.
+        if (renduEnCours(data.status) && !isGeneratingVideoRef.current) {
           trackJob(data.jobId, { resume: true });
         } else if (data.status === 'done' && data.url) {
           setGeneratedVideoUrl(/^https?:\/\//.test(data.url) ? data.url : `${API_BASE}${data.url}`);
@@ -1298,11 +1302,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       setExportError(msg);
       if (!silent) addToast(msg, 'error', 6000);
     };
-    const handleState = ({ percent, status, url }) => {
+    const handleState = ({ percent, status, url, message }) => {
       if (typeof percent === 'number') setExportProgress(percent);
       if (status && status !== 'unknown') setExportPhase(status);
       if (status === 'done' && url) succeed(url);
-      else if (status === 'error') fail('Erreur serveur lors du montage.');
+      // La raison donnée par le serveur dit quel plan ou quel passage corriger.
+      else if (status === 'error') fail(message || 'Le rendu a échoué. Relancez-le.');
     };
 
     setIsGeneratingVideo(true);
@@ -1345,14 +1350,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       } catch { /* réseau instable, on réessaiera */ }
     }, 4000);
 
-    // Filet de sécurité absolu : abandon de l'UI après 2 h (aligné sur le
-    // JOB_TTL_MS backend de 3 h). Un master de 30 min peut légitimement
-    // encoder > 1 h sur VPS — l'ancien filet de 20 min faisait afficher
-    // "trop long" en plein rendu sain. Le vrai détecteur d'échec reste le
-    // watchdog backend (status 'error' → fail immédiat via SSE/polling).
+    // Filet de sécurité absolu, aligné sur le plafond du serveur (12 h). Un JT
+    // de 30 minutes demande 1 h 30 à 3 h de rendu : l'ancien filet de 2 h
+    // affichait « trop long » sur un rendu sain. Le vrai détecteur d'échec
+    // reste le serveur (statut « error », reçu aussitôt).
     safetyRef.current = setTimeout(
-      () => fail('Le montage prend trop de temps. Réessayez ou vérifiez la connexion.'),
-      2 * 60 * 60 * 1000
+      () => fail('Le rendu dure depuis plus de 12 heures. Relancez-le.'),
+      12 * 60 * 60 * 1000
     );
 
     return { fail };
@@ -1393,31 +1397,16 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       : undefined;
     const imageOverlays = (branding.imageOverlays || []).filter((o) => o.filename);
 
-    // Durée de chaque segment (sec) : trim si défini, sinon metadata de la
-    // vidéo. Nécessaire au moteur Remotion (durationInFrames).
-    const probeDur = (url) => new Promise((resolve) => {
-      let settled = false;
-      const v = document.createElement('video');
-      const timeout = setTimeout(() => {
-        if (!settled) { settled = true; resolve(0); }
-      }, 5000);
-      
-      v.preload = 'metadata';
-      v.onloadedmetadata = () => {
-        if (!settled) { settled = true; clearTimeout(timeout); resolve(v.duration || 0); }
-      };
-      v.onerror = () => {
-        if (!settled) { settled = true; clearTimeout(timeout); resolve(0); }
-      };
-      v.src = url;
-    });
-    const durations = await Promise.all(timelineClips.map(async (clip) => {
+    // Durée de chaque plan : celle du rognage, sinon celle déjà connue. Quand
+    // elle manque, on n'envoie rien et le serveur mesure le fichier lui-même.
+    // (Avant, le navigateur interrogeait toutes les vidéos à la fois avec
+    // cinq secondes pour répondre : au-delà de quelques dizaines de plans,
+    // les retardataires recevaient « 5 secondes » d'office.)
+    const durations = timelineClips.map((clip) => {
       if (clip.outPoint != null) return Math.max(0.3, clip.outPoint - (clip.inPoint || 0));
-      const explicitDuration = Number(clip.durationSec);
-      if (Number.isFinite(explicitDuration) && explicitDuration >= 0.3) return explicitDuration;
-      const full = await probeDur(`${API_BASE}/uploads/${encodeURIComponent(clip.filename)}`);
-      return Math.max(0.3, (full || 5) - (clip.inPoint || 0));
-    }));
+      const connue = Number(clip.durationSec);
+      return Number.isFinite(connue) && connue >= 0.3 ? connue : undefined;
+    });
 
     try {
       // Passe par le client d'API plutôt que par un fetch à la main : il pose
@@ -1427,6 +1416,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         weekId: selectedWeek,
         clips: timelineClips.map((clip, i) => ({
           filename: clip.filename,
+          name: clip.name,
           inPoint: clip.inPoint,
           outPoint: clip.outPoint,
           durationSec: durations[i],
@@ -1452,6 +1442,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       console.error(err);
       // Affiche le champ précis quand le backend renvoie une erreur de
       // validation (sinon « Invalid value » seul est inexploitable).
+      // Un collègue a déjà lancé ce master : on suit son rendu au lieu
+      // d'afficher une erreur.
+      if (err.body?.code === 'RENDU_EN_COURS' && err.body.jobId) {
+        addToast(err.body.message, 'info', 8000);
+        trackJob(err.body.jobId, { resume: true });
+        return;
+      }
       const first = err.body?.errors?.[0];
       const detail = first ? `${first.path} : ${first.msg}` : null;
       tracker.fail(err.body?.message || detail || err.message || 'Erreur lors du montage vidéo');

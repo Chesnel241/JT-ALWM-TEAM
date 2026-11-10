@@ -83,11 +83,12 @@ export default function ExportStatus({
   if (erreur && !enCours) {
     return (
       <div className={`${cadre} border-[var(--editor-danger)]`} role="alert">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="shrink-0 text-[var(--editor-danger)]" size={20} />
+        <div className="flex items-start gap-3">
+          <AlertCircle className="mt-0.5 shrink-0 text-[var(--editor-danger)]" size={20} />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[color:var(--editor-text)]">{t.studio.panneaux.exportEchec}</p>
-            <p className="truncate text-xs text-[color:var(--editor-muted)]">{erreur}</p>
+            {/* En entier : la raison dit quel plan ou quel passage corriger. */}
+            <p className="text-xs leading-snug text-[color:var(--editor-muted)]">{erreur}</p>
           </div>
           {onReessayer && (
             <button type="button" onClick={onReessayer} className="btn btn-primary shrink-0 px-3 py-1.5 text-xs">

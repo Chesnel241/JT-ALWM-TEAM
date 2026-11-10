@@ -124,8 +124,11 @@ services:
   # =========================================================================
   worker:
     container_name: jt-alwm-worker
-    mem_limit: 2g
-    cpus: 2.0
+    # Le moteur s'adapte à ce qu'on lui donne : dans 2 Go il rend une image à
+    # la fois ; à partir de 4 Go, deux de front (environ deux fois plus vite).
+    # Sur un VPS de 8 Go, mettez WORKER_MEM=4g dans .env.
+    mem_limit: ${WORKER_MEM:-2g}
+    cpus: ${WORKER_CPUS:-2.0}
     build:
       context: .
       dockerfile: worker/Dockerfile

@@ -332,10 +332,16 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
         logger.warn('[internal/progress] 403 — X-Worker-Key invalide', { ip: req.ip });
         return res.status(403).json({ error: 'forbidden' });
       }
-      const { jobId, percent, status, url } = req.body || {};
+      const { jobId, percent, status, url, error, weekId } = req.body || {};
       if (!jobId || typeof jobId !== 'string') return res.status(400).json({ error: 'jobId requis' });
       logger.info('[internal/progress] callback reçu', { jobId, percent, status, hasUrl: !!url });
-      const { setProgress, finishJob } = await import('./services/editorProgress.js');
+      const { setProgress, finishJob, registerJobWeek, getJobState } = await import('./services/editorProgress.js');
+      // Un rendu dure des heures : si le serveur a redémarré entre-temps, il a
+      // oublié à quelle semaine appartient ce rendu, et le studio ne le
+      // retrouvait plus. Le moteur le rappelle à chaque message.
+      if (typeof weekId === 'string' && /^[\w-]{1,64}$/.test(weekId) && !getJobState(jobId)) {
+        registerJobWeek(jobId, weekId);
+      }
       if (status === 'done') {
         if (!isAllowedResultUrl(url)) {
           logger.warn('[internal/progress] URL de résultat rejetée (origine non autorisée)', { jobId });
@@ -344,7 +350,8 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
         }
         finishJob(jobId, 'done', url);
       } else if (status === 'error') {
-        finishJob(jobId, 'error');
+        if (error) logger.error('[internal/progress] rendu échoué', { jobId, error: String(error).slice(0, 400) });
+        finishJob(jobId, 'error', null, typeof error === 'string' ? error : null);
       } else {
         setProgress(jobId, percent ?? 0, status || 'encoding');
       }

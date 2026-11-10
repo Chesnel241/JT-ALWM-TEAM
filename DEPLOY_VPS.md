@@ -244,6 +244,42 @@ Saisir le mot de passe `GLOBAL_PASSWORD` pour accéder à l'application.
 9. Cliquer "Générer le Master"
 10. Attendre la barre de progression → télécharger le MP4
 
+#### Combien de temps dure le rendu du master
+
+Le moteur dessine le JT image par image : c'est long, et c'est normal.
+
+| Durée du JT | Moteur dans 2 Go (une image à la fois) | Moteur dans 4 Go (deux de front) |
+|---|---|---|
+| 5 minutes | environ 30 min | environ 20 min |
+| 15 minutes | environ 1 h 30 | environ 1 h |
+| 30 minutes (≈ 2 Go) | environ 3 h | environ 2 h |
+
+Mesuré sur une machine de 4 cœurs ; un VPS plus modeste est plus lent.
+
+- **Le monteur peut fermer son ordinateur** : le rendu continue sur le serveur,
+  et le lien du master reste disponible **24 heures** dans le studio.
+- Le master est rendu **par tronçons d'une minute**. Si un tronçon échoue, il
+  est repris jusqu'à trois fois ; s'il résiste, le studio indique le passage
+  concerné (« de 11:00 à 12:00 ») pour corriger le plan en cause.
+- Avant de commencer, le serveur vérifie que **chaque plan existe encore** et
+  qu'il reste **assez de place sur le disque** (environ 5 Go libres pour un
+  master de 2 Go).
+- Un seul master à la fois.
+
+Pour aller plus vite sur un VPS de 8 Go, ajoutez dans `.env` puis relancez
+`docker compose up -d` :
+
+```bash
+WORKER_MEM=4g
+```
+
+Réglages avancés du moteur (variables d'environnement du service `worker`,
+toutes facultatives) : `RENDER_CONCURRENCY` (images rendues de front),
+`RENDER_CHUNK_FRAMES` (taille d'un tronçon, 1800 images = 1 min),
+`RENDER_X264_PRESET` (`veryfast` par défaut), `RENDER_WORK_DIR` (dossier de
+travail). Côté `backend` : `JOB_TTL_MS` (durée maximale d'un rendu, 12 h) et
+`JOB_RETENTION_MS` (durée de conservation du lien, 24 h).
+
 ### Étape 3 — Voix Off
 1. Aller sur "Voix Off"
 2. Choisir pays + semaine + titre

@@ -296,12 +296,24 @@ router.post(
 
       const { clips, jobId, weekId, globalOverlays, logo, logoPosition, music, voiceover, imageOverlays, atmosphere } = req.body;
 
+      // Un master est déjà en cours pour cette semaine : on le dit tout de
+      // suite. Avant, la seconde demande prenait la place de la première dans
+      // le suivi de la semaine, puis échouait (« moteur occupé ») : les
+      // collègues ne voyaient plus le rendu qui, lui, continuait.
+      const enCours = weekId ? getWeekActiveJob(weekId) : null;
+      if (enCours && enCours.jobId !== jobId && enCours.status !== 'done' && enCours.status !== 'error') {
+        return res.status(409).json({
+          code: 'RENDU_EN_COURS',
+          jobId: enCours.jobId,
+          message: `Un master est déjà en cours de rendu pour cette semaine (${enCours.percent} %). Attendez qu’il se termine.`,
+        });
+      }
       if (weekId) registerJobWeek(jobId, weekId);
 
       logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, weekId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo, music: !!(music && music.filename), voiceover: !!(voiceover && voiceover.filename), images: Array.isArray(imageOverlays) ? imageOverlays.length : 0 });
 
       // Run async to prevent Render 100s timeout on HTTP request
-      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, logoPosition, music, voiceover, imageOverlays, atmosphere })
+      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, logoPosition, music, voiceover, imageOverlays, atmosphere, weekId })
         .then((result) => {
           // Chemin Remotion : le worker pilote la fin via /internal/progress.
           if (result && result.delegated) return;
@@ -309,7 +321,7 @@ router.post(
         })
         .catch((err) => {
           logger.error('Erreur lors du montage vidéo en arrière-plan', { error: err.message });
-          finishJob(jobId, 'error');
+          finishJob(jobId, 'error', null, err.message);
         });
 
       res.status(202).json({

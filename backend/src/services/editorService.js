@@ -304,6 +304,60 @@ export function buildRemotionPayload(clips, opts) {
   };
 }
 
+/**
+ * Vérifie chaque plan AVANT de lancer le rendu, et corrige ses bornes d'après
+ * la durée réelle du fichier.
+ *
+ * L'incident : la durée d'un plan venait du navigateur du monteur. Avec des
+ * centaines de plans, il interrogeait toutes les vidéos en même temps, avec
+ * cinq secondes pour répondre ; celles qui tardaient recevaient « 5 secondes »
+ * d'office. Le master sortait alors avec des plans coupés, ou échouait trois
+ * heures plus tard sur un plan plus long que son fichier. Et un rush effacé
+ * entre-temps n'était découvert qu'au milieu du rendu.
+ *
+ * Ici le serveur mesure lui-même, et refuse tout de suite en nommant le plan.
+ */
+export async function verifierPlans(clips, { mesurer = getDuration, dossier = uploadsDir() } = {}) {
+  const durees = new Map(); // un même rush sert souvent à plusieurs plans
+  const noms = [...new Set(clips.map((c) => safeFilename(c.filename)))];
+  let curseur = 0;
+  const ouvrier = async () => {
+    while (curseur < noms.length) {
+      const nom = noms[curseur];
+      curseur += 1;
+      const chemin = path.join(dossier, nom);
+      durees.set(nom, fs.existsSync(chemin) ? await mesurer(chemin) : null);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, noms.length) }, ouvrier));
+
+  return clips.map((c, i) => {
+    const nom = safeFilename(c.filename);
+    const source = durees.get(nom);
+    const titre = `Le plan n° ${i + 1} (${String(c.name || nom).slice(0, 80)})`;
+    if (source === null) {
+      throw new Error(`${titre} est introuvable sur le serveur : son fichier a été supprimé. Retirez-le du montage puis relancez.`);
+    }
+    const debut = Math.max(0, Number(c.inPoint) || 0);
+    const voulue = c.outPoint != null ? Number(c.outPoint) - debut : Number(c.durationSec);
+    // Une image fixe n'a pas de durée propre : on garde celle du montage.
+    if (!(source > 0)) {
+      return { ...c, inPoint: debut, durationSec: Number.isFinite(voulue) && voulue >= 0.3 ? voulue : 5 };
+    }
+    if (debut > source - 0.1) {
+      throw new Error(`${titre} commence après la fin de son fichier. Rouvrez son rognage puis relancez.`);
+    }
+    const reste = source - debut;
+    const duree = Number.isFinite(voulue) && voulue >= 0.3 ? Math.min(voulue, reste) : reste;
+    return {
+      ...c,
+      inPoint: debut,
+      outPoint: c.outPoint != null ? debut + duree : c.outPoint,
+      durationSec: Math.max(0.1, duree),
+    };
+  });
+}
+
 // Délègue le rendu au worker Cloud Run. Le worker pilote la progression via
 // POST /api/editor/internal/progress (SSE existant). Retourne { delegated }.
 export async function delegateToRemotion(clips, jobId, opts) {
@@ -322,19 +376,22 @@ export async function delegateToRemotion(clips, jobId, opts) {
     throw new Error(`Worker Cloud Run injoignable (${WORKER_URL}/health) : ${err.message}`);
   }
 
-  const payload = buildRemotionPayload(clips, opts);
-  setProgress(jobId, 5, 'downloading');
+  const payload = buildRemotionPayload(await verifierPlans(clips), opts);
+  setProgress(jobId, 1, 'downloading');
   const res = await withTimeout(
     fetch(`${WORKER_URL}/render`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Worker-Key': WORKER_KEY },
-      body: JSON.stringify({ payload, jobId, returnTo: PUBLIC_API_URL }),
+      body: JSON.stringify({ payload, jobId, returnTo: PUBLIC_API_URL, weekId: opts.weekId || null }),
     }),
     30 * 1000,
     'Appel worker Remotion'
   );
   if (!res.ok) {
     const body = await res.text().catch(() => '');
+    if (res.status === 429) {
+      throw new Error('Un autre master est déjà en cours de rendu. Attendez qu’il se termine, puis relancez.');
+    }
     throw new Error(`Worker a refusé le rendu (HTTP ${res.status}) : ${body.slice(0, 200)}`);
   }
   logger.info('Rendu délégué au worker Remotion', { jobId, workerUrl: WORKER_URL, callbackUrl: `${PUBLIC_API_URL}/api/editor/internal/progress` });

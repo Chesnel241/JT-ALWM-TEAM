@@ -3,7 +3,7 @@ import request from 'supertest';
 import { TEST_UPLOADS_DIR } from './setup.js';
 import { createApp } from '../src/app.js';
 import { buildWeeks } from '../src/data/constants.js';
-import { registerJobWeek, setProgress, finishJob } from '../src/services/editorProgress.js';
+import { registerJobWeek, setProgress, finishJob, getWeekActiveJob } from '../src/services/editorProgress.js';
 
 let app;
 let validWeek1;
@@ -64,6 +64,27 @@ describe('Editor Real-Time Sync & Recovery Routes', () => {
       status: 'done',
       url: 'https://cdn.example.com/master-w35.mp4',
     });
+  });
+
+  // Incident : pendant un rendu de trois heures, un second clic sur
+  // « Générer le master » prenait la place du premier dans le suivi de la
+  // semaine, puis échouait (moteur occupé). Les collègues ne voyaient plus le
+  // rendu en cours.
+  it('refuse un second master pendant que le premier tourne, sans le masquer', async () => {
+    const avant = process.env.ADMIN_PASSWORD;
+    process.env.ADMIN_PASSWORD = 'montage-essai';
+    registerJobWeek('job-premier', validWeek2);
+    setProgress('job-premier', 37, 'encoding');
+    const res = await request(app)
+      .post('/api/editor/concat')
+      .set('X-Admin-Password', 'montage-essai')
+      .send({ jobId: 'job-second', weekId: validWeek2, clips: [{ filename: 'a.mp4' }] });
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/déjà en cours de rendu.*37 %/);
+    expect(getWeekActiveJob(validWeek2).jobId).toBe('job-premier');
+    finishJob('job-premier', 'error');
+    if (avant === undefined) delete process.env.ADMIN_PASSWORD;
+    else process.env.ADMIN_PASSWORD = avant;
   });
 
   it('PUT /api/editor/timeline/:weekId accepts X-Client-Id and saves workspace', async () => {
