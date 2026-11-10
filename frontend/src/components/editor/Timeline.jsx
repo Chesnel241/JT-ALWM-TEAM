@@ -1014,7 +1014,11 @@ export default function Timeline({
         </div>
       ) : (
         <>
-          <div className="flex min-h-[54px] items-center gap-1.5 overflow-x-auto border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-2 py-1.5" role="toolbar" aria-label={t.studio.timeline.outils}>
+          {/* « Générer le master » reste hors de la zone qui défile : sur un
+              écran de 1440 px, la rangée d'outils débordait et le bouton
+              principal du studio était coupé au bord droit. */}
+          <div className="flex min-h-[54px] items-center border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-2 py-1.5" role="toolbar" aria-label={t.studio.timeline.outils}>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
             <div className="mr-1 flex shrink-0 flex-col px-1.5">
               <span className="font-mono text-sm font-semibold tabular-nums text-[var(--editor-text)]">{formatTimecode(playheadSec)}</span>
               <span className="text-[10px] text-[var(--editor-muted)]">{t.studio.timeline.surDuree} {formatTimecode(layout.total)}</span>
@@ -1064,12 +1068,14 @@ export default function Timeline({
               <ToolButton icon={<Plus size={15} />} label={t.studio.timeline.zoomer} compact onClick={() => zoomer((value) => value + 10)} title={t.studio.timeline.zoomerTitre} />
               <ToolButton icon={<Maximize2 size={15} />} label={t.studio.timeline.ajuster} compact onClick={fitToView} title={t.studio.timeline.ajusterTitre} />
             </div>
+          </div>
             <button
               type="button"
+              data-generer-master
               onClick={onGenerate}
               disabled={clips.length === 0 || isGenerating}
               aria-busy={isGenerating}
-              className="ml-1 h-10 shrink-0 rounded-md border border-[var(--editor-accent)] bg-[var(--editor-accent-strong)] px-3 text-xs font-bold text-[var(--editor-bg)] transition-[transform,background-color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] disabled:cursor-not-allowed disabled:opacity-35"
+              className="ml-2 h-10 shrink-0 whitespace-nowrap rounded-md border border-[var(--editor-accent)] bg-[var(--editor-accent-strong)] px-3 text-xs font-bold text-[var(--editor-bg)] transition-[transform,background-color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] disabled:cursor-not-allowed disabled:opacity-35"
             >
               {isGenerating ? t.studio.timeline.assemblageEnCours : t.studio.timeline.genererMaster}
             </button>

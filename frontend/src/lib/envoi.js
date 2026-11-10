@@ -116,3 +116,25 @@ export function octetsLisibles(octets, lang = 'fr') {
   if (n < 1024 * 1024 * 1024) return `${nombre(n / (1024 * 1024), n < 10 * 1024 * 1024 ? 1 : 0)} ${fr ? 'Mo' : 'MB'}`;
   return `${nombre(n / (1024 * 1024 * 1024), 1)} ${fr ? 'Go' : 'GB'}`;
 }
+
+/**
+ * Le temps qu'il reste à un rendu de master, d'après son avancement observé
+ * depuis `depart` ({ t, pourcent }). Rend des secondes, ou `null` tant qu'on
+ * n'a pas vu assez d'avancement pour le dire sans mentir (au moins une
+ * minute et deux points gagnés).
+ */
+export function resteRendu(depart, maintenant, pourcent) {
+  if (!depart || !(pourcent < 100)) return null;
+  const ecoule = (maintenant - depart.t) / 1000;
+  const gagne = pourcent - depart.pourcent;
+  if (ecoule < 60 || gagne < 2) return null;
+  return Math.round((ecoule / gagne) * (100 - pourcent));
+}
+
+/** « 4:07 » sous une heure, « 2:04:07 » au-delà. */
+export function chronometre(secondes) {
+  const s = Math.max(0, Math.floor(secondes));
+  const deux = (n) => String(n).padStart(2, '0');
+  const h = Math.floor(s / 3600);
+  return h ? `${h}:${deux(Math.floor((s % 3600) / 60))}:${deux(s % 60)}` : `${Math.floor(s / 60)}:${deux(s % 60)}`;
+}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { AlertCircle, CheckCircle, ChevronDown, Download, Loader2 } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext.jsx';
+import { chronometre, dureeRestante, resteRendu } from '../../lib/envoi.js';
 
 /**
  * L'état du rendu, posé au-dessus du lecteur du studio.
@@ -47,6 +48,15 @@ export default function ExportStatus({
   // Repliable : posée en bas du lecteur, la bannière couvrait ses commandes
   // (lecture, barre de temps) pendant tout le rendu.
   const [replie, setReplie] = useState(false);
+  // Le premier avancement vu pendant ce rendu : c'est de là qu'on estime le
+  // temps restant. Un master demande des heures ; « 37 % » seul ne dit pas
+  // s'il faut attendre dix minutes ou revenir demain.
+  const depart = useRef(null);
+  if (!enCours) depart.current = null;
+  else if (!depart.current || progression < depart.current.pourcent) {
+    depart.current = { t: Date.now(), pourcent: progression };
+  }
+  const restant = enCours ? resteRendu(depart.current, Date.now(), progression) : null;
   // Rien à dire tant que personne n'a lancé de rendu.
   if (!enCours && !erreur && !urlVideo) return null;
 
@@ -125,8 +135,6 @@ export default function ExportStatus({
   }
 
   const pourcent = Math.round(progression);
-  const minutes = Math.floor(secondes / 60);
-  const reste = String(secondes % 60).padStart(2, '0');
 
   return (
     <div
@@ -143,7 +151,9 @@ export default function ExportStatus({
               {libellePhase(phase, t)}
             </span>
             <span className="shrink-0 font-mono text-[11px] text-[color:var(--editor-muted)]">
-              {minutes}:{reste}
+              {restant != null
+                ? t.studio.panneaux.exportReste(dureeRestante(restant, t.estimation))
+                : chronometre(secondes)}
             </span>
           </div>
           {/* scaleX plutôt qu'une largeur animée : pas de recalcul de mise en
