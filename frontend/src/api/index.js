@@ -598,4 +598,27 @@ export const api = {
     body: JSON.stringify(theme)
   }),
   deleteTheme: (id, adminPassword) => request(`/themes/${id}`, { method: 'DELETE', adminPassword }),
+
+  // ── Jingles : générique et virgules, gardés jusqu'à suppression manuelle ──
+  getJingles: (adminPassword) => request('/jingles', { method: 'GET', adminPassword }),
+  deleteJingle: (id, adminPassword) => request(`/jingles/${encodeURIComponent(id)}`, { method: 'DELETE', adminPassword }),
+  uploadJingle: async (file, categorie, adminPassword, onProgress) => {
+    const formData = new FormData();
+    // La catégorie avant le fichier : le serveur la lit sans attendre la fin de l'envoi.
+    formData.append('categorie', categorie);
+    formData.append('file', file);
+    const headers = {};
+    if (adminPassword) headers['X-Admin-Password'] = adminPassword;
+    try {
+      const res = await axios.post(`${API_BASE}/api/jingles`, formData, {
+        headers,
+        onUploadProgress: (e) => {
+          if (e.lengthComputable && typeof onProgress === 'function') onProgress((e.loaded / e.total) * 100);
+        },
+      });
+      return res.data;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || messageErreur(err.response?.status || 0, tStatic().errors));
+    }
+  },
 };

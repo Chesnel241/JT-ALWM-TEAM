@@ -129,7 +129,7 @@ export function BarreStudio({
 }
 
 /** Les rushes de la semaine, à portée de main dans le studio. */
-export function RushesStudio({ videos, clips, countries, onAjouter }) {
+export function RushesStudio({ videos, clips, countries, onAjouter, jingles = [] }) {
   const { t } = useI18n();
   const d = t.studio.deroule;
   const [recherche, setRecherche] = useState('');
@@ -165,6 +165,46 @@ export function RushesStudio({ videos, clips, countries, onAjouter }) {
         </label>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {/* Les jingles d'abord : générique et virgules servent à chaque JT. */}
+        {jingles.length > 0 && !recherche && (
+          <section className="mb-2">
+            <button
+              type="button"
+              onClick={() => basculer('__jingles')}
+              aria-expanded={!replies.has('__jingles')}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-bold text-[color:var(--editor-text)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+            >
+              {replies.has('__jingles') ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+              <Film size={17} className="text-[color:var(--editor-accent)]" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">{t.jingles.dansLeStudio}</span>
+              <span className="text-xs font-medium text-[color:var(--editor-muted)]">{jingles.length}</span>
+            </button>
+            {!replies.has('__jingles') && (
+              <ul className="ml-2 space-y-1 border-l border-[var(--editor-border)] pl-2">
+                {['generique', 'reportages', 'annonces', 'seminaires', 'mot'].flatMap((categorie) => jingles.filter((x) => x.categorie === categorie)).map((jingle) => (
+                  <li key={jingle.id}>
+                    <button
+                      type="button"
+                      onClick={() => onAjouter(jingle)}
+                      title={d.ajouterAide}
+                      className="group flex w-full items-center gap-2.5 rounded-lg border border-transparent p-1.5 text-left hover:border-[var(--editor-accent)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+                    >
+                      <Vignette filename={jingle.filename} instantSec={0.5} className="h-[45px] w-20" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-semibold text-[color:var(--editor-text)]">{jingle.name}</span>
+                        <span className="block truncate text-[11px] text-[color:var(--editor-muted)]">{t.jingles.categories[jingle.categorie]?.titre}</span>
+                      </span>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--editor-border)] text-[color:var(--editor-accent)] group-hover:border-[var(--editor-accent)] group-hover:bg-[var(--editor-accent-strong)] group-hover:text-[color:var(--editor-bg)]" aria-hidden="true">
+                        <Plus size={17} />
+                      </span>
+                      <span className="sr-only">{d.ajouter}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
         {groupes.length === 0 && (
           <p className="px-3 py-8 text-center text-sm leading-6 text-[color:var(--editor-muted)]">
             {recherche ? d.rushesIntrouvables : d.rushesVides}

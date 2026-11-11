@@ -609,6 +609,49 @@ export function addCustomCountry(country) {
   return country;
 }
 
+// ---- Les jingles ----
+/**
+ * Les jingles : génériques et virgules montés à part, qui servent chaque
+ * semaine. Ils n'appartiennent à aucune semaine, donc ni l'expiration des
+ * semaines ni le balayage des fichiers orphelins ne les touchent : ils restent
+ * jusqu'à ce qu'un monteur les supprime.
+ */
+export const CATEGORIES_JINGLES = ['generique', 'reportages', 'annonces', 'seminaires', 'mot'];
+
+export function getJingles() {
+  return Array.isArray(db._jingles) ? db._jingles.map((j) => ({ ...j })) : [];
+}
+
+export function addJingle(jingle) {
+  if (!Array.isArray(db._jingles)) db._jingles = [];
+  db._jingles.push(jingle);
+  persistDb();
+  return { ...jingle };
+}
+
+export function setJingleDuration(id, durationSec) {
+  const jingle = (db._jingles || []).find((j) => j.id === id);
+  if (!jingle) return false;
+  jingle.durationSec = durationSec;
+  persistDb();
+  return true;
+}
+
+/** Retire un jingle du carnet et rend sa fiche (pour effacer le fichier). */
+export function deleteJingle(id) {
+  const liste = Array.isArray(db._jingles) ? db._jingles : [];
+  const index = liste.findIndex((j) => j.id === id);
+  if (index < 0) return null;
+  const [retire] = liste.splice(index, 1);
+  persistDb();
+  return retire;
+}
+
+/** Vrai si ce fichier est celui d'un jingle : la balayeuse ne doit pas y toucher. */
+export function estFichierDeJingle(filename) {
+  return (db._jingles || []).some((j) => j.filename === filename);
+}
+
 // ---- Gestion des Thèmes / Préférences ----
 export function getThemes() {
   return Array.isArray(db._themes) ? db._themes.slice() : [];
@@ -1184,7 +1227,7 @@ export function marquerSujetMonte(weekId, sujetId, monte) {
 // registre des liens comme s'il s'agissait d'une semaine de reportages.
 // `_contacts` aussi, pour la même raison : le carnet d'adresses survit aux
 // semaines, c'est tout son intérêt.
-const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens', '_planning', '_contacts']);
+const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens', '_planning', '_contacts', '_jingles']);
 
 export function getFileMetadata(filename) {
   for (const weekId of Object.keys(db)) {
@@ -1321,8 +1364,11 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
           if (nowMs - st.mtimeMs < ORPHAN_MIN_AGE_MS) continue;
         } catch { continue; /* disparu entre-temps */ }
 
-        let found = false;
+        // Un jingle n'appartient à aucune semaine : sans ce test, la balayeuse
+        // le prendrait pour un orphelin et l'effacerait au bout de 24 h.
+        let found = estFichierDeJingle(file);
         for (const weekId of Object.keys(db)) {
+          if (found) break;
           if (META_KEYS.has(weekId)) continue;
           for (const countryId of Object.keys(db[weekId])) {
             const uploads = db[weekId][countryId];

@@ -744,6 +744,34 @@ export const translations = {
     // un monteur anglophone disposait d’une station entièrement française.
     // Les libellés du catalogue vivent ici, et plus dans les données : une
     // chaîne écrite à deux endroits finit toujours par diverger.
+    // L'onglet des jingles du montage.
+    jingles: {
+      onglet: 'Jingles',
+      titre: 'Jingles du JT',
+      intro: 'Vos génériques et virgules, montés à part. Ils restent ici d’une semaine à l’autre, jusqu’à ce que vous les supprimiez.',
+      categories: {
+        generique: { titre: 'Générique du JT', aide: 'L’ouverture du journal.' },
+        reportages: { titre: 'Jingle des reportages', aide: 'La virgule entre deux reportages.' },
+        annonces: { titre: 'Jingle des annonces', aide: 'L’entrée de la rubrique Annonces.' },
+        seminaires: { titre: 'Jingle des séminaires de la semaine', aide: 'L’entrée de la rubrique Séminaires.' },
+        mot: { titre: 'Jingle du Mot du JT', aide: 'L’entrée du Mot du JT.' },
+      },
+      ajouter: 'Ajouter une vidéo',
+      vide: 'Aucune vidéo pour l’instant.',
+      envoiEnCours: (nom, p) => `Envoi de « ${nom} » — ${p} %`,
+      ajoute: (nom) => `« ${nom} » est enregistré dans vos jingles`,
+      echecEnvoi: 'L’envoi a échoué. Réessayez.',
+      ajouterAuJT: 'Ajouter au JT',
+      supprimer: 'Supprimer',
+      supprimerNom: (nom) => `Supprimer ${nom}`,
+      supprimerTitre: 'Supprimer ce jingle ?',
+      supprimerTexte: (nom) => `« ${nom} » sera effacé pour de bon. Les JT déjà générés ne changent pas, mais un montage en cours qui l’utilise devra le remplacer.`,
+      supprime: (nom) => `« ${nom} » est supprimé`,
+      echecSuppression: 'La suppression a échoué. Réessayez.',
+      annuler: 'Annuler',
+      depuis: (date) => `ajouté le ${date}`,
+      dansLeStudio: 'Jingles',
+    },
     studio: {
       panneaux: {
         // « Animation », « habillage » : des mots de graphiste. Le monteur, lui,
@@ -2015,6 +2043,34 @@ export const translations = {
     // un monteur anglophone disposait d’une station entièrement française.
     // Les libellés du catalogue vivent ici, et plus dans les données : une
     // chaîne écrite à deux endroits finit toujours par diverger.
+    // The editing team's jingles tab.
+    jingles: {
+      onglet: 'Jingles',
+      titre: 'Newscast jingles',
+      intro: 'Your opening titles and stings, edited separately. They stay here from week to week, until you delete them.',
+      categories: {
+        generique: { titre: 'Newscast opening', aide: 'The opening of the newscast.' },
+        reportages: { titre: 'Reports jingle', aide: 'The sting between two reports.' },
+        annonces: { titre: 'Announcements jingle', aide: 'The opening of the Announcements section.' },
+        seminaires: { titre: 'Seminars of the week jingle', aide: 'The opening of the Seminars section.' },
+        mot: { titre: '“Mot du JT” jingle', aide: 'The opening of the “Mot du JT”.' },
+      },
+      ajouter: 'Add a video',
+      vide: 'No video yet.',
+      envoiEnCours: (nom, p) => `Sending “${nom}” — ${p}%`,
+      ajoute: (nom) => `“${nom}” is saved in your jingles`,
+      echecEnvoi: 'The upload failed. Try again.',
+      ajouterAuJT: 'Add to the newscast',
+      supprimer: 'Delete',
+      supprimerNom: (nom) => `Delete ${nom}`,
+      supprimerTitre: 'Delete this jingle?',
+      supprimerTexte: (nom) => `“${nom}” will be erased for good. Newscasts already built do not change, but an edit in progress that uses it will need a replacement.`,
+      supprime: (nom) => `“${nom}” is deleted`,
+      echecSuppression: 'The deletion failed. Try again.',
+      annuler: 'Cancel',
+      depuis: (date) => `added on ${date}`,
+      dansLeStudio: 'Jingles',
+    },
     studio: {
       panneaux: {
         titre: 'On-screen text',

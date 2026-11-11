@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone, Link2, Image as ImageIcon, ListOrdered } from 'lucide-react';
+import { Film, Folder, FileText, Video, Download, Trash2, CheckCircle, XCircle, AlertCircle, UploadCloud, Mic, MoreVertical, Scissors, GripHorizontal, FolderOpen, Sparkles, Plus, Layers, Newspaper, X, Play, Search, Eye, MessageSquare, Phone, Link2, Image as ImageIcon, ListOrdered } from 'lucide-react';
 import { api, API_BASE, getClientId } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
@@ -32,6 +32,7 @@ import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
 import { BandeauJT, BarreStudio, Deroule, RushesStudio } from './editor/Conducteur.jsx';
+import JinglesView from './JinglesView.jsx';
 import { deroule as calculerDeroule, inserer } from './editor/conducteur.js';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
@@ -649,7 +650,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     return set;
   }, [sujets, dashboard]);
 
-  const SPECIAL_BINS = ['delivery', 'mj', 'tj', 'studio'];
+  const SPECIAL_BINS = ['delivery', 'mj', 'tj', 'studio', 'jingles'];
 
   // Depuis que le conducteur et le Mot du JT ont quitté la liste des pays, la
   // barre latérale ne trouvait plus de nom pour leurs tiroirs et retombait sur
@@ -753,6 +754,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     return !avant;
   });
   const [planChoisi, setPlanChoisi] = useState(null);
+  // Les jingles : générique et virgules, gardés d'une semaine à l'autre.
+  const [jingles, setJingles] = useState([]);
+  const chargerJingles = useCallback(() => {
+    if (!adminPasswordRef.current) return;
+    api.getJingles(adminPasswordRef.current)
+      .then((res) => setJingles(Array.isArray(res?.jingles) ? res.jingles : []))
+      .catch(() => {});
+  }, []);
+  useEffect(() => { if (isAuthenticatedAdmin) chargerJingles(); }, [isAuthenticatedAdmin, chargerJingles]);
   const nouvelIdDePlan = () => window.crypto?.randomUUID?.()
     || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const dureeDuJT = useMemo(() => calculerDeroule(timelineClips).total, [timelineClips]);
@@ -1269,6 +1279,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
     // Un sujet ouvert ou renommé par un correspondant doit apparaître sans
     // recharger : le monteur travaille avec cet écran ouvert des heures.
+    socket.on('jingles_update', chargerJingles);
+
     socket.on('sujet_update', (data) => {
       if (data.weekId === selectedWeek) {
         api.getSujets(selectedWeek, null, adminPasswordRef.current).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
@@ -2327,8 +2339,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         <nav aria-label={t.studio.deroule.etapes} className="flex h-11 shrink-0 overflow-x-auto border-b border-[var(--border)] bg-[var(--paper)]">
           <button
             onClick={openRushes}
-            aria-current={selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'page' : undefined}
-            className={`flex items-center gap-2 border-b-2 px-5 text-sm font-semibold transition-colors whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'border-[var(--accent)] text-[color:var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+            aria-current={selectedBin !== 'studio' && selectedBin !== 'delivery' && selectedBin !== 'jingles' ? 'page' : undefined}
+            className={`flex items-center gap-2 border-b-2 px-5 text-sm font-semibold transition-colors whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' && selectedBin !== 'jingles' ? 'border-[var(--accent)] text-[color:var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
           >
             <Folder size={18} aria-hidden="true" /> {t.studio.deroule.ongletRushes}
           </button>
@@ -2342,6 +2354,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               {timelineClips.length > 0 && <span className="rounded-full bg-[var(--paper-2)] px-2 py-0.5 text-xs tabular-nums">{timelineClips.length}</span>}
             </button>
           )}
+          <button
+            onClick={() => setSelectedBin('jingles')}
+            aria-current={selectedBin === 'jingles' ? 'page' : undefined}
+            className={`flex items-center gap-2 border-b-2 px-5 text-sm font-semibold transition-colors whitespace-nowrap ${selectedBin === 'jingles' ? 'border-[var(--accent)] text-[color:var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+          >
+            <Film size={18} aria-hidden="true" /> {t.jingles.onglet}
+            {jingles.length > 0 && <span className="rounded-full bg-[var(--paper-2)] px-2 py-0.5 text-xs tabular-nums">{jingles.length}</span>}
+          </button>
           <button
             onClick={() => setSelectedBin('delivery')}
             aria-current={selectedBin === 'delivery' ? 'page' : undefined}
@@ -2369,7 +2389,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         }>
           
         {/* Sidebar Bins (Mobile Collapsible) - Seulement visible pour les chutiers */}
-        {!isStudioActive && selectedBin !== 'delivery' && (
+        {!isStudioActive && selectedBin !== 'delivery' && selectedBin !== 'jingles' && (
         <aside id="tour-editing-sidebar" className={`w-full md:w-64 md:border-r border-[var(--border)] flex flex-col md:overflow-y-auto shrink-0 bg-[var(--paper-2)] z-20 ${isMobileSidebarOpen ? 'block' : 'hidden md:flex'}`}>
           <div className="p-2 md:p-4 md:flex-1 w-full overflow-hidden">
             <div className="flex items-center justify-between px-2 mb-3 md:mb-0">
@@ -2487,7 +2507,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         {/* Main Content Area */}
         <main id="tour-editing-grid" className={`flex min-w-0 flex-1 flex-col bg-[var(--paper)] ${!isStudioActive ? 'overflow-y-auto' : ''}`}>
           
-          {isStudioActive ? (
+          {selectedBin === 'jingles' ? (
+            <JinglesView
+              jingles={jingles}
+              adminPassword={authenticatedAdminPassword}
+              onChange={chargerJingles}
+              onAjouterAuJT={(jingle) => {
+                ajouterAuDeroule(jingle);
+                addToast(t.revue.ajouteTimeline(jingle.name), 'success', 6000, {
+                  action: { libelle: t.revue.voirStudio, onClick: () => setSelectedBin('studio') },
+                });
+              }}
+            />
+          ) : isStudioActive ? (
             
             /* =========================================
                STUDIO DE MONTAGE (NLE Workspace) 
@@ -2651,6 +2683,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     videos={weekVideoFiles}
                     clips={timelineClips}
                     countries={countries}
+                    jingles={jingles}
                     onAjouter={ajouterAuDeroule}
                   />
                   <div className="relative flex min-w-0 flex-1 items-center justify-center bg-[oklch(0.11_0.018_245)] p-3">

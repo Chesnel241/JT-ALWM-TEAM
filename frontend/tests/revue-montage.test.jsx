@@ -31,6 +31,7 @@ const RUSHS = [
 
 vi.mock('../src/api/index.js', () => ({
   api: {
+    getJingles: vi.fn(() => Promise.resolve({ jingles: [] })),
     getDashboard: vi.fn(),
     getRelances: vi.fn().mockResolvedValue([]),
     getDescriptionsRubriques: vi.fn().mockResolvedValue([]),

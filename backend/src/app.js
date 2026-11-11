@@ -18,6 +18,7 @@ import deliveriesRouter from './routes/deliveries.js';
 import notificationsRouter from './routes/notifications.js';
 import analyticsRouter from './routes/analytics.js';
 import themesRouter from './routes/themes.js';
+import jinglesRouter from './routes/jingles.js';
 import authRouter from './routes/auth.js';
 import editorRouter from './routes/editor.js';
 import delaysRouter from './routes/delays.js';
@@ -374,6 +375,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/themes', themesRouter);
+  app.use('/api/jingles', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), jinglesRouter);
   app.use('/api/uploads', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), uploadsRouter);
   app.use('/api/deliveries', uploadLimiter, timeoutMiddleware(UPLOAD_TIMEOUT_MS), deliveriesRouter);
   // Le flux SSE de progression (/api/editor/progress/:jobId) reste ouvert
