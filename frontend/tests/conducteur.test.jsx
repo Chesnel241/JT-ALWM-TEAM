@@ -187,3 +187,32 @@ describe('les rushes dans le studio', () => {
     expect(screen.getByText('Aucune vidéo ne correspond à cette recherche.')).toBeInTheDocument();
   });
 });
+
+// LE CONSTAT : la page des rushes affichait une seconde piste de montage, une
+// seconde barre de rendu et un second lecteur du master.
+describe('le rappel du JT au bas des rushes', () => {
+  const poser = async (props) => {
+    const { BandeauJT } = await import('../src/components/editor/Conducteur.jsx');
+    const onOuvrir = vi.fn();
+    render(<I18nProvider><BandeauJT nombrePlans={3} dureeTotale={80} semaine="2026-w46" onOuvrir={onOuvrir} {...props} /></I18nProvider>);
+    return onOuvrir;
+  };
+
+  it('dit où en est le JT et mène au montage', async () => {
+    const onOuvrir = await poser({});
+    expect(screen.getByText(/3 plans · 1 min 20/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir le montage' }));
+    expect(onOuvrir).toHaveBeenCalled();
+  });
+
+  it('pendant la génération, donne le pourcentage', async () => {
+    await poser({ enCours: true, progression: 41.6 });
+    expect(screen.getByText(/génération en cours, 42 %/)).toBeInTheDocument();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('une fois le JT prêt, propose de le télécharger', async () => {
+    await poser({ urlVideo: '/uploads/exports/jt.mp4' });
+    expect(screen.getByRole('link', { name: /Télécharger/ })).toHaveAttribute('href', '/uploads/exports/jt.mp4');
+  });
+});

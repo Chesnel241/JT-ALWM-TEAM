@@ -169,13 +169,13 @@ describe('la fenêtre de retour', () => {
 });
 
 describe('relances et publication', () => {
-  it('« Ajouter à la timeline » laisse le monteur dans le chutier', async () => {
+  it('« Ajouter au JT » laisse le monteur dans les rushes', async () => {
     // Chaque ajout le projetait dans le studio, d'où il fallait revenir.
     await ouvrir();
     const carte = screen.getAllByText('vendeuse.mp4')[0].closest('.group');
-    fireEvent.click(within(carte).getByRole('button', { name: /Ajouter à la timeline/ }));
-    expect(await screen.findByText('« vendeuse.mp4 » ajouté à la timeline')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Voir le studio' })).toBeInTheDocument();
+    fireEvent.click(within(carte).getByRole('button', { name: /Ajouter au JT/ }));
+    expect(await screen.findByText('« vendeuse.mp4 » ajouté au JT')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Ouvrir le montage' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('marche.mp4').length).toBeGreaterThan(0);
   });
 
@@ -190,7 +190,7 @@ describe('relances et publication', () => {
     );
     fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: /Déverrouiller/i }));
-    fireEvent.click((await screen.findAllByText(/Livraison JT/i))[0]);
+    fireEvent.click((await screen.findAllByText(/^Livraison/i))[0]);
     const entree = await waitFor(() => {
       const el = document.querySelector('input[type="file"][accept*="video"]') || document.querySelector('input[type="file"]');
       if (!el) throw new Error('pas encore');

@@ -31,7 +31,7 @@ import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
-import { BarreStudio, Deroule, RushesStudio } from './editor/Conducteur.jsx';
+import { BandeauJT, BarreStudio, Deroule, RushesStudio } from './editor/Conducteur.jsx';
 import { deroule as calculerDeroule, inserer } from './editor/conducteur.js';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
@@ -499,7 +499,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [exportElapsed, setExportElapsed] = useState(0);
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
   const [overlayTarget, setOverlayTarget] = useState(null); // clip being annotated
-  const [showRushesDrawer, setShowRushesDrawer] = useState(false);
   const [rushesSearch, setRushesSearch] = useState('');
   const [rushesCountryFilter, setRushesCountryFilter] = useState('all');
   const sseRef = useRef(null);
@@ -2152,7 +2151,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               className="mt-1 w-full text-xs font-bold py-1.5 rounded-lg bg-[var(--action)] text-white hover:opacity-90 transition-[transform,opacity] duration-150 active:scale-[0.97] focus:outline-none shadow-sm flex items-center justify-center gap-1.5"
             >
               <Video size={14} aria-hidden="true" />
-              Ajouter à la timeline
+              {t.studio.deroule.ajouter}
             </button>
           )}
         </div>
@@ -2309,29 +2308,35 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         : 'bg-[var(--app-bg)]'
       }>
         
-        {/* Top Tabs (Tableau de bord) */}
-        {!isStudioActive && <div className="flex h-11 shrink-0 overflow-x-auto border-b border-[var(--border)] bg-[var(--paper)]">
-          <button 
+        {/* Les trois étapes du travail, toujours visibles — dans le studio
+            aussi : on y entrait, et plus rien ne ramenait aux rushes ni à
+            la livraison. */}
+        <nav aria-label={t.studio.deroule.etapes} className="flex h-11 shrink-0 overflow-x-auto border-b border-[var(--border)] bg-[var(--paper)]">
+          <button
             onClick={openRushes}
-            className={`flex items-center gap-2 border-b-2 px-5 text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+            aria-current={selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'page' : undefined}
+            className={`flex items-center gap-2 border-b-2 px-5 text-sm font-semibold transition-colors whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' ? 'border-[var(--accent)] text-[color:var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
           >
-            <Folder size={18} /> Chutiers (Rushs)
+            <Folder size={18} aria-hidden="true" /> {t.studio.deroule.ongletRushes}
           </button>
           {isDesktopEditorAvailable && (
             <button
               onClick={() => setSelectedBin('studio')}
-              className="flex items-center gap-2 border-b-2 border-transparent px-5 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)] transition-colors whitespace-nowrap hover:text-[color:var(--ink)]"
+              aria-current={selectedBin === 'studio' ? 'page' : undefined}
+              className={`flex items-center gap-2 border-b-2 px-5 text-sm font-semibold transition-colors whitespace-nowrap ${selectedBin === 'studio' ? 'border-[var(--accent)] text-[color:var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
             >
-              <Video size={18} /> {t.studio.timeline.ongletStudio}
+              <Video size={18} aria-hidden="true" /> {t.studio.deroule.ongletMontage}
+              {timelineClips.length > 0 && <span className="rounded-full bg-[var(--paper-2)] px-2 py-0.5 text-xs tabular-nums">{timelineClips.length}</span>}
             </button>
           )}
-          <button 
-            onClick={() => setSelectedBin('delivery')} 
-            className={`flex items-center gap-2 border-b-2 px-5 text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${selectedBin === 'delivery' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+          <button
+            onClick={() => setSelectedBin('delivery')}
+            aria-current={selectedBin === 'delivery' ? 'page' : undefined}
+            className={`flex items-center gap-2 border-b-2 px-5 text-sm font-semibold transition-colors whitespace-nowrap ${selectedBin === 'delivery' ? 'border-[var(--accent)] text-[color:var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
           >
-            <UploadCloud size={18} /> Livraison JT
+            <UploadCloud size={18} aria-hidden="true" /> {t.studio.deroule.ongletLivraison}
           </button>
-        </div>}
+        </nav>
 
         {/* La relance du samedi et les demandes de délai, là où l'équipe
             travaille. Le panneau ne s'affiche que s'il a quelque chose à
@@ -2456,7 +2461,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 }}
                 defaultValue=""
               >
-                <option value="" disabled>+ Ajouter un pays sans upload</option>
+                <option value="" disabled>+ Ajouter un pays qui n’a rien envoyé</option>
                 {countries.filter(c => !countriesWithUploads.includes(c.id) && c.id !== '_subscriptions').map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -2493,149 +2498,6 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
               )}
 
-              {/* MODAL / DRAWER BIBLIOTHÈQUE DE RUSHS DU STUDIO */}
-              {showRushesDrawer && (
-                <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm motion-voile">
-                  <div className="bg-[var(--paper)] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
-                    {/* Header */}
-                    <div className="px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-v-accent/10 text-[var(--accent)] flex items-center justify-center font-bold">
-                          <FolderOpen size={18} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-[color:var(--ink)] text-base">Bibliothèque de Rushs Vidéo</h3>
-                          <p className="text-xs text-[color:var(--muted)]">
-                            {weekVideoFiles.length} rush{weekVideoFiles.length > 1 ? 's' : ''} disponible{weekVideoFiles.length > 1 ? 's' : ''} cette semaine
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setShowRushesDrawer(false)}
-                        className="p-2 rounded-xl text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--border)] transition-colors"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-
-                    {/* Filters and search */}
-                    <div className="p-4 border-b border-[var(--border)] bg-[var(--paper)] flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-                        <button
-                          onClick={() => setRushesCountryFilter('all')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold motion-tap ${
-                            rushesCountryFilter === 'all'
-                              ? 'bg-[var(--accent)] text-white shadow-sm'
-                              : 'bg-[var(--paper-2)] text-[color:var(--ink)] border border-[var(--border)] hover:bg-[var(--border)]'
-                          }`}
-                        >
-                          Tous ({weekVideoFiles.length})
-                        </button>
-                        {countriesWithUploads.map((cId) => {
-                          const cObj = countries.find((c) => c.id === cId);
-                          const count = weekVideoFiles.filter((f) => f.countryId === cId).length;
-                          if (count === 0) return null;
-                          return (
-                            <button
-                              key={cId}
-                              onClick={() => setRushesCountryFilter(cId)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 motion-tap ${
-                                rushesCountryFilter === cId
-                                  ? 'bg-[var(--accent)] text-white shadow-sm'
-                                  : 'bg-[var(--paper-2)] text-[color:var(--ink)] border border-[var(--border)] hover:bg-[var(--border)]'
-                              }`}
-                            >
-                              <span>{cObj?.name || cId}</span>
-                              <span className="text-[10px] opacity-75 font-mono">({count})</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div className="relative min-w-[200px]">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--muted)]" />
-                        <input
-                          type="text"
-                          placeholder="Filtrer par nom..."
-                          value={rushesSearch}
-                          onChange={(e) => setRushesSearch(e.target.value)}
-                          className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[var(--paper-2)] border border-[var(--border)] text-xs text-[color:var(--ink)] focus:outline-none focus:border-[var(--accent)]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Video Grid */}
-                    <div className="p-5 overflow-y-auto flex-1 bg-[var(--paper-2)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {weekVideoFiles
-                        .filter((f) => rushesCountryFilter === 'all' || f.countryId === rushesCountryFilter)
-                        .filter((f) => !rushesSearch || (f.name || f.filename).toLowerCase().includes(rushesSearch.toLowerCase()))
-                        .map((file) => {
-                          const cObj = countries.find((c) => c.id === file.countryId);
-                          return (
-                            <div
-                              key={file.id}
-                              className="bg-[var(--paper)] rounded-2xl border border-[var(--border)] shadow-sm hover:shadow-md motion-tap overflow-hidden flex flex-col group"
-                            >
-                              <div className="aspect-video bg-black/90 relative flex items-center justify-center overflow-hidden">
-                                <HoverPreviewVideo
-                                  src={`${API_BASE}/uploads/${file.filename}`}
-                                  className="w-full h-full object-cover"
-                                />
-                                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                                  <span className="px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold backdrop-blur-xs">
-                                    {cObj?.name || file.countryId}
-                                  </span>
-                                  {/* De quel reportage vient ce rush : sans ça, le
-                                      tiroir mélangeait les sujets d'un même pays. */}
-                                  {file.reportage && (
-                                    <span className="px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold backdrop-blur-xs">
-                                      {file.reportage}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="p-3.5 flex-1 flex flex-col justify-between gap-3">
-                                <div>
-                                  <p className="font-bold text-xs text-[color:var(--ink)] line-clamp-1" title={file.name || file.filename}>
-                                    {file.name || file.filename}
-                                  </p>
-                                  <p className="text-[10px] text-[color:var(--muted)] mt-0.5">
-                                    {formaterDuree(file.duree) ? `${formaterDuree(file.duree)} · ${file.size}` : file.size}
-                                  </p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <button
-                                    onClick={() => {
-                                      setTrimTarget(file);
-                                      setShowRushesDrawer(false);
-                                    }}
-                                    className="py-1.5 px-2 rounded-xl bg-[var(--paper-2)] hover:bg-[var(--border)] border border-[var(--border)] text-[color:var(--ink)] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
-                                  >
-                                    <Scissors size={13} /> Rogner
-                                  </button>
-                                  <button
-                                    onClick={() => addClipDirectlyToTimeline(file)}
-                                    className="py-1.5 px-2 rounded-xl bg-[var(--action)] hover:bg-[var(--action-deep)] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm motion-tap active:scale-95"
-                                  >
-                                    <Plus size={13} /> Ajouter
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      {weekVideoFiles.length === 0 && (
-                        <div className="col-span-full py-12 text-center text-[color:var(--muted)]">
-                          <Video size={36} className="mx-auto mb-2 opacity-30" />
-                          <p className="font-bold text-sm text-[color:var(--ink)]">Aucun rush vidéo disponible</p>
-                          <p className="text-xs mt-1">Les vidéos déposées par les correspondants apparaîtront ici.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
               <BarreStudio
                 semaine={formatWeekLabel((weeks || []).find((w) => w.id === selectedWeek) || { id: selectedWeek }, lang)}
                 nombrePlans={timelineClips.length}
@@ -2906,7 +2768,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     className="btn border border-transparent bg-[var(--action)] hover:bg-[var(--action-deep)] text-white shadow-sm py-1.5 px-3 text-sm flex items-center gap-1.5 transition-colors"
                     title="Uploader un reportage final (Admin)"
                   >
-                    <UploadCloud size={14} /> <span className="hidden sm:inline">Uploader le reportage assemblé</span>
+                    <UploadCloud size={14} /> <span className="hidden sm:inline">Déposer un reportage déjà monté</span>
                   </button>
                   {selectedBin === 'mj' ? (
                     <button
@@ -3383,127 +3245,23 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </div>
             )}
             
-            {/* EXPORT PROGRESS (réel : download → encodage → upload) */}
-            {isGeneratingVideo && (
-              <div className="mt-8 bg-v-action/5 border border-[var(--action)] rounded-2xl p-6 shadow-md" role="status" aria-live="polite">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 border-4 border-v-accent/30 border-t-[var(--accent)] rounded-full animate-spin shrink-0" />
-                    <span className="text-lg font-bold text-[color:var(--ink)]">
-                      {exportPhase === 'downloading' && 'Récupération des rushes…'}
-                      {exportPhase === 'encoding' && 'Encodage en cours…'}
-                      {exportPhase === 'uploading' && 'Finalisation…'}
-                      {(exportPhase === '' || exportPhase === 'pending') && 'Préparation du Master…'}
-                      {exportPhase === 'done' && 'Terminé !'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 bg-[var(--paper)] px-4 py-2 rounded-xl shadow-sm">
-                    <span className="text-sm font-medium text-[color:var(--muted)] tabular-nums flex items-center gap-1">
-                      <span>⏱</span> {Math.floor(exportElapsed / 60)}:{String(exportElapsed % 60).padStart(2, '0')}
-                    </span>
-                    <span className="text-xl text-[color:var(--accent)] font-black tabular-nums">{Math.round(exportProgress)}%</span>
-                  </div>
-                </div>
-                <div className="w-full bg-[var(--paper-2)] border border-[var(--border)] rounded-full h-4 overflow-hidden shadow-inner">
-                  <div
-                    className="h-full w-full rounded-full bg-[color:var(--accent)] motion-gauge relative overflow-hidden"
-                    style={{ transform: `scaleX(${Math.max(3, exportProgress) / 100})` }}
-                  >
-                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                  </div>
-                </div>
-                <p className="text-[11px] text-[color:var(--muted)] mt-2">
-                  L'assemblage se poursuit sur le serveur — vous pouvez naviguer, il continuera en arrière-plan.
-                </p>
-              </div>
-            )}
-
-            {/* Erreur d'assemblage : message clair + relance. */}
-            {exportError && !isGeneratingVideo && (
-              <div className="mt-8 bg-v-signal/10 border-2 border-v-signal/40 rounded-2xl p-5 shadow-sm" role="alert">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="text-[var(--signal)] shrink-0 mt-0.5" size={20} />
-                  <div className="flex-1">
-                    <p className="font-semibold text-[color:var(--ink)]">L'assemblage a échoué</p>
-                    <p className="text-sm text-[color:var(--muted)] mt-1">{exportError}</p>
-                  </div>
-                  <button
-                    onClick={() => { setExportError(null); handleGenerateVideo(); }}
-                    className="btn btn-primary py-1.5 px-3 text-sm shrink-0"
-                  >
-                    Réessayer
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* GENERATED VIDEO PREVIEW */}
-            {generatedVideoUrl && (
-              <div className="mt-8 bg-[var(--paper)] border border-[var(--border)] rounded-2xl p-4 shadow-sm motion-boite">
-                <h3 className="text-lg font-bold text-[color:var(--ink)] mb-3 flex items-center gap-2">
-                  <CheckCircle className="text-[var(--accent)]" /> Vidéo Assemblée
-                </h3>
-                <video
-                  src={generatedVideoUrl}
-                  controls
-                  preload="metadata"
-                  onError={() => addToast("Lecture impossible ici — utilisez le bouton Télécharger.", 'info', 5000)}
-                  className="w-full max-h-[400px] bg-black rounded-xl"
-                />
-                <div className="mt-4 flex justify-end">
-                  {/* Téléchargement direct (same-origin via Caddy → l'attribut
-                      download force l'enregistrement). Ouverture nouvel onglet
-                      en repli si le navigateur bloque. */}
-                  <a
-                    href={generatedVideoUrl}
-                    download={`Assemblage_JT_${selectedWeek}.mp4`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-primary flex items-center gap-2"
-                  >
-                    <Download size={18} /> Télécharger l'export (MP4)
-                  </a>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Mini Timeline (visible dans les rushs pour confirmation visuelle) */}
+          {/* Le JT en cours, rappelé d'une ligne. Cette page affichait une
+              seconde piste de montage, une seconde barre de rendu, un second
+              message d'erreur et un second lecteur du master : quatre redites
+              du studio, à un clic de là. */}
           {isDesktopEditorAvailable && selectedBin && selectedBin !== 'delivery' && (
-            <div className="shrink-0 bg-[var(--paper-2)]">
-              <Timeline
-                clips={timelineClips}
-                setClips={setTimelineClips}
-                onGenerate={handleGenerateVideo}
-                isGenerating={isGeneratingVideo}
-                onTrimClip={(file) => {
-                  setSelectedBin('studio');
-                  openTrimInspector(file);
-                }}
-                onOverlayClip={(clip) => {
-                  setSelectedBin('studio');
-                  openOverlayInspector(clip);
-                }}
-                onGlobalLayer={() => {
-                  setSelectedBin('studio');
-                  openGlobalInspector();
-                }}
-                brandingActive={branding.ticker.enabled || branding.live.enabled || branding.logo}
-                onPreview={() => setSelectedBin('studio')}
-                onSubtitleClip={(clip) => {
-                  setSelectedBin('studio');
-                  openSubtitleInspector(clip);
-                }}
-                modifierMontage={modifierMontage}
-                annulerMontage={annulerMontage}
-                retablirMontage={retablirMontage}
-                annulationPossible={peutAnnuler(historique)}
-                retablissementPossible={peutRetablir(historique)}
-                syncState={timelineSyncState}
-                presenceCount={editorPresenceCount}
-                compact
-              />
-            </div>
+            <BandeauJT
+              nombrePlans={timelineClips.length}
+              dureeTotale={dureeDuJT}
+              enCours={isGeneratingVideo}
+              progression={exportProgress}
+              erreur={exportError}
+              urlVideo={generatedVideoUrl}
+              semaine={selectedWeek}
+              onOuvrir={() => setSelectedBin('studio')}
+            />
           )}
         </>
       )}

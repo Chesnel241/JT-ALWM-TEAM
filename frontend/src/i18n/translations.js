@@ -212,8 +212,8 @@ export const translations = {
       precedent: 'Précédent',
       suivant: 'Suivant',
       position: (i, n) => `${i} sur ${n}`,
-      ajouteTimeline: (nom) => `« ${nom} » ajouté à la timeline`,
-      voirStudio: 'Voir le studio',
+      ajouteTimeline: (nom) => `« ${nom} » ajouté au JT`,
+      voirStudio: 'Ouvrir le montage',
     },
     estimation: {
       moinsDuneMinute: 'moins d’une minute',
@@ -856,6 +856,14 @@ export const translations = {
       // Le studio simple : rushes, image, déroulé.
       deroule: {
         barre: 'Le JT en cours',
+        etapes: 'Les étapes du JT',
+        ongletRushes: 'Rushes reçus',
+        ongletMontage: 'Montage du JT',
+        ongletLivraison: 'Livraison',
+        bandeauTitre: 'Votre JT',
+        bandeauEnCours: (p) => `génération en cours, ${p} %`,
+        bandeauErreur: 'la génération a échoué — ouvrez le montage',
+        bandeauOuvrir: 'Ouvrir le montage',
         titre: (semaine) => `Le JT — ${semaine}`,
         resume: (n, duree) => (n === 0 ? 'Aucun plan' : `${n} plan${n > 1 ? 's' : ''} · ${duree}`),
         etatEnregistre: 'Enregistré',
@@ -1493,8 +1501,8 @@ export const translations = {
       precedent: 'Previous',
       suivant: 'Next',
       position: (i, n) => `${i} of ${n}`,
-      ajouteTimeline: (nom) => `“${nom}” added to the timeline`,
-      voirStudio: 'Open the studio',
+      ajouteTimeline: (nom) => `“${nom}” added to the newscast`,
+      voirStudio: 'Open the editor',
     },
     estimation: {
       moinsDuneMinute: 'less than a minute',
@@ -2108,6 +2116,14 @@ export const translations = {
       // The simple studio: rushes, picture, rundown.
       deroule: {
         barre: 'Current newscast',
+        etapes: 'Newscast steps',
+        ongletRushes: 'Rushes received',
+        ongletMontage: 'Newscast editing',
+        ongletLivraison: 'Delivery',
+        bandeauTitre: 'Your newscast',
+        bandeauEnCours: (p) => `building, ${p}%`,
+        bandeauErreur: 'the build failed — open the editor',
+        bandeauOuvrir: 'Open the editor',
         titre: (semaine) => `Newscast — ${semaine}`,
         resume: (n, duree) => (n === 0 ? 'No shots' : `${n} shot${n > 1 ? 's' : ''} · ${duree}`),
         etatEnregistre: 'Saved',

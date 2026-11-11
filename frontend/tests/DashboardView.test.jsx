@@ -86,7 +86,7 @@ describe('DashboardView Component Initialization', () => {
     fireEvent.click(unlockBtn);
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Chutiers \(Rushs\)/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Rushes reçus/i).length).toBeGreaterThan(0);
     });
   });
 });
@@ -95,7 +95,7 @@ async function deverrouiller() {
   renderDashboard();
   fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'secret' } });
   fireEvent.click(screen.getByRole('button', { name: /Déverrouiller/i }));
-  await waitFor(() => expect(screen.getAllByText(/Chutiers \(Rushs\)/i).length).toBeGreaterThan(0));
+  await waitFor(() => expect(screen.getAllByText(/Rushes reçus/i).length).toBeGreaterThan(0));
 }
 
 describe('le numéro WhatsApp d’un pays qui n’en a pas', () => {

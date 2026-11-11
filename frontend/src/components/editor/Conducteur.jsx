@@ -230,6 +230,34 @@ export function RushesStudio({ videos, clips, countries, onAjouter }) {
   );
 }
 
+/**
+ * Le JT en cours, rappelé d'une ligne au bas de la page des rushes.
+ */
+export function BandeauJT({ nombrePlans, dureeTotale, enCours, progression = 0, erreur, urlVideo, semaine, onOuvrir }) {
+  const { t } = useI18n();
+  const d = t.studio.deroule;
+  const etat = enCours ? d.bandeauEnCours(Math.round(progression))
+    : erreur ? d.bandeauErreur
+      : urlVideo ? t.studio.panneaux.exportPret
+        : d.resume(nombrePlans, dureeParlee(dureeTotale));
+  return (
+    <div className="flex shrink-0 items-center gap-3 border-t border-[var(--editor-border)] bg-[var(--editor-panel)] px-4 py-2.5" role="status">
+      <Film size={18} className="shrink-0 text-[color:var(--editor-accent)]" aria-hidden="true" />
+      <p className="min-w-0 flex-1 truncate text-sm text-[color:var(--editor-text)]">
+        <strong>{d.bandeauTitre}</strong> <span className="text-[color:var(--editor-muted)]">· {etat}</span>
+      </p>
+      {urlVideo && !enCours && (
+        <a href={urlVideo} download={`JT_${semaine}.mp4`} target="_blank" rel="noopener noreferrer" className={boutonBarre}>
+          {t.studio.panneaux.exportTelecharger}
+        </a>
+      )}
+      <button type="button" onClick={onOuvrir} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-[var(--editor-accent-strong)] px-4 text-sm font-bold text-[color:var(--editor-bg)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]">
+        {d.bandeauOuvrir}
+      </button>
+    </div>
+  );
+}
+
 const boutonPlan = 'inline-flex h-9 items-center gap-1.5 rounded-md border border-[var(--editor-border)] px-2.5 text-xs font-semibold text-[color:var(--editor-text)] '
   + 'hover:border-[var(--editor-accent)] hover:bg-[var(--editor-bg)] disabled:cursor-not-allowed disabled:opacity-35 '
   + 'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]';
