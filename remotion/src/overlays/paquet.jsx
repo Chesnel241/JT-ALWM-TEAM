@@ -118,10 +118,13 @@ export function Cadre({ overlay, ancre = 'bas-gauche', style, children }) {
     'haut-droite': { right: MARGE, top: MARGE, transformOrigin: 'top right' },
     bas: { left: 0, right: 0, bottom: 0, transformOrigin: 'bottom center' },
     plein: { inset: 0, transformOrigin: 'center' },
-  }[ancre];
+  };
+  // Le monteur peut poser un habillage de coin dans un autre coin.
+  const coins = ['bas-gauche', 'bas-droite', 'haut-gauche', 'haut-droite'];
+  const choisie = coins.includes(ancre) && coins.includes(overlay.place) ? overlay.place : ancre;
   return (
     <div style={{
-      position: 'absolute', ...ancres,
+      position: 'absolute', ...ancres[choisie],
       transform: `translate(${x}px, ${y}px) scale(${s})`,
       fontFamily: POLICE_HABILLAGE,
       ...varPolice(overlay),

@@ -3,7 +3,7 @@ import { X, Plus, Trash2, Layers, Clock, Search, SlidersHorizontal } from 'lucid
 import { COULEURS } from '../../../../remotion/src/identite.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 import { ApercuCombinaison, ChoixEntree } from './ChoixMouvement.jsx';
-import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES, familleDe, stylesDe, changerDeStyle, sansDoublonsDeStyle } from '../../data/overlayTemplates.js';
+import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES, familleDe, stylesDe, changerDeStyle, sansDoublonsDeStyle, COINS, estPlacable, coinParDefaut, vignette } from '../../data/overlayTemplates.js';
 import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 function formatTime(s) {
@@ -117,11 +117,14 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
       {styles.length > 1 && (
         <div className="flex flex-col gap-1.5" role="group" aria-label={t.studio.styles.style}>
           <span className="text-xs font-medium text-[color:var(--muted)]">{t.studio.styles.style}</span>
-          <div className="flex flex-wrap gap-1.5">
+          {/* Chaque style se choisit sur son image, rendue par le moteur. */}
+          <div className="grid grid-cols-3 gap-2">
             {styles.map((id) => (
-              <button key={id} type="button" aria-pressed={id === template.id} className={puce(id === template.id)}
-                onClick={() => onChange(changerDeStyle(overlay, id))}>
-                {nomDuStyle(id)}
+              <button key={id} type="button" aria-pressed={id === template.id} title={nomDuStyle(id)}
+                onClick={() => onChange(changerDeStyle(overlay, id))}
+                className={`overflow-hidden rounded-lg border-2 text-left motion-tap ${id === template.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--accent)]'}`}>
+                <img src={vignette(id)} alt="" loading="lazy" className="block aspect-video w-full object-cover" />
+                <span className="block truncate px-1.5 py-1 text-[11px] font-semibold text-[color:var(--ink)]">{nomDuStyle(id)}</span>
               </button>
             ))}
           </div>
@@ -171,6 +174,25 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
           />
         </div>
       </div>
+      )}
+
+      {/* Où le poser : quatre coins, d'un clic. Les curseurs X/Y restent dans
+          les réglages avancés, pour l'ajustement fin. */}
+      {estPlacable(template.id) && (
+        <div className="flex items-center gap-3" role="group" aria-label={t.studio.styles.ou}>
+          <span className="text-xs font-medium text-[color:var(--muted)]">{t.studio.styles.ou}</span>
+          <div className="grid aspect-video w-24 grid-cols-2 grid-rows-2 gap-1 rounded-md border border-[var(--border)] bg-[var(--paper-2)] p-1">
+            {COINS.map((coin) => {
+              const actif = (overlay.place || coinParDefaut(template.id)) === coin;
+              return (
+                <button key={coin} type="button" aria-pressed={actif} aria-label={t.studio.styles.coins[coin]} title={t.studio.styles.coins[coin]}
+                  onClick={() => onChange({ ...overlay, place: coin, posX: 0, posY: 0 })}
+                  className={`rounded-sm motion-tap ${actif ? 'bg-[var(--accent)]' : 'bg-[var(--border)] hover:bg-v-accent/50'}`} />
+              );
+            })}
+          </div>
+          <span className="text-xs text-[color:var(--ink)]">{t.studio.styles.coins[overlay.place || coinParDefaut(template.id)]}</span>
+        </div>
       )}
 
       {/* Tout le reste — mouvement, police, couleurs, position — est replié :
@@ -477,6 +499,8 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{moment.label}</h3>
             <p className="text-[10px] text-[color:var(--muted)] truncate">{moment.aide}</p>
           </div>
+          {/* Une galerie d'images réelles : on choisit ce qu'on voit. */}
+          <div className="grid grid-cols-2 gap-2">
           {liste.map((modele) => {
             const propre = t.studio.habillages[modele.id] || { label: modele.id, apercu: '' };
             const dit = familleDe(modele.id) ? t.studio.styles[familleDe(modele.id)] : propre;
@@ -485,16 +509,18 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
                 key={modele.id}
                 type="button"
                 onClick={() => onChoisir(modele.id)}
-                className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)] hover:bg-v-accent/5 motion-tap text-left"
+                title={dit.apercu}
+                className="group overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--paper)] text-left hover:border-[var(--accent)] motion-tap"
               >
-                <span className="text-2xl" aria-hidden="true">{modele.emoji}</span>
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm text-[color:var(--ink)]">{dit.label}</p>
-                  <p className="text-xs text-[color:var(--muted)]">{dit.apercu}</p>
-                </div>
+                <img src={vignette(modele.id)} alt="" loading="lazy" className="block aspect-video w-full object-cover" />
+                <span className="block px-2.5 py-2">
+                  <span className="block truncate text-sm font-semibold text-[color:var(--ink)]">{dit.label}</span>
+                  <span className="block truncate text-[11px] text-[color:var(--muted)]">{dit.apercu}</span>
+                </span>
               </button>
             );
           })}
+          </div>
         </div>
       ))}
 

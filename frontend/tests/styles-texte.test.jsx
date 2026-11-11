@@ -103,3 +103,46 @@ describe('l’éditeur d’un texte', () => {
     expect(screen.queryByRole('group', { name: 'Style' })).toBeNull();
   });
 });
+
+// LE BESOIN : déplacer un bandeau demandait deux curseurs « Position X » et
+// « Position Y » en pixels ; et l'on choisissait un habillage sur une icône.
+describe('poser et choisir sur image', () => {
+  const poser = (overlay) => {
+    const onChange = vi.fn();
+    render(<I18nProvider><OverlayEditor overlay={overlay} onChange={onChange} onRemove={() => {}} /></I18nProvider>);
+    return onChange;
+  };
+  const nom = { id: 'a', templateId: 'nom_interview', fields: { nom: 'Aminata Diallo' }, startTime: 0, duration: null, posX: 40, posY: -12 };
+
+  it('un coin se choisit d’un clic, et remet le décalage à zéro', () => {
+    const onChange = poser(nom);
+    expect(screen.getByRole('button', { name: 'En bas à gauche' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'En haut à droite' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ place: 'haut-droite', posX: 0, posY: 0 }));
+  });
+
+  it('le lieu part d’en haut à gauche', () => {
+    poser({ id: 'l', templateId: 'envato_loc_pin', fields: { location: 'Douala' }, startTime: 0, duration: null });
+    expect(screen.getByRole('button', { name: 'En haut à gauche' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('un écran plein ne propose pas de coin', () => {
+    poser({ id: 'r', templateId: 'rappel_titres', fields: { titre1: 'Budget' }, startTime: 0, duration: null });
+    expect(screen.queryByRole('group', { name: 'Où le poser' })).toBeNull();
+  });
+
+  it('chaque style montre son image réelle', () => {
+    poser(nom);
+    const images = [...document.querySelectorAll('img')].map((i) => i.getAttribute('src'));
+    expect(images).toContain('/habillages/nom_interview.jpg');
+    expect(images).toContain('/habillages/envato_presenter.jpg');
+  });
+
+  it('chaque habillage du catalogue a son image', async () => {
+    const { existsSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    for (const modele of OVERLAY_TEMPLATES) {
+      expect(existsSync(resolve(__dirname, `../public/habillages/${modele.id}.jpg`)), modele.id).toBe(true);
+    }
+  });
+});

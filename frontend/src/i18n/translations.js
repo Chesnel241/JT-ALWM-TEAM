@@ -1057,6 +1057,8 @@ export const translations = {
         avanceAide: 'mouvement, police, couleurs, position',
         tailleTexte: 'Taille du texte',
         tailleEnsemble: 'Taille de l’ensemble',
+        ou: 'Où le poser',
+        coins: { 'haut-gauche': 'En haut à gauche', 'haut-droite': 'En haut à droite', 'bas-gauche': 'En bas à gauche', 'bas-droite': 'En bas à droite' },
         valider: (n) => (n === 0 ? 'Valider (aucun texte)' : `Valider (${n} texte${n > 1 ? 's' : ''})`),
       },
       // Les rubriques du panneau « Habillage du JT ».
@@ -2309,6 +2311,8 @@ export const translations = {
         avanceAide: 'motion, typeface, colours, position',
         tailleTexte: 'Text size',
         tailleEnsemble: 'Overall size',
+        ou: 'Where to place it',
+        coins: { 'haut-gauche': 'Top left', 'haut-droite': 'Top right', 'bas-gauche': 'Bottom left', 'bas-droite': 'Bottom right' },
         valider: (n) => (n === 0 ? 'Confirm (no text)' : `Confirm (${n} text${n > 1 ? 's' : ''})`),
       },
       // The headings of the "Newscast graphics" panel.

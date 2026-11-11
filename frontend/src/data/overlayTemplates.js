@@ -360,6 +360,24 @@ export function changerDeStyle(overlay, nouvelId) {
 }
 
 /**
+ * Les habillages qu'on peut poser dans un autre coin de l'image, et les coins
+ * proposés. Les écrans pleins et les bandes sur toute la largeur n'en ont pas
+ * besoin.
+ */
+export const COINS = ['haut-gauche', 'haut-droite', 'bas-gauche', 'bas-droite'];
+const PLACABLES = new Set([
+  'nom_interview', 'envato_lt_corporate', 'envato_lt_compact', 'envato_presenter',
+  'titre_reportage', 'envato_rep_skew', 'envato_rep_swipe', 'envato_rep_glass',
+  'envato_news', 'envato_loc_pin', 'envato_quote',
+]);
+export const estPlacable = (templateId) => PLACABLES.has(templateId);
+/** Le coin où l'habillage se pose quand le monteur n'a rien choisi. */
+export const coinParDefaut = (templateId) => (templateId === 'envato_loc_pin' ? 'haut-gauche' : 'bas-gauche');
+
+/** L'image d'un habillage, rendue par le moteur lui-même (voir public/habillages). */
+export const vignette = (templateId) => `/habillages/${templateId}.jpg`;
+
+/**
  * Le catalogue tel qu'on le propose : un seul représentant par famille. Les
  * autres dessins se choisissent ensuite, dans l'éditeur.
  */
