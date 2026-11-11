@@ -973,6 +973,10 @@ export const translations = {
         rgbsplit: 'Décalage RVB',
         lightsweep: 'Balayage lumineux',
         flashwhite: 'Flash blanc',
+        volet_antenne: 'Volet de la chaîne',
+        zoom_rapide: 'Zoom rapide',
+        lames: 'Lames',
+        rideau: 'Rideau',
       },
       timeline: {
         regle: 'Règle temporelle, cliquer ou glisser pour déplacer la tête de lecture',
@@ -1102,6 +1106,7 @@ export const translations = {
         ouverture: { label: 'Ouverture', aide: 'Lancer le journal ou un sujet.' },
         titrage: { label: 'Titrage', aide: 'Donner son titre à un reportage.' },
         identification: { label: 'Identification', aide: 'Dire qui parle, d’où, et ce qu’il a dit.' },
+        donnees: { label: 'Informer', aide: 'Un chiffre, les points à retenir, ce qui suit.' },
         alerte: { label: 'Alerte', aide: 'Interrompre pour une information urgente.' },
         liaison: { label: 'Liaison', aide: 'Passer d’un sujet au suivant, ou faire courir une info.' },
         cloture: { label: 'Clôture', aide: 'Récapituler et refermer le journal.' },
@@ -1327,6 +1332,49 @@ export const translations = {
           apercu: 'Petite pastille de géolocalisation, en haut de l’image.',
           champs: {
             location: { label: 'Lieu', exemple: 'Libreville, Gabon' },
+          },
+        },
+        chiffre_cle: {
+          label: 'Chiffre clé',
+          apercu: 'Un nombre en très grand, qui se compte à l’écran, avec sa légende.',
+          champs: {
+            chiffre: { label: 'Chiffre', exemple: '72 %' },
+            legende: { label: 'Ce qu’il mesure', exemple: 'de participation au premier tour' },
+            source: { label: 'Source (facultatif)', exemple: 'Source : Commission électorale' },
+          },
+        },
+        essentiel: {
+          label: 'L’essentiel',
+          apercu: 'Un panneau à droite : les points à retenir, l’un après l’autre.',
+          champs: {
+            titre: { label: 'En-tête', exemple: 'L’ESSENTIEL' },
+            point1: { label: 'Point 1', exemple: 'Le budget est adopté' },
+            point2: { label: 'Point 2', exemple: 'Les écoles rouvrent lundi' },
+            point3: { label: 'Point 3 (facultatif)', exemple: 'La pêche reprend à Dakar' },
+            point4: { label: 'Point 4 (facultatif)', exemple: 'Match décisif samedi' },
+          },
+        },
+        a_suivre: {
+          label: 'À suivre',
+          apercu: 'En bas à droite : ce qui vient après, avec des chevrons qui avancent.',
+          champs: {
+            mention: { label: 'Mention', exemple: 'À SUIVRE' },
+            titre: { label: 'Ce qui suit', exemple: 'La pêche à Dakar' },
+          },
+        },
+        mention_image: {
+          label: 'Mention d’image',
+          apercu: 'Dans un coin : « Images d’archives », une date, un crédit.',
+          champs: {
+            texte: { label: 'Mention', exemple: 'IMAGES D’ARCHIVES' },
+          },
+        },
+        rubrique: {
+          label: 'Ouverture de rubrique',
+          apercu: 'Plein écran : le nom de la rubrique en très grand, sur son contour qui glisse.',
+          champs: {
+            titre: { label: 'Rubrique', exemple: 'ÉCONOMIE' },
+            sous_titre: { label: 'Précision (facultatif)', exemple: 'Le point de la semaine' },
           },
         },
         envato_quote: {
@@ -2265,6 +2313,10 @@ export const translations = {
         rgbsplit: 'RGB split',
         lightsweep: 'Light sweep',
         flashwhite: 'White flash',
+        volet_antenne: 'Channel wipe',
+        zoom_rapide: 'Fast zoom',
+        lames: 'Slats',
+        rideau: 'Curtain',
       },
       timeline: {
         regle: 'Time ruler, click or drag to move the playhead',
@@ -2386,6 +2438,7 @@ export const translations = {
         ouverture: { label: 'Opening', aide: 'Start the newscast or a story.' },
         titrage: { label: 'Titles', aide: 'Name a report.' },
         identification: { label: 'Identification', aide: 'Say who is speaking, from where, and what they said.' },
+        donnees: { label: 'Inform', aide: 'A figure, the points to remember, what comes next.' },
         alerte: { label: 'Alert', aide: 'Break in with urgent news.' },
         liaison: { label: 'Linking', aide: 'Move between stories, or run news along the screen.' },
         cloture: { label: 'Closing', aide: 'Recap and close the newscast.' },
@@ -2611,6 +2664,49 @@ export const translations = {
           apercu: 'Small location pin at the top of the frame.',
           champs: {
             location: { label: 'Location', exemple: 'Libreville, Gabon' },
+          },
+        },
+        chiffre_cle: {
+          label: 'Key figure',
+          apercu: 'A very large number that counts up on screen, with its caption.',
+          champs: {
+            chiffre: { label: 'Figure', exemple: '72%' },
+            legende: { label: 'What it measures', exemple: 'turnout in the first round' },
+            source: { label: 'Source (optional)', exemple: 'Source: Electoral Commission' },
+          },
+        },
+        essentiel: {
+          label: 'Key points',
+          apercu: 'A panel on the right: the points to remember, one after the other.',
+          champs: {
+            titre: { label: 'Heading', exemple: 'KEY POINTS' },
+            point1: { label: 'Point 1', exemple: 'The budget is adopted' },
+            point2: { label: 'Point 2', exemple: 'Schools reopen on Monday' },
+            point3: { label: 'Point 3 (optional)', exemple: 'Fishing resumes in Dakar' },
+            point4: { label: 'Point 4 (optional)', exemple: 'Decisive match on Saturday' },
+          },
+        },
+        a_suivre: {
+          label: 'Coming up',
+          apercu: 'Bottom right: what comes next, with moving chevrons.',
+          champs: {
+            mention: { label: 'Label', exemple: 'COMING UP' },
+            titre: { label: 'What comes next', exemple: 'Fishing in Dakar' },
+          },
+        },
+        mention_image: {
+          label: 'Picture credit',
+          apercu: 'In a corner: “Archive footage”, a date, a credit.',
+          champs: {
+            texte: { label: 'Label', exemple: 'ARCHIVE FOOTAGE' },
+          },
+        },
+        rubrique: {
+          label: 'Section opener',
+          apercu: 'Full screen: the section name in very large type, over its drifting outline.',
+          champs: {
+            titre: { label: 'Section', exemple: 'BUSINESS' },
+            sous_titre: { label: 'Detail (optional)', exemple: 'This week’s update' },
           },
         },
         envato_quote: {

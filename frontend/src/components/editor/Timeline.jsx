@@ -67,7 +67,7 @@ const SEUIL_AIMANT_PX = 8;
 // codés en dur donnait une station entièrement française à un monteur
 // anglophone.
 const TRANSITIONS = [
-  'none', 'fade', 'fadeblack', 'fadewhite', 'fadegrays', 'dissolve', 'pixelize', 'wipeleft', 'wiperight', 'wipeup', 'wipedown', 'slideleft', 'slideright', 'slideup', 'slidedown', 'smoothleft', 'smoothright', 'circleopen', 'circleclose', 'circlecrop', 'radial', 'zoomin', 'squeezev', 'diagtl', 'diagbr', 'coverleft', 'coverright', 'revealleft', 'revealright', 'whippan', 'glitch', 'rgbsplit', 'lightsweep', 'flashwhite',
+  'none', 'volet_antenne', 'zoom_rapide', 'lames', 'rideau', 'fade', 'fadeblack', 'fadewhite', 'fadegrays', 'dissolve', 'pixelize', 'wipeleft', 'wiperight', 'wipeup', 'wipedown', 'slideleft', 'slideright', 'slideup', 'slidedown', 'smoothleft', 'smoothright', 'circleopen', 'circleclose', 'circlecrop', 'radial', 'zoomin', 'squeezev', 'diagtl', 'diagbr', 'coverleft', 'coverright', 'revealleft', 'revealright', 'whippan', 'glitch', 'rgbsplit', 'lightsweep', 'flashwhite',
 ];
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

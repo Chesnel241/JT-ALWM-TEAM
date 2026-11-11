@@ -606,7 +606,12 @@ export const OVERLAY_TEMPLATES = [
       { key: 'quote' },
       { key: 'author' }
     ]
-  }
+  },
+  { id: 'chiffre_cle', fields: [{ key: 'chiffre' }, { key: 'legende' }, { key: 'source' }] },
+  { id: 'essentiel', fields: [{ key: 'titre' }, { key: 'point1' }, { key: 'point2' }, { key: 'point3' }, { key: 'point4' }] },
+  { id: 'a_suivre', fields: [{ key: 'mention' }, { key: 'titre' }] },
+  { id: 'mention_image', fields: [{ key: 'texte' }] },
+  { id: 'rubrique', scope: 'global', fields: [{ key: 'titre' }, { key: 'sous_titre' }] }
 ];
 
 export function getTemplate(id) {

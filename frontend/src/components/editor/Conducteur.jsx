@@ -24,7 +24,7 @@ import {
 
 // Les enchaînements qu'on emploie vraiment dans un JT. La liste complète
 // (trente-quatre effets) reste dans la vue détaillée.
-const ENCHAINEMENTS = ['none', 'fade', 'fadeblack', 'dissolve', 'slideleft', 'wipeleft'];
+const ENCHAINEMENTS = ['none', 'volet_antenne', 'zoom_rapide', 'lames', 'rideau', 'fade', 'fadeblack', 'slideleft'];
 
 /** Une vignette qui ne charge sa vidéo qu'une fois à l'écran. */
 function Vignette({ filename, instantSec = 0.1, className = '' }) {

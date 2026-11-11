@@ -81,3 +81,58 @@ describe('le paquet d’antenne', () => {
     expect(source).toMatch(/overlay\.fontSize/);
   });
 });
+
+// Les nouveaux modèles : ce qu'on voit sur les grandes chaînes et qui manquait.
+describe('le chiffre clé se compte à l’écran', () => {
+  it('garde ce qui entoure le nombre, tel qu’il a été écrit', async () => {
+    const { lireChiffre, ecrireChiffre } = await import('../../remotion/src/overlays/paquet.jsx');
+    const fin = (texte) => ecrireChiffre(lireChiffre(texte), 1);
+    for (const texte of ['72 %', '1 250 000 FCFA', '3,4 millions', '+12.5%', '45', '-3 °C']) {
+      expect(fin(texte), texte).toBe(texte);
+    }
+  });
+
+  it('part de zéro et monte jusqu’au nombre, sans le dépasser', async () => {
+    const { lireChiffre, ecrireChiffre } = await import('../../remotion/src/overlays/paquet.jsx');
+    const c = lireChiffre('72 %');
+    expect(ecrireChiffre(c, 0)).toBe('0 %');
+    expect(ecrireChiffre(c, 0.5)).toBe('36 %');
+    expect(ecrireChiffre(c, 3)).toBe('72 %');
+    expect(ecrireChiffre(lireChiffre('1 250 000 FCFA'), 0.5)).toBe('625 000 FCFA');
+  });
+
+  it('un texte sans nombre s’affiche tel quel', async () => {
+    const { lireChiffre } = await import('../../remotion/src/overlays/paquet.jsx');
+    expect(lireChiffre('Record battu')).toBeNull();
+  });
+});
+
+describe('les transitions de la chaîne', () => {
+  const transitions = readFileSync(resolve(__dirname, '../../remotion/src/transitions.jsx'), 'utf8');
+  const montage = readFileSync(resolve(__dirname, '../../remotion/src/JTMaster.jsx'), 'utf8');
+  const serveur = readFileSync(resolve(__dirname, '../../backend/src/services/editorService.js'), 'utf8');
+
+  it('sont connues du moteur, du studio et du serveur', async () => {
+    const { translations } = await import('../src/i18n/translations.js');
+    for (const id of ['volet_antenne', 'lames', 'zoom_rapide', 'rideau']) {
+      expect(montage, id).toContain(`'${id}'`);
+      expect(serveur, id).toContain(`'${id}'`);      // sinon le serveur refuse le montage
+      expect(translations.fr.studio.transitions[id], id).toBeTruthy();
+      expect(translations.en.studio.transitions[id], id).toBeTruthy();
+    }
+  });
+
+  // Le plan qui entre est dessiné AU-DESSUS de celui qui sort : un effet posé
+  // sur le plan sortant seul ne se voit pas (le rideau l'a montré au rendu).
+  it('le rideau et les lames agissent sur le plan qui entre', () => {
+    for (const nom of ['Rideau', 'Lames', 'VoletAntenne']) {
+      const corps = transitions.slice(transitions.indexOf(`function ${nom}(`));
+      expect(corps.slice(0, 400), nom).toMatch(/presentationDirection !== 'entering'\) return <AbsoluteFill>\{children\}<\/AbsoluteFill>/);
+    }
+  });
+
+  it('le zoom n’arrive jamais plus petit que l’image', () => {
+    const corps = transitions.slice(transitions.indexOf('function ZoomRapide('), transitions.indexOf('Le rideau'));
+    expect(corps).toMatch(/scale\(\$\{\(1\.22 - 0\.22/);
+  });
+});

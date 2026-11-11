@@ -138,7 +138,9 @@ describe('le nombre de relais (TRUST_PROXY)', () => {
     expect(relaisDeConfiance('')).toBe(1);
     expect(relaisDeConfiance(undefined)).toBe(1);
     expect(relaisDeConfiance('loopback')).toBe('loopback');
-  });
+    // Ce test charge l'application à froid : sous la charge de la suite
+    // entière, cinq secondes n'y suffisaient pas toujours.
+  }, 20000);
 });
 
 describe('à travers l’application', () => {

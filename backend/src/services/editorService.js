@@ -132,6 +132,8 @@ export const XFADE_TRANSITIONS = new Set([
   // Transitions broadcast custom (Remotion-only). Libass legacy retombe
   // sur 'fade' (cf. ffmpeg xfade ne connaît pas ces noms).
   'whippan', 'glitch', 'rgbsplit', 'lightsweep', 'flashwhite',
+  // Les transitions de la chaîne (voir remotion/src/transitions.jsx).
+  'volet_antenne', 'lames', 'zoom_rapide', 'rideau',
 ]);
 // Au-delà, on retombe sur le concat copy (le filtergraph xfade ouvre tous les
 // clips à la fois → on borne la RAM sur Render free).
@@ -707,7 +709,7 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
       const t = transitions[i - 1] || { type: 'fade', duration: 0.5 };
       // Transitions custom Remotion (whippan/glitch/rgbsplit/lightsweep/flashwhite)
       // n'existent pas dans ffmpeg xfade → fallback sur 'fade' pour le legacy.
-      const xfadeType = ['whippan', 'glitch', 'rgbsplit', 'lightsweep', 'flashwhite'].includes(t.type) ? 'fade' : t.type;
+      const xfadeType = ['whippan', 'glitch', 'rgbsplit', 'lightsweep', 'flashwhite', 'volet_antenne', 'lames', 'zoom_rapide', 'rideau'].includes(t.type) ? 'fade' : t.type;
       const off = Math.max(0.1, accLen - t.duration).toFixed(3);
       const vO = `vx${i}`; const aO = `ax${i}`;
       filters.push(`[${lastV}][${i}:v]xfade=transition=${xfadeType}:duration=${t.duration}:offset=${off}[${vO}]`);

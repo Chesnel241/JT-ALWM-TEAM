@@ -943,3 +943,184 @@ export function Defilant({ overlay, durationInFrames }) {
     </Cadre>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Informer : un chiffre, les points à retenir, ce qui suit            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Lit « 72 % », « 1 250 000 FCFA », « 3,4 millions » : ce qui précède le
+ * nombre, le nombre, ce qui le suit — et la façon dont il était écrit, pour
+ * le réécrire pareil pendant qu'il se compte.
+ */
+export function lireChiffre(texte) {
+  const m = /^([^\d-]*)(-?\d[\d\s.,]*)(.*)$/.exec(String(texte || '').trim());
+  if (!m) return null;
+  const brut = m[2].trim();
+  const virgule = /,\d{1,2}$/.test(brut);
+  const decimales = (/[.,](\d{1,2})$/.exec(brut) || [])[1];
+  const valeur = Number(brut.replace(/\s/g, '').replace(virgule ? /\./g : /,/g, '').replace(',', '.'));
+  if (!Number.isFinite(valeur)) return null;
+  // L'espace qui sépare le nombre de son unité (« 72 % ») appartient à l'unité.
+  const apres = (/\s+$/.exec(m[2]) || [''])[0] + m[3];
+  return { avant: m[1], apres, valeur, decimales: decimales ? decimales.length : 0, virgule, espaces: /\d\s\d/.test(brut) };
+}
+
+/** Le nombre tel qu'il s'affiche à `part` (0 → 1) de son décompte. */
+export function ecrireChiffre(chiffre, part) {
+  const n = (chiffre.valeur * Math.max(0, Math.min(1, part))).toFixed(chiffre.decimales);
+  let [entier, reste] = n.split('.');
+  if (chiffre.espaces) entier = entier.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return `${chiffre.avant}${entier}${reste ? `${chiffre.virgule ? ',' : '.'}${reste}` : ''}${chiffre.apres}`;
+}
+
+/**
+ * Le chiffre clé : le nombre se compte à l'écran, très grand, puis sa légende
+ * et sa source se posent dessous.
+ */
+export function ChiffreCle({ overlay, durationInFrames }) {
+  const { frame, k, p } = useCalques(durationInFrames);
+  const T = teintes(overlay);
+  const saisi = champ(overlay, 'chiffre');
+  const legende = champ(overlay, 'legende');
+  const source = champ(overlay, 'source');
+  const chiffre = lireChiffre(saisi);
+  // Le décompte dure un peu moins d'une seconde et se pose, comme le reste.
+  const affiche = chiffre ? ecrireChiffre(chiffre, poser((frame / k - 6) / 26)) : saisi;
+  return (
+    <Cadre overlay={overlay}>
+      <div style={{ display: 'flex', alignItems: 'stretch', filter: `drop-shadow(${assise})` }}>
+        <Filet vertical p={p(0, 10)} epaisseur={14} couleur={T.accent} />
+        <Volet p={p(2, 16)} style={{ position: 'relative', background: T.fond, padding: '26px 60px 26px 40px', overflow: 'hidden', minWidth: 460 }}>
+          <Monte p={p(5, 14)}>
+            <div style={{ ...titrage, fontSize: taille(overlay, 210), lineHeight: 0.95, color: T.texte, fontVariantNumeric: 'tabular-nums' }}>{affiche}</div>
+          </Monte>
+          {legende && (
+            <>
+              <Filet p={p(12, 18)} epaisseur={5} longueur={140} couleur={T.accent} style={{ margin: '16px 0 14px' }} />
+              <Monte p={p(14, 14)}>
+                <TexteJT role="courant" delai={14} style={{ ...courant, whiteSpace: 'normal', maxWidth: 760, fontSize: taille(overlay, 44), color: T.texte }}>{legende}</TexteJT>
+              </Monte>
+            </>
+          )}
+          {source && (
+            <div style={{ ...mention, fontSize: taille(overlay, 22), color: T.accent, marginTop: 16, opacity: p(20, 14) }}>{source}</div>
+          )}
+          <Reflet frame={frame} k={k} debut={30} duree={26} />
+        </Volet>
+      </div>
+    </Cadre>
+  );
+}
+
+/** « À suivre » : une mention dont les chevrons avancent, et ce qui vient. */
+export function ASuivre({ overlay, durationInFrames }) {
+  const { frame, k, p } = useCalques(durationInFrames);
+  const T = teintes(overlay);
+  const tag = champ(overlay, 'mention') || 'À SUIVRE';
+  const titre = champ(overlay, 'titre');
+  return (
+    <Cadre overlay={overlay} ancre="bas-droite">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', filter: `drop-shadow(${assise})` }}>
+        <Volet p={p(0, 12)} depuis="droite" style={{ background: T.accent, padding: '12px 22px 11px 26px', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{ ...mention, fontSize: taille(overlay, 28), letterSpacing: '0.14em', color: T.profond }}>{tag}</span>
+          {/* Les chevrons s'allument l'un après l'autre : ils disent « ça vient ». */}
+          <span style={{ display: 'flex', gap: 3 }}>
+            {[0, 1, 2].map((i) => (
+              <span key={i} style={{ ...titrage, fontSize: taille(overlay, 30), color: T.profond, opacity: 0.25 + 0.75 * Math.max(0, Math.sin(((frame / k) / 24 - i / 5) * Math.PI * 2)) }}>›</span>
+            ))}
+          </span>
+        </Volet>
+        <Volet p={p(4, 16)} depuis="droite" style={{ position: 'relative', background: T.fond, padding: '18px 34px 16px 40px', overflow: 'hidden' }}>
+          <Monte p={p(8, 14)}>
+            <TexteJT role="titrage" delai={8} style={{ ...titrage, fontSize: taille(overlay, 58), color: T.texte }}>{titre}</TexteJT>
+          </Monte>
+          <Reflet frame={frame} k={k} debut={18} />
+        </Volet>
+      </div>
+    </Cadre>
+  );
+}
+
+/**
+ * L'essentiel : un panneau à droite de l'image, dont les points arrivent l'un
+ * après l'autre, chacun précédé d'un trait qui se trace.
+ */
+export function Essentiel({ overlay, durationInFrames }) {
+  const { p } = useCalques(durationInFrames);
+  const T = teintes(overlay);
+  const entete = champ(overlay, 'titre') || 'L’ESSENTIEL';
+  const points = ['point1', 'point2', 'point3', 'point4'].map((c) => champ(overlay, c)).filter(Boolean);
+  return (
+    <Cadre overlay={overlay} ancre="plein">
+      <Volet p={p(0, 18)} depuis="droite" style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 700, background: VOILES.panneau, borderLeft: `8px solid ${T.accent}`, padding: `${MARGE}px 56px ${MARGE}px 52px`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <Monte p={p(6, 14)}>
+          <div style={{ ...mention, fontSize: taille(overlay, 40), letterSpacing: '0.14em', color: T.accent }}>{entete}</div>
+        </Monte>
+        <Filet p={p(9, 20)} epaisseur={4} couleur={T.papier} style={{ margin: '22px 0 34px', opacity: 0.4 }} />
+        {points.map((point, i) => {
+          const d = 14 + i * 9;
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 22, marginBottom: 30 }}>
+              <Filet p={p(d, 10)} epaisseur={8} longueur={34} couleur={T.accent} style={{ marginTop: 20 }} />
+              <Monte p={p(d + 2, 14)} style={{ flex: 1 }}>
+                <TexteJT role="courant" delai={d + 2} style={{ ...courant, whiteSpace: 'normal', fontSize: taille(overlay, 40), lineHeight: 1.2, color: T.texte }}>{point}</TexteJT>
+              </Monte>
+            </div>
+          );
+        })}
+      </Volet>
+    </Cadre>
+  );
+}
+
+/**
+ * L'ouverture de rubrique : le mot en très grand, et derrière lui le même mot
+ * en contour, immense, qui glisse lentement — la typographie fait le décor.
+ */
+export function Rubrique({ overlay, durationInFrames }) {
+  const { frame, k, p } = useCalques(durationInFrames);
+  const T = teintes(overlay);
+  const mot = champ(overlay, 'titre');
+  const sous = champ(overlay, 'sous_titre');
+  const glisse = (frame / k) * 1.6;
+  return (
+    <FondAntenne p={p(0, 12)} frame={frame} k={k} T={T}>
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', fontFamily: POLICE_HABILLAGE, ...varPolice(overlay) }}>
+        {/* Le mot en contour, deux fois, à contresens. */}
+        {[[-8, -1], [54, 1]].map(([haut, sens], i) => (
+          <div key={i} style={{ position: 'absolute', top: `${haut}%`, left: 0, whiteSpace: 'nowrap', transform: `translateX(${(sens * glisse - (sens > 0 ? 700 : 100)).toFixed(1)}px)`, opacity: p(4 + i * 4, 24) * 0.2 }}>
+            <span style={{ ...titrage, fontSize: 520, lineHeight: 1, color: 'transparent', WebkitTextStroke: `3px ${T.accent}` }}>{`${mot}  ${mot}  ${mot}`}</span>
+          </div>
+        ))}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <Filet p={p(4, 18)} epaisseur={8} longueur={220} couleur={T.accent} origine="center" style={{ marginBottom: 26 }} />
+          <Monte p={p(6, 18)}>
+            <TexteJT role="titrage" delai={6} style={{ ...titrage, fontSize: taille(overlay, 240), letterSpacing: '0.04em', color: T.texte }}>{mot}</TexteJT>
+          </Monte>
+          {sous && (
+            <Monte p={p(14, 16)} style={{ marginTop: 22 }}>
+              <TexteJT role="courant" delai={14} style={{ ...mention, fontSize: taille(overlay, 40), color: T.accent }}>{sous}</TexteJT>
+            </Monte>
+          )}
+        </div>
+      </div>
+    </FondAntenne>
+  );
+}
+
+/** La mention d'image : « IMAGES D'ARCHIVES », une date — discrète, dans un coin. */
+export function MentionImage({ overlay, durationInFrames }) {
+  const { p } = useCalques(durationInFrames);
+  const T = teintes(overlay);
+  const texte = champ(overlay, 'texte');
+  return (
+    <Cadre overlay={overlay} ancre="haut-droite">
+      <Volet p={p(0, 14)} depuis="droite" style={{ background: VOILES.panneau, borderRight: `6px solid ${T.accent}`, padding: '12px 22px 11px 24px' }}>
+        <Monte p={p(4, 12)}>
+          <TexteJT role="courant" delai={4} style={{ ...mention, fontSize: taille(overlay, 26), color: T.texte }}>{texte}</TexteJT>
+        </Monte>
+      </Volet>
+    </Cadre>
+  );
+}

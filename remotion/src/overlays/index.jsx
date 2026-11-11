@@ -5,6 +5,7 @@ import {
   TitreBandeau, TitreFilet, TitreBiseau, TitreBalayage, TitreVerre, TitreMassif,
   AlerteBandeau, Lieu, Citation,
   Generique, Transition, Flash, DerniereMinute, RappelTitres as RappelDesTitres, Fin, GrandTitre, Duplex, Defilant,
+  ChiffreCle, ASuivre, Essentiel, Rubrique, MentionImage,
 } from './paquet.jsx';
 
 export const REGISTRY = {
@@ -32,6 +33,11 @@ export const REGISTRY = {
   envato_lt_interview: NomDeuxInvites,
   envato_loc_pin: Lieu,
   envato_quote: Citation,
+  chiffre_cle: ChiffreCle,
+  a_suivre: ASuivre,
+  essentiel: Essentiel,
+  rubrique: Rubrique,
+  mention_image: MentionImage,
 };
 
 /**
@@ -50,6 +56,7 @@ const EXIGENT_UN_TEXTE = new Set([
   'envato_rep_minimal', 'envato_rep_skew', 'envato_rep_swipe', 'envato_rep_glass',
   'envato_rep_massif', 'envato_lt_compact', 'envato_lt_corporate',
   'envato_lt_interview', 'envato_loc_pin', 'envato_quote',
+  'chiffre_cle', 'a_suivre', 'essentiel', 'rubrique', 'mention_image',
 ]);
 
 /** Vrai si l'habillage porte au moins un texte saisi (les couleurs ne comptent pas). */

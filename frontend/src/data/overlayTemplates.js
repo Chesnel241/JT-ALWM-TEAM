@@ -229,6 +229,37 @@ export const OVERLAY_TEMPLATES = [
       { key: 'quote' },
       { key: 'author' }
     ]
+  },
+  {
+    id: 'chiffre_cle',
+    moment: 'donnees',
+    emoji: '🔢',
+    fields: [{ key: 'chiffre' }, { key: 'legende' }, { key: 'source' }]
+  },
+  {
+    id: 'essentiel',
+    moment: 'donnees',
+    emoji: '📌',
+    fields: [{ key: 'titre' }, { key: 'point1' }, { key: 'point2' }, { key: 'point3' }, { key: 'point4' }]
+  },
+  {
+    id: 'a_suivre',
+    moment: 'donnees',
+    emoji: '⏭️',
+    fields: [{ key: 'mention' }, { key: 'titre' }]
+  },
+  {
+    id: 'mention_image',
+    moment: 'identification',
+    emoji: '🏷️',
+    fields: [{ key: 'texte' }]
+  },
+  {
+    id: 'rubrique',
+    moment: 'liaison',
+    emoji: '🗂️',
+    scope: 'global',
+    fields: [{ key: 'titre' }, { key: 'sous_titre' }]
   }
 ];
 
@@ -245,7 +276,7 @@ export const OVERLAY_TEMPLATES = [
  * données, elle sert au rendu ; elle ne sert plus de rangement.
  */
 export const MOMENTS_IDS = [
-  'ouverture', 'titrage', 'identification', 'alerte', 'liaison', 'cloture',
+  'ouverture', 'titrage', 'identification', 'donnees', 'alerte', 'liaison', 'cloture',
 ];
 
 /**
@@ -261,6 +292,7 @@ const RECOMMANDE_PAR_MOMENT = {
   ouverture: 'scale',
   titrage: 'slide',
   identification: 'fade',
+  donnees: 'fade',
   alerte: 'glitch_in',
   liaison: 'fade',
   cloture: 'fade',
@@ -371,10 +403,11 @@ const PLACABLES = new Set([
   'nom_interview', 'envato_lt_corporate', 'envato_lt_compact', 'envato_presenter',
   'titre_reportage', 'envato_rep_skew', 'envato_rep_swipe', 'envato_rep_glass',
   'envato_news', 'envato_loc_pin', 'envato_quote',
+  'chiffre_cle', 'a_suivre', 'mention_image',
 ]);
 export const estPlacable = (templateId) => PLACABLES.has(templateId);
 /** Le coin où l'habillage se pose quand le monteur n'a rien choisi. */
-export const coinParDefaut = (templateId) => (templateId === 'envato_loc_pin' ? 'haut-gauche' : 'bas-gauche');
+export const coinParDefaut = (templateId) => ({ envato_loc_pin: 'haut-gauche', mention_image: 'haut-droite', a_suivre: 'bas-droite' }[templateId] || 'bas-gauche');
 
 /** L'image d'un habillage, rendue par le moteur lui-même (voir public/habillages). */
 export const vignette = (templateId) => `/habillages/${templateId}.jpg`;
