@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { CARACTERES, POLICE_HABILLAGE, varPolice } from '../../remotion/src/identite.js';
 
 /**
@@ -56,18 +57,10 @@ describe('la déclaration de police reste valide', () => {
   });
 });
 
-describe('les cinq fichiers importés lisent la même déclaration', () => {
-  it('aucun ne réécrit sa propre font-family', () => {
-    // C'est la duplication qui a laissé le défaut vivre : la déclaration était
-    // recopiée cinq fois, et la variable posée à un sixième endroit.
-    const dossier = path.join(RACINE, 'remotion/src/overlays');
-    const importes = fs.readdirSync(dossier).filter((f) => f.startsWith('envato_'));
-    expect(importes.length).toBe(5);
-
-    importes.forEach((f) => {
-      const source = fs.readFileSync(path.join(dossier, f), 'utf8');
-      expect(source, f).toContain('fontFamily: POLICE_HABILLAGE');
-      expect(source, `${f} réécrit la déclaration au lieu de la lire`).not.toMatch(/fontFamily:\s*'var\(--ov-font/);
-    });
+describe('le paquet d’antenne lit la même déclaration', () => {
+  it('ne réécrit pas sa propre font-family', () => {
+    const source = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../remotion/src/overlays/paquet.jsx'), 'utf8');
+    expect(source).toContain('fontFamily: POLICE_HABILLAGE');
+    expect(source, 'le paquet réécrit la déclaration au lieu de la lire').not.toMatch(/fontFamily:\s*'var\(--ov-font/);
   });
 });

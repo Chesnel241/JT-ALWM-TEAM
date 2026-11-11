@@ -57,6 +57,34 @@ export const COULEURS = {
 
   /** Réservé aux alertes. Jamais décoratif. */
   alerte: '#C62828',
+
+  /** Le milieu du dégradé des écrans pleins : le fond, un pas vers le bleu. */
+  fondMilieu: '#082B50',
+  /** Le même, pour l'écran de dernière minute : le fond tiré vers le rouge. */
+  fondAlerte: '#3A0F18',
+};
+
+/**
+ * Les voiles : ce qui tient un texte sur une image qu'on ne maîtrise pas.
+ * Tous dérivent du fond de la chaîne, à des opacités mesurées une fois.
+ */
+export const VOILES = {
+  /** Un cartouche sombre, presque opaque : une ligne de nom, une citation. */
+  panneau: 'rgba(5, 22, 42, 0.86)',
+  /** Un panneau translucide, flouté derrière. */
+  verre: 'rgba(6, 26, 50, 0.58)',
+  /** Le liseré intérieur du verre. */
+  lisere: 'rgba(244, 247, 250, 0.14)',
+  /** Le dégradé qui monte du bas, sous un titre posé sans cartouche. */
+  pied: 'linear-gradient(to top, rgba(4,16,32,0.88), rgba(4,16,32,0.45) 45%, transparent)',
+  /** Le halo sombre derrière un grand titre centré. */
+  centre: 'radial-gradient(ellipse at center, rgba(3,14,28,0.72), rgba(3,14,28,0.25) 70%)',
+  /** L'assombrissement des bords d'un écran plein. */
+  bords: 'radial-gradient(ellipse at 40% 50%, transparent 30%, rgba(2,10,22,0.55) 100%)',
+  /** L'ombre qui détache un bandeau d'une image claire, sans halo. */
+  assise: '0 10px 30px rgba(5, 20, 40, 0.28)',
+  /** Le reflet qui traverse un calque au moment où il se pose. */
+  reflet: 'linear-gradient(100deg, transparent, rgba(255,255,255,0.22), transparent)',
 };
 
 /* ------------------------------------------------------------------ */
