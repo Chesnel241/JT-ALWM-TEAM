@@ -125,8 +125,8 @@ function NomInterview({ overlay, durationInFrames }) {
   const slideOutOp = isOut ? interpolate(outSpring, [0, 1], [1, 0]) : 1;
   const fs = (overlay.fontSize || 100) / 100;
   
-  const categorie = (f.categorie || f.title || f.fonction || 'POLITIQUE').toUpperCase();
-  const corps = f.name || f.nom || f.texte || 'Titre de l’information';
+  const categorie = (f.categorie || f.title || f.fonction || '').toUpperCase();
+  const corps = f.name || f.nom || f.texte || '';
   // Personnalisable : accent = bloc + catégorie, bg = panneau, text = corps.
   const C = pickColors(overlay);
   const cAccent = C.accent(COL.blue);
@@ -194,7 +194,7 @@ function TitreReportage({ overlay, durationInFrames }) {
             fontFamily: fontB, fontWeight: 800,
             fontSize: `${fs * 50}px`, color: cTitle,
             textTransform: 'uppercase', letterSpacing: '0.01em', whiteSpace: 'nowrap',
-          }}>{f.titre || f.sujet || f.title || 'LE TITRE DU REPORTAGE'}</TexteJT>
+          }}>{f.titre || f.sujet || f.title || ''}</TexteJT>
         </Para>
         {/* accent diagonal */}
         <div style={{ opacity: reveal > 0.7 ? 1 : 0, transition: 'opacity .2s' }}>
@@ -216,7 +216,7 @@ function TitreReportage({ overlay, durationInFrames }) {
             fontFamily: fontM, fontWeight: 600,
             fontSize: `${fs * 26}px`, color: cAccent,
             textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
-          }}>{f.subtitle || f.sous_titre || 'UN SOUS-TITRE OU PRÉCISION'}</TexteJT>
+          }}>{f.subtitle || f.sous_titre || ''}</TexteJT>
         </Para>
       </div>
     </Box>
@@ -585,9 +585,35 @@ function injectColors(overlay) {
   return { ...overlay, fields };
 }
 
+/**
+ * Les habillages qui n'ont de sens qu'avec un texte : un nom, un titre, une
+ * alerte, une citation, un lieu.
+ *
+ * L'INCIDENT : un champ laissé vide affichait un texte de démonstration (un
+ * faux nom, une fausse fonction, une fausse citation en anglais) dans l'aperçu
+ * ET dans le JT diffusé. Un champ vide reste maintenant vide, et un habillage
+ * sans aucun texte ne s'affiche pas du tout. Les exemples précis sont dans le
+ * test `textes-de-demonstration`.
+ */
+const EXIGENT_UN_TEXTE = new Set([
+  'nom_interview', 'lower_third', 'titre_reportage', 'flash_info',
+  'envato_presenter', 'envato_news', 'envato_big_title', 'envato_split_screen',
+  'envato_rep_minimal', 'envato_rep_skew', 'envato_rep_swipe', 'envato_rep_glass',
+  'envato_rep_massif', 'envato_lt_compact', 'envato_lt_corporate',
+  'envato_lt_interview', 'envato_loc_pin', 'envato_quote',
+]);
+
+/** Vrai si l'habillage porte au moins un texte saisi (les couleurs ne comptent pas). */
+export function aDuTexte(overlay) {
+  return Object.entries(overlay?.fields || {}).some(([cle, valeur]) => (
+    typeof valeur === 'string' && valeur.trim() !== '' && !/^(color|bg)/i.test(cle)
+  ));
+}
+
 export function Overlay({ overlay, durationInFrames }) {
   const Comp = REGISTRY[overlay.templateId];
   if (!Comp) return null;
+  if (EXIGENT_UN_TEXTE.has(overlay.templateId) && !aDuTexte(overlay)) return null;
 
   // Composants Envato : on enveloppe dans Box (position/échelle) + on injecte
   // les couleurs UI + la police via variable CSS héritée par les enfants.

@@ -364,15 +364,15 @@ export function changerDeStyle(overlay, nouvelId) {
  * autres dessins se choisissent ensuite, dans l'éditeur.
  */
 export function sansDoublonsDeStyle(liste) {
-  const vues = new Set();
-  return liste.filter((modele) => {
+  // Le représentant est le premier style de la famille (le plus simple), pas
+  // le premier venu du catalogue : « Nom d'une personne » doit ouvrir sur
+  // « Nom et fonction », non sur le bandeau du présentateur et ses trois champs.
+  const prefere = (modele) => {
     const famille = familleDe(modele.id);
-    if (!famille) return true;
-    const cle = `${famille}:${modele.scope || 'clip'}`;
-    if (vues.has(cle)) return false;
-    vues.add(cle);
-    return true;
-  });
+    const portee = modele.scope || 'clip';
+    return STYLES[famille].find((id) => liste.some((m) => m.id === id && (m.scope || 'clip') === portee));
+  };
+  return liste.filter((modele) => !familleDe(modele.id) || prefere(modele) === modele.id);
 }
 
 export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'global');

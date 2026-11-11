@@ -16,8 +16,8 @@ const baseFontConfig = {
 export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const title = fields.titre || "INVESTIGATIVE REPORT";
-  const subtitle = fields.sous_titre || "UNCOVERING THE TRUTH";
+  const title = fields.titre || '';
+  const subtitle = fields.sous_titre || '';
   const colorMain = fields.colorMain || COULEURS.structure;
   const colorTextMain = fields.colorTextMain || COULEURS.papier;
   const colorTextAccent = fields.colorTextAccent || COULEURS.encre;
@@ -76,8 +76,8 @@ export function EnvatoReportageMinimalLine({ overlay, durationInFrames }) {
 export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const line1 = fields.titre || "BREAKING";
-  const line2 = fields.sous_titre || "NEWS TODAY";
+  const line1 = fields.titre || '';
+  const line2 = fields.sous_titre || '';
   const colorMain = fields.colorMain || COULEURS.structure;
   const colorAccent = fields.colorAccent || COULEURS.papier;
   
@@ -134,8 +134,8 @@ export function EnvatoReportageDoubleSkew({ overlay, durationInFrames }) {
 export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const text = fields.titre || "EXCLUSIVE INTERVIEW";
-  const subtitle = fields.sous_titre || "WITH THE PRESIDENT";
+  const text = fields.titre || '';
+  const subtitle = fields.sous_titre || '';
   const colorMain = fields.colorMain || COULEURS.structure;
   const colorTextMain = fields.colorTextMain || COULEURS.papier;
   const colorBg = fields.colorBg || "rgba(255,255,255,0.4)";
@@ -189,8 +189,8 @@ export function EnvatoReportageGradientSwipe({ overlay, durationInFrames }) {
 export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const title = fields.titre || "UNDERCOVER";
-  const subtitle = fields.sous_titre || "INSIDE THE CARTEL";
+  const title = fields.titre || '';
+  const subtitle = fields.sous_titre || '';
   const colorBg = fields.colorBg || "rgba(20, 20, 20, 0.4)";
   const colorTextMain = fields.colorTextMain || COULEURS.papier;
   const colorAccent = fields.colorAccent || COULEURS.papier;
@@ -246,8 +246,8 @@ export function EnvatoReportageGlassmorphism({ overlay, durationInFrames }) {
 export function EnvatoReportageMassif({ overlay, durationInFrames }) {
   const frame = useCurrentFrame();
   const fields = overlay?.fields || {};
-  const line1 = fields.titre || "STATE OF";
-  const line2 = fields.sous_titre || "EMERGENCY";
+  const line1 = fields.titre || '';
+  const line2 = fields.sous_titre || '';
   const colorMain = fields.colorMain || COULEURS.encre;
   const colorText = fields.colorTextMain || COULEURS.papier;
   const colorHighlight = fields.colorHighlight || COULEURS.structure;

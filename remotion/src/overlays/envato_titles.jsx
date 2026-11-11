@@ -48,7 +48,7 @@ export function EnvatoBigTitle({ overlay, durationInFrames }) {
   // « WHAT IS GOING ON IN THE WORLD ». On lit désormais le champ déclaré, en
   // gardant les trois anciens noms pour les montages déjà enregistrés.
   const [titreL1, titreL2] = deuxLignes(fields.titre);
-  const line1 = fields.line1 || titreL1 || 'TITRE DU JOURNAL';
+  const line1 = fields.line1 || titreL1 || '';
   const line2 = fields.line2 || titreL2 || '';
   const subtitle = fields.subtitle || fields.sous_titre || '';
   const colorMain = fields.colorMain || COULEURS.structure;
@@ -137,7 +137,7 @@ export function EnvatoTicker({ overlay, durationInFrames }) {
   // d'un cinquième plus vite.
   const { fps } = useVideoConfig();
   const fields = overlay?.fields || {};
-  const tag = fields.tag || 'LIVE';
+  const tag = fields.tag || '';
   // Même défaut que le Grand Titre : le catalogue déclare text1 et text2, le
   // composant ne lisait que `items`. Les deux informations saisies par le
   // monteur étaient ignorées au profit des titres de démonstration anglais.

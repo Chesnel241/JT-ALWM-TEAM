@@ -46,7 +46,8 @@ describe('les styles d’un même texte', () => {
   it('le catalogue ne garde qu’un représentant par famille', () => {
     const restants = sansDoublonsDeStyle(OVERLAY_TEMPLATES.filter((t) => t.scope !== 'global')).map((t) => t.id);
     expect(restants.filter((id) => familleDe(id) === 'titre')).toEqual(['titre_reportage']);
-    expect(restants.filter((id) => familleDe(id) === 'nom')).toHaveLength(1);
+    // Le plus simple d'abord : « Nom et fonction », pas le bandeau du présentateur.
+    expect(restants.filter((id) => familleDe(id) === 'nom')).toEqual(['nom_interview']);
     expect(restants).toContain('envato_quote');
   });
 });

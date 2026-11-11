@@ -757,6 +757,19 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const dureeDuJT = useMemo(() => calculerDeroule(timelineClips).total, [timelineClips]);
 
+  /**
+   * Ouvre les textes (ou les sous-titres) d'un plan en montrant l'image une
+   * seconde après son début. Sur la toute première image, le texte n'est pas
+   * encore entré : on tapait un nom sans rien voir apparaître.
+   */
+  const montrerLePlan = (clip) => {
+    const plan = calculerDeroule(timelineClips).plans.find((p) => p.id === (clip.instanceId || clip.id));
+    const lecteur = playerRef.current;
+    if (!plan || !lecteur?.seekTo) return;
+    lecteur.pause?.();
+    lecteur.seekTo(Math.round((plan.debut + Math.min(1.5, plan.duree / 2)) * 30));
+  };
+
   /** Un rush cliqué dans le studio rejoint le déroulé, après le plan choisi. */
   const ajouterAuDeroule = (file) => {
     const instanceId = nouvelIdDePlan();
@@ -2674,8 +2687,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         modifierMontage={modifierMontage}
                         nouvelId={nouvelIdDePlan}
                         onRaccourcir={openTrimInspector}
-                        onNom={openOverlayInspector}
-                        onSousTitres={openSubtitleInspector}
+                        onNom={(clip) => { openOverlayInspector(clip); montrerLePlan(clip); }}
+                        onSousTitres={(clip) => { openSubtitleInspector(clip); montrerLePlan(clip); }}
                         onAnnuler={annulerMontage}
                         onRetablir={retablirMontage}
                       />
