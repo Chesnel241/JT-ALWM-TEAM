@@ -169,49 +169,52 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
     <div className={`bg-[var(--paper)] w-full flex flex-col overflow-hidden ${inline ? 'h-full border-l border-[var(--border)]' : 'rounded-2xl max-w-lg shadow-2xl border border-[var(--border)] max-h-[90vh]'}`}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--paper-2)]">
           <h2 className="font-bold text-[color:var(--ink)] flex items-center gap-2 text-base">
-            <Newspaper className="text-[var(--accent)]" size={18} /> Habillage JT (global)
+            <Newspaper className="text-[var(--accent)]" size={18} /> {t.studio.deroule.habillage}
           </h2>
           <button onClick={onClose} className="p-2 text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--border)] rounded-lg"><X size={18} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
-          {/* Section Modèles / Préférences */}
+          {/* Rangé par ce qu'on cherche — ce qui reste à l'antenne, le son,
+              les moments du JT, l'image — et non plus dans l'ordre où les
+              réglages avaient été ajoutés au fil du temps. */}
+          <h3 className="-mb-2 mt-1 text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{t.studio.rangement.permanent}</h3>
+          {/* Logo */}
           <section className={sectionCls}>
-            {head(<Layers size={15} />, t.studio.panneaux.modeles, null)}
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-2">
-                <input 
-                  className={field} 
-                  placeholder={t.studio.panneaux.modeleNom} 
-                  value={themeName} 
-                  onChange={(e) => setThemeName(e.target.value)} 
-                />
-                <button 
-                  onClick={handleSaveTheme}
-                  className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-sm whitespace-nowrap hover:opacity-90"
-                >
-                  Sauvegarder
-                </button>
-              </div>
-              
-              <div className="flex flex-col gap-2 mt-2">
-                <button onClick={loadThemes} className="text-xs text-[var(--accent)] font-medium text-left underline w-fit">
-                  {t.studio.panneaux.modelesRafraichir}
-                </button>
-                {themes.length === 0 && !loadingThemes && (
-                  <p className="text-xs text-[var(--muted)]">{t.studio.panneaux.modelesAucun}</p>
-                )}
-                {themes.map(t => (
-                  <div key={t.id} className="flex items-center justify-between p-2 border border-[var(--border)] rounded-lg bg-[var(--paper-2)]">
-                    <span className="text-sm font-medium text-[var(--ink)]">{t.name}</span>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => handleApplyTheme(t)} className="px-3 py-1 bg-[var(--ink)] text-[var(--paper)] text-xs rounded-md">Appliquer</button>
-                      <button onClick={() => handleDeleteTheme(t.id)} className="p-1 text-[var(--muted)] hover:text-red-500 rounded"><Trash2 size={14}/></button>
+            <label className="flex items-center justify-between font-semibold text-sm text-[color:var(--ink)]">
+              <span className="flex items-center gap-2"><ImageIcon size={15} /> {t.studio.panneaux.logoChaine}</span>
+              <input type="checkbox" checked={v.logo} onChange={(e) => onChange({ ...v, logo: e.target.checked })} className="w-4 h-4 accent-[var(--accent)]" />
+            </label>
+            {v.logo && (
+              <>
+                <select className={field} value={v.logoPosition || 'br'} onChange={(e) => onChange({ ...v, logoPosition: e.target.value })}>
+                  {POSITIONS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+                <div className="grid grid-cols-3 gap-3 mt-2">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-positionX-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionX}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoPosX ?? 0}</span>
                     </div>
+                    <input id={`${idc}-positionX-3`} type="range" min="-1920" max="1920" step="10" value={v.logoPosX ?? 0} onChange={(e) => onChange({ ...v, logoPosX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-positionY-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionY}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoPosY ?? 0}</span>
+                    </div>
+                    <input id={`${idc}-positionY-3`} type="range" min="-1080" max="1080" step="10" value={v.logoPosY ?? 0} onChange={(e) => onChange({ ...v, logoPosY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={`${idc}-taille-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.taille}</label>
+                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoScale ?? 100}%</span>
+                    </div>
+                    <input id={`${idc}-taille-3`} type="range" min="10" max="300" step="5" value={v.logoScale ?? 100} onChange={(e) => onChange({ ...v, logoScale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
+                  </div>
+                </div>
+              </>
+            )}
           </section>
 
           {/* Ticker */}
@@ -324,76 +327,7 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
             )}
           </section>
 
-          {/* Logo */}
-          <section className={sectionCls}>
-            <label className="flex items-center justify-between font-semibold text-sm text-[color:var(--ink)]">
-              <span className="flex items-center gap-2"><ImageIcon size={15} /> {t.studio.panneaux.logoChaine}</span>
-              <input type="checkbox" checked={v.logo} onChange={(e) => onChange({ ...v, logo: e.target.checked })} className="w-4 h-4 accent-[var(--accent)]" />
-            </label>
-            {v.logo && (
-              <>
-                <select className={field} value={v.logoPosition || 'br'} onChange={(e) => onChange({ ...v, logoPosition: e.target.value })}>
-                  {POSITIONS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                </select>
-                <div className="grid grid-cols-3 gap-3 mt-2">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <label htmlFor={`${idc}-positionX-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionX}</label>
-                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoPosX ?? 0}</span>
-                    </div>
-                    <input id={`${idc}-positionX-3`} type="range" min="-1920" max="1920" step="10" value={v.logoPosX ?? 0} onChange={(e) => onChange({ ...v, logoPosX: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <label htmlFor={`${idc}-positionY-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.positionY}</label>
-                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoPosY ?? 0}</span>
-                    </div>
-                    <input id={`${idc}-positionY-3`} type="range" min="-1080" max="1080" step="10" value={v.logoPosY ?? 0} onChange={(e) => onChange({ ...v, logoPosY: parseInt(e.target.value, 10) || 0 })} className="w-full accent-[var(--accent)]" />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <label htmlFor={`${idc}-taille-3`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase">{t.studio.panneaux.taille}</label>
-                      <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{v.logoScale ?? 100}%</span>
-                    </div>
-                    <input id={`${idc}-taille-3`} type="range" min="10" max="300" step="5" value={v.logoScale ?? 100} onChange={(e) => onChange({ ...v, logoScale: parseInt(e.target.value, 10) || 100 })} className="w-full accent-[var(--accent)]" />
-                  </div>
-                </div>
-              </>
-            )}
-          </section>
-
-          {/* Atmosphère cinéma : vignette + grain + sweep lumineux */}
-          <section className={sectionCls}>
-            <label className="flex items-center gap-2 font-semibold text-sm text-[color:var(--ink)]">
-              <Sparkles size={15} /> {t.studio.panneaux.atmosphere}
-            </label>
-            {[
-              ['vignette', t.studio.panneaux.vignettage],
-              ['grain', t.studio.panneaux.grain],
-              ['sweep', t.studio.panneaux.balayage],
-            ].map(([k, lab]) => {
-              const val = (v.atmosphere && v.atmosphere[k]) || 0;
-              return (
-                <div key={k} className="flex flex-col gap-1">
-                  <div className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
-                    <label htmlFor={`${idc}-${k}`}>{lab}</label>
-                    <span className="text-[color:var(--ink)]">{Math.round(val * 100)}%</span>
-                  </div>
-                  <input
-                    id={`${idc}-${k}`}
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={val}
-                    onChange={(e) => setAtmo({ [k]: parseFloat(e.target.value) })}
-                    className="w-full accent-[var(--accent)]"
-                  />
-                </div>
-              );
-            })}
-          </section>
-
+          <h3 className="-mb-2 mt-1 text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{t.studio.rangement.son}</h3>
           {/* Musique */}
           <section className={sectionCls}>
             {head(<Music size={15} />, t.studio.panneaux.musique, v.music.enabled, (c) => setMusic({ enabled: c }))}
@@ -437,6 +371,48 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
             )}
           </section>
 
+          <h3 className="-mb-2 mt-1 text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{t.studio.rangement.moments}</h3>
+          {/* Animations & Habillages Globaux (Alerte, Flash...) */}
+          <section className={sectionCls}>
+            {head(<Layers size={15} />, t.studio.panneaux.habillagesGlobaux, null)}
+            
+            <div className="flex gap-2">
+              {/* Groupé par moment du JT, comme le sélecteur des clips : une
+                  liste à plat obligeait à parcourir les huit pour retrouver
+                  la barre défilante. */}
+              <select
+                className={field}
+                aria-label={t.studio.interface.ajouterGlobal}
+                onChange={(e) => { if (e.target.value) { addOverlay(e.target.value); e.target.value = ''; } }}
+              >
+                <option value="">{t.studio.interface.ajouterGlobalChoix}</option>
+                {MOMENTS_IDS.map((idMoment) => {
+                  // Le bandeau défilant a sa propre section, plus haut : le proposer
+                  // aussi ici faisait deux bandeaux pour le même besoin.
+                  const liste = habillagesDuMoment(idMoment, GLOBAL_TEMPLATES).filter((m) => m.id !== 'envato_ticker');
+                  if (liste.length === 0) return null;
+                  return (
+                    <optgroup key={idMoment} label={t.studio.moments[idMoment].label}>
+                      {liste.map((m) => (
+                        <option key={m.id} value={m.id}>{m.emoji} {t.studio.habillages[m.id].label}</option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
+              </select>
+            </div>
+
+            {(v.overlays || []).map((overlay, idx) => (
+              <OverlayEditor
+                key={overlay.id}
+                overlay={overlay}
+                onChange={(upd) => updOverlay(idx, upd)}
+                onRemove={() => rmOverlay(idx)}
+              />
+            ))}
+          </section>
+
+          <h3 className="-mb-2 mt-1 text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{t.studio.rangement.image}</h3>
           {/* Images */}
           <section className={sectionCls}>
             {head(<ImageIcon size={15} />, t.studio.panneaux.incrustations, null)}
@@ -472,42 +448,76 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
             </div>
           </section>
 
-          {/* Animations & Habillages Globaux (Alerte, Flash...) */}
+          {/* Atmosphère cinéma : vignette + grain + sweep lumineux */}
           <section className={sectionCls}>
-            {head(<Layers size={15} />, t.studio.panneaux.habillagesGlobaux, null)}
-            
-            <div className="flex gap-2">
-              {/* Groupé par moment du JT, comme le sélecteur des clips : une
-                  liste à plat obligeait à parcourir les huit pour retrouver
-                  la barre défilante. */}
-              <select
-                className={field}
-                aria-label={t.studio.interface.ajouterGlobal}
-                onChange={(e) => { if (e.target.value) { addOverlay(e.target.value); e.target.value = ''; } }}
-              >
-                <option value="">{t.studio.interface.ajouterGlobalChoix}</option>
-                {MOMENTS_IDS.map((idMoment) => {
-                  const liste = habillagesDuMoment(idMoment, GLOBAL_TEMPLATES);
-                  if (liste.length === 0) return null;
-                  return (
-                    <optgroup key={idMoment} label={t.studio.moments[idMoment].label}>
-                      {liste.map((m) => (
-                        <option key={m.id} value={m.id}>{m.emoji} {t.studio.habillages[m.id].label}</option>
-                      ))}
-                    </optgroup>
-                  );
-                })}
-              </select>
-            </div>
+            <label className="flex items-center gap-2 font-semibold text-sm text-[color:var(--ink)]">
+              <Sparkles size={15} /> {t.studio.panneaux.atmosphere}
+            </label>
+            {[
+              ['vignette', t.studio.panneaux.vignettage],
+              ['grain', t.studio.panneaux.grain],
+              ['sweep', t.studio.panneaux.balayage],
+            ].map(([k, lab]) => {
+              const val = (v.atmosphere && v.atmosphere[k]) || 0;
+              return (
+                <div key={k} className="flex flex-col gap-1">
+                  <div className="text-xs font-medium text-[color:var(--muted)] flex items-center justify-between">
+                    <label htmlFor={`${idc}-${k}`}>{lab}</label>
+                    <span className="text-[color:var(--ink)]">{Math.round(val * 100)}%</span>
+                  </div>
+                  <input
+                    id={`${idc}-${k}`}
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={val}
+                    onChange={(e) => setAtmo({ [k]: parseFloat(e.target.value) })}
+                    className="w-full accent-[var(--accent)]"
+                  />
+                </div>
+              );
+            })}
+          </section>
 
-            {(v.overlays || []).map((overlay, idx) => (
-              <OverlayEditor
-                key={overlay.id}
-                overlay={overlay}
-                onChange={(upd) => updOverlay(idx, upd)}
-                onRemove={() => rmOverlay(idx)}
-              />
-            ))}
+          <h3 className="-mb-2 mt-1 text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{t.studio.rangement.enregistres}</h3>
+          {/* Section Modèles / Préférences */}
+          <section className={sectionCls}>
+            {head(<Layers size={15} />, t.studio.panneaux.modeles, null)}
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                <input 
+                  className={field} 
+                  placeholder={t.studio.panneaux.modeleNom} 
+                  value={themeName} 
+                  onChange={(e) => setThemeName(e.target.value)} 
+                />
+                <button 
+                  onClick={handleSaveTheme}
+                  className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-sm whitespace-nowrap hover:opacity-90"
+                >
+                  {t.studio.rangement.enregistrer}
+                </button>
+              </div>
+              
+              <div className="flex flex-col gap-2 mt-2">
+                <button onClick={loadThemes} className="text-xs text-[var(--accent)] font-medium text-left underline w-fit">
+                  {t.studio.panneaux.modelesRafraichir}
+                </button>
+                {themes.length === 0 && !loadingThemes && (
+                  <p className="text-xs text-[var(--muted)]">{t.studio.panneaux.modelesAucun}</p>
+                )}
+                {themes.map(t => (
+                  <div key={t.id} className="flex items-center justify-between p-2 border border-[var(--border)] rounded-lg bg-[var(--paper-2)]">
+                    <span className="text-sm font-medium text-[var(--ink)]">{t.name}</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleApplyTheme(t)} className="px-3 py-1 bg-[var(--ink)] text-[var(--paper)] text-xs rounded-md">Appliquer</button>
+                      <button onClick={() => handleDeleteTheme(t.id)} className="p-1 text-[var(--muted)] hover:text-red-500 rounded"><Trash2 size={14}/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
         </div>
 

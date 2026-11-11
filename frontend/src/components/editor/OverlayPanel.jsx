@@ -1,9 +1,9 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { X, Plus, Trash2, Layers, Clock, Search } from 'lucide-react';
+import { X, Plus, Trash2, Layers, Clock, Search, SlidersHorizontal } from 'lucide-react';
 import { COULEURS } from '../../../../remotion/src/identite.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 import { ApercuCombinaison, ChoixEntree } from './ChoixMouvement.jsx';
-import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES } from '../../data/overlayTemplates.js';
+import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES, familleDe, stylesDe, changerDeStyle, sansDoublonsDeStyle } from '../../data/overlayTemplates.js';
 import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
 
 function formatTime(s) {
@@ -62,12 +62,23 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
   const template = OVERLAY_TEMPLATES.find((x) => x.id === overlay.templateId);
   if (!template) return null;
   const dit = t.studio.habillages[template.id] || { label: template.id, champs: {} };
+  const famille = familleDe(template.id);
+  const styles = stylesDe(template.id);
+  const titreCarte = famille ? t.studio.styles[famille].label : dit.label;
+  const nomDuStyle = (id) => (t.studio.habillages[id]?.label || id).replace(/^.*? — /, '');
+  // Quand le texte s'affiche : trois réponses simples avant les secondes.
+  const quand = overlay.duration == null && !(overlay.startTime > 0) ? 'tout'
+    : (overlay.startTime ?? 0) === 0 && overlay.duration === 5 ? 'debut' : 'choisi';
+  const [reglerQuand, setReglerQuand] = useState(quand === 'choisi');
+  const puce = (actif) => `min-h-[36px] rounded-lg border px-3 text-xs font-semibold motion-tap ${actif
+    ? 'border-[var(--accent)] bg-v-accent/10 text-[color:var(--ink)]'
+    : 'border-[var(--border)] bg-[var(--paper-2)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--ink)]'}`;
 
   return (
     <div className="border border-[var(--border)] rounded-xl p-4 bg-[var(--paper)] flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="font-semibold text-[color:var(--ink)] flex items-center gap-2 text-sm">
-          <span aria-hidden="true">{template.emoji}</span> {dit.label}
+          <span aria-hidden="true">{template.emoji}</span> {titreCarte}
         </span>
         <button
           type="button"
@@ -102,6 +113,76 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
         );
       })}
 
+      {/* Le dessin : il se change d'un clic, le texte reste. */}
+      {styles.length > 1 && (
+        <div className="flex flex-col gap-1.5" role="group" aria-label={t.studio.styles.style}>
+          <span className="text-xs font-medium text-[color:var(--muted)]">{t.studio.styles.style}</span>
+          <div className="flex flex-wrap gap-1.5">
+            {styles.map((id) => (
+              <button key={id} type="button" aria-pressed={id === template.id} className={puce(id === template.id)}
+                onClick={() => onChange(changerDeStyle(overlay, id))}>
+                {nomDuStyle(id)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quand le texte s'affiche. */}
+      <div className="flex flex-col gap-1.5" role="group" aria-label={t.studio.styles.quand}>
+        <span className="text-xs font-medium text-[color:var(--muted)] flex items-center gap-1"><Clock size={11} aria-hidden="true" /> {t.studio.styles.quand}</span>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" aria-pressed={!reglerQuand && quand === 'tout'} className={puce(!reglerQuand && quand === 'tout')}
+            onClick={() => { setReglerQuand(false); onChange({ ...overlay, startTime: 0, duration: null }); }}>{t.studio.styles.toutDuLong}</button>
+          <button type="button" aria-pressed={!reglerQuand && quand === 'debut'} className={puce(!reglerQuand && quand === 'debut')}
+            onClick={() => { setReglerQuand(false); onChange({ ...overlay, startTime: 0, duration: 5 }); }}>{t.studio.styles.auDebut}</button>
+          <button type="button" aria-pressed={reglerQuand} className={puce(reglerQuand)}
+            onClick={() => setReglerQuand(true)}>{t.studio.styles.choisir}</button>
+        </div>
+      </div>
+      {reglerQuand && (
+      <div className="grid grid-cols-2 gap-3" data-quand-precis>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${idc}-debut`} className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.debutSec}</label>
+          <input
+            id={`${idc}-debut`}
+            type="number"
+            min="0"
+            step="0.5"
+            value={overlay.startTime ?? 0}
+            onChange={(e) => onChange({ ...overlay, startTime: parseFloat(e.target.value) || 0 })}
+            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${idc}-duree`} className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.dureeSec}</label>
+          <input
+            id={`${idc}-duree`}
+            type="number"
+            min="0.5"
+            step="0.5"
+            placeholder="∞"
+            value={overlay.duration ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              onChange({ ...overlay, duration: v === '' ? null : parseFloat(v) });
+            }}
+            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
+          />
+        </div>
+      </div>
+      )}
+
+      {/* Tout le reste — mouvement, police, couleurs, position — est replié :
+          le texte sort juste avec les réglages par défaut, et quarante
+          commandes à plat noyaient les deux champs qui comptent. */}
+      <details className="group rounded-xl border border-[var(--border)]">
+        <summary className="flex min-h-[40px] cursor-pointer list-none items-center gap-2 px-3 text-xs font-semibold text-[color:var(--muted)] hover:text-[color:var(--ink)]">
+          <SlidersHorizontal size={13} aria-hidden="true" />
+          {t.studio.styles.avance}
+          <span className="ml-auto text-[10px] font-normal group-open:hidden">{t.studio.styles.avanceAide}</span>
+        </summary>
+        <div className="flex flex-col gap-3 border-t border-[var(--border)] p-3">
       {/* Mouvement du texte : l'aperçu d'abord, le choix ensuite. */}
       <div className="space-y-3 p-3 bg-[var(--paper-2)] rounded-xl border border-[var(--border)]">
         <div className="flex items-center justify-between">
@@ -179,7 +260,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
             du JT, appliquée à tous les habillages. */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label htmlFor="overlay-taille" className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.taille}</label>
+            <label htmlFor="overlay-taille" className="text-[10px] font-bold text-[color:var(--muted)] uppercase tracking-wider">{t.studio.styles.tailleTexte}</label>
             <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.fontSize || 100}%</span>
           </div>
           <input
@@ -315,7 +396,7 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
               cran, alors que la valeur est déjà annoncée par `aria-valuenow`.
               C'est la forme que « Taille » suivait déjà plus haut. */}
           <div className="flex items-center justify-between">
-            <label htmlFor={`${idc}-echelle`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.panneaux.taille}</label>
+            <label htmlFor={`${idc}-echelle`} className="text-[10px] font-medium text-[color:var(--muted)] uppercase tracking-wider">{t.studio.styles.tailleEnsemble}</label>
             <span className="text-[10px] font-mono font-bold text-[color:var(--ink)]">{overlay.scale ?? 100}%</span>
           </div>
           <input id={`${idc}-echelle`} type="range" min="10" max="300" step="5" value={overlay.scale ?? 100}
@@ -324,37 +405,8 @@ export function OverlayEditor({ overlay, onChange, onRemove }) {
         </div>
       </div>
 
-      {/* Timing controls */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)] flex items-center gap-1">
-            <Clock size={11} /> {t.studio.panneaux.debutSec}
-          </label>
-          <input
-            type="number"
-            min="0"
-            step="0.5"
-            value={overlay.startTime ?? 0}
-            onChange={(e) => onChange({ ...overlay, startTime: parseFloat(e.target.value) || 0 })}
-            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
-          />
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-[color:var(--muted)]">{t.studio.panneaux.dureeSec}</label>
-          <input
-            type="number"
-            min="0.5"
-            step="0.5"
-            placeholder="∞"
-            value={overlay.duration ?? ''}
-            onChange={(e) => {
-              const v = e.target.value;
-              onChange({ ...overlay, duration: v === '' ? null : parseFloat(v) });
-            }}
-            className="w-full px-3 py-2 bg-[var(--paper-2)] border border-[var(--border)] rounded-lg text-sm text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] motion-tap"
-          />
-        </div>
-      </div>
+      </details>
     </div>
   );
 }
@@ -379,14 +431,19 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
     const q = recherche.trim().toLowerCase();
     const correspond = (modele, moment) => {
       if (!q) return true;
-      const dit = t.studio.habillages[modele.id] || {};
-      return [dit.label, dit.apercu, moment.label, moment.aide]
+      // Une famille répond aussi au nom de chacun de ses styles : qui tape
+      // « biseau » ou « présentateur » doit arriver au bon texte.
+      const famille = familleDe(modele.id);
+      const membres = famille ? stylesDe(modele.id) : [modele.id];
+      const mots = membres.flatMap((id) => [t.studio.habillages[id]?.label, t.studio.habillages[id]?.apercu]);
+      if (famille) mots.push(t.studio.styles[famille].label, t.studio.styles[famille].apercu);
+      return [...mots, moment.label, moment.aide]
         .some((v) => (v || '').toLowerCase().includes(q));
     };
 
     return MOMENTS_IDS
       .map((id) => ({ id, ...t.studio.moments[id] }))
-      .map((moment) => ({ moment, liste: habillagesDuMoment(moment.id, modeles).filter((m) => correspond(m, moment)) }))
+      .map((moment) => ({ moment, liste: habillagesDuMoment(moment.id, sansDoublonsDeStyle(modeles)).filter((m) => correspond(m, moment)) }))
       .filter((g) => g.liste.length > 0);
   }, [recherche, modeles, t]);
 
@@ -421,7 +478,8 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
             <p className="text-[10px] text-[color:var(--muted)] truncate">{moment.aide}</p>
           </div>
           {liste.map((modele) => {
-            const dit = t.studio.habillages[modele.id] || { label: modele.id, apercu: '' };
+            const propre = t.studio.habillages[modele.id] || { label: modele.id, apercu: '' };
+            const dit = familleDe(modele.id) ? t.studio.styles[familleDe(modele.id)] : propre;
             return (
               <button
                 key={modele.id}
@@ -577,7 +635,7 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
             className="flex-1 py-2.5 rounded-xl bg-[var(--ink)] text-[color:var(--paper)] font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
           >
             <Layers size={15} />
-            {t.studio.panneaux.appliquer} ({overlays.length} {overlays.length !== 1 ? t.studio.panneaux.animationPlusieurs : t.studio.panneaux.animationUne})
+            {t.studio.styles.valider(overlays.length)}
           </button>
         </div>
     </div>

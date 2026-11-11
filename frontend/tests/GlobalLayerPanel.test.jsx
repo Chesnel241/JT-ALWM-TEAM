@@ -57,9 +57,26 @@ describe('le panneau d’habillage global', () => {
 
   it('expose ses sections au monteur', () => {
     poser();
-    expect(screen.getByText(/Habillage JT/i)).toBeInTheDocument();
-    expect(screen.getByText(/Bande défilante/i)).toBeInTheDocument();
-    expect(screen.getByText(/Badge LIVE/i)).toBeInTheDocument();
+    expect(screen.getByText('Habillage du JT')).toBeInTheDocument();
+    expect(screen.getByText('Bandeau défilant')).toBeInTheDocument();
+    expect(screen.getByText('Pastille « DIRECT »')).toBeInTheDocument();
+  });
+
+  // LE CONSTAT : les réglages s'empilaient dans l'ordre où ils avaient été
+  // ajoutés au fil du temps, « Modèles & Préférences » en tête.
+  it('range ses réglages par ce qu’on cherche, les modèles en dernier', () => {
+    poser();
+    const rubriques = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+    expect(rubriques).toEqual(['Toujours à l’écran', 'Le son', 'Les moments du JT', 'L’image', 'Pour la prochaine fois']);
+  });
+
+  // Le bandeau défilant existait deux fois : en section, et dans la liste
+  // « Ajouter un habillage global ».
+  it('ne propose le bandeau défilant qu’à un seul endroit', () => {
+    poser();
+    const liste = screen.getByLabelText(/Ajouter/);
+    expect([...liste.querySelectorAll('option')].map((o) => o.textContent).join(' ')).not.toMatch(/défilante/i);
+    expect(screen.getAllByText('Bandeau défilant')).toHaveLength(1);
   });
 
   it('n’affiche plus le réglage d’interligne, que rien ne lisait', () => {

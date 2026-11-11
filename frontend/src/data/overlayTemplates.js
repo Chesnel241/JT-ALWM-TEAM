@@ -287,6 +287,94 @@ export function habillagesDuMoment(moment, liste = OVERLAY_TEMPLATES) {
   return liste.filter((t) => t.moment === moment);
 }
 
+/**
+ * Les styles d'un même texte.
+ *
+ * LE CONSTAT : le catalogue alignait vingt-trois entrées, dont six « titres de
+ * reportage », quatre « noms » et trois « alertes ». Ce ne sont pas des textes
+ * différents : ce sont des DESSINS différents du même texte. Le monteur devait
+ * choisir un dessin avant d'avoir écrit un mot, et recommencer la saisie pour
+ * en essayer un autre.
+ *
+ * Ici, on choisit ce qu'on veut écrire (un nom, un titre, une alerte) ; le
+ * dessin se change ensuite d'un clic, sans rien retaper. `roles` dit quel
+ * champ de chaque dessin porte le texte principal, le secondaire, la mention.
+ */
+export const STYLES = {
+  nom: ['nom_interview', 'envato_lt_corporate', 'envato_lt_compact', 'envato_presenter'],
+  titre: ['titre_reportage', 'envato_rep_minimal', 'envato_rep_skew', 'envato_rep_swipe', 'envato_rep_glass', 'envato_rep_massif'],
+  alerte: ['envato_news', 'flash_info', 'breaking_news'],
+};
+
+const titreSousTitre = { principal: 'titre', secondaire: 'sous_titre' };
+const ROLES = {
+  nom_interview: { principal: 'nom', secondaire: 'fonction' },
+  envato_lt_corporate: { principal: 'nom', secondaire: 'fonction' },
+  envato_lt_compact: { principal: 'nom' },
+  envato_presenter: { principal: 'name', secondaire: 'title', mention: 'context' },
+  titre_reportage: titreSousTitre,
+  envato_rep_minimal: titreSousTitre,
+  envato_rep_skew: titreSousTitre,
+  envato_rep_swipe: titreSousTitre,
+  envato_rep_glass: titreSousTitre,
+  envato_rep_massif: titreSousTitre,
+  envato_news: { principal: 'headline', mention: 'tag' },
+  flash_info: { principal: 'texte', mention: 'titre' },
+  breaking_news: { principal: 'texte', mention: 'titre' },
+};
+
+/** La famille (`nom`, `titre`, `alerte`) d'un habillage, ou `null`. */
+export function familleDe(templateId) {
+  return Object.keys(STYLES).find((f) => STYLES[f].includes(templateId)) || null;
+}
+
+/**
+ * Les autres dessins proposables pour cet habillage : même famille, même
+ * portée (un texte de plan ne devient pas un habillage de tout le JT).
+ */
+export function stylesDe(templateId) {
+  const famille = familleDe(templateId);
+  const modele = OVERLAY_TEMPLATES.find((t) => t.id === templateId);
+  if (!famille || !modele) return [];
+  return STYLES[famille].filter((id) => {
+    const autre = OVERLAY_TEMPLATES.find((t) => t.id === id);
+    return autre && (autre.scope || 'clip') === (modele.scope || 'clip');
+  });
+}
+
+/**
+ * Change le dessin d'un texte sans perdre ce qui a été écrit. Les anciens
+ * champs restent dans l'objet : revenir au dessin précédent rend aussi ce
+ * qu'il était seul à afficher.
+ */
+export function changerDeStyle(overlay, nouvelId) {
+  const avant = ROLES[overlay.templateId];
+  const apres = ROLES[nouvelId];
+  if (!avant || !apres || overlay.templateId === nouvelId) return overlay;
+  const fields = { ...(overlay.fields || {}) };
+  for (const role of Object.keys(apres)) {
+    const valeur = avant[role] ? overlay.fields?.[avant[role]] : undefined;
+    if (valeur !== undefined && valeur !== '') fields[apres[role]] = valeur;
+  }
+  return { ...overlay, templateId: nouvelId, fields };
+}
+
+/**
+ * Le catalogue tel qu'on le propose : un seul représentant par famille. Les
+ * autres dessins se choisissent ensuite, dans l'éditeur.
+ */
+export function sansDoublonsDeStyle(liste) {
+  const vues = new Set();
+  return liste.filter((modele) => {
+    const famille = familleDe(modele.id);
+    if (!famille) return true;
+    const cle = `${famille}:${modele.scope || 'clip'}`;
+    if (vues.has(cle)) return false;
+    vues.add(cle);
+    return true;
+  });
+}
+
 export const CLIP_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope !== 'global');
 export const GLOBAL_TEMPLATES = OVERLAY_TEMPLATES.filter((t) => t.scope === 'global');
 

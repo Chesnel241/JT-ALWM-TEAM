@@ -3,7 +3,7 @@ import { render, screen, within, fireEvent } from '@testing-library/react';
 import { SelecteurHabillage } from '../src/components/editor/OverlayPanel.jsx';
 import { I18nProvider } from '../src/i18n/I18nContext.jsx';
 import { translations } from '../src/i18n/translations.js';
-import { CLIP_TEMPLATES, MOMENTS_IDS, habillagesDuMoment } from '../src/data/overlayTemplates.js';
+import { sansDoublonsDeStyle, CLIP_TEMPLATES, MOMENTS_IDS, habillagesDuMoment } from '../src/data/overlayTemplates.js';
 
 /**
  * Trouver la bonne option : la première des trois douleurs remontées.
@@ -58,9 +58,21 @@ describe('le sélecteur range par moment du JT', () => {
     expect(titres.indexOf('Titrage')).toBeLessThan(titres.indexOf('Identification'));
   });
 
-  it('montre tous les habillages du contexte', () => {
+  // LE CONSTAT : six « titres de reportage », quatre « noms » : des dessins
+  // différents du même texte, que le monteur devait départager avant
+  // d'avoir écrit un mot.
+  it('ne montre qu’une entrée par texte : les styles se choisissent ensuite', () => {
     poser();
-    expect(screen.getAllByRole('button').length - 1).toBe(CLIP_TEMPLATES.length); // -1 : « Annuler »
+    expect(screen.getAllByRole('button').length - 1).toBe(sansDoublonsDeStyle(CLIP_TEMPLATES).length); // -1 : « Annuler »
+    expect(sansDoublonsDeStyle(CLIP_TEMPLATES).length).toBeLessThan(CLIP_TEMPLATES.length - 6);
+    expect(screen.getAllByText('Titre du sujet')).toHaveLength(1);
+    expect(screen.getAllByText('Nom d’une personne')).toHaveLength(1);
+  });
+
+  it('retrouve un texte par le nom d’un de ses styles', () => {
+    poser();
+    fireEvent.change(screen.getByLabelText('Chercher un habillage'), { target: { value: 'biseau' } });
+    expect(screen.getByText('Titre du sujet')).toBeInTheDocument();
   });
 });
 
