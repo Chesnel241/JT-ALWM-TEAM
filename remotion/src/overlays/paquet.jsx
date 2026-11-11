@@ -28,6 +28,27 @@ import TexteJT from '../TexteJT.jsx';
 /* Le socle                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Ce qui occupe déjà l'image en permanence : le logo dans un coin, la pastille
+ * « DIRECT » en haut à droite, le bandeau défilant en bas.
+ *
+ * L'INCIDENT, vu sur un JT rendu avec tout l'habillage : un nom posé en bas à
+ * droite passait SOUS le logo, qui en cachait la moitié. Chaque élément avait
+ * été réglé seul. Le montage fournit donc ce contexte, et chaque habillage
+ * s'écarte de lui-même de ce qui est déjà là.
+ */
+export const Antenne = React.createContext({ logo: null, direct: false, defilant: false });
+
+/** Le décalage vertical (en px, vers l'intérieur de l'image) qu'impose l'habillage permanent. */
+export function ecartPermanent(coin, antenne) {
+  const a = antenne || {};
+  if (coin === 'bas') return a.defilant ? 76 : 0;
+  let ecart = 0;
+  if (a.logo === coin) ecart = Math.max(ecart, 170);
+  if (a.direct && coin === 'haut-droite') ecart = Math.max(ecart, 100);
+  return ecart;
+}
+
 /** Marges de sécurité : rien d'important à moins de 5 % du bord. */
 export const MARGE = 96;
 const borne = (v) => Math.max(0, Math.min(1, v));
@@ -121,10 +142,13 @@ export function Cadre({ overlay, ancre = 'bas-gauche', style, children }) {
   // Le monteur peut poser un habillage de coin dans un autre coin.
   const coins = ['bas-gauche', 'bas-droite', 'haut-gauche', 'haut-droite'];
   const choisie = coins.includes(ancre) && coins.includes(overlay.place) ? overlay.place : ancre;
+  // On s'écarte de ce qui est déjà à l'antenne (logo, pastille, bandeau).
+  const ecart = ecartPermanent(choisie, React.useContext(Antenne));
+  const pousse = choisie.startsWith('haut') ? ecart : -ecart;
   return (
     <div style={{
       position: 'absolute', ...ancres[choisie],
-      transform: `translate(${x}px, ${y}px) scale(${s})`,
+      transform: `translate(${x}px, ${y + pousse}px) scale(${s})`,
       fontFamily: POLICE_HABILLAGE,
       ...varPolice(overlay),
       ...style,

@@ -288,12 +288,18 @@ export const MOMENTS_IDS = [
  *
  * Ces valeurs ne sont pas des règles : le menu reste entier juste à côté.
  */
+// Depuis le paquet d'antenne, chaque habillage porte son propre mouvement
+// (filet, volet, texte derrière un cache). Les entrées marquées qu'on proposait
+// d'office — glissé pour un titre, saccade pour une alerte — s'ajoutaient à ce
+// mouvement et le brouillaient : le texte montait ET glissait ET tremblait.
+// Le fondu, lui, se fond dans le geste. Le menu reste entier pour qui veut
+// autre chose.
 const RECOMMANDE_PAR_MOMENT = {
-  ouverture: 'scale',
-  titrage: 'slide',
+  ouverture: 'fade',
+  titrage: 'fade',
   identification: 'fade',
   donnees: 'fade',
-  alerte: 'glitch_in',
+  alerte: 'fade',
   liaison: 'fade',
   cloture: 'fade',
 };

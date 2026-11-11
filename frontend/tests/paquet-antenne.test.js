@@ -136,3 +136,30 @@ describe('les transitions de la chaîne', () => {
     expect(corps).toMatch(/scale\(\$\{\(1\.22 - 0\.22/);
   });
 });
+
+// L'INCIDENT, vu sur un JT rendu avec tout l'habillage : un nom posé en bas à
+// droite passait sous le logo, qui en cachait la moitié.
+describe('les habillages s’écartent de ce qui est déjà à l’antenne', () => {
+  it('un bandeau posé dans le coin du logo remonte au-dessus de lui', async () => {
+    const { ecartPermanent } = await import('../../remotion/src/overlays/paquet.jsx');
+    expect(ecartPermanent('bas-droite', { logo: 'bas-droite' })).toBeGreaterThanOrEqual(150);
+    expect(ecartPermanent('bas-gauche', { logo: 'bas-droite' })).toBe(0);
+  });
+
+  it('une mention en haut à droite descend sous la pastille « DIRECT »', async () => {
+    const { ecartPermanent } = await import('../../remotion/src/overlays/paquet.jsx');
+    expect(ecartPermanent('haut-droite', { direct: true })).toBeGreaterThanOrEqual(90);
+    expect(ecartPermanent('haut-gauche', { direct: true })).toBe(0);
+  });
+
+  it('une bande pleine largeur se pose sur le bandeau défilant, pas dessous', async () => {
+    const { ecartPermanent } = await import('../../remotion/src/overlays/paquet.jsx');
+    expect(ecartPermanent('bas', { defilant: true })).toBeGreaterThanOrEqual(72);
+    expect(ecartPermanent('bas', {})).toBe(0);
+  });
+
+  it('le montage dit aux habillages ce qui occupe l’image', () => {
+    const montage = readFileSync(resolve(__dirname, '../../remotion/src/JTMaster.jsx'), 'utf8');
+    expect(montage).toMatch(/<Antenne\.Provider value=\{antenne\}>/);
+  });
+});

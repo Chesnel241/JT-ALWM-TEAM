@@ -7,6 +7,7 @@ import { wipe } from '@remotion/transitions/wipe';
 import { whipPan, glitchCut, rgbSplit, lightSweep, flashWhite, voletAntenne, lames, zoomRapide, rideau } from './transitions.jsx';
 import { loadFonts, FPS } from './theme.js';
 import { Overlay } from './overlays/index.jsx';
+import { Antenne } from './overlays/paquet.jsx';
 import { Ticker, LiveBadge, Logo, Subtitles } from './global.jsx';
 import { Vignette, Grain, LightSweep } from './atmosphere.jsx';
 import { Stage } from './Stage.jsx';
@@ -200,8 +201,15 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
   const fps = FPS;
   const list = clips.length ? clips : [{ url: '', durationSec: 1, overlays: [] }];
   const tickerOn = !!(branding.ticker && branding.ticker.enabled);
+  // Ce qui occupe déjà l'image : les habillages s'en écartent d'eux-mêmes.
+  const antenne = {
+    logo: branding.logo ? ({ tl: 'haut-gauche', tr: 'haut-droite', bl: 'bas-gauche', br: 'bas-droite' }[branding.logoPosition || 'br'] || null) : null,
+    direct: !!(branding.live && branding.live.enabled),
+    defilant: tickerOn && !!branding.ticker.texte,
+  };
 
   return (
+    <Antenne.Provider value={antenne}>
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
       <TransitionSeries>
         {list.flatMap((clip, i) => {
@@ -282,6 +290,7 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
         </Sequence>
       )}
     </AbsoluteFill>
+    </Antenne.Provider>
   );
 }
 
