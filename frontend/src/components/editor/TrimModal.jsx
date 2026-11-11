@@ -324,17 +324,23 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
 
             {/* Time labels */}
             <div className="flex justify-between text-[10px] text-[color:var(--muted)] font-mono">
-              <span>IN: <strong className="text-[color:var(--accent)]">{formatTime(inPoint)}</strong></span>
+              <span>{t.studio.panneaux.trimDebut} <strong className="text-[color:var(--accent)]">{formatTime(inPoint)}</strong></span>
               <span className="text-[color:var(--ink)] font-bold">{formatTime(currentTime)}</span>
-              <span>OUT: <strong className="text-[var(--signal)]">{formatTime(outPoint)}</strong></span>
+              <span>{t.studio.panneaux.trimFin} <strong className="text-[var(--signal)]">{formatTime(outPoint)}</strong></span>
             </div>
           </div>
+
+          {/* Ce que le plan durera : c'est la question que se pose le monteur. */}
+          <p className="rounded-lg bg-[var(--paper-2)] px-3 py-2 text-sm text-[color:var(--ink)]" role="status">
+            <strong>{t.studio.panneaux.trimDureeGardee(formatTime(Math.max(0, (outPoint ?? duration) - inPoint)))}</strong>
+            <span className="mt-0.5 block text-xs text-[color:var(--muted)]">{t.studio.panneaux.trimModeEmploi}</span>
+          </p>
 
           {/* Champs précis et toujours visibles pour les utilisateurs qui
               préfèrent saisir un timecode plutôt que glisser. */}
           <div className="grid grid-cols-2 gap-3">
             <label className="text-xs font-semibold text-[color:var(--ink)]">
-              Point IN (secondes)
+              {t.studio.panneaux.trimDebutSec}
               <input
                 type="number"
                 min="0"
@@ -346,7 +352,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
               />
             </label>
             <label className="text-xs font-semibold text-[color:var(--ink)]">
-              Point OUT (secondes)
+              {t.studio.panneaux.trimFinSec}
               <input
                 type="number"
                 min={Math.min(duration, inPoint + 0.3)}
@@ -392,13 +398,13 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
               className="flex items-center justify-center gap-2 py-2.5 px-4 bg-v-accent/10 border border-v-accent/30 text-[color:var(--accent)] rounded-xl font-semibold text-sm hover:bg-v-accent/20 transition-colors"
             >
               <SkipBack size={15} />
-              Marquer IN ({formatTime(currentTime)})
+              {t.studio.panneaux.trimCommencerIci(formatTime(currentTime))}
             </button>
             <button
               onClick={setOut}
               className="flex items-center justify-center gap-2 py-2.5 px-4 bg-v-signal/10 border border-v-signal/30 text-[var(--signal)] rounded-xl font-semibold text-sm hover:bg-v-signal/20 transition-colors"
             >
-              Marquer OUT ({formatTime(currentTime)})
+              {t.studio.panneaux.trimTerminerIci(formatTime(currentTime))}
               <SkipForward size={15} />
             </button>
           </div>
@@ -412,7 +418,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[color:var(--muted)] hover:text-[color:var(--ink)] text-sm transition-[transform,color,background-color] duration-150 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           >
-            Annuler
+            {t.studio.panneaux.annuler}
           </button>
           <button
             onClick={handleConfirm}
@@ -422,7 +428,7 @@ export default function TrimModal({ file, onClose, onConfirm, inline = false }) 
             }`}
           >
             <Scissors size={15} />
-            {file.instanceId ? 'Appliquer le trim' : t.studio.panneaux.trimAjouter}
+            {file.instanceId ? t.studio.panneaux.trimValider : t.studio.panneaux.trimAjouter}
           </button>
         </div>
     </div>

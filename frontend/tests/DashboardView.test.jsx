@@ -214,8 +214,10 @@ describe('le conflit de sauvegarde du studio', () => {
     );
     fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: /Déverrouiller/i }));
-    const supprimer = await screen.findByRole('button', { name: /^Supprimer/i }, { timeout: 3000 });
-    fireEvent.click(supprimer);
+    // Le studio simple : on choisit le premier plan du déroulé, puis « Retirer ».
+    await screen.findByRole('button', { name: /^Déplacer le plan 1,/ }, { timeout: 3000 });
+    fireEvent.click(document.querySelector('[data-plan="1"] button[aria-pressed]'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Retirer' }));
 
     const reprendre = await screen.findByRole('button', { name: 'Reprendre ma version' }, { timeout: 3000 });
     fireEvent.click(reprendre);
@@ -254,11 +256,11 @@ describe('le studio dans une fenêtre qui rétrécit', () => {
     const { rerender } = render(vue(true));
     fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: /Déverrouiller/i }));
-    await screen.findByRole('button', { name: /^Supprimer/i }, { timeout: 3000 });
+    await screen.findByRole('button', { name: /^Déplacer le plan 1,/ }, { timeout: 3000 });
 
     rerender(vue(false));
     expect(await screen.findByText('Agrandissez la fenêtre')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Supprimer/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Déplacer le plan 1,/ })).toBeInTheDocument();
 
     rerender(vue(true));
     await waitFor(() => expect(screen.queryByText('Agrandissez la fenêtre')).toBeNull());

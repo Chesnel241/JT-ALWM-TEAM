@@ -80,7 +80,8 @@ export default function RemotionLivePreview({ clips, branding, timelineOverlays,
           compositionHeight={1080}
           fps={30}
           controls
-          autoPlay
+          // Pas de lecture automatique dans le studio : ouvrir l'onglet lançait
+          // le JT, son compris, avant qu'on ait touché à quoi que ce soit.
           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         />
       </div>

@@ -31,6 +31,8 @@ import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
+import { BarreStudio, Deroule, RushesStudio } from './editor/Conducteur.jsx';
+import { deroule as calculerDeroule, inserer } from './editor/conducteur.js';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
 import { DEFAULT_BRANDING, normalizeWorkspace } from './editor/timelineWorkspace.js';
 import {
@@ -741,6 +743,46 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     addToast(`"${file.name || file.filename}" ajouté à la timeline`, 'success', 2000);
   };
 
+  // ── Le studio simple ────────────────────────────────────────────────────
+  // La vue par défaut : rushes, image, déroulé. La piste graduée reste
+  // disponible (« Vue détaillée ») pour qui veut couper au milieu d'un plan.
+  const [vueDetaillee, setVueDetaillee] = useState(() => {
+    try { return localStorage.getItem('jt-studio-vue') === 'detaillee'; } catch { return false; }
+  });
+  const basculerVue = () => setVueDetaillee((avant) => {
+    try { localStorage.setItem('jt-studio-vue', avant ? 'simple' : 'detaillee'); } catch { /* mode privé */ }
+    return !avant;
+  });
+  const [planChoisi, setPlanChoisi] = useState(null);
+  const nouvelIdDePlan = () => window.crypto?.randomUUID?.()
+    || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const dureeDuJT = useMemo(() => calculerDeroule(timelineClips).total, [timelineClips]);
+
+  /** Un rush cliqué dans le studio rejoint le déroulé, après le plan choisi. */
+  const ajouterAuDeroule = (file) => {
+    const instanceId = nouvelIdDePlan();
+    const filename = file.filename || file.name || '';
+    const externe = filename.startsWith('http') || filename.startsWith('blob:');
+    const url = externe ? filename : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`;
+    const connue = Number(file.sourceDurationSec) > 0 ? Number(file.sourceDurationSec) : Number(file.durationSec) > 0 ? Number(file.durationSec) : 0;
+    const { emplois: _emplois, ...rush } = file;
+    const plan = { ...rush, url, instanceId, overlays: [], ...(connue > 0 ? { sourceDurationSec: connue, durationSec: connue } : {}) };
+    modifierMontage((m) => ({ ...m, clips: inserer(m.clips, plan, planChoisi) }));
+    setPlanChoisi(instanceId);
+    // La durée réelle du fichier, dès qu'elle est lue : sans elle le plan
+    // s'afficherait « 5 s » jusqu'au rendu.
+    if (connue <= 0) {
+      probeVideoDuration(url).then((duree) => {
+        if (!(duree > 0)) return;
+        ajusterSansHistorique((m) => ({ ...m, clips: m.clips.map((c) => (
+          c.instanceId === instanceId && c.outPoint == null
+            ? { ...c, sourceDurationSec: duree, durationSec: duree }
+            : c
+        )) }));
+      });
+    }
+  };
+
   // Un seul inspecteur doit être visible à la fois.
   const openTrimInspector = (clip) => {
     setOverlayTarget(null);
@@ -1290,7 +1332,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       setExportProgress(100);
       setExportPhase('done');
       setGeneratedVideoUrl(finalUrl);
-      addToast('Assemblage vidéo terminé avec succès !', 'success', 5000);
+      addToast(t.studio.panneaux.exportPret, 'success', 5000);
       setIsGeneratingVideo(false);
     };
     const fail = (msg, silent = false) => {
@@ -2164,6 +2206,70 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     }
   };
 
+  // L'inspecteur ouvert, s'il y en a un. Les deux vues du studio (simple et
+  // détaillée) l'affichent dans leur colonne de droite.
+  const panneauOuvert = overlayTarget ? (
+    <OverlayPanel
+      inline={true}
+      clip={overlayTarget}
+      onClose={() => setOverlayTarget(null)}
+      onSave={(updatedClip) => {
+        appliquerInspecteur(updatedClip);
+        addToast('Animations mises à jour', 'success', 2000);
+      }}
+      // Appelé à CHAQUE frappe : c'est lui qui pilote l'aperçu
+      // en direct, et c'est lui qui effaçait toute la pile
+      // d'annulation. L'étiquette porte la cible, donc une
+      // salve de frappes dans le même habillage ne fait qu'une
+      // entrée — mais couper puis taper restent deux gestes.
+      onChangePreview={appliquerInspecteur}
+    />
+  ) : showGlobalPanel ? (
+    <GlobalLayerPanel
+      inline={true}
+      value={branding}
+      onChange={(suivant) => modifierMontage((m) => ({ ...m, branding: suivant }), 'habillage')}
+      onClose={() => setShowGlobalPanel(false)}
+      audioFiles={weekAudioFiles}
+      imageFiles={weekImageFiles}
+      uploadAsset={uploadAsset}
+      adminPassword={authenticatedAdminPassword}
+    />
+  ) : subtitleTarget ? (
+    <SubtitlePanel
+      inline={true}
+      clip={subtitleTarget}
+      onClose={() => setSubtitleTarget(null)}
+      onSave={(updatedClip) => {
+        modifierMontage(
+          (m) => ({ ...m, clips: fusionnerInspecteur(m.clips, updatedClip, ['subtitles', 'subtitleStyle']) }),
+        );
+        addToast('Sous-titres appliqués', 'success', 2000);
+      }}
+    />
+  ) : trimTarget ? (
+    <TrimModal
+      inline={true}
+      file={trimTarget}
+      onClose={() => setTrimTarget(null)}
+      onConfirm={(trimmedClip) => {
+        modifierMontage((m) => {
+          const index = m.clips.findIndex((c) => c.instanceId === trimmedClip.instanceId);
+          if (index >= 0) {
+            return { ...m, clips: m.clips.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c)) };
+          }
+          const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+          const isExternal = trimmedClip.filename?.startsWith('http') || trimmedClip.filename?.startsWith('blob:');
+          const url = isExternal ? trimmedClip.filename : `${API_BASE}/uploads/${trimmedClip.filename || trimmedClip.name}?cors=2`;
+          const newClip = { ...trimmedClip, url, instanceId: trimmedClip.instanceId || generateId() };
+          return { ...m, clips: [...m.clips, newClip] };
+        });
+        addToast('Clip ajouté à la timeline', 'success', 2000);
+        setTrimTarget(null);
+      }}
+    />
+  ) : null;
+
   if (!isAuthenticatedAdmin) {
     return (
       <div className="max-w-md mx-auto mt-20 p-6 bg-[var(--paper)] rounded-2xl shadow-sm border border-[var(--border)]">
@@ -2530,6 +2636,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 </div>
               )}
               
+              <BarreStudio
+                semaine={formatWeekLabel((weeks || []).find((w) => w.id === selectedWeek) || { id: selectedWeek }, lang)}
+                nombrePlans={timelineClips.length}
+                dureeTotale={dureeDuJT}
+                etat={timelineSyncState}
+                detaille={vueDetaillee}
+                onBasculer={basculerVue}
+                onAnnuler={annulerMontage}
+                onRetablir={retablirMontage}
+                peutAnnuler={peutAnnuler(historique)}
+                peutRetablir={peutRetablir(historique)}
+                onHabillage={openGlobalInspector}
+                habillageActif={branding.ticker.enabled || branding.live.enabled || branding.logo}
+                onGenerer={handleGenerateVideo}
+                enCours={isGeneratingVideo}
+                presence={editorPresenceCount}
+              />
+              {vueDetaillee ? (
+                <>
               {/* Zone Supérieure : Player (Centre) + Inspecteur (Droite) */}
               {/* Sur un portable 1366×768, le lecteur (450 px au moins)
                   ne laissait à la timeline qu'une bande : sous 820 px de
@@ -2563,67 +2688,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
                 {/* INSPECTOR RIGHT */}
                 <div className="relative z-10 flex w-[clamp(360px,32vw,520px)] shrink-0 flex-col overflow-y-auto border-l border-[var(--editor-border)] bg-[var(--editor-panel)]">
-                  {overlayTarget ? (
-                    <OverlayPanel
-                      inline={true}
-                      clip={overlayTarget}
-                      onClose={() => setOverlayTarget(null)}
-                      onSave={(updatedClip) => {
-                        appliquerInspecteur(updatedClip);
-                        addToast('Animations mises à jour', 'success', 2000);
-                      }}
-                      // Appelé à CHAQUE frappe : c'est lui qui pilote l'aperçu
-                      // en direct, et c'est lui qui effaçait toute la pile
-                      // d'annulation. L'étiquette porte la cible, donc une
-                      // salve de frappes dans le même habillage ne fait qu'une
-                      // entrée — mais couper puis taper restent deux gestes.
-                      onChangePreview={appliquerInspecteur}
-                    />
-                  ) : showGlobalPanel ? (
-                    <GlobalLayerPanel
-                      inline={true}
-                      value={branding}
-                      onChange={(suivant) => modifierMontage((m) => ({ ...m, branding: suivant }), 'habillage')}
-                      onClose={() => setShowGlobalPanel(false)}
-                      audioFiles={weekAudioFiles}
-                      imageFiles={weekImageFiles}
-                      uploadAsset={uploadAsset}
-                      adminPassword={authenticatedAdminPassword}
-                    />
-                  ) : subtitleTarget ? (
-                    <SubtitlePanel
-                      inline={true}
-                      clip={subtitleTarget}
-                      onClose={() => setSubtitleTarget(null)}
-                      onSave={(updatedClip) => {
-                        modifierMontage(
-                          (m) => ({ ...m, clips: fusionnerInspecteur(m.clips, updatedClip, ['subtitles', 'subtitleStyle']) }),
-                        );
-                        addToast('Sous-titres appliqués', 'success', 2000);
-                      }}
-                    />
-                  ) : trimTarget ? (
-                    <TrimModal
-                      inline={true}
-                      file={trimTarget}
-                      onClose={() => setTrimTarget(null)}
-                      onConfirm={(trimmedClip) => {
-                        modifierMontage((m) => {
-                          const index = m.clips.findIndex((c) => c.instanceId === trimmedClip.instanceId);
-                          if (index >= 0) {
-                            return { ...m, clips: m.clips.map((c) => (c.instanceId === trimmedClip.instanceId ? trimmedClip : c)) };
-                          }
-                          const generateId = () => (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
-                          const isExternal = trimmedClip.filename?.startsWith('http') || trimmedClip.filename?.startsWith('blob:');
-                          const url = isExternal ? trimmedClip.filename : `${API_BASE}/uploads/${trimmedClip.filename || trimmedClip.name}?cors=2`;
-                          const newClip = { ...trimmedClip, url, instanceId: trimmedClip.instanceId || generateId() };
-                          return { ...m, clips: [...m.clips, newClip] };
-                        });
-                        addToast('Clip ajouté à la timeline', 'success', 2000);
-                        setTrimTarget(null);
-                      }}
-                    />
-                  ) : (
+                  {panneauOuvert || (
                     <div className="flex min-h-full flex-1 flex-col text-[color:var(--muted)]">
                       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
                         <Scissors size={16} className="text-[var(--accent)]" />
@@ -2703,6 +2768,59 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   presenceCount={editorPresenceCount}
                 />
               </div>
+                </>
+              ) : (
+                /* VUE SIMPLE : rushes · image · déroulé */
+                <div className="flex min-h-0 flex-1">
+                  <RushesStudio
+                    videos={weekVideoFiles}
+                    clips={timelineClips}
+                    countries={countries}
+                    onAjouter={ajouterAuDeroule}
+                  />
+                  <div className="relative flex min-w-0 flex-1 items-center justify-center bg-[oklch(0.11_0.018_245)] p-3">
+                  <RemotionLivePreview 
+                    playerRef={playerRef} 
+                    inline={true} 
+                    clips={timelineClips} 
+                    timelineOverlays={timelineOverlays}
+                    branding={branding} 
+                    onClose={() => {}} 
+                  />
+                  {/* Depuis le studio, « Générer le master » ne donnait aucun
+                      retour : progression, résultat et téléchargement ne
+                      vivaient que dans la branche « chutiers ». */}
+                  <ExportStatus
+                    enCours={isGeneratingVideo}
+                    progression={exportProgress}
+                    phase={exportPhase}
+                    secondes={exportElapsed}
+                    erreur={exportError}
+                    urlVideo={generatedVideoUrl}
+                    semaine={selectedWeek}
+                    onReessayer={() => { setExportError(null); handleGenerateVideo(); }}
+                  />
+                  </div>
+                  <div className="relative z-10 flex w-[clamp(380px,31vw,520px)] shrink-0 flex-col overflow-y-auto border-l border-[var(--editor-border)] bg-[var(--editor-panel)]">
+                    {panneauOuvert || (
+                      <Deroule
+                        clips={timelineClips}
+                        countries={countries}
+                        playerRef={playerRef}
+                        choisiId={planChoisi}
+                        onChoisir={setPlanChoisi}
+                        modifierMontage={modifierMontage}
+                        nouvelId={nouvelIdDePlan}
+                        onRaccourcir={openTrimInspector}
+                        onNom={openOverlayInspector}
+                        onSousTitres={openSubtitleInspector}
+                        onAnnuler={annulerMontage}
+                        onRetablir={retablirMontage}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             
