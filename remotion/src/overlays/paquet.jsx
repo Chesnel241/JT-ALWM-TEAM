@@ -20,7 +20,6 @@
  */
 import React from 'react';
 import { useCurrentFrame, useVideoConfig, Img, staticFile } from 'remotion';
-import { WorldMap } from '../worldmap.jsx';
 import { COULEURS, VOILES, POLICE_HABILLAGE, PILES, LETTRAGE, varPolice } from '../identite.js';
 import { pickColors } from '../theme.js';
 import TexteJT from '../TexteJT.jsx';
@@ -553,27 +552,59 @@ export function Citation({ overlay, durationInFrames }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Le fond d'antenne : le bleu profond de la chaîne, des filets qui dérivent à
- * des vitesses différentes (la profondeur vient de là), le globe en retrait.
- * LE CONSTAT : les écrans pleins étaient presque vides — un petit texte dans
- * un coin d'un grand aplat. Ici le fond vit lentement, et le texte occupe
- * l'image.
+ * Le fond d'antenne.
+ *
+ * LE CONSTAT : les écrans pleins étaient presque vides, puis habités par un
+ * globe filaire qui tournait — l'image même du décor fabriqué. Un plateau de
+ * journal n'a pas de globe : il a de la LUMIÈRE et des PLANS. Le fond est donc
+ * fait de ce qu'on trouverait dans un studio :
+ *   - de grands pans de verre inclinés, qui glissent à des vitesses
+ *     différentes (c'est ce décalage qui donne la profondeur) et accrochent
+ *     la lumière par leur arête ;
+ *   - deux nappes de lumière, floues, qui se déplacent lentement derrière ;
+ *   - un faisceau qui balaie l'image une fois, à l'ouverture.
+ * À l'ouverture, les pans arrivent vite et se posent ; ensuite ils dérivent à
+ * peine. Le texte reste ce qui bouge le plus.
  */
 function FondAntenne({ p, frame, k, T, teinte, children }) {
-  const derive = frame / k;
-  const filets = [[0.16, 0.5, 0.5], [0.3, -0.32, 0.34], [0.58, 0.72, 0.28], [0.74, -0.44, 0.42], [0.88, 0.28, 0.3]];
+  const t = frame / k;
+  // L'élan de l'ouverture : les pans viennent de loin, puis dérivent.
+  const elan = 1 - poser(t / 26);
+  // [position de départ en %, largeur en %, vitesse de dérive, opacité, sens de l'élan]
+  const pans = [
+    [-8, 34, 0.035, 0.10, -1],
+    [22, 22, -0.055, 0.07, 1],
+    [48, 40, 0.025, 0.09, -1],
+    [78, 26, -0.04, 0.08, 1],
+  ];
+  const faisceau = (t - 6) / 34;
   return (
-    <Volet p={p} depuis="bas" style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: `linear-gradient(165deg, ${T.profond} 0%, ${teinte || COULEURS.fondMilieu} 58%, ${T.fond} 135%)` }}>
-      <div style={{ position: 'absolute', right: -220, top: '50%', width: 1100, height: 1100, marginTop: -550, opacity: 0.32 }}>
-        <WorldMap rotateSpeed={0.12} opacity={1} color={T.accent} glow={T.fond} />
-      </div>
-      {filets.map(([y, vitesse, longueur], i) => (
-        <div key={i} style={{
-          position: 'absolute', top: `${y * 100}%`, height: 2, width: `${longueur * 100}%`,
-          left: `${(((i * 23 + derive * vitesse * 0.35) % 140) + 140) % 140 - 30}%`,
-          background: `linear-gradient(90deg, transparent, ${T.accent}, transparent)`, opacity: 0.22,
+    <Volet p={p} depuis="bas" style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: `linear-gradient(165deg, ${T.profond} 0%, ${teinte || COULEURS.fondMilieu} 55%, ${T.fond} 140%)` }}>
+      {/* Les nappes de lumière, loin derrière. */}
+      {[[18, 30, 0.011, 0.5], [76, 68, 0.008, 0.36]].map(([x, y, v, op], i) => (
+        <div key={`n${i}`} style={{
+          position: 'absolute', width: 1300, height: 1300, borderRadius: '50%',
+          left: `calc(${(x + Math.sin(t * v + i * 2) * 9).toFixed(2)}% - 650px)`,
+          top: `calc(${(y + Math.cos(t * v * 1.3 + i) * 7).toFixed(2)}% - 650px)`,
+          background: `radial-gradient(circle, ${i ? T.accent : T.fond}, transparent 62%)`,
+          opacity: op * 0.5, filter: 'blur(40px)',
         }} />
       ))}
+      {/* Les pans de verre : un voile clair, et une arête qui accroche la lumière. */}
+      {pans.map(([x, largeur, vitesse, opacite, sens], i) => (
+        <div key={`p${i}`} style={{
+          position: 'absolute', top: '-20%', height: '140%', width: `${largeur}%`,
+          left: `${(x + t * vitesse + elan * sens * 46).toFixed(3)}%`,
+          transform: 'skewX(-18deg)',
+          background: `linear-gradient(90deg, ${T.papier}, transparent 85%)`,
+          opacity: opacite * (1 - elan * 0.6),
+          borderLeft: `2px solid ${T.accent}`,
+        }} />
+      ))}
+      {/* Le faisceau de l'ouverture. */}
+      {faisceau > 0 && faisceau < 1 && (
+        <div style={{ position: 'absolute', top: '-20%', height: '140%', width: '26%', left: `${(-30 + faisceau * 160).toFixed(2)}%`, transform: 'skewX(-18deg)', background: VOILES.reflet, opacity: 0.55 }} />
+      )}
       <div style={{ position: 'absolute', inset: 0, background: VOILES.bords }} />
       {children}
     </Volet>
