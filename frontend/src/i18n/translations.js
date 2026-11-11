@@ -1245,6 +1245,8 @@ export const translations = {
             titre1: { label: 'Titre 1', exemple: 'Crise au Sahel' },
             titre2: { label: 'Titre 2', exemple: 'Sommet économique' },
             titre3: { label: 'Titre 3', exemple: 'Élections' },
+            titre4: { label: 'Titre 4 (facultatif)', exemple: 'Sport' },
+            titre5: { label: 'Titre 5 (facultatif)', exemple: 'Culture' },
           },
         },
         fin_merci: {
@@ -2527,6 +2529,8 @@ export const translations = {
             titre1: { label: 'Headline 1', exemple: 'Crisis in the Sahel' },
             titre2: { label: 'Headline 2', exemple: 'Economic summit' },
             titre3: { label: 'Headline 3', exemple: 'Elections' },
+            titre4: { label: 'Headline 4 (optional)', exemple: 'Sport' },
+            titre5: { label: 'Headline 5 (optional)', exemple: 'Culture' },
           },
         },
         fin_merci: {

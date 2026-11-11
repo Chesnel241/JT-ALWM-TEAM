@@ -63,6 +63,17 @@ describe('le paquet d’antenne', () => {
     expect(defilant).toMatch(/frame \/ k/);
   });
 
+  // LE CONSTAT : les titres s'affichaient en liste numérotée, 01, 02, 03 —
+  // une liste de courses. Chaque titre a maintenant sa scène, seul à l'écran.
+  it('les titres passent un par un, et non en liste numérotée', () => {
+    const titres = source.slice(source.indexOf('export function RappelTitres'), source.indexOf('export function Fin'));
+    expect(titres).not.toMatch(/padStart\(2, '0'\)/);      // plus de « 01, 02, 03 »
+    expect(titres).toMatch(/const rang = /);                 // un seul titre en scène
+    expect(titres).toMatch(/titres\[rang\]/);
+    expect(titres).toMatch(/scaleX\(\$\{rempli/);            // la barre segmentée se remplit
+    expect(titres).toMatch(/'titre4', 'titre5'/);            // jusqu'à cinq titres
+  });
+
   it('les couleurs réglées par le monteur restent prises en compte', () => {
     expect(source).toMatch(/pickColors\(overlay\)/);
     expect(source).toMatch(/overlay\.posX/);

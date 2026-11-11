@@ -126,7 +126,9 @@ export const OVERLAY_TEMPLATES = [
     fields: [
       { key: 'titre1' },
       { key: 'titre2' },
-      { key: 'titre3' }
+      { key: 'titre3' },
+      { key: 'titre4' },
+      { key: 'titre5' }
     ]
   },
   {

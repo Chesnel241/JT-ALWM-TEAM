@@ -566,7 +566,7 @@ export function Citation({ overlay, durationInFrames }) {
  * À l'ouverture, les pans arrivent vite et se posent ; ensuite ils dérivent à
  * peine. Le texte reste ce qui bouge le plus.
  */
-function FondAntenne({ p, frame, k, T, teinte, children }) {
+function FondAntenne({ p, frame, k, T, teinte, avance = 0, children }) {
   const t = frame / k;
   // L'élan de l'ouverture : les pans viennent de loin, puis dérivent.
   const elan = 1 - poser(t / 26);
@@ -594,7 +594,7 @@ function FondAntenne({ p, frame, k, T, teinte, children }) {
       {pans.map(([x, largeur, vitesse, opacite, sens], i) => (
         <div key={`p${i}`} style={{
           position: 'absolute', top: '-20%', height: '140%', width: `${largeur}%`,
-          left: `${(x + t * vitesse + elan * sens * 46).toFixed(3)}%`,
+          left: `${(x + t * vitesse + elan * sens * 46 - avance * (7 + i * 3)).toFixed(3)}%`,
           transform: 'skewX(-18deg)',
           background: `linear-gradient(90deg, ${T.papier}, transparent 85%)`,
           opacity: opacite * (1 - elan * 0.6),
@@ -733,38 +733,98 @@ export function DerniereMinute({ overlay, durationInFrames }) {
   );
 }
 
-/** Le rappel des titres : trois lignes numérotées qui s'installent l'une après l'autre. */
+/**
+ * Les titres.
+ *
+ * LE CONSTAT : les titres s'affichaient en liste numérotée, 01, 02, 03 —
+ * une liste de courses. À l'antenne, les titres sont le moment le plus tendu
+ * du journal : chaque information prend TOUT l'écran, seule, en très grand,
+ * puis cède la place à la suivante.
+ *
+ * Ici chaque titre a sa scène :
+ *   - ses mots montent un à un derrière un cache, en capitales ;
+ *   - un trait d'accent se dresse à sa gauche, une barre segmentée en bas dit
+ *     où l'on en est et se remplit pendant qu'il est à l'écran ;
+ *   - au changement, le titre sort par le haut, un éclat traverse l'image, et
+ *     le décor avance d'un cran : on sent qu'on passe à autre chose.
+ * L'étiquette « LES TITRES » et le compteur restent posés, discrets.
+ *
+ * Le temps est partagé également entre les titres ; le dernier reste jusqu'à
+ * la fin.
+ */
 export function RappelTitres({ overlay, durationInFrames }) {
-  const { frame, k, p } = useCalques(durationInFrames);
+  const { frame, k, p, depart } = useCalques(durationInFrames);
   const T = teintes(overlay);
   const entete = champ(overlay, 'titre') || 'LES TITRES';
-  const titres = ['titre1', 'titre2', 'titre3', 'titre4'].map((c) => champ(overlay, c)).filter(Boolean);
+  const titres = ['titre1', 'titre2', 'titre3', 'titre4', 'titre5'].map((c) => champ(overlay, c)).filter(Boolean);
+  if (!titres.length) return null;
+
+  const t = frame / k;
+  const OUVERTURE = 12; // l'étiquette et le décor s'installent d'abord
+  const fin = Number.isFinite(durationInFrames) && durationInFrames > 0 ? durationInFrames / k : OUVERTURE + titres.length * 78;
+  const scene = Math.max(36, (fin - OUVERTURE - 8) / titres.length);
+  const rang = Math.max(0, Math.min(titres.length - 1, Math.floor((t - OUVERTURE) / scene)));
+  const local = t - OUVERTURE - rang * scene; // images écoulées dans la scène en cours
+  const dernier = rang === titres.length - 1;
+  // Chaque titre sort dans ses huit dernières images, sauf le dernier, qui
+  // reste jusqu'à la sortie d'ensemble.
+  const sortie = dernier ? 0 : quitter((local - (scene - 8)) / 8);
+  const entree = (delai, duree = 13) => poser((local - delai) / duree) * (1 - depart);
+  // Le décor avance d'un cran à chaque titre, d'un geste qui se pose.
+  const avance = rang + (rang > 0 || t > OUVERTURE ? poser(local / 16) : 0) - 1;
+  const eclat = local / 11;
+  const mots = titres[rang].split(/\s+/);
+  // Un titre long descend d'un corps : il doit tenir en trois lignes au plus.
+  const corps = Math.round((titres[rang].length > 46 ? 132 : titres[rang].length > 28 ? 164 : 196) * ((Number(overlay.fontSize) || 100) / 100));
+
   return (
-    <FondAntenne p={p(0, 14)} frame={frame} k={k} T={T}>
-      <div style={{ position: 'absolute', inset: 0, padding: `${MARGE}px ${MARGE * 1.5}px`, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: POLICE_HABILLAGE, ...varPolice(overlay) }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 26, marginBottom: 54 }}>
-          <Filet vertical p={p(4, 10)} epaisseur={12} longueur={104} couleur={T.accent} />
-          <Monte p={p(6, 16)}>
-            <TexteJT role="titrage" delai={6} style={{ ...titrage, fontSize: taille(overlay, 104), letterSpacing: '0.04em', color: T.texte }}>{entete}</TexteJT>
-          </Monte>
+    <FondAntenne p={p(0, 14)} frame={frame} k={k} T={T} avance={Math.max(0, avance)}>
+      <div style={{ position: 'absolute', inset: 0, padding: `${MARGE}px ${MARGE * 1.4}px`, display: 'flex', flexDirection: 'column', fontFamily: POLICE_HABILLAGE, ...varPolice(overlay) }}>
+        {/* L'étiquette et le compteur : posés une fois, ils ne bougent plus. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Volet p={p(2, 12)} style={{ background: T.accent, padding: '13px 26px 12px' }}>
+            <Monte p={p(5, 12)}>
+              <div style={{ ...mention, fontSize: taille(overlay, 42), letterSpacing: '0.14em', color: T.profond }}>{entete}</div>
+            </Monte>
+          </Volet>
+          <div style={{ ...titrage, fontSize: taille(overlay, 52), color: T.texte, opacity: p(8, 14) * 0.9, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.08em' }}>
+            <span style={{ color: T.accent }}>{rang + 1}</span><span style={{ opacity: 0.55 }}> / {titres.length}</span>
+          </div>
         </div>
-        {titres.map((titre, i) => {
-          const d = 14 + i * 8;
-          return (
-            <div key={i} style={{ marginBottom: 30, maxWidth: 1300 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 38 }}>
-                <Monte p={p(d, 14)}>
-                  <div style={{ ...titrage, fontSize: taille(overlay, 76), color: T.accent, fontVariantNumeric: 'tabular-nums', width: 110 }}>{String(i + 1).padStart(2, '0')}</div>
-                </Monte>
-                <Monte p={p(d + 2, 15)}>
-                  <TexteJT role="titrage" delai={d + 2} style={{ ...titrage, textTransform: 'none', fontSize: taille(overlay, 68), color: T.texte }}>{titre}</TexteJT>
-                </Monte>
+
+        {/* La scène du titre en cours. */}
+        <div key={rang} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 44 }}>
+          <Filet vertical p={entree(0, 10) * (1 - sortie)} epaisseur={14} longueur={Math.min(520, corps + mots.length * 34)} couleur={T.accent} origine="center" />
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignContent: 'center', columnGap: Math.round(corps * 0.24), rowGap: 2, maxWidth: 1560 }}>
+            {mots.map((mot, i) => {
+              // Les mots montent un à un ; à la sortie, ils repartent ensemble par le haut.
+              const pose = entree(3 + i * 1.6);
+              return (
+                <span key={`${rang}-${i}`} style={{ display: 'inline-block', overflow: 'hidden', paddingBottom: 6 }}>
+                  <span style={{ ...titrage, display: 'inline-block', fontSize: corps, lineHeight: 1.0, color: T.texte, transform: `translateY(${((1 - pose) * 108 - sortie * 112).toFixed(2)}%)` }}>{mot}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* La barre segmentée : où l'on en est, et le temps qui reste à ce titre. */}
+        <div style={{ display: 'flex', gap: 14, opacity: p(8, 14) }}>
+          {titres.map((_, i) => {
+            const rempli = i < rang ? 1 : i === rang ? Math.min(1, local / (dernier ? scene : scene - 4)) : 0;
+            return (
+              <div key={i} style={{ flex: 1, height: 10, background: T.papier, opacity: i > rang ? 0.22 : 1, position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', inset: 0, background: i <= rang ? T.accent : 'transparent', transform: `scaleX(${rempli.toFixed(4)})`, transformOrigin: 'left' }} />
               </div>
-              <Filet p={p(d + 4, 22)} epaisseur={2} couleur={T.accent} style={{ marginTop: 22, opacity: 0.55 }} />
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
+
+      {/* L'éclat qui traverse l'image à chaque changement de titre. */}
+      {t > OUVERTURE && eclat > 0 && eclat < 1 && (
+        <div style={{ position: 'absolute', top: '-20%', height: '140%', width: '22%', left: `${(-26 + eclat * 150).toFixed(2)}%`, transform: 'skewX(-18deg)', background: VOILES.reflet, opacity: 0.9 }} />
+      )}
     </FondAntenne>
   );
 }
