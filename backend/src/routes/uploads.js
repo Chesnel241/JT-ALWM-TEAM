@@ -7,7 +7,7 @@ import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { getCustomCountries } from '../data/store.js';
-import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry, updateUploadSize, setUploadProxy } from '../data/store.js';
+import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry, updateUploadSize, setUploadProxy, setUploadAllege } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
 import { planifierMesure } from '../services/mediaDuration.js';
 import { body, validationResult } from 'express-validator';
@@ -452,6 +452,12 @@ router.post('/:weekId/:countryId', porteeCountry(), uploadMiddleware, asyncHandl
           // conserve et qu'on exporte. Le proxy ne sert qu'à l'aperçu.
           const label = `${(newSize / (1024 * 1024)).toFixed(1)} MB`;
           if (setUploadProxy(weekId, countryId, fileData.id, proxyName, label)) {
+            io?.emit('upload_update', { weekId, countryId });
+          }
+        }, ({ avant, apres }) => {
+          // Un rush de plus de 200 Mo au débit démesuré a été ramené à une
+          // qualité de diffusion : le poids affiché suit.
+          if (setUploadAllege(weekId, countryId, fileData.id, apres, avant)) {
             io?.emit('upload_update', { weekId, countryId });
           }
         });

@@ -6,7 +6,7 @@ import { existsSync, unlinkSync, openSync, readSync, closeSync, renameSync } fro
 import logger from '../logger/index.js';
 import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyExtension, extensionEffective } from '../lib/upload.js';
 import { extensionDepuisOctets, TAILLE_ENTETE } from '../lib/signatures.js';
-import { addUpload, getCustomCountries, getExtensions, updateUploadSize, setUploadProxy } from '../data/store.js';
+import { addUpload, getCustomCountries, getExtensions, updateUploadSize, setUploadProxy, setUploadAllege } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
 import { planifierMesure } from '../services/mediaDuration.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
@@ -349,6 +349,12 @@ export const tusServer = new Server({
           // conserve et qu'on exporte. Le proxy ne sert qu'à l'aperçu.
           const label = `${(newSize / (1024 * 1024)).toFixed(1)} MB`;
           if (setUploadProxy(weekId, countryId, fileData.id, proxyName, label)) {
+            io?.emit('upload_update', { weekId, countryId });
+          }
+        }, ({ avant, apres }) => {
+          // Un rush de plus de 200 Mo au débit démesuré a été ramené à une
+          // qualité de diffusion : le poids affiché suit.
+          if (setUploadAllege(weekId, countryId, fileData.id, apres, avant)) {
             io?.emit('upload_update', { weekId, countryId });
           }
         });

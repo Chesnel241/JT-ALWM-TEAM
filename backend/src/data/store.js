@@ -833,6 +833,23 @@ export function setUploadProxy(weekId, countryId, fileId, proxyFilename, proxySi
 }
 
 /**
+ * Note qu'un master trop lourd a été allégé : son nouveau poids, et celui
+ * qu'avait envoyé le correspondant (pour que le monteur sache ce qui s'est
+ * passé).
+ */
+export function setUploadAllege(weekId, countryId, fileId, tailleApres, tailleAvant) {
+  const list = db[weekId]?.[countryId];
+  if (!Array.isArray(list)) return null;
+  const file = list.find((f) => f && f.id === fileId);
+  if (!file) return null;
+  file.tailleEnvoyee = file.size;
+  file.size = `${(tailleApres / (1024 * 1024)).toFixed(1)} MB`;
+  file.allege = { avant: tailleAvant, apres: tailleApres };
+  persistDb();
+  return file;
+}
+
+/**
  * Pose la durée d'un fichier déjà déposé, en secondes.
  *
  * Le serveur mesure déjà chaque rush avec ffprobe pour fabriquer le master,
