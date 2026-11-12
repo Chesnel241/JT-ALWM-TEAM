@@ -66,18 +66,28 @@ function blocsParPays(videos, libelle, nomPays) {
  * @param versClip  fichier -> plan du déroulé (durée déjà connue)
  * @param motDuJt   { orateur, theme } lus dans la rubrique « Mot du JT », ou null
  * @param creerId   générateur d'identifiants de titre
- * @returns { clips, overlays, bilan }
+ * @param sons      fichiers audio de la semaine (voix off envoyées avec les annonces…)
+ * @param audio     piste son actuelle
+ * @param versSon   (fichier, instant) -> son de la piste, ou null
+ * @returns { clips, overlays, audio, bilan }
  */
 export function assemblerRubriques({
   videos = [], clips = [], overlays = [], nomPays = (id) => id, versClip, motDuJt = null, creerId,
+  sons = [], audio = [], versSon = null,
 }) {
   const dejaPresents = new Set(clips.map((c) => c.filename));
   const bilan = {
-    seminaires: { pays: 0, fichiers: 0 },
-    annonces: { pays: 0, fichiers: 0 },
+    seminaires: { pays: 0, fichiers: 0, sons: 0 },
+    annonces: { pays: 0, fichiers: 0, sons: 0 },
     motDuJt: { fichiers: 0, orateur: false },
     deja: 0,
   };
+  const sonsPresents = new Set((audio || []).map((son) => son.filename));
+  // Les voix off envoyées par un pays dans la même section, pas encore posées.
+  const sonsDuBloc = (libelle, paysId) => (versSon ? sons : [])
+    .filter((f) => f.reportage === libelle && f.countryId === paysId && f.status !== 'rejected')
+    .filter((f) => classifyFile({ name: f.filename || f.name }) === 'audio' && !sonsPresents.has(f.filename))
+    .sort(parDateEnvoi);
 
   // Une vidéo déjà au déroulé n'est jamais reprise : on le compte, c'est tout.
   const nouveau = (fichier) => {
@@ -94,9 +104,13 @@ export function assemblerRubriques({
       if (fichiers.length === 0) continue;
       bilan[cle].pays += 1;
       bilan[cle].fichiers += fichiers.length;
+      const voix = sonsDuBloc(libelle, bloc.id);
+      voix.forEach((f) => sonsPresents.add(f.filename));
+      bilan[cle].sons += voix.length;
       blocs.push({
         plans: fichiers.map(versClip),
         bandeau: { texte: `${bloc.nom} · ${libelle}` },
+        voix,
       });
     }
   };
@@ -116,7 +130,7 @@ export function assemblerRubriques({
     });
   }
 
-  if (blocs.length === 0) return { clips, overlays, bilan };
+  if (blocs.length === 0) return { clips, overlays, audio, bilan };
 
   // Les plans à ajouter : le dernier plan de chaque bloc (sauf le tout dernier
   // du JT) porte la transition qui mène au bloc suivant.
@@ -138,6 +152,7 @@ export function assemblerRubriques({
   const layout = computeTimelineLayout(suite);
   const debutDe = (indexGlobal) => layout.items.find((it) => it.index === indexGlobal);
   const titres = [];
+  const nouveauxSons = [];
   let indexBloc = base;
   for (const bloc of blocs) {
     const premier = debutDe(indexBloc);
@@ -155,6 +170,15 @@ export function assemblerRubriques({
           duration: Math.max(0.3, fin - debut),
         });
       }
+      // Les voix off du pays, l'une après l'autre depuis le début de son bloc.
+      let instant = debut;
+      for (const fichier of bloc.voix || []) {
+        const son = versSon(fichier, instant);
+        if (!son) continue;
+        nouveauxSons.push(son);
+        const duree = Number(son.sourceDurationSec) || 0;
+        instant += duree;
+      }
       if (bloc.nomOrateur) {
         titres.push({
           id: creerId('overlay'),
@@ -169,5 +193,10 @@ export function assemblerRubriques({
     indexBloc += bloc.plans.length;
   }
 
-  return { clips: suite, overlays: [...overlays, ...titres], bilan };
+  return {
+    clips: suite,
+    overlays: [...overlays, ...titres],
+    audio: nouveauxSons.length > 0 ? [...(audio || []), ...nouveauxSons] : audio,
+    bilan,
+  };
 }

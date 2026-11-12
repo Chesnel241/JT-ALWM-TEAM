@@ -42,9 +42,14 @@ import { useI18n } from '../../i18n/I18nContext.jsx';
 import { etiquetteGeste } from './historiqueMontage.js';
 import { animationRecommandee, CLIP_TEMPLATES } from '../../data/overlayTemplates.js';
 import {
-  TYPE_MEDIA, glisseDuStudio, habillagesDesPlans, instantDuRang, lireGlisse, nouvellePlace, placerHabillage,
+  TYPE_MEDIA, TYPE_SON, glisseDuStudio, habillagesDesPlans, instantDuRang, lireGlisse, nouvellePlace, placerHabillage,
   planSous, rangInsertion, retirerHabillage, texteHabillage,
 } from './habillagesPlans.js';
+import { ecrireSon, nouvellePlaceSon, placeSon, retirerSon } from './pisteSon.js';
+import { traceFormeOnde, useFormeOnde } from './formeOnde.js';
+import { API_BASE } from '../../api/index.js';
+
+const urlDuSon = (filename) => `${API_BASE}/uploads/${encodeURIComponent(filename || '')}`;
 
 /** Les modèles qu'on peut déposer sur un plan ou sur la piste des titres. */
 const MODELES_DEPOSABLES = CLIP_TEMPLATES.map((modele) => modele.id);
@@ -382,6 +387,108 @@ function HabillagePlanBlock({ place, pxPerSec, reperes = [], seuilAimant = 0, on
   );
 }
 
+/**
+ * Un son de la piste : voix off, musique ou autre, avec sa forme d'onde. On le
+ * glisse pour le caler sur l'image, on tire ses bords pour le raccourcir ; il
+ * ne dépasse jamais son fichier.
+ */
+function SonBlock({ son, pxPerSec, reperes = [], seuilAimant = 0, onPlacer, onOuvrir, onRetirer }) {
+  const { t } = useI18n();
+  const place = placeSon(son);
+  const forme = useFormeOnde(urlDuSon(son.filename));
+  const role = t.studio.timeline.rolesSon?.[son.role] || son.role;
+  const label = `${role} · ${son.name || son.filename}`;
+  const tranche = useMemo(() => {
+    if (!forme?.cretes?.length || !(forme.duree > 0)) return null;
+    const n = forme.cretes.length;
+    const i0 = Math.max(0, Math.floor((place.inPoint / forme.duree) * n));
+    const i1 = Math.min(n, Math.max(i0 + 1, Math.ceil(((place.inPoint + place.duree) / forme.duree) * n)));
+    return forme.cretes.slice(i0, i1);
+  }, [forme, place.inPoint, place.duree]);
+
+  const commencer = (mode) => (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const geste = etiquetteGeste(`son-${mode}`);
+    const departX = event.clientX;
+    const origine = place;
+    const accrocher = (instant) => aimanter(instant, reperes, seuilAimant);
+    let bouge = false;
+    const deplacer = (e) => {
+      if (Math.abs(e.clientX - departX) > 2) bouge = true;
+      if (!bouge) return;
+      onPlacer(nouvellePlaceSon(origine, mode, (e.clientX - departX) / pxPerSec, accrocher), geste);
+    };
+    const finir = () => {
+      window.removeEventListener('pointermove', deplacer);
+      window.removeEventListener('pointerup', finir);
+      window.removeEventListener('pointercancel', finir);
+      if (!bouge && mode === 'move') onOuvrir();
+    };
+    window.addEventListener('pointermove', deplacer);
+    window.addEventListener('pointerup', finir);
+    window.addEventListener('pointercancel', finir);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-son={son.id}
+      onPointerDown={commencer('move')}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          event.stopPropagation();
+          onOuvrir();
+        } else if (event.key === 'Delete' || event.key === 'Backspace') {
+          event.preventDefault();
+          event.stopPropagation();
+          onRetirer();
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          event.preventDefault();
+          event.stopPropagation();
+          const pas = (event.shiftKey ? 1 : 1 / 30) * (event.key === 'ArrowRight' ? 1 : -1);
+          onPlacer(nouvellePlaceSon(place, 'move', pas), etiquetteGeste('son-clavier'));
+        }
+      }}
+      aria-label={t.studio.timeline.etiquetteSon(label, formatTimecode(place.debut), formatTimecode(place.duree))}
+      title={t.studio.timeline.sonGlisser}
+      className={`absolute inset-y-1 overflow-hidden rounded border text-[var(--editor-text)] shadow-sm cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] ${son.role === 'musique' ? 'border-[var(--editor-title)] bg-v-editor-title/20' : 'border-[var(--editor-playhead)] bg-v-editor-panel-raised/80'}`}
+      style={{ left: `${place.debut * pxPerSec}px`, width: `${Math.max(6, place.duree * pxPerSec)}px`, touchAction: 'none' }}
+    >
+      {tranche && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-60" viewBox={`0 0 ${Math.max(1, tranche.length - 1)} 2`} preserveAspectRatio="none" aria-hidden="true">
+          <path d={traceFormeOnde(tranche)} fill="var(--editor-playhead)" />
+        </svg>
+      )}
+      <span
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t.studio.timeline.sonRognerDebut}
+        onPointerDown={commencer('left')}
+        className="absolute inset-y-0 -left-2 z-20 w-5 cursor-ew-resize touch-none"
+      >
+        <span className="absolute inset-y-1 left-2 w-1 rounded bg-v-editor-text/85" />
+      </span>
+      <span className="pointer-events-none relative block truncate px-3 py-1 text-[11px] font-semibold drop-shadow">
+        {label}{son.volume < 1 ? ` · ${Math.round(son.volume * 100)} %` : ''}
+      </span>
+      <span
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t.studio.timeline.sonRognerFin}
+        onPointerDown={commencer('right')}
+        className="absolute inset-y-0 -right-2 z-20 w-5 cursor-ew-resize touch-none"
+      >
+        <span className="absolute inset-y-1 right-2 w-1 rounded bg-v-editor-text/85" />
+      </span>
+    </div>
+  );
+}
+
 function SortableClip({
   clip,
   item,
@@ -652,6 +759,11 @@ export default function Timeline({
   // Un rush ou un jingle lâché sur la piste vidéo : (nom de fichier, rang).
   // Le tableau de bord le retrouve parmi les fichiers de la semaine.
   onDeposerMedia = null,
+  // La piste son : les sons posés, un son lâché (nom de fichier, instant), et
+  // l'ouverture du réglage d'un son.
+  audio = [],
+  onDeposerSon = null,
+  onOuvrirSon = null,
 }) {
   const { t } = useI18n();
   const rootRef = useRef(null);
@@ -699,6 +811,7 @@ export default function Timeline({
   const videoTrackHeight = compact ? 64 : integree ? 84 : 112;
   const titleTrackHeight = compact ? 0 : integree ? 52 : 64;
   const plansTrackHeight = compact ? 0 : integree ? 40 : 48;
+  const sonsTrackHeight = compact ? 0 : integree ? 44 : 56;
 
   clipsRef.current = clips;
 
@@ -788,6 +901,21 @@ export default function Timeline({
     setStatusMessage(t.studio.timeline.msgHabillageRetire);
   }, [commitClips, t]);
 
+  // La piste son : chaque geste écrit le montage entier, et s'annule d'un coup.
+  const placerSonPiste = useCallback((son, champs, geste) => {
+    modifierMontage?.((m) => {
+      const suite = ecrireSon(m.audio || [], son.id, champs);
+      return suite === m.audio ? m : { ...m, audio: suite };
+    }, geste, Infinity);
+  }, [modifierMontage]);
+  const retirerSonPiste = useCallback((son) => {
+    modifierMontage?.((m) => {
+      const suite = retirerSon(m.audio || [], son.id);
+      return suite === m.audio ? m : { ...m, audio: suite };
+    });
+    setStatusMessage(t.studio.timeline.msgSonRetire);
+  }, [modifierMontage, t]);
+
   // Le glisser-déposer depuis la bibliothèque : un rush ou un jingle sur la
   // piste vidéo, un modèle d'habillage sur un plan ou sur la piste des titres.
   const contenuRef = useRef(null);
@@ -798,7 +926,9 @@ export default function Timeline({
     return Number.isFinite(instant) ? clamp(instant, 0, layout.total) : 0;
   }, [layout.total, pxPerSec]);
   const cibleDuDepot = (event) => {
-    if (Array.from(event.dataTransfer?.types || []).includes(TYPE_MEDIA)) return 'video';
+    const types = Array.from(event.dataTransfer?.types || []);
+    if (types.includes(TYPE_SON)) return 'son';
+    if (types.includes(TYPE_MEDIA)) return 'video';
     const piste = event.target instanceof Element ? event.target.closest('[data-piste]')?.getAttribute('data-piste') : null;
     return piste === 'titres' ? 'titres' : 'plans';
   };
@@ -824,6 +954,10 @@ export default function Timeline({
     const instant = instantDuPointeur(event);
     if (lu.type === 'media') {
       onDeposerMedia?.(lu.filename, rangInsertion(layout, instant));
+      return;
+    }
+    if (lu.type === 'son') {
+      onDeposerSon?.(lu.filename, roundToFrame(instant));
       return;
     }
     if (cible === 'titres') {
@@ -1380,6 +1514,12 @@ export default function Timeline({
                 <span className="ml-2 text-xs font-semibold text-[var(--editor-text)]">{t.studio.timeline.titres}</span>
               </div>
             )}
+            {!compact && (
+              <div className="flex items-center border-b border-[var(--editor-border)] px-3" style={{ height: `${sonsTrackHeight}px` }} title={t.studio.timeline.pisteSonAide}>
+                <strong className="text-sm text-[var(--editor-playhead)]">A1</strong>
+                <span className="ml-2 text-xs font-semibold text-[var(--editor-text)]">{t.studio.timeline.pisteSonCourt}</span>
+              </div>
+            )}
           </div>
 
           <div ref={scrollRef} className="min-w-0 overflow-x-auto overflow-y-hidden bg-[var(--editor-bg)] custom-scrollbar">
@@ -1491,6 +1631,28 @@ export default function Timeline({
                       <Plus size={13} />
                     </button>
                   )}
+                </div>
+              )}
+
+              {!compact && (
+                <div role="region" data-piste="son" aria-label={t.studio.timeline.pisteSon} className="relative border-b border-[var(--editor-border)] bg-v-editor-bg/60" style={{ height: `${sonsTrackHeight}px`, width: `${contentWidth}px` }}>
+                  {audio.length === 0 && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center">
+                      <span className="sticky left-0 truncate px-3 text-xs text-[var(--editor-muted)]">{t.studio.timeline.pisteSonVide}</span>
+                    </span>
+                  )}
+                  {audio.map((son) => (
+                    <SonBlock
+                      key={son.id}
+                      son={son}
+                      pxPerSec={pxPerSec}
+                      reperes={snapping ? reperesTitre : []}
+                      seuilAimant={SEUIL_AIMANT_PX / pxPerSec}
+                      onPlacer={(champs, geste) => placerSonPiste(son, champs, geste)}
+                      onOuvrir={() => onOuvrirSon?.(son)}
+                      onRetirer={() => retirerSonPiste(son)}
+                    />
+                  ))}
                 </div>
               )}
 

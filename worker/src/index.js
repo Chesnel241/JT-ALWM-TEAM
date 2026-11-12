@@ -44,6 +44,9 @@ async function resolveUrls(payload) {
   for (const ov of p.imageOverlays || []) {
     if (ov.filename && !ov.url) ov.url = await presignRead(`uploads/${ov.filename}`);
   }
+  for (const son of p.audio || []) {
+    if (son.filename && !son.url) son.url = await presignRead(`uploads/${son.filename}`);
+  }
   return p;
 }
 

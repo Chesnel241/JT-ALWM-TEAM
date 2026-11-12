@@ -4,12 +4,13 @@ import { X } from 'lucide-react';
 import { JTMaster, totalDurationInFrames } from '../../../../remotion/src/JTMaster.jsx';
 import { API_BASE } from '../../api/index.js';
 import { previewUrl } from '../../lib/mediaSource.js';
+import { nettoyerPisteAudio } from '../../../../remotion/src/pisteAudio.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 
 // Le mot de passe admin ne transite plus par l'URL des médias : /uploads est
 // servi sans authentification, et un secret en query string finissait dans les
 // journaux d'accès (Caddy, nginx) et l'historique du navigateur.
-export default function RemotionLivePreview({ clips, branding, timelineOverlays, onClose, inline = false, playerRef = null }) {
+export default function RemotionLivePreview({ clips, branding, timelineOverlays, audio = [], onClose, inline = false, playerRef = null }) {
   const { t } = useI18n();
   // Prépare les données pour le Player (exactement comme pour le backend)
   const inputProps = useMemo(() => {
@@ -56,13 +57,18 @@ export default function RemotionLivePreview({ clips, branding, timelineOverlays,
         volume: branding.music.volume,
         duck: branding.music.duck
       } : null,
-      voiceover: branding?.voiceover?.filename ? {
+      // L'INCIDENT : seule la présence d'un fichier était testée. Une voix off
+      // désactivée se jouait quand même à l'aperçu — et deux fois, une fois
+      // reprise sur la piste son.
+      voiceover: branding?.voiceover?.enabled && branding.voiceover.filename ? {
         filename: branding.voiceover.filename,
         url: branding.voiceover.filename.startsWith('http') ? branding.voiceover.filename : `${API_BASE}/uploads/${branding.voiceover.filename}?cors=2`,
         volume: branding.voiceover.volume
-      } : null
+      } : null,
+      // La piste son, nettoyée comme au serveur, lue depuis le même dossier.
+      audio: nettoyerPisteAudio(audio).map((son) => ({ ...son, url: `${API_BASE}/uploads/${encodeURIComponent(son.filename)}?cors=2` })),
     };
-  }, [clips, branding, timelineOverlays]);
+  }, [clips, branding, timelineOverlays, audio]);
 
   const durationInFrames = useMemo(() => {
     return Math.max(30, totalDurationInFrames(inputProps.clips, 30));

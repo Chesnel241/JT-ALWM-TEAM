@@ -7,7 +7,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  ArrowDown, ArrowUp, Captions, Check, ChevronDown, ChevronRight, ChevronUp, Copy, Film, GripVertical,
+  ArrowDown, ArrowUp, Captions, Check, ChevronDown, ChevronRight, ChevronUp, Copy, Film, GripVertical, Mic,
   LayoutList, Newspaper, Plus, Redo2, Rows3, Scissors, Search, Trash2, Type, Undo2, Video,
 } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext.jsx';
@@ -16,7 +16,7 @@ import CountryAvatar from '../CountryAvatar.jsx';
 import {
   deplacer, deroule, dupliquer, dureeParlee, instant, planALInstant, rangerRushes, retirer,
 } from './conducteur.js';
-import { TYPE_MEDIA, ecrireGlisse } from './habillagesPlans.js';
+import { TYPE_MEDIA, TYPE_SON, ecrireGlisse } from './habillagesPlans.js';
 
 /**
  * Le studio simple : les rushes à gauche, l'image au centre, le déroulé du JT
@@ -130,7 +130,7 @@ export function BarreStudio({
 }
 
 /** Les rushes de la semaine, à portée de main dans le studio. */
-export function RushesStudio({ videos, clips, countries, onAjouter, jingles = [], onAssembler = null, assemblageEnCours = false }) {
+export function RushesStudio({ videos, clips, countries, onAjouter, jingles = [], onAssembler = null, assemblageEnCours = false, sons = [], onAjouterSon = null }) {
   const { t } = useI18n();
   const d = t.studio.deroule;
   const [recherche, setRecherche] = useState('');
@@ -140,6 +140,15 @@ export function RushesStudio({ videos, clips, countries, onAjouter, jingles = []
     recherche,
   }), [videos, clips, countries, recherche]);
   const total = groupes.reduce((n, g) => n + g.nombre, 0);
+  // Les sons : jamais un refusé, filtrés par la même recherche que les vidéos.
+  const sonsVisibles = useMemo(() => {
+    const cherche = String(recherche || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    return (sons || []).filter((f) => f.status !== 'rejected').filter((f) => {
+      if (!cherche) return true;
+      const texte = `${f.name || ''} ${f.reportage || ''} ${countries.find((c) => c.id === f.countryId)?.name || ''}`;
+      return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(cherche);
+    });
+  }, [sons, recherche, countries]);
   const basculer = (id) => setReplies((avant) => {
     const suite = new Set(avant);
     if (suite.has(id)) suite.delete(id); else suite.add(id);
@@ -214,6 +223,54 @@ export function RushesStudio({ videos, clips, countries, onAjouter, jingles = []
                         <Plus size={17} />
                       </span>
                       <span className="sr-only">{d.ajouter}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+        {/* Les sons de la semaine : voix off des correspondants et du studio. Un
+            clic les pose à la tête de lecture ; on peut aussi les glisser sur
+            la piste son, à l'instant voulu. */}
+        {onAjouterSon && sonsVisibles.length > 0 && (
+          <section className="mb-2">
+            <button
+              type="button"
+              onClick={() => basculer('__sons')}
+              aria-expanded={!replies.has('__sons')}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-bold text-[color:var(--editor-text)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+            >
+              {replies.has('__sons') ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+              <Mic size={17} className="text-[color:var(--editor-playhead)]" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">{t.studio.son.sonsDeLaSemaine}</span>
+              <span className="text-xs font-medium text-[color:var(--editor-muted)]">{sonsVisibles.length}</span>
+            </button>
+            {!replies.has('__sons') && (
+              <ul className="ml-2 space-y-1 border-l border-[var(--editor-border)] pl-2">
+                {sonsVisibles.map((fichier) => (
+                  <li key={fichier.filename}>
+                    <button
+                      type="button"
+                      onClick={() => onAjouterSon(fichier)}
+                      draggable
+                      onDragStart={(event) => ecrireGlisse(event.dataTransfer, TYPE_SON, { filename: fichier.filename })}
+                      title={t.studio.son.ajouterSon}
+                      className="group flex w-full items-center gap-2.5 rounded-lg border border-transparent p-1.5 text-left hover:border-[var(--editor-accent)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--editor-bg)] text-[color:var(--editor-playhead)]" aria-hidden="true">
+                        <Mic size={16} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-semibold text-[color:var(--editor-text)]">{fichier.name || fichier.filename}</span>
+                        <span className="block truncate text-[11px] text-[color:var(--editor-muted)]">
+                          {[countries.find((c) => c.id === fichier.countryId)?.name, fichier.reportage].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--editor-border)] text-[color:var(--editor-accent)] group-hover:border-[var(--editor-accent)] group-hover:bg-[var(--editor-accent-strong)] group-hover:text-[color:var(--editor-bg)]" aria-hidden="true">
+                        <Plus size={17} />
+                      </span>
+                      <span className="sr-only">{t.studio.son.ajouterSon}</span>
                     </button>
                   </li>
                 ))}

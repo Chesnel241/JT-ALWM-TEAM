@@ -31,7 +31,7 @@ describe('les rubriques automatiques — séminaires', () => {
       ...Array.from({ length: 7 }, (_, i) => `cmr${i}.mp4`),
       ...Array.from({ length: 10 }, (_, i) => `gab${i}.mp4`),
     ]);
-    expect(bilan.seminaires).toEqual({ pays: 2, fichiers: 17 });
+    expect(bilan.seminaires).toEqual({ pays: 2, fichiers: 17, sons: 0 });
   });
 
   it('pose le nom du pays sur tout le bloc, du premier au dernier plan', () => {
@@ -76,7 +76,7 @@ describe('les rubriques automatiques — annonces, mot du JT, reprise', () => {
       `Gabon · ${LIBELLE_SEMINAIRES}`,
       `Cameroun · ${LIBELLE_ANNONCES}`,
     ]);
-    expect(bilan.annonces).toEqual({ pays: 1, fichiers: 1 });
+    expect(bilan.annonces).toEqual({ pays: 1, fichiers: 1, sons: 0 });
   });
 
   it('place le mot du JT en dernier, avec le nom et le thème saisis', () => {

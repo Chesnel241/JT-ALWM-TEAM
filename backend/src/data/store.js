@@ -8,6 +8,7 @@ import { weekExpiryDate, weekUploadCutoff } from './constants.js';
 import { estRubrique, estHorsSujet } from './rubriques.js';
 import { storePath } from '../lib/paths.js';
 import { Redis } from '@upstash/redis';
+import { nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
 
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -571,6 +572,8 @@ export function saveTimelineWorkspace(weekId, workspace) {
     branding: workspace?.branding && typeof workspace.branding === 'object'
       ? workspace.branding
       : {},
+    // La piste son vient du navigateur : seuls les champs connus, bornés.
+    audio: nettoyerPisteAudio(workspace?.audio),
     revision: previousRevision + 1,
     updatedAt: new Date().toISOString(),
   };

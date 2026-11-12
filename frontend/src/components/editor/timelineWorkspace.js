@@ -1,4 +1,6 @@
 import { previewUrl } from '../../lib/mediaSource.js';
+import { nettoyerPisteAudio } from '../../../../remotion/src/pisteAudio.js';
+import { migrerVoixOff } from './pisteSon.js';
 
 // Habillage par défaut d'un montage : un workspace serveur peut n'en décrire
 // qu'une partie (ancien enregistrement, champ ajouté depuis), le reste est
@@ -24,16 +26,19 @@ export function normalizeWorkspace(workspace) {
   // reste le master : c'est lui que le serveur réassemble à l'export.
   const clips = safeClips.map((clip) => ({ ...clip, url: previewUrl(clip) }));
   const overlays = Array.isArray(workspace?.overlays) ? workspace.overlays : [];
-  const branding = workspace?.branding && typeof workspace.branding === 'object'
+  const brandingLu = workspace?.branding && typeof workspace.branding === 'object'
     ? { ...DEFAULT_BRANDING, ...workspace.branding }
     : DEFAULT_BRANDING;
+  // La piste son ; l'ancienne voix off unique y est reprise, au même endroit.
+  const { branding, audio } = migrerVoixOff(brandingLu, nettoyerPisteAudio(workspace?.audio));
   return {
     clips,
     overlays,
     branding,
+    audio,
     // Forme renvoyée au serveur : sert aussi d'empreinte pour savoir si
     // l'utilisateur a réellement modifié quelque chose depuis la synchro.
-    payload: { clips: safeClips.map(({ url: _url, ...clip }) => clip), overlays, branding },
+    payload: { clips: safeClips.map(({ url: _url, ...clip }) => clip), overlays, branding, audio },
     revision: workspace?.revision ?? null,
   };
 }

@@ -33,6 +33,9 @@ import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
 import { BandeauJT, BarreStudio, Deroule, DockTimeline, RushesStudio, borneDock, DOCK_DEFAUT } from './editor/Conducteur.jsx';
 import { assemblerRubriques } from './editor/rubriquesAuto.js';
+import PanneauSon from './editor/PanneauSon.jsx';
+import { ecrireSon, nouveauSon, retirerSon } from './editor/pisteSon.js';
+import { nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
 import JinglesView from './JinglesView.jsx';
 import { deroule as calculerDeroule, inserer } from './editor/conducteur.js';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
@@ -482,13 +485,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [timelineClips, setTimelineClips] = useState([]);
   const [timelineOverlays, setTimelineOverlays] = useState([]);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  // La piste son : voix off, musique, tout son posé sous l'image.
+  const [pisteAudio, setPisteAudio] = useState([]);
   // L'annulation porte sur le montage entier — clips, titres de la piste T1 et
   // habillage global — et elle vit ici parce que c'est le seul endroit qui
   // détienne les trois. Elle vivait dans la timeline et ne connaissait que les
   // clips : supprimer un titre était définitif, et taper une lettre dans
   // l'inspecteur effaçait toute la pile.
   const [historique, setHistorique] = useState(creerHistorique);
-  const montageRef = useRef({ clips: [], overlays: [], branding: DEFAULT_BRANDING });
+  const montageRef = useRef({ clips: [], overlays: [], branding: DEFAULT_BRANDING, audio: [] });
   const [showGlobalPanel, setShowGlobalPanel] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [subtitleTarget, setSubtitleTarget] = useState(null);
@@ -547,7 +552,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // Miroir de rendu : `modifierMontage` lit cette référence de façon
   // synchrone, avant le rendu suivant. Même convention que `clipsRef` dans la
   // timeline.
-  montageRef.current = { clips: timelineClips, overlays: timelineOverlays, branding };
+  montageRef.current = { clips: timelineClips, overlays: timelineOverlays, branding, audio: pisteAudio };
 
   /** Pose un état de montage complet, sans rien enregistrer dans l'historique. */
   const poserMontage = useCallback((etat) => {
@@ -555,6 +560,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setTimelineClips(etat.clips);
     setTimelineOverlays(etat.overlays);
     setBranding(etat.branding);
+    setPisteAudio(etat.audio || []);
   }, []);
 
   /**
@@ -622,7 +628,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // 409. Annuler l'arrivée d'un collègue réécraserait son travail en silence.
   const applyWorkspace = useCallback((workspace, { markSynced = true } = {}) => {
     const next = normalizeWorkspace(workspace);
-    poserMontage({ clips: next.clips, overlays: next.overlays, branding: next.branding });
+    poserMontage({ clips: next.clips, overlays: next.overlays, branding: next.branding, audio: next.audio });
     setHistorique(reinitialiser());
     timelineRevisionRef.current = next.revision;
     lastSyncedTimelineRef.current = markSynced ? JSON.stringify(next.payload) : '';
@@ -844,9 +850,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         ? filename
         : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`);
       const dejaAuMontage = new Set((montageRef.current.clips || []).map((c) => c.filename));
-      const aMesurer = weekVideoFiles.filter((f) => (
-        f.status !== 'rejected' && !dejaAuMontage.has(f.filename) && !(Number(f.durationSec) > 0)
-      ));
+      const dejaSurLaPiste = new Set((montageRef.current.audio || []).map((son) => son.filename));
+      const sectionsFixes = new Set(['Séminaires de la semaine', 'Annonces']);
+      const aMesurer = [
+        ...weekVideoFiles.filter((f) => f.status !== 'rejected' && !dejaAuMontage.has(f.filename)),
+        // Les voix off envoyées avec les annonces et les séminaires.
+        ...weekAudioFiles.filter((f) => f.status !== 'rejected' && sectionsFixes.has(f.reportage) && !dejaSurLaPiste.has(f.filename)),
+      ].filter((f) => !(Number(f.durationSec) > 0));
       const durees = new Map();
       // Quatre sondes à la fois : assez pour ne pas attendre, pas assez pour
       // saturer le navigateur sur une semaine de plusieurs centaines de fichiers.
@@ -880,7 +890,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         motDuJt = null;
       }
 
-      let bilan = { seminaires: { fichiers: 0 }, annonces: { fichiers: 0 }, motDuJt: { fichiers: 0 }, deja: 0 };
+      const versSon = (fichier, instant) => nouveauSon(fichier, {
+        id: `son-${nouvelIdDePlan()}`.replace(/[^\w-]/g, '').slice(0, 64),
+        instant,
+        duree: durees.get(fichier.filename) || Number(fichier.durationSec) || null,
+        role: 'voix',
+      });
+
+      let bilan = { seminaires: { fichiers: 0, sons: 0 }, annonces: { fichiers: 0, sons: 0 }, motDuJt: { fichiers: 0 }, deja: 0 };
       modifierMontage((m) => {
         const r = assemblerRubriques({
           videos: weekVideoFiles,
@@ -890,11 +907,14 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           versClip,
           motDuJt,
           creerId: () => nouvelIdDePlan(),
+          sons: weekAudioFiles,
+          audio: m.audio || [],
+          versSon,
         });
         bilan = r.bilan;
         // Rien à ajouter : même objet, donc aucune entrée d'historique inutile.
         if (r.clips === m.clips) return m;
-        return { ...m, clips: r.clips, overlays: r.overlays };
+        return { ...m, clips: r.clips, overlays: r.overlays, audio: r.audio };
       }, t.studio.deroule.rubriquesAuto);
 
       const total = bilan.seminaires.fichiers + bilan.annonces.fichiers + bilan.motDuJt.fichiers;
@@ -902,7 +922,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         addToast(t.studio.deroule.rubriquesAutoRien, 'info');
       } else {
         addToast(
-          t.studio.deroule.rubriquesAutoBilan(bilan.seminaires.fichiers, bilan.annonces.fichiers, bilan.motDuJt.fichiers, bilan.deja),
+          t.studio.deroule.rubriquesAutoBilan(bilan.seminaires.fichiers, bilan.annonces.fichiers, bilan.motDuJt.fichiers, bilan.deja, (bilan.seminaires.sons || 0) + (bilan.annonces.sons || 0)),
           'success',
           6000,
         );
@@ -921,26 +941,83 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     ajouterAuDeroule(fichier, rang);
   };
 
+  // La piste son : poser un son (clic dans la colonne, ou dépôt sur la
+  // timeline), le régler, le retirer.
+  const [sonCibleId, setSonCibleId] = useState(null);
+  const sonCible = sonCibleId ? pisteAudio.find((son) => son.id === sonCibleId) || null : null;
+  const urlDuSon = (filename) => `${API_BASE}/uploads/${encodeURIComponent(filename || '')}`;
+  const ajouterSon = (fichier, instant = null) => {
+    const ici = instant != null ? instant : (playerRef.current?.getCurrentFrame?.() ?? 0) / 30;
+    const id = `son-${nouvelIdDePlan()}`.replace(/[^\w-]/g, '').slice(0, 64);
+    const son = nouveauSon(fichier, { id, instant: ici, duree: Number(fichier?.durationSec) || null });
+    if (!son) { addToast(t.studio.timeline.msgDepotRefuse, 'error'); return; }
+    modifierMontage((m) => ({ ...m, audio: [...(m.audio || []), son] }));
+    addToast(t.studio.son.ajoute(son.name), 'success', 2500);
+    // La durée réelle du fichier, dès qu'elle est lue : le bloc prend sa taille.
+    if (!(son.sourceDurationSec > 0)) {
+      probeVideoDuration(urlDuSon(son.filename)).then((duree) => {
+        if (!(duree > 0)) return;
+        ajusterSansHistorique((m) => ({ ...m, audio: ecrireSon(m.audio || [], id, { sourceDurationSec: duree }) }));
+      });
+    }
+  };
+  // Le nom de fichier vient d'un glisser-déposer : on ne l'emploie que s'il
+  // désigne un son de la semaine.
+  const deposerSon = (filename, instant) => {
+    const fichier = weekAudioFiles.find((f) => f.filename === filename);
+    if (!fichier) { addToast(t.studio.timeline.msgDepotRefuse, 'error'); return; }
+    ajouterSon(fichier, instant);
+  };
+  const ouvrirSon = (son) => {
+    setTrimTarget(null);
+    setOverlayTarget(null);
+    setSubtitleTarget(null);
+    setShowGlobalPanel(false);
+    setSonCibleId(son.id);
+  };
+  const reglerSon = (champs, quoi) => {
+    if (!sonCibleId) return;
+    modifierMontage((m) => {
+      const suite = ecrireSon(m.audio || [], sonCibleId, champs);
+      return suite === m.audio ? m : { ...m, audio: suite };
+    }, etiquetteSaisie(sonCibleId, quoi));
+  };
+  const retirerSonCible = () => {
+    if (!sonCibleId) return;
+    modifierMontage((m) => ({ ...m, audio: retirerSon(m.audio || [], sonCibleId) }));
+    setSonCibleId(null);
+  };
+  const ecouterSon = () => {
+    const lecteur = playerRef.current;
+    if (!sonCible || !lecteur) return;
+    lecteur.seekTo?.(Math.round((Number(sonCible.startTime) || 0) * 30));
+    lecteur.play?.();
+  };
+
   // Un seul inspecteur doit être visible à la fois.
   const openTrimInspector = (clip) => {
+    setSonCibleId(null);
     setOverlayTarget(null);
     setSubtitleTarget(null);
     setShowGlobalPanel(false);
     setTrimTarget(clip);
   };
   const openOverlayInspector = (clip) => {
+    setSonCibleId(null);
     setTrimTarget(null);
     setSubtitleTarget(null);
     setShowGlobalPanel(false);
     setOverlayTarget(clip);
   };
   const openSubtitleInspector = (clip) => {
+    setSonCibleId(null);
     setTrimTarget(null);
     setOverlayTarget(null);
     setShowGlobalPanel(false);
     setSubtitleTarget(clip);
   };
   const openGlobalInspector = () => {
+    setSonCibleId(null);
     setTrimTarget(null);
     setOverlayTarget(null);
     setSubtitleTarget(null);
@@ -1243,6 +1320,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       clips: timelineClips.map(({ url: _url, ...clip }) => clip),
       overlays: timelineOverlays,
       branding,
+      audio: pisteAudio,
     };
     const serialized = JSON.stringify(payload);
     if (serialized === lastSyncedTimelineRef.current) return;
@@ -1281,7 +1359,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           timelineRevisionRef.current = leur.revision;
           lastSyncedTimelineRef.current = JSON.stringify(leur.payload);
           setHistorique((h) => enregistrer(h, mienne, { etiquette: null, maintenant: Date.now() }));
-          poserMontage({ clips: leur.clips, overlays: leur.overlays, branding: leur.branding });
+          poserMontage({ clips: leur.clips, overlays: leur.overlays, branding: leur.branding, audio: leur.audio });
           setTimelineSyncState('saved');
           addToast(
             'Un autre monteur a modifié le montage : sa version est affichée.',
@@ -1295,7 +1373,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         addToast('Le montage n’a pas pu être sauvegardé en ligne', 'error');
       }
     }, 600);
-  }, [timelineClips, timelineOverlays, branding, selectedWeek, poserMontage, addToast]);
+  }, [timelineClips, timelineOverlays, branding, pisteAudio, selectedWeek, poserMontage, addToast]);
 
   useEffect(() => () => {
     window.clearTimeout(timelineSaveTimerRef.current);
@@ -1621,6 +1699,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         voiceover,
         imageOverlays,
         atmosphere: branding.atmosphere,
+        audio: nettoyerPisteAudio(pisteAudio),
       }, authenticatedAdminPassword);
       // Succès : le suivi (SSE + polling) met à jour l'UI jusqu'au résultat.
     } catch (err) {
@@ -2358,7 +2437,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       ? { ...overlayTarget, overlays: timelineOverlays }
       : timelineClips.find((c) => c.instanceId === overlayTarget.instanceId) || overlayTarget)
     : null;
-  const panneauOuvert = overlayTarget ? (
+  const panneauOuvert = sonCible ? (
+    <PanneauSon
+      son={sonCible}
+      onChange={reglerSon}
+      onRetirer={retirerSonCible}
+      onFermer={() => setSonCibleId(null)}
+      onEcouter={ecouterSon}
+    />
+  ) : overlayTarget ? (
     <OverlayPanel
       inline={true}
       clip={clipInspecte}
@@ -2702,6 +2789,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     clips={timelineClips} 
                     timelineOverlays={timelineOverlays}
                     branding={branding} 
+                    audio={pisteAudio}
                     onClose={() => {}} 
                   />
                   {/* Depuis le studio, « Générer le master » ne donnait aucun
@@ -2793,6 +2881,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   onSplitText={handleSplitTextAtPlayhead}
                   onBrowseRushes={openRushes}
                   onDeposerMedia={deposerMedia}
+                  audio={pisteAudio}
+                  onDeposerSon={deposerSon}
+                  onOuvrirSon={ouvrirSon}
                   libelleSemaine={formatWeekLabel((weeks || []).find((w) => w.id === selectedWeek) || { id: selectedWeek }, lang)}
                   modifierMontage={modifierMontage}
                   annulerMontage={annulerMontage}
@@ -2816,6 +2907,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     onAjouter={ajouterAuDeroule}
                     onAssembler={assemblerRubriquesAuDeroule}
                     assemblageEnCours={assemblageEnCours}
+                    sons={weekAudioFiles}
+                    onAjouterSon={ajouterSon}
                   />
                   <div className="relative flex min-w-0 flex-1 items-center justify-center bg-[oklch(0.11_0.018_245)] p-3">
                   <RemotionLivePreview 
@@ -2824,6 +2917,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     clips={timelineClips} 
                     timelineOverlays={timelineOverlays}
                     branding={branding} 
+                    audio={pisteAudio}
                     onClose={() => {}} 
                   />
                   {/* Depuis le studio, « Générer le master » ne donnait aucun
@@ -2883,6 +2977,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     playerRef={playerRef}
                     onSplitText={handleSplitTextAtPlayhead}
                     onDeposerMedia={deposerMedia}
+                    audio={pisteAudio}
+                    onDeposerSon={deposerSon}
+                    onOuvrirSon={ouvrirSon}
                     modifierMontage={modifierMontage}
                     annulerMontage={annulerMontage}
                     retablirMontage={retablirMontage}

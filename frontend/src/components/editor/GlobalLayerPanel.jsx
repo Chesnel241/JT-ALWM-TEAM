@@ -65,7 +65,6 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
   const setLive = (p) => onChange({ ...v, live: { ...v.live, ...p } });
   const setMusic = (p) => onChange({ ...v, music: { ...v.music, ...p } });
   const setAtmo = (p) => onChange({ ...v, atmosphere: { ...(v.atmosphere || {}), ...p } });
-  const setVoice = (p) => onChange({ ...v, voiceover: { ...v.voiceover, ...p } });
   const setImages = (arr) => onChange({ ...v, imageOverlays: arr });
   const setOverlays = (arr) => onChange({ ...v, overlays: arr });
 
@@ -353,22 +352,12 @@ export default function GlobalLayerPanel({ value, onChange, onClose, audioFiles 
             )}
           </section>
 
-          {/* Voix-off */}
+          {/* Voix off : elles se posent maintenant sur la piste son de la
+              timeline, où on les voit, les cale sur l'image et en pose
+              autant qu'il faut. L'ancienne voix off unique y est reprise. */}
           <section className={sectionCls}>
-            {head(<Mic size={15} />, t.studio.panneaux.voixOff, v.voiceover.enabled, (c) => setVoice({ enabled: c }))}
-            {v.voiceover.enabled && (
-              <>
-                <div className="flex gap-2">
-                  <select className={field} value={v.voiceover.filename} onChange={(e) => setVoice({ filename: e.target.value })}>
-                    <option value="">{t.studio.panneaux.choisirAudio}</option>
-                    {audioFiles.map((f) => <option key={f.filename} value={f.filename}>{f.name}</option>)}
-                  </select>
-                  <UploadBtn envoiLabel={t.studio.panneaux.envoi} accept="audio/*" label="Uploader" uploadAsset={uploadAsset} onUploaded={(r) => setVoice({ filename: r.filename })} />
-                </div>
-                <label className="text-xs text-[color:var(--muted)]">{t.studio.panneaux.depart}</label>
-                <input className={field} type="number" min="0" step="0.5" value={v.voiceover.startTime ?? 0} onChange={(e) => setVoice({ startTime: parseFloat(e.target.value) || 0 })} />
-              </>
-            )}
+            {head(<Mic size={15} />, t.studio.panneaux.voixOff, null)}
+            <p className="text-xs leading-5 text-[color:var(--muted)]">{t.studio.panneaux.voixOffPiste}</p>
           </section>
 
           <h3 className="-mb-2 mt-1 text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent)]">{t.studio.rangement.moments}</h3>

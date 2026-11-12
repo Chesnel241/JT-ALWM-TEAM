@@ -10,6 +10,7 @@ import { generateAssFile } from '../data/overlayTemplates.js';
 import { setProgress } from './editorProgress.js';
 import { uploadsDir } from '../lib/paths.js';
 import { normaliserSonMaster } from './sonMaster.js';
+import { nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
 
 let isRendering = false;
 
@@ -304,7 +305,48 @@ export function buildRemotionPayload(clips, opts) {
     music: opts.music ? { ...opts.music, url: resolve(opts.music.filename) } : undefined,
     voiceover: opts.voiceover ? { ...opts.voiceover, url: resolve(opts.voiceover.filename) } : undefined,
     imageOverlays: (opts.imageOverlays || []).map(ov => ({ ...ov, url: resolve(ov.filename) })),
+    // Déjà nettoyée par la route ; nettoyée encore ici, au cas où un autre
+    // appelant passerait par cette fonction.
+    audio: nettoyerPisteAudio(opts.audio).map((son) => ({ ...son, url: resolve(son.filename) })),
   };
+}
+
+/**
+ * La durée de chaque son, mesurée par le serveur quand le navigateur ne l'a pas
+ * donnée. Sans elle, le moteur ne saurait pas combien de temps jouer le son, et
+ * l'ignorerait.
+ */
+export async function completerDureesSons(audio, { mesurer = getDuration, dossier = uploadsDir() } = {}) {
+  const sons = nettoyerPisteAudio(audio);
+  for (const son of sons) {
+    if (son.outPoint != null || son.sourceDurationSec > 0) continue;
+    try {
+      const duree = Number(await mesurer(path.join(dossier, safeFilename(son.filename))));
+      if (Number.isFinite(duree) && duree > 0) son.sourceDurationSec = duree;
+    } catch {
+      // Illisible : le son sera ignoré par le moteur, comme un son vide.
+    }
+  }
+  return sons;
+}
+
+/**
+ * Chaque son de la piste existe-t-il encore ? Un fichier effacé entre-temps
+ * n'était découvert qu'au milieu d'un rendu de deux heures : on le dit tout
+ * de suite, en le nommant.
+ */
+export function verifierSons(audio, { dossier = uploadsDir() } = {}) {
+  const manquants = [];
+  for (const son of nettoyerPisteAudio(audio)) {
+    const chemin = path.join(dossier, safeFilename(son.filename));
+    if (!fs.existsSync(chemin) && !manquants.includes(son.name)) manquants.push(son.name);
+  }
+  if (manquants.length > 0) {
+    const liste = manquants.slice(0, 5).map((n) => `« ${n} »`).join(', ');
+    const err = new Error(`Ces sons n'existent plus sur le serveur : ${liste}${manquants.length > 5 ? '…' : ''}. Retirez-les de la piste son, ou renvoyez-les.`);
+    err.status = 400;
+    throw err;
+  }
 }
 
 /**
@@ -379,7 +421,9 @@ export async function delegateToRemotion(clips, jobId, opts) {
     throw new Error(`Worker Cloud Run injoignable (${WORKER_URL}/health) : ${err.message}`);
   }
 
-  const payload = buildRemotionPayload(await verifierPlans(clips), opts);
+  verifierSons(opts.audio);
+  const audio = await completerDureesSons(opts.audio);
+  const payload = buildRemotionPayload(await verifierPlans(clips), { ...opts, audio });
   setProgress(jobId, 1, 'downloading');
   const res = await withTimeout(
     fetch(`${WORKER_URL}/render`, {
@@ -419,6 +463,12 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
   isRendering = true;
 
   let workDir;
+  try {
+    verifierSons(opts.audio);
+  } catch (err) {
+    isRendering = false;
+    throw err;
+  }
   let outputFilename;
   let outputPath;
   try {
@@ -687,7 +737,9 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
   const voiceover = opts.voiceover && opts.voiceover.filename ? opts.voiceover : null;
   const imageOverlays = (Array.isArray(opts.imageOverlays) ? opts.imageOverlays : [])
     .filter((o) => o && o.filename).slice(0, 6);
-  const needsFinalize = globalOverlays.length > 0 || useLogo || music || voiceover || imageOverlays.length > 0;
+  // Le moteur de secours mixe au plus 50 sons : au-delà, ffmpeg devient fragile.
+  const sons = nettoyerPisteAudio(opts.audio).filter((son) => son.volume > 0).slice(0, 50);
+  const needsFinalize = globalOverlays.length > 0 || useLogo || music || voiceover || imageOverlays.length > 0 || sons.length > 0;
 
   // Chemin rapide : ni transition ni incrustation → concat demuxer copy.
   if (!wantsTransitions && !needsFinalize) {
@@ -827,6 +879,17 @@ async function assembleMaster(normPaths, normalizedClips, opts, outputPath, work
     const delayMs = Math.round((Number(voiceover.startTime) || 0) * 1000);
     filters.push(`[${vidx}:a]adelay=${delayMs}|${delayMs},volume=${vvol},${AFMT}[vo]`);
     extraMix.push('vo');
+  }
+  // La piste son : chaque son rogné, à son volume, à sa place. Le moteur de
+  // secours ne baisse pas le son des plans sous une voix off : seul le rendu
+  // Remotion (celui de production) le fait.
+  for (const son of sons) {
+    const sidx = nextInput++;
+    cmd.input(await resolveClipPath(son.filename, workDir));
+    const fin = son.outPoint != null ? `:end=${Number(son.outPoint).toFixed(3)}` : '';
+    const delai = Math.round((Number(son.startTime) || 0) * 1000);
+    filters.push(`[${sidx}:a]atrim=start=${(Number(son.inPoint) || 0).toFixed(3)}${fin},asetpts=PTS-STARTPTS,volume=${Number(son.volume).toFixed(3)},adelay=${delai}|${delai},${AFMT}[son${sidx}]`);
+    extraMix.push(`son${sidx}`);
   }
   if (extraMix.length > 0) {
     const ins = [baseAudio, ...extraMix].map((l) => `[${l}]`).join('');

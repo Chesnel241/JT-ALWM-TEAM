@@ -12,6 +12,7 @@ import { io } from '../app.js';
 // Allowlist des templateId valides (source unique = registre des modèles).
 const TEMPLATE_IDS = OVERLAY_TEMPLATES.map((t) => t.id);
 import logger from '../logger/index.js';
+import { MAX_SONS, nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
 
 const router = express.Router();
 const isValidWeek = (weekId) => buildWeeks().some((week) => week.id === weekId);
@@ -45,6 +46,7 @@ router.put(
     body('clips.*.filename').isString().notEmpty().isLength({ max: 512 }),
     body('overlays').isArray({ max: 1000 }).withMessage('overlays doit être un tableau de 1000 éléments maximum.'),
     body('branding').isObject().withMessage('branding doit être un objet.'),
+    body('audio').optional({ values: 'null' }).isArray({ max: MAX_SONS }).withMessage(`audio doit être un tableau de ${MAX_SONS} sons maximum.`),
     // Optionnel : un client qui ne l'envoie pas garde l'ancien comportement
     // (dernier écrivain gagne). Voir le garde de concurrence plus bas.
     body('baseRevision')
@@ -264,6 +266,8 @@ router.post(
     body('voiceover.filename').optional({ values: 'null' }).isString().notEmpty(),
     body('voiceover.volume').optional({ values: 'null' }).isFloat({ min: 0, max: 2 }),
     body('voiceover.startTime').optional({ values: 'null' }).isFloat({ min: 0 }),
+    // La piste son : bornée ici, puis nettoyée champ par champ (pisteAudio.js).
+    body('audio').optional({ values: 'null' }).isArray({ max: MAX_SONS }).withMessage(`audio : ${MAX_SONS} sons maximum.`),
     body('imageOverlays').optional({ values: 'null' }).isArray(),
     body('imageOverlays.*.filename').optional({ values: 'null' }).isString().notEmpty(),
     body('imageOverlays.*.scale').optional({ values: 'null' }).isFloat({ min: 0.05, max: 1 }),
@@ -295,6 +299,7 @@ router.post(
       }
 
       const { clips, jobId, weekId, globalOverlays, logo, logoPosition, music, voiceover, imageOverlays, atmosphere } = req.body;
+      const audio = nettoyerPisteAudio(req.body.audio);
 
       // Un master est déjà en cours pour cette semaine : on le dit tout de
       // suite. Avant, la seconde demande prenait la place de la première dans
@@ -310,10 +315,10 @@ router.post(
       }
       if (weekId) registerJobWeek(jobId, weekId);
 
-      logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, weekId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo, music: !!(music && music.filename), voiceover: !!(voiceover && voiceover.filename), images: Array.isArray(imageOverlays) ? imageOverlays.length : 0 });
+      logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, weekId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo, music: !!(music && music.filename), voiceover: !!(voiceover && voiceover.filename), images: Array.isArray(imageOverlays) ? imageOverlays.length : 0, sons: audio.length });
 
       // Run async to prevent Render 100s timeout on HTTP request
-      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, logoPosition, music, voiceover, imageOverlays, atmosphere, weekId })
+      concatenateVideos(clips, jobId, { globalOverlays, logo: !!logo, logoPosition, music, voiceover, imageOverlays, atmosphere, weekId, audio })
         .then((result) => {
           // Chemin Remotion : le worker pilote la fin via /internal/progress.
           if (result && result.delegated) return;

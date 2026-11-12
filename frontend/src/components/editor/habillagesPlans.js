@@ -103,6 +103,7 @@ export function retirerHabillage(clips, planId, rang) {
 /** Les seuls types que la timeline accepte : jamais un fichier venu du bureau. */
 export const TYPE_MEDIA = 'application/x-jt-media';
 export const TYPE_HABILLAGE = 'application/x-jt-habillage';
+export const TYPE_SON = 'application/x-jt-son';
 
 /** Pose ce qu'on glisse : un rush ou un jingle (par son nom de fichier), ou un modèle. */
 export function ecrireGlisse(dataTransfer, type, valeur) {
@@ -114,7 +115,7 @@ export function ecrireGlisse(dataTransfer, type, valeur) {
 /** Vrai si ce qu'on survole vient du studio (lisible pendant le survol). */
 export function glisseDuStudio(dataTransfer) {
   const types = Array.from(dataTransfer?.types || []);
-  return types.includes(TYPE_MEDIA) || types.includes(TYPE_HABILLAGE);
+  return types.includes(TYPE_MEDIA) || types.includes(TYPE_HABILLAGE) || types.includes(TYPE_SON);
 }
 
 /** Un nom de fichier tel que le serveur les range : jamais un chemin. */
@@ -136,10 +137,11 @@ export function lireGlisse(dataTransfer, modelesConnus = []) {
       return null;
     }
   };
+  const sur = (v) => v && typeof v.filename === 'string' && NOM_FICHIER.test(v.filename) && !v.filename.startsWith('.');
   const media = lire(TYPE_MEDIA);
-  if (media && typeof media.filename === 'string' && NOM_FICHIER.test(media.filename) && !media.filename.startsWith('.')) {
-    return { type: 'media', filename: media.filename };
-  }
+  if (sur(media)) return { type: 'media', filename: media.filename };
+  const son = lire(TYPE_SON);
+  if (sur(son)) return { type: 'son', filename: son.filename };
   const habillage = lire(TYPE_HABILLAGE);
   if (habillage && typeof habillage.templateId === 'string' && modelesConnus.includes(habillage.templateId)) {
     return { type: 'habillage', templateId: habillage.templateId };

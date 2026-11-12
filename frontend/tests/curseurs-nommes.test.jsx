@@ -72,12 +72,13 @@ describe('les curseurs du studio disent de quoi ils règlent', () => {
     expect(nus, 'ces curseurs annoncent « curseur, 100 » sans dire de quoi').toEqual([]);
   });
 
-  it('en couvre bien vingt et un', () => {
-    // Un balayage qui ne voit rien passe toujours.
+  it('en couvre bien vingt-deux', () => {
+    // Un balayage qui ne voit rien passe toujours. Le vingt-deuxième est le
+    // volume d'un son de la piste son (PanneauSon).
     const total = fichiers(RACINE).reduce((n, f) => (
       n + balisesInput(readFileSync(f, 'utf8')).filter((b) => b.balise.includes('type="range"')).length
     ), 0);
-    expect(total).toBe(21);
+    expect(total).toBe(22);
   });
 });
 

@@ -12,6 +12,7 @@ import { Ticker, LiveBadge, Logo, Subtitles } from './global.jsx';
 import { Vignette, Grain, LightSweep } from './atmosphere.jsx';
 import { Stage } from './Stage.jsx';
 import { dureeHabillage } from './mouvement.js';
+import { dureeSon, gainSousVoix, plagesSousVoix } from './pisteAudio.js';
 
 loadFonts();
 
@@ -147,10 +148,14 @@ export function ImageOverlays({ imageOverlays }) {
   );
 }
 
-function ClipVideo({ clip }) {
+// `debut` : l'image du JT où ce plan commence. `plages` : les voix off qui
+// demandent qu'on baisse son son (secondes du JT).
+function ClipVideo({ clip, debut = 0, plages = [] }) {
   const { fps } = useVideoConfig();
   const frame = useCurrentFrame();
   const hasExtraAudio = false; 
+  // Sous une voix off, le son du plan baisse en douceur puis revient.
+  const volume = plages.length > 0 ? (f) => gainSousVoix((debut + f) / fps, plages) : 1;
   const isRendering = getRemotionEnvironment().isRendering;
   const isImage = clip.url && /\.(jpe?g|png|webp|gif|bmp)$/i.test(clip.url);
   
@@ -180,6 +185,7 @@ function ClipVideo({ clip }) {
           src={clip.url}
           startFrom={secToFrames(clip.inPoint || 0, fps)}
           muted={hasExtraAudio}
+          volume={volume}
           style={videoStyle}
           crossOrigin="anonymous"
         />
@@ -188,6 +194,7 @@ function ClipVideo({ clip }) {
           src={clip.url}
           startFrom={secToFrames(clip.inPoint || 0, fps)}
           muted={hasExtraAudio}
+          volume={volume}
           style={videoStyle}
           crossOrigin="anonymous"
         />
@@ -197,9 +204,18 @@ function ClipVideo({ clip }) {
   );
 }
 
-export function JTMaster({ clips = [], branding = {}, music, voiceover, timelineOverlays = [], imageOverlays = [] }) {
+export function JTMaster({ clips = [], branding = {}, music, voiceover, timelineOverlays = [], imageOverlays = [], audio = [] }) {
   const fps = FPS;
   const list = clips.length ? clips : [{ url: '', durationSec: 1, overlays: [] }];
+  const sons = Array.isArray(audio) ? audio : [];
+  const plages = plagesSousVoix(sons);
+  // L'image où commence chaque plan : sa durée moins le chevauchement de la
+  // transition qui le précède, comme `totalDurationInFrames`.
+  const departs = [];
+  list.reduce((curseur, clip, i) => {
+    departs.push(curseur);
+    return curseur + secToFrames(clip.durationSec, fps) - effectiveTransitionFrames(clip, list[i + 1], fps);
+  }, 0);
   const tickerOn = !!(branding.ticker && branding.ticker.enabled);
   // Ce qui occupe déjà l'image : les habillages s'en écartent d'eux-mêmes.
   const antenne = {
@@ -216,7 +232,7 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
           const dur = secToFrames(clip.durationSec, fps);
           const seq = (
             <TransitionSeries.Sequence key={`s${i}`} durationInFrames={dur}>
-              <ClipVideo clip={clip} />
+              <ClipVideo clip={clip} debut={departs[i]} plages={plages} />
             </TransitionSeries.Sequence>
           );
           // Une transition Remotion exige une durée < moitié de chaque
@@ -275,15 +291,27 @@ export function JTMaster({ clips = [], branding = {}, music, voiceover, timeline
           volume={(() => {
             const nVol = Number(music.volume);
             const base = music.volume != null ? (isNaN(nVol) ? 0.2 : nVol) : 0.2;
-            // Ducking : si voix-off présente, on baisse la musique (approx du
-            // sidechain ; pas de vrai keying dans le chemin Remotion).
-            const ducked = music.duck && voiceover && voiceover.filename ? base * 0.35 : base;
-            return ducked;
+            if (!music.duck) return base;
+            // La musique baisse pendant les voix off de la piste son, et
+            // seulement pendant. L'ancienne voix off unique la baissait d'un
+            // bout à l'autre du JT.
+            if (plages.length > 0) return (f) => base * gainSousVoix(f / fps, plages, { attenuation: 0.35 });
+            return voiceover && voiceover.filename ? base * 0.35 : base;
           })()}
           loop
           crossOrigin="anonymous"
         />
       )}
+      {/* La piste son : chaque son à sa place, rogné, à son volume. */}
+      {sons.map((son, i) => {
+        const duree = dureeSon(son);
+        if (!son.url || duree <= 0) return null;
+        return (
+          <Sequence key={son.id || `son-${i}`} from={secToFrames(son.startTime || 0, fps)} durationInFrames={Math.max(1, secToFrames(duree, fps))} layout="none">
+            <Audio src={son.url} startFrom={secToFrames(son.inPoint || 0, fps)} volume={son.volume ?? 1} crossOrigin="anonymous" />
+          </Sequence>
+        );
+      })}
       {voiceover && voiceover.filename && voiceover.url && (
         <Sequence from={secToFrames(Number.isFinite(Number(voiceover.startTime)) ? Math.max(0, Number(voiceover.startTime)) : 0, fps)}>
           <Audio src={voiceover.url} volume={voiceover.volume != null ? (isNaN(Number(voiceover.volume)) ? 1 : Number(voiceover.volume)) : 1} crossOrigin="anonymous" />
