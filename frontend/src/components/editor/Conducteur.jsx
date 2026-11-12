@@ -129,7 +129,7 @@ export function BarreStudio({
 }
 
 /** Les rushes de la semaine, à portée de main dans le studio. */
-export function RushesStudio({ videos, clips, countries, onAjouter, jingles = [] }) {
+export function RushesStudio({ videos, clips, countries, onAjouter, jingles = [], onAssembler = null, assemblageEnCours = false }) {
   const { t } = useI18n();
   const d = t.studio.deroule;
   const [recherche, setRecherche] = useState('');
@@ -163,6 +163,19 @@ export function RushesStudio({ videos, clips, countries, onAjouter, jingles = []
             className="min-w-0 flex-1 bg-transparent text-base text-[color:var(--editor-text)] placeholder:text-[color:var(--editor-muted)] focus:outline-none"
           />
         </label>
+        {onAssembler && (
+          <button
+            type="button"
+            onClick={onAssembler}
+            disabled={assemblageEnCours || videos.length === 0}
+            aria-busy={assemblageEnCours}
+            title={d.rubriquesAutoAide}
+            className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[var(--editor-accent-strong)] px-3 text-sm font-bold text-[color:var(--editor-bg)] disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
+          >
+            <Newspaper size={16} aria-hidden="true" />
+            {assemblageEnCours ? d.rubriquesAutoEnCours : d.rubriquesAuto}
+          </button>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {/* Les jingles d'abord : générique et virgules servent à chaque JT. */}

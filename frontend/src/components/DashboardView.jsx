@@ -32,6 +32,7 @@ import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
 import { BandeauJT, BarreStudio, Deroule, RushesStudio } from './editor/Conducteur.jsx';
+import { assemblerRubriques } from './editor/rubriquesAuto.js';
 import JinglesView from './JinglesView.jsx';
 import { deroule as calculerDeroule, inserer } from './editor/conducteur.js';
 import SubtitlePanel from './editor/SubtitlePanel.jsx';
@@ -802,6 +803,86 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
             : c
         )) }));
       });
+    }
+  };
+
+  // Les rubriques répétitives (séminaires, annonces, mot du JT) assemblées d'un
+  // clic. Les durées réelles sont lues avant : sans elles, le déroulé ment.
+  // Une vidéo déjà au déroulé n'est jamais reprise.
+  const [assemblageEnCours, setAssemblageEnCours] = useState(false);
+  const assemblerRubriquesAuDeroule = async () => {
+    if (assemblageEnCours) return;
+    setAssemblageEnCours(true);
+    try {
+      const urlDe = (filename) => (filename.startsWith('http') || filename.startsWith('blob:')
+        ? filename
+        : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`);
+      const dejaAuMontage = new Set((montageRef.current.clips || []).map((c) => c.filename));
+      const aMesurer = weekVideoFiles.filter((f) => (
+        f.status !== 'rejected' && !dejaAuMontage.has(f.filename) && !(Number(f.durationSec) > 0)
+      ));
+      const durees = new Map();
+      // Quatre sondes à la fois : assez pour ne pas attendre, pas assez pour
+      // saturer le navigateur sur une semaine de plusieurs centaines de fichiers.
+      for (let i = 0; i < aMesurer.length; i += 4) {
+        const lot = aMesurer.slice(i, i + 4);
+        const mesures = await Promise.all(lot.map((f) => probeVideoDuration(urlDe(f.filename || f.name || ''))));
+        lot.forEach((f, k) => { if (mesures[k] > 0) durees.set(f.filename, mesures[k]); });
+      }
+
+      const versClip = (file) => {
+        const filename = file.filename || file.name || '';
+        const connue = Number(file.sourceDurationSec) > 0
+          ? Number(file.sourceDurationSec)
+          : (durees.get(file.filename) || Number(file.durationSec) || 0);
+        const { emplois: _emplois, ...rush } = file;
+        return {
+          ...rush,
+          url: urlDe(filename),
+          instanceId: nouvelIdDePlan(),
+          overlays: [],
+          ...(connue > 0 ? { sourceDurationSec: connue, durationSec: connue } : {}),
+        };
+      };
+
+      // Le mot du JT porte le nom et le thème saisis par le journaliste.
+      let motDuJt = null;
+      try {
+        const reponse = await api.getRubrique(selectedWeek, 'motDuJt');
+        motDuJt = { orateur: reponse?.champs?.orateur || '', theme: reponse?.champs?.theme || '' };
+      } catch {
+        motDuJt = null;
+      }
+
+      let bilan = { seminaires: { fichiers: 0 }, annonces: { fichiers: 0 }, motDuJt: { fichiers: 0 }, deja: 0 };
+      modifierMontage((m) => {
+        const r = assemblerRubriques({
+          videos: weekVideoFiles,
+          clips: m.clips || [],
+          overlays: m.overlays || [],
+          nomPays: (id) => countries.find((c) => c.id === id)?.name || id,
+          versClip,
+          motDuJt,
+          creerId: () => nouvelIdDePlan(),
+        });
+        bilan = r.bilan;
+        // Rien à ajouter : même objet, donc aucune entrée d'historique inutile.
+        if (r.clips === m.clips) return m;
+        return { ...m, clips: r.clips, overlays: r.overlays };
+      }, t.studio.deroule.rubriquesAuto);
+
+      const total = bilan.seminaires.fichiers + bilan.annonces.fichiers + bilan.motDuJt.fichiers;
+      if (total === 0) {
+        addToast(t.studio.deroule.rubriquesAutoRien, 'info');
+      } else {
+        addToast(
+          t.studio.deroule.rubriquesAutoBilan(bilan.seminaires.fichiers, bilan.annonces.fichiers, bilan.motDuJt.fichiers, bilan.deja),
+          'success',
+          6000,
+        );
+      }
+    } finally {
+      setAssemblageEnCours(false);
     }
   };
 
@@ -2685,6 +2766,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     countries={countries}
                     jingles={jingles}
                     onAjouter={ajouterAuDeroule}
+                    onAssembler={assemblerRubriquesAuDeroule}
+                    assemblageEnCours={assemblageEnCours}
                   />
                   <div className="relative flex min-w-0 flex-1 items-center justify-center bg-[oklch(0.11_0.018_245)] p-3">
                   <RemotionLivePreview 
