@@ -317,7 +317,7 @@ router.post(
         .then((result) => {
           // Chemin Remotion : le worker pilote la fin via /internal/progress.
           if (result && result.delegated) return;
-          finishJob(jobId, 'done', result.url);
+          finishJob(jobId, 'done', result.url, null, result.son || null);
         })
         .catch((err) => {
           logger.error('Erreur lors du montage vidéo en arrière-plan', { error: err.message });

@@ -333,7 +333,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
         logger.warn('[internal/progress] 403 — X-Worker-Key invalide', { ip: req.ip });
         return res.status(403).json({ error: 'forbidden' });
       }
-      const { jobId, percent, status, url, error, weekId } = req.body || {};
+      const { jobId, percent, status, url, error, weekId, son } = req.body || {};
       if (!jobId || typeof jobId !== 'string') return res.status(400).json({ error: 'jobId requis' });
       logger.info('[internal/progress] callback reçu', { jobId, percent, status, hasUrl: !!url });
       const { setProgress, finishJob, registerJobWeek, getJobState } = await import('./services/editorProgress.js');
@@ -349,7 +349,7 @@ export function createApp({ uploadsDir, corsOrigins, enableMonitoring = true } =
           finishJob(jobId, 'error');
           return res.status(400).json({ error: 'url non autorisée' });
         }
-        finishJob(jobId, 'done', url);
+        finishJob(jobId, 'done', url, null, son);
       } else if (status === 'error') {
         if (error) logger.error('[internal/progress] rendu échoué', { jobId, error: String(error).slice(0, 400) });
         finishJob(jobId, 'error', null, typeof error === 'string' ? error : null);

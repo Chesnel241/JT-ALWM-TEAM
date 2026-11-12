@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { selectComposition, renderMedia, ensureBrowser, makeCancelSignal, RenderInternals } from '@remotion/renderer';
 import { decouper, avancement, avecReprises, messageEchec, reglages, placeNecessaire } from './troncons.js';
 import { HAS_R2, presignRead, uploadFile } from './r2.js';
+import { argsMesure, lireMesure, filtreCorrection, lireResultat, dansLaNorme } from './sonorite.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVE_URL = process.env.REMOTION_SERVE_URL || path.join(__dirname, '../../remotion/build');
@@ -263,24 +264,53 @@ app.post('/render', async (req, res) => {
     const finalPath = path.join(finalDir, outName);
     const liste = path.join(workDir, 'liste.txt');
     fs.writeFileSync(liste, parts.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n'));
-    await RenderInternals.callFf({
-      bin: 'ffmpeg',
-      indent: false,
-      logLevel: 'error',
-      binariesDirectory: null,
-      cancelSignal: undefined,
-      args: [
-        '-y', '-f', 'concat', '-safe', '0', '-i', liste,
-        '-map', '0:v:0', '-map', '0:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
-        // L'index en tête : le master se lit et se télécharge par morceaux
-        // sans attendre la fin du fichier.
-        '-movflags', '+faststart',
-        finalPath,
-      ],
+    const ff = (args) => RenderInternals.callFf({
+      bin: 'ffmpeg', indent: false, logLevel: 'error', binariesDirectory: null, cancelSignal: undefined, args,
     });
+    const assembler = (filtreSon) => ff([
+      '-hide_banner', '-nostats',
+      '-y', '-f', 'concat', '-safe', '0', '-i', liste,
+      '-map', '0:v:0', '-map', '0:a:0', '-c:v', 'copy',
+      ...(filtreSon ? ['-af', filtreSon] : []),
+      '-c:a', 'aac', '-b:a', '192k',
+      // L'index en tête : le master se lit et se télécharge par morceaux
+      // sans attendre la fin du fichier.
+      '-movflags', '+faststart',
+      finalPath,
+    ]);
+
+    // Le niveau sonore, à la norme de diffusion (voir sonorite.js) : une passe
+    // de mesure — le son seul, rapide — puis l'assemblage applique le gain.
+    // Le son ne doit jamais faire échouer un rendu de deux heures : en cas de
+    // problème, le master sort au niveau d'origine et on le dit.
+    let mesure = null;
+    try {
+      mesure = lireMesure((await ff(argsMesure(liste, { concat: true }))).stderr);
+    } catch (err) {
+      console.error('[/render] mesure du son impossible', { jobId, error: String(err.message || err).slice(0, 300) });
+    }
+    dire({ phase: 'assemblage', fraction: 0.3 });
+    let son = null;
+    try {
+      const sortie = await assembler(mesure ? filtreCorrection(mesure) : null);
+      const resultat = mesure ? lireResultat(sortie.stderr) : null;
+      if (mesure && resultat) {
+        son = {
+          avant: mesure.integre,
+          apres: resultat.integre,
+          crete: resultat.crete,
+          mode: resultat.mode,
+          norme: dansLaNorme(resultat.integre),
+        };
+      }
+    } catch (err) {
+      if (!mesure) throw err;
+      console.error('[/render] correction du son échouée, assemblage sans correction', { jobId, error: String(err.message || err).slice(0, 300) });
+      await assembler(null);
+    }
     const taille = fs.statSync(finalPath).size;
     if (!taille) throw new Error('Master vide après assemblage.');
-    console.log('[/render] master prêt', { jobId, Mo: Math.round(taille / 1e6), troncons: parts.length });
+    console.log('[/render] master prêt', { jobId, Mo: Math.round(taille / 1e6), troncons: parts.length, son });
 
     let url = `/uploads/exports/${outName}`;
     if (HAS_R2) {
@@ -288,7 +318,7 @@ app.post('/render', async (req, res) => {
       await uploadFile(finalPath, r2Key, 'video/mp4');
       url = await presignRead(r2Key, 60 * 60 * 24);
     }
-    await callback(returnTo, jobId, { jobId, weekId, percent: 100, status: 'done', url }, 'done');
+    await callback(returnTo, jobId, { jobId, weekId, percent: 100, status: 'done', url, son }, 'done');
   } catch (err) {
     console.error('Render failed', err);
     await callback(returnTo, jobId, { jobId, weekId, status: 'error', error: String(err.message || err).slice(0, 400) }, 'error');

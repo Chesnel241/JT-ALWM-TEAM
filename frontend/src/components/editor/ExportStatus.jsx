@@ -34,6 +34,14 @@ export function libellePhase(phase, t) {
   }[phase] || dit.exportPreparation;
 }
 
+/** « −23,0 » : un niveau en décibels, avec le vrai signe moins et la virgule. */
+export function formaterNiveau(valeur) {
+  const n = Number(valeur);
+  if (!Number.isFinite(n)) return '';
+  const texte = Math.abs(n).toFixed(1).replace('.', ',');
+  return n < 0 ? `\u2212${texte}` : texte;
+}
+
 export default function ExportStatus({
   enCours,
   progression = 0,
@@ -42,6 +50,7 @@ export default function ExportStatus({
   erreur = null,
   urlVideo = null,
   semaine = '',
+  son = null,
   onReessayer,
 }) {
   const { t } = useI18n();
@@ -130,6 +139,12 @@ export default function ExportStatus({
           </a>
           {boutonReplier}
         </div>
+        {/* Le niveau du son tel que le master le porte, mesuré après correction. */}
+        {son && Number.isFinite(son.apres) && (
+          <p className="mt-2 text-xs text-[color:var(--editor-muted)]">
+            {t.studio.panneaux.exportSon(formaterNiveau(son.apres), Number.isFinite(son.crete) ? formaterNiveau(son.crete) : null, son.norme)}
+          </p>
+        )}
       </div>
     );
   }

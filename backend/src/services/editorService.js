@@ -9,6 +9,7 @@ import logger from '../logger/index.js';
 import { generateAssFile } from '../data/overlayTemplates.js';
 import { setProgress } from './editorProgress.js';
 import { uploadsDir } from '../lib/paths.js';
+import { normaliserSonMaster } from './sonMaster.js';
 
 let isRendering = false;
 
@@ -466,6 +467,8 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
     const finalPath = await assembleMaster(normPaths, normalizedClips, opts, outputPath, workDir, (pct) => {
       setProgress(jobId, 70 + (pct / 100) * 20, 'encoding');
     });
+    // Le son à la norme de diffusion, sans réencoder l'image (voir sonMaster.js).
+    const son = finalPath && fs.existsSync(finalPath) ? await normaliserSonMaster(finalPath) : null;
     setProgress(jobId, 90, 'uploading');
 
 
@@ -500,7 +503,7 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
     if (exportStat.size !== finalStat.size) {
       throw new Error('Copie du master incomplète (taille destination ≠ source).');
     }
-    return { url: `/uploads/exports/${outputFilename}` };
+    return { url: `/uploads/exports/${outputFilename}`, son };
   } finally {
     isRendering = false;
     if (workDir) {

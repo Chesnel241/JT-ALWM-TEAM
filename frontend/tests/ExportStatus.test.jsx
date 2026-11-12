@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import ExportStatus from '../src/components/editor/ExportStatus.jsx';
+import ExportStatus, { formaterNiveau } from '../src/components/editor/ExportStatus.jsx';
 import { I18nProvider } from '../src/i18n/I18nContext.jsx';
 import { resteRendu, chronometre } from '../src/lib/envoi.js';
 
@@ -51,5 +51,31 @@ describe('le temps restant du rendu', () => {
     rerender(vue(20));
     expect(screen.getByText('encore environ 1 h 20')).toBeInTheDocument();
     expect(screen.getByText(/vous pouvez fermer cette page/)).toBeInTheDocument();
+  });
+});
+
+// LE CONSTAT : aucune étape ne réglait le niveau du son, et personne ne pouvait
+// savoir si un master était diffusable. Le moteur le mesure maintenant après
+// correction : le studio le dit.
+describe('le niveau du son du master', () => {
+  it('écrit un niveau avec le vrai signe moins et la virgule', () => {
+    expect(formaterNiveau(-23.04)).toBe('\u221223,0');
+    expect(formaterNiveau(0.5)).toBe('0,5');
+    expect(formaterNiveau('rien')).toBe('');
+  });
+
+  it('dit que le master est à la norme de diffusion', () => {
+    render(<I18nProvider><ExportStatus urlVideo="/x.mp4" son={{ apres: -23, crete: -1.4, norme: true }} /></I18nProvider>);
+    expect(screen.getByText(/Son : \u221223,0 LUFS · crête \u22121,4 dBTP — à la norme de diffusion/)).toBeInTheDocument();
+  });
+
+  it('prévient quand le master sort de la norme', () => {
+    render(<I18nProvider><ExportStatus urlVideo="/x.mp4" son={{ apres: -19.5, crete: null, norme: false }} /></I18nProvider>);
+    expect(screen.getByText(/hors de la norme de diffusion, à réécouter/)).toBeInTheDocument();
+  });
+
+  it('ne dit rien du son quand le moteur ne l’a pas mesuré', () => {
+    render(<I18nProvider><ExportStatus urlVideo="/x.mp4" /></I18nProvider>);
+    expect(screen.queryByText(/LUFS/)).toBeNull();
   });
 });

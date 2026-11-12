@@ -123,7 +123,31 @@ export function setProgress(jobId, percent, status = 'processing') {
  * ne voyait que « Erreur serveur lors du montage » et ne savait ni quel plan
  * corriger ni s'il fallait simplement relancer.
  */
-export function finishJob(jobId, status = 'done', url = null, message = null) {
+/**
+ * Le bilan sonore envoyé par le moteur, réduit à ce qu'on affiche : des
+ * nombres bornés et un mode connu. Le reste est jeté — le studio n'affiche
+ * jamais une valeur telle qu'elle est arrivée.
+ */
+export function nettoyerSon(son) {
+  if (!son || typeof son !== 'object') return null;
+  const borne = (v, min, max) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= min && n <= max ? Math.round(n * 10) / 10 : null;
+  };
+  const avant = borne(son.avant, -99, 10);
+  const apres = borne(son.apres, -99, 10);
+  const crete = borne(son.crete, -99, 10);
+  if (apres === null) return null;
+  return {
+    avant,
+    apres,
+    crete,
+    mode: son.mode === 'linear' || son.mode === 'dynamic' ? son.mode : null,
+    norme: son.norme === true,
+  };
+}
+
+export function finishJob(jobId, status = 'done', url = null, message = null, son = null) {
   if (!jobId) return;
   if (finishedIds.has(jobId)) return; // déjà terminé + purgé : ignore.
   const job = ensure(jobId);
@@ -136,8 +160,9 @@ export function finishJob(jobId, status = 'done', url = null, message = null) {
   job.message = status === 'error' && typeof message === 'string' && message.trim()
     ? message.trim().slice(0, 400)
     : null;
+  job.son = status === 'done' ? nettoyerSon(son) : null;
   job.doneAt = Date.now();
-  const payload = `data: ${JSON.stringify({ percent: job.percent, status, url, message: job.message })}\n\n`;
+  const payload = `data: ${JSON.stringify({ percent: job.percent, status, url, message: job.message, son: job.son })}\n\n`;
   for (const res of job.listeners) {
     try {
       if (res._hb) { clearInterval(res._hb); res._hb = null; }
@@ -147,7 +172,7 @@ export function finishJob(jobId, status = 'done', url = null, message = null) {
   }
   job.listeners.clear();
   const weekId = job.weekId || jobWeekMap.get(jobId);
-  progressIo?.emit('editor_job_update', { jobId, weekId, percent: job.percent, status, url, message: job.message });
+  progressIo?.emit('editor_job_update', { jobId, weekId, percent: job.percent, status, url, message: job.message, son: job.son });
   // Conserve l'état terminé un moment (récupérable via /result ou reconnexion
   // SSE), puis purge + pose un tombstone pour bloquer les callbacks rejoués.
   job.timeout = setTimeout(() => {
@@ -166,7 +191,7 @@ export function finishJob(jobId, status = 'done', url = null, message = null) {
 export function getJobState(jobId) {
   const job = jobs.get(jobId);
   if (!job) return null;
-  return { percent: job.percent, status: job.status, url: job.url, message: job.message || null };
+  return { percent: job.percent, status: job.status, url: job.url, message: job.message || null, son: job.son || null };
 }
 
 export function addListener(jobId, res) {
@@ -177,7 +202,7 @@ export function addListener(jobId, res) {
   // résultat (url) au lieu de repartir à 0.
   if (isFinished(job.status)) {
     try {
-      res.write(`data: ${JSON.stringify({ percent: job.percent, status: job.status, url: job.url, message: job.message || null })}\n\n`);
+      res.write(`data: ${JSON.stringify({ percent: job.percent, status: job.status, url: job.url, message: job.message || null, son: job.son || null })}\n\n`);
       res.end();
     } catch { /* ignore */ }
     return;

@@ -18,7 +18,7 @@ describe('editorProgress recoverable jobs', () => {
     finishJob(id, 'done', 'https://local.example/export.mp4');
 
     const state = getJobState(id);
-    expect(state).toEqual({ percent: 100, status: 'done', url: 'https://local.example/export.mp4', message: null });
+    expect(state).toEqual({ percent: 100, status: 'done', url: 'https://local.example/export.mp4', message: null, son: null });
   });
 
   it('pousse immédiatement l\'état final à un listener qui se (re)connecte après la fin', () => {

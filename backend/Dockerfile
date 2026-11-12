@@ -45,6 +45,10 @@ COPY --from=builder /app/package*.json ./
 # /app/src/data. Ce fichier ne dépend de rien, on ne copie que lui.
 # D'où le contexte de build à la racine du dépôt (docker-compose.yml, CI).
 COPY remotion/src/identite.js /remotion/src/identite.js
+# La norme sonore du master, partagée avec le moteur de rendu : sonMaster.js
+# importe ../../../worker/src/sonorite.js, soit /worker/src/sonorite.js.
+# Ce fichier ne dépend de rien non plus.
+COPY worker/src/sonorite.js /worker/src/sonorite.js
 
 # Create uploads directory with proper permissions
 RUN mkdir -p /app/uploads && chown -R node:node /app

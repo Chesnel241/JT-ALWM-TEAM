@@ -497,6 +497,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [exportProgress, setExportProgress] = useState(0);
   const [exportPhase, setExportPhase] = useState('');
   const [exportError, setExportError] = useState(null);
+  // Le niveau du son mesuré sur le master fini (EBU R 128), quand le moteur le donne.
+  const [exportSon, setExportSon] = useState(null);
   const [exportStartedAt, setExportStartedAt] = useState(null);
   const [exportElapsed, setExportElapsed] = useState(0);
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
@@ -1396,6 +1398,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         if (renduEnCours(data.status) && !isGeneratingVideoRef.current) {
           trackJob(data.jobId, { resume: true });
         } else if (data.status === 'done' && data.url) {
+          setExportSon(data.son || null);
           setGeneratedVideoUrl(/^https?:\/\//.test(data.url) ? data.url : `${API_BASE}${data.url}`);
           setIsGeneratingVideo(false);
           setExportProgress(100);
@@ -1428,10 +1431,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       if (safetyRef.current) { clearTimeout(safetyRef.current); safetyRef.current = null; }
       if (sseRef.current) { try { sseRef.current.close(); } catch { /* ignore */ } sseRef.current = null; }
     };
-    const succeed = (url) => {
+    const succeed = (url, son = null) => {
       if (settled) return;
       settled = true;
       stop();
+      setExportSon(son || null);
       localStorage.removeItem(JOB_STORE_KEY);
       const finalUrl = /^https?:\/\//.test(url) ? url : `${API_BASE}${url}`;
       setExportProgress(100);
@@ -1449,16 +1453,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       setExportError(msg);
       if (!silent) addToast(msg, 'error', 6000);
     };
-    const handleState = ({ percent, status, url, message }) => {
+    const handleState = ({ percent, status, url, message, son }) => {
       if (typeof percent === 'number') setExportProgress(percent);
       if (status && status !== 'unknown') setExportPhase(status);
-      if (status === 'done' && url) succeed(url);
+      if (status === 'done' && url) succeed(url, son);
       // La raison donnée par le serveur dit quel plan ou quel passage corriger.
       else if (status === 'error') fail(message || 'Le rendu a échoué. Relancez-le.');
     };
 
     setIsGeneratingVideo(true);
     setExportError(null);
+    setExportSon(null);
     setExportStartedAt(Date.now());
     localStorage.setItem(JOB_STORE_KEY, jobId);
     if (!resume) {
@@ -2669,6 +2674,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     secondes={exportElapsed}
                     erreur={exportError}
                     urlVideo={generatedVideoUrl}
+                    son={exportSon}
                     semaine={selectedWeek}
                     onReessayer={() => { setExportError(null); handleGenerateVideo(); }}
                   />
@@ -2788,6 +2794,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     secondes={exportElapsed}
                     erreur={exportError}
                     urlVideo={generatedVideoUrl}
+                    son={exportSon}
                     semaine={selectedWeek}
                     onReessayer={() => { setExportError(null); handleGenerateVideo(); }}
                   />

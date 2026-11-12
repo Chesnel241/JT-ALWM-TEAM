@@ -81,7 +81,21 @@ describe('POST /api/editor/internal/progress (callback worker Cloud Run)', () =>
       .set('X-Worker-Key', 'test-secret-key')
       .send({ jobId, status: 'done', url });
     expect(res.status).toBe(200);
-    expect(getJobState(jobId)).toEqual({ percent: 100, status: 'done', url, message: null });
+    expect(getJobState(jobId)).toEqual({ percent: 100, status: 'done', url, message: null, son: null });
+  });
+
+  // LE BESOIN : le moteur mesure le son du master après correction (EBU R 128).
+  // Le bilan arrive par ce rappel ; il est nettoyé avant d'être gardé.
+  it('garde le bilan sonore envoyé par le moteur, nettoyé', async () => {
+    const jobId = `job-son-${Math.random()}`;
+    const url = '/uploads/exports/son.mp4';
+    setProgress(jobId, 90, 'encoding');
+    const res = await request(app)
+      .post('/api/editor/internal/progress')
+      .set('X-Worker-Key', 'test-secret-key')
+      .send({ jobId, status: 'done', url, son: { avant: -17.44, apres: -23.02, crete: -1.31, mode: 'linear', norme: true, html: '<b>' } });
+    expect(res.status).toBe(200);
+    expect(getJobState(jobId).son).toEqual({ avant: -17.4, apres: -23, crete: -1.3, mode: 'linear', norme: true });
   });
 
   it('rejette une URL de résultat d\'origine non autorisée (anti-injection)', async () => {

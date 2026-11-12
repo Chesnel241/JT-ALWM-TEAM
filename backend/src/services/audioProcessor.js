@@ -1,12 +1,15 @@
 import ffmpeg from '../lib/ffmpeg.js';
 import path from 'path';
 import fs from 'fs';
+import { CIBLE_SON } from '../../../worker/src/sonorite.js';
 
 /**
  * Process an uploaded voiceover audio file to apply "Studio TV" effects:
  * - Highpass filter (removes low rumbles)
  * - Compressor (levels out the volume, making it punchy)
- * - Loudnorm (broadcast standard loudness normalization to -14 LUFS)
+ * - Loudnorm : la norme de diffusion EBU R 128 (−23 LUFS, crête −1 dBTP), la même
+ *   que le master. À −14 LUFS (cible des plateformes web), la voix off passait
+ *   environ 9 LU au-dessus des reportages.
  * 
  * @param {string} inputPath - Path to the raw audio file (e.g. webm from browser)
  * @param {string} outputPath - Path where the processed mp3 should be saved
@@ -28,7 +31,7 @@ export function processVoiceover(inputPath, outputPath) {
       "highpass=f=80",
       "acompressor=threshold=0.1:ratio=4:attack=5:release=100",
       "treble=g=2:f=4000",
-      "loudnorm=I=-14:TP=-1.5:LRA=11"
+      `loudnorm=I=${CIBLE_SON.integre}:TP=${CIBLE_SON.crete}:LRA=11`
     ].join(',');
 
     // timeout (secondes) passé au CONSTRUCTEUR : fluent-ffmpeg 2.x n'a PAS
