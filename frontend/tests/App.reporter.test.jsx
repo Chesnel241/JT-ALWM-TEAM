@@ -7,7 +7,11 @@ const COUNTRIES = [{ id: 'sn', name: 'Sénégal', code: 'SN' }];
 
 // Les drapeaux de l'accueil (la page « Espace reportage », montée mais
 // cachée, a les siens).
-const drapeauxAccueil = async () => within(await screen.findByRole('region', { name: 'Envoyer votre reportage' }));
+// L'application se charge en différé : sous la charge de la suite complète, la
+// première vue dépassait parfois la seconde d'attente par défaut (1 063 ms
+// relevés). Même attente que App.assistant.test.jsx.
+const CHARGEMENT = { timeout: 5000 };
+const drapeauxAccueil = async () => within(await screen.findByRole('region', { name: 'Envoyer votre reportage' }, CHARGEMENT));
 const WEEKS = [{ id: '2026-W34', status: 'active', startDate: '2026-08-18', cutoffAt: '2026-08-23T08:30:00.000Z' }];
 
 function stubMatchMedia() {
@@ -44,7 +48,7 @@ describe('App — URL /journalistes', () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
-    expect(await screen.findByText('Que souhaitez-vous faire ?')).toBeInTheDocument();
+    expect(await screen.findByText('Que souhaitez-vous faire ?', {}, CHARGEMENT)).toBeInTheDocument();
     expect((await drapeauxAccueil()).getByRole('button', { name: /Sénégal/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Enregistrer une voix-off/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Télécharger le JT/ })).toBeInTheDocument();

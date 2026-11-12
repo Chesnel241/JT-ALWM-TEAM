@@ -46,6 +46,7 @@ import {
   planSous, rangInsertion, retirerHabillage, texteHabillage,
 } from './habillagesPlans.js';
 import { ecrireSon, nouvellePlaceSon, placeSon, retirerSon } from './pisteSon.js';
+import { coupeVoisine, rognerALaTete } from './raccourcis.js';
 import { traceFormeOnde, useFormeOnde } from './formeOnde.js';
 import { API_BASE } from '../../api/index.js';
 
@@ -247,7 +248,11 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
       onPointerDown={beginDrag('move')}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
-        if (event.key === 'Enter' || event.key === ' ') {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') {
+          // ⌘/Ctrl D sur un titre : le titre, pas le plan sélectionné.
+          event.preventDefault();
+          duplicate(event);
+        } else if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onOpen();
         } else if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -1272,6 +1277,37 @@ export default function Timeline({
     } catch { /* lecteur indisponible */ }
   }, [playerRef]);
 
+  // I et O : le plan sous la tête de lecture commence, ou s'arrête, ici.
+  const rognerTete = useCallback((cote) => {
+    const item = findClipAtTime(layout, playheadSec, selectedClipId);
+    const plage = item ? rognerALaTete(item.clip, item, playheadSec, cote) : null;
+    if (!plage) { setStatusMessage(t.studio.timeline.msgRognerImpossible); return; }
+    commitClips((courant) => courant.map((clip, index) => (String(clipId(clip, index)) === String(item.id)
+      ? { ...clip, inPoint: plage.inPoint, outPoint: plage.outPoint, durationSec: plage.durationSec, sourceDurationSec: plage.sourceDurationSec ?? clip.sourceDurationSec }
+      : clip)), `rognage-tete:${item.id}`);
+    // Après « I », la même image est maintenant le début du plan : la tête y reste.
+    if (cote === 'debut') seekToTime(item.start);
+    setStatusMessage(cote === 'debut' ? t.studio.timeline.msgDebutIci : t.studio.timeline.msgFinIci);
+  }, [commitClips, layout, playheadSec, seekToTime, selectedClipId, t]);
+
+  // ⌘/Ctrl D : le plan choisi, copié juste après lui.
+  const dupliquerSelection = useCallback(() => {
+    if (!selectedClipId) return;
+    let copie = null;
+    commitClips((courant) => {
+      const index = courant.findIndex((clip, k) => String(clipId(clip, k)) === String(selectedClipId));
+      if (index < 0) return courant;
+      copie = { ...courant[index], instanceId: createId('clip') };
+      const suite = courant.slice();
+      suite.splice(index + 1, 0, copie);
+      return suite;
+    });
+    if (copie) {
+      setSelectedClipId(copie.instanceId);
+      setStatusMessage(t.studio.timeline.msgPlanDuplique);
+    }
+  }, [commitClips, selectedClipId, setSelectedClipId, t]);
+
   useEffect(() => {
     if (compact) return undefined;
     const handleShortcut = (event) => {
@@ -1289,6 +1325,33 @@ export default function Timeline({
       if (modifier && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         splitAt(playheadSec);
+        return;
+      }
+      if (modifier && event.key.toLowerCase() === 'd') {
+        // Sans preventDefault, le navigateur ajoute la page aux favoris.
+        event.preventDefault();
+        dupliquerSelection();
+        return;
+      }
+      if (modifier || event.altKey) {
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          // Alt + flèche : décaler la sélection (plus bas).
+        } else return;
+      }
+      const touche = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      const lecteur = playerRef?.current;
+      if (touche === 'i' || touche === 'o') { event.preventDefault(); rognerTete(touche === 'i' ? 'debut' : 'fin'); return; }
+      if (touche === 'j') { event.preventDefault(); try { lecteur?.pause?.(); } catch { /* lecteur indisponible */ } seekToTime(playheadSec - 1); return; }
+      if (touche === 'k') { event.preventDefault(); try { lecteur?.pause?.(); } catch { /* lecteur indisponible */ } return; }
+      if (touche === 'l') { event.preventDefault(); try { lecteur?.play?.(); } catch { /* lecteur indisponible */ } return; }
+      if (touche === '+' || touche === '=') { event.preventDefault(); zoomer((valeur) => valeur * 1.25); return; }
+      if (touche === '-') { event.preventDefault(); zoomer((valeur) => valeur / 1.25); return; }
+      if (touche === 'z') { event.preventDefault(); fitToView(); return; }
+      if (touche === 'Home') { event.preventDefault(); seekToTime(0); return; }
+      if (touche === 'End') { event.preventDefault(); seekToTime(layout.total); return; }
+      if (touche === 'ArrowUp' || touche === 'ArrowDown') {
+        event.preventDefault();
+        seekToTime(coupeVoisine(layout, playheadSec, touche === 'ArrowDown' ? 1 : -1));
         return;
       }
       if (event.key.toLowerCase() === 'v') setToolMode('select');
@@ -1326,7 +1389,7 @@ export default function Timeline({
       window.removeEventListener('keydown', handleShortcut);
       window.removeEventListener('click', rendreLeFocus);
     };
-  }, [compact, decalerSelection, nudgePlayhead, playheadSec, redo, removeSelected, splitAt, togglePlayback, undo]);
+  }, [compact, decalerSelection, dupliquerSelection, fitToView, layout, nudgePlayhead, playerRef, playheadSec, redo, removeSelected, rognerTete, seekToTime, splitAt, togglePlayback, undo, zoomer]);
 
   const playheadX = clamp(playheadSec, 0, layout.total) * pxPerSec;
   const activeItem = findClipAtTime(layout, playheadSec, selectedClipId) || findClipAtTime(layout, playheadSec);
@@ -1686,8 +1749,8 @@ export default function Timeline({
 
       {!compact && (
         <div className="flex min-h-8 items-center justify-between gap-4 border-t border-[var(--editor-border)] bg-[var(--editor-panel)] px-3 text-[11px] text-[var(--editor-muted)]">
-          <span className="truncate" aria-live="polite">{statusMessage || t.studio.timeline.msgAide}</span>
-          <span className="hidden shrink-0 lg:inline">{t.studio.timeline.raccourcis}</span>
+          <span className="min-w-0 truncate" aria-live="polite">{statusMessage || t.studio.timeline.msgAide}</span>
+          <span className="hidden min-w-0 truncate text-right lg:block" title={t.studio.timeline.raccourcis}>{t.studio.timeline.raccourcis}</span>
         </div>
       )}
     </section>
