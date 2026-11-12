@@ -543,13 +543,27 @@ export default function Timeline({
   syncState = 'saved',
   presenceCount = 1,
   compact = false,
+  // « integree » : posée sous le lecteur de la vue simple. La barre du studio y
+  // porte déjà la semaine, l'annulation, la présence, l'état et « Générer », et
+  // le déroulé les actions du plan choisi : on ne les répète pas ici.
+  variante = 'complete',
+  // Sélection pilotée de l'extérieur (le déroulé de la vue simple) : un seul
+  // plan choisi pour tout le studio. `undefined` : la timeline la gère seule.
+  selection = undefined,
+  onSelection = null,
 }) {
   const { t } = useI18n();
   const rootRef = useRef(null);
   const scrollRef = useRef(null);
   const clipsRef = useRef(clips);
   const [toolMode, setToolMode] = useState('select');
-  const [selectedClipId, setSelectedClipId] = useState(null);
+  const integree = variante === 'integree';
+  const [selectionInterne, setSelectionInterne] = useState(null);
+  const selectedClipId = selection !== undefined ? selection : selectionInterne;
+  const setSelectedClipId = useCallback((valeur) => {
+    setSelectionInterne(valeur);
+    onSelection?.(valeur);
+  }, [onSelection]);
   const [snapping, setSnapping] = useState(true);
   const [playheadSec, setPlayheadSec] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
@@ -580,8 +594,8 @@ export default function Timeline({
   const reperesRognage = useMemo(() => pointsDeRognage(timelineOverlays, playheadSec), [timelineOverlays, playheadSec]);
   const totalPx = Math.max(1, layout.total * pxPerSec);
   const contentWidth = Math.max(viewportWidth, totalPx);
-  const videoTrackHeight = compact ? 64 : 112;
-  const titleTrackHeight = compact ? 0 : 64;
+  const videoTrackHeight = compact ? 64 : integree ? 84 : 112;
+  const titleTrackHeight = compact ? 0 : integree ? 52 : 64;
 
   clipsRef.current = clips;
 
@@ -1025,20 +1039,24 @@ export default function Timeline({
             </div>
             {/* La semaine montée, visible dans le studio : on la confondait
                 en passant d'un onglet à l'autre. */}
-            {libelleSemaine && <span className="shrink-0 rounded-md border border-[var(--editor-border)] px-2 py-1 text-[11px] font-semibold text-[var(--editor-muted)]">{libelleSemaine}</span>}
-            {onBrowseRushes && <ToolButton icon={<FolderOpen size={16} />} label={t.studio.timeline.rushs} onClick={onBrowseRushes} title={t.studio.timeline.rushsTitre} />}
+            {libelleSemaine && !integree && <span className="shrink-0 rounded-md border border-[var(--editor-border)] px-2 py-1 text-[11px] font-semibold text-[var(--editor-muted)]">{libelleSemaine}</span>}
+            {onBrowseRushes && !integree && <ToolButton icon={<FolderOpen size={16} />} label={t.studio.timeline.rushs} onClick={onBrowseRushes} title={t.studio.timeline.rushsTitre} />}
             <ToolButton icon={<MousePointer2 size={16} />} label={t.studio.timeline.selection} shortcut="V" active={toolMode === 'select'} onClick={() => setToolMode('select')} />
             <ToolButton icon={<Scissors size={16} />} label={t.studio.timeline.lame} shortcut="B" active={toolMode === 'blade'} onClick={() => setToolMode('blade')} />
             <ToolButton icon={<Scissors size={16} />} label={t.studio.timeline.couperCurseur} shortcut="⌘K" disabled={clips.length === 0} onClick={() => splitAt(playheadSec)} />
             <span className="mx-0.5 h-7 w-px shrink-0 bg-[var(--editor-border)]" aria-hidden="true" />
             <ToolButton icon={<Magnet size={16} />} label={t.studio.timeline.magnetisme} shortcut="M" active={snapping} onClick={() => setSnapping((value) => !value)} />
-            <ToolButton icon={<Undo2 size={16} />} label={t.studio.timeline.annuler} disabled={!annulationPossible} onClick={undo} compact shortcut="⌘Z" />
-            <ToolButton icon={<Redo2 size={16} />} label={t.studio.timeline.retablir} disabled={!retablissementPossible} onClick={redo} compact shortcut="⇧⌘Z" />
+            {!integree && (
+              <>
+                <ToolButton icon={<Undo2 size={16} />} label={t.studio.timeline.annuler} disabled={!annulationPossible} onClick={undo} compact shortcut="⌘Z" />
+                <ToolButton icon={<Redo2 size={16} />} label={t.studio.timeline.retablir} disabled={!retablissementPossible} onClick={redo} compact shortcut="⇧⌘Z" />
+              </>
+            )}
             {onSplitText && <ToolButton icon={<Type size={16} />} label={t.studio.timeline.couperTitre} disabled={timelineOverlays.length === 0} onClick={onSplitText} title={t.studio.timeline.couperTitreTitre} responsiveCompact />}
-            {onGlobalLayer && <ToolButton icon={<Newspaper size={16} />} label={t.studio.timeline.habillageJT} active={!!brandingActive} onClick={onGlobalLayer} responsiveCompact />}
+            {onGlobalLayer && !integree && <ToolButton icon={<Newspaper size={16} />} label={t.studio.timeline.habillageJT} active={!!brandingActive} onClick={onGlobalLayer} responsiveCompact />}
             
             {/* Indicateur de présence & synchro cloud */}
-            <div className="hidden min-[1280px]:flex items-center gap-2 px-1">
+            <div className={`${integree ? 'hidden' : 'hidden min-[1280px]:flex'} items-center gap-2 px-1`}>
               {presenceCount > 1 && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold shadow-xs motion-voile" title={`${presenceCount} collaborateurs sont connectés sur cette semaine`}>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -1069,7 +1087,7 @@ export default function Timeline({
               <ToolButton icon={<Maximize2 size={15} />} label={t.studio.timeline.ajuster} compact onClick={fitToView} title={t.studio.timeline.ajusterTitre} />
             </div>
           </div>
-            <button
+            {!integree && <button
               type="button"
               data-generer-master
               onClick={onGenerate}
@@ -1078,10 +1096,10 @@ export default function Timeline({
               className="ml-2 h-10 shrink-0 whitespace-nowrap rounded-md border border-[var(--editor-accent)] bg-[var(--editor-accent-strong)] px-3 text-xs font-bold text-[var(--editor-bg)] transition-[transform,background-color,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)] disabled:cursor-not-allowed disabled:opacity-35"
             >
               {isGenerating ? t.studio.timeline.assemblageEnCours : t.studio.timeline.genererMaster}
-            </button>
+            </button>}
           </div>
 
-          <div className="flex min-h-[46px] items-center gap-2 overflow-x-auto border-b border-[var(--editor-border)] bg-[var(--editor-bg)] px-2.5 py-1" role="toolbar" aria-label={t.studio.timeline.actionsClip}>
+          {!integree && <div className="flex min-h-[46px] items-center gap-2 overflow-x-auto border-b border-[var(--editor-border)] bg-[var(--editor-bg)] px-2.5 py-1" role="toolbar" aria-label={t.studio.timeline.actionsClip}>
             {selectedClip ? (
               <>
                 <div className="min-w-0 max-w-[240px] shrink px-1.5">
@@ -1109,7 +1127,7 @@ export default function Timeline({
             ) : (
               <span className="px-1.5 text-xs text-[var(--editor-muted)]">{t.studio.timeline.aideClip}</span>
             )}
-          </div>
+          </div>}
         </>
       )}
 

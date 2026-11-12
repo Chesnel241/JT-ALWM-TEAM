@@ -7,7 +7,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  ArrowDown, ArrowUp, Captions, Check, ChevronDown, ChevronRight, Copy, Film, GripVertical,
+  ArrowDown, ArrowUp, Captions, Check, ChevronDown, ChevronRight, ChevronUp, Copy, Film, GripVertical,
   LayoutList, Newspaper, Plus, Redo2, Rows3, Scissors, Search, Trash2, Type, Undo2, Video,
 } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext.jsx';
@@ -405,6 +405,10 @@ function Plan({
 export function Deroule({
   clips, countries, playerRef, choisiId, onChoisir, modifierMontage, nouvelId,
   onRaccourcir, onNom, onSousTitres, onAnnuler, onRetablir,
+  // Faux quand la timeline est ouverte sous le lecteur : c'est elle qui prend
+  // le clavier. Deux écouteurs sur Espace se compensaient (lecture puis pause
+  // dans le même geste) et Suppr aurait retiré deux plans.
+  clavier = true,
 }) {
   const { t } = useI18n();
   const d = t.studio.deroule;
@@ -472,10 +476,11 @@ export function Deroule({
     }
   };
   useEffect(() => {
+    if (!clavier) return undefined;
     const ecouter = (event) => raccourcis.current?.(event);
     window.addEventListener('keydown', ecouter);
     return () => window.removeEventListener('keydown', ecouter);
-  }, []);
+  }, [clavier]);
 
   // Le plan choisi reste visible quand on parcourt la liste au clavier.
   const liste = useRef(null);
@@ -540,5 +545,91 @@ export function Deroule({
         </DndContext>
       )}
     </section>
+  );
+}
+
+/** Hauteurs de la timeline de la vue simple, en pixels. */
+export const DOCK_MIN = 220;
+export const DOCK_MAX = 640;
+export const DOCK_DEFAUT = 300;
+
+/** La hauteur permise : jamais plus de 62 % de la fenêtre, pour garder l'image. */
+export function borneDock(valeur, hauteurFenetre = 900) {
+  const plafond = Math.max(DOCK_MIN, Math.min(DOCK_MAX, Math.round(hauteurFenetre * 0.62)));
+  const v = Number(valeur);
+  return Math.round(Math.min(plafond, Math.max(DOCK_MIN, Number.isFinite(v) ? v : DOCK_DEFAUT)));
+}
+
+/**
+ * La timeline sous le lecteur, dans la vue simple.
+ *
+ * LE CONSTAT : la timeline n'existait que dans la vue détaillée. En vue
+ * simple, on ne voyait jamais où tombaient les plans ni les titres, et on
+ * réglait un titre avec des secondes tapées à la main. Elle est maintenant
+ * là, repliable et réglable en hauteur, avec les mêmes gestes.
+ */
+export function DockTimeline({ ouvert, hauteur, onBasculer, onHauteur, children }) {
+  const { t } = useI18n();
+  const d = t.studio.deroule;
+  const fenetre = () => (typeof window === 'undefined' ? 900 : window.innerHeight);
+  const glisser = (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const depart = event.clientY;
+    const initiale = hauteur;
+    const bouger = (e) => onHauteur(borneDock(initiale + (depart - e.clientY), fenetre()));
+    const fin = () => {
+      window.removeEventListener('pointermove', bouger);
+      window.removeEventListener('pointerup', fin);
+      window.removeEventListener('pointercancel', fin);
+    };
+    window.addEventListener('pointermove', bouger);
+    window.addEventListener('pointerup', fin);
+    window.addEventListener('pointercancel', fin);
+  };
+  const auClavier = (event) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    event.stopPropagation();
+    onHauteur(borneDock(hauteur + (event.key === 'ArrowUp' ? 24 : -24), fenetre()));
+  };
+  return (
+    <div className="shrink-0 border-t border-[var(--editor-border)] bg-[var(--editor-bg)]">
+      {ouvert && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label={d.dockPoignee}
+          aria-valuemin={DOCK_MIN}
+          aria-valuemax={DOCK_MAX}
+          aria-valuenow={hauteur}
+          tabIndex={0}
+          title={d.dockPoignee}
+          onPointerDown={glisser}
+          onKeyDown={auClavier}
+          onDoubleClick={() => onHauteur(DOCK_DEFAUT)}
+          className="group flex h-3 cursor-row-resize touch-none items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--editor-accent)]"
+        >
+          <span className="h-1 w-12 rounded-full bg-[var(--editor-border)] group-hover:bg-[var(--editor-accent)]" aria-hidden="true" />
+        </div>
+      )}
+      <div className="flex h-9 items-center gap-3 border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-3">
+        <button
+          type="button"
+          onClick={onBasculer}
+          aria-expanded={ouvert}
+          className="inline-flex h-8 items-center gap-2 rounded-md px-2 text-sm font-bold text-[color:var(--editor-text)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
+        >
+          {ouvert ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronUp size={16} aria-hidden="true" />}
+          {ouvert ? d.dockMasquer : d.dockAfficher}
+        </button>
+        <span className="min-w-0 truncate text-xs text-[color:var(--editor-muted)]">{ouvert ? d.dockAide : d.dockAideFermee}</span>
+      </div>
+      {ouvert && (
+        <div className="flex min-h-0 flex-col overflow-hidden" style={{ height: `${hauteur}px` }}>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }

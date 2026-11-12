@@ -31,7 +31,7 @@ import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
-import { BandeauJT, BarreStudio, Deroule, RushesStudio } from './editor/Conducteur.jsx';
+import { BandeauJT, BarreStudio, Deroule, DockTimeline, RushesStudio, borneDock, DOCK_DEFAUT } from './editor/Conducteur.jsx';
 import { assemblerRubriques } from './editor/rubriquesAuto.js';
 import JinglesView from './JinglesView.jsx';
 import { deroule as calculerDeroule, inserer } from './editor/conducteur.js';
@@ -757,6 +757,23 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     return !avant;
   });
   const [planChoisi, setPlanChoisi] = useState(null);
+  // La timeline sous le lecteur de la vue simple : ouverte par défaut, sa
+  // hauteur et son état gardés sur ce poste.
+  const [dockOuvert, setDockOuvert] = useState(() => {
+    try { return localStorage.getItem('jt-studio-dock') !== 'ferme'; } catch { return true; }
+  });
+  const [hauteurDock, setHauteurDock] = useState(() => {
+    try {
+      const enregistree = Number(localStorage.getItem('jt-studio-dock-hauteur'));
+      return borneDock(enregistree > 0 ? enregistree : DOCK_DEFAUT, window.innerHeight);
+    } catch { return DOCK_DEFAUT; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('jt-studio-dock', dockOuvert ? 'ouvert' : 'ferme'); } catch { /* mode privé */ }
+  }, [dockOuvert]);
+  useEffect(() => {
+    try { localStorage.setItem('jt-studio-dock-hauteur', String(hauteurDock)); } catch { /* mode privé */ }
+  }, [hauteurDock]);
   // Les jingles : générique et virgules, gardés d'une semaine à l'autre.
   const [jingles, setJingles] = useState([]);
   const chargerJingles = useCallback(() => {
@@ -2764,8 +2781,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               </div>
                 </>
               ) : (
-                /* VUE SIMPLE : rushes · image · déroulé */
-                <div className="flex min-h-0 flex-1">
+                /* VUE SIMPLE : rushes · image · déroulé, et la timeline dessous */
+                <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex min-h-[260px] flex-1">
                   <RushesStudio
                     videos={weekVideoFiles}
                     clips={timelineClips}
@@ -2814,9 +2832,39 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                         onSousTitres={(clip) => { openSubtitleInspector(clip); montrerLePlan(clip); }}
                         onAnnuler={annulerMontage}
                         onRetablir={retablirMontage}
+                        clavier={!dockOuvert}
                       />
                     )}
                   </div>
+                </div>
+                <DockTimeline
+                  ouvert={dockOuvert}
+                  hauteur={hauteurDock}
+                  onBasculer={() => setDockOuvert((v) => !v)}
+                  onHauteur={setHauteurDock}
+                >
+                  <Timeline
+                    variante="integree"
+                    selection={planChoisi}
+                    onSelection={setPlanChoisi}
+                    clips={timelineClips}
+                    setClips={setTimelineClips}
+                    timelineOverlays={timelineOverlays}
+                    setTimelineOverlays={setTimelineOverlays}
+                    onGenerate={handleGenerateVideo}
+                    isGenerating={isGeneratingVideo}
+                    onTrimClip={openTrimInspector}
+                    onOverlayClip={openOverlayInspector}
+                    onSubtitleClip={openSubtitleInspector}
+                    playerRef={playerRef}
+                    onSplitText={handleSplitTextAtPlayhead}
+                    modifierMontage={modifierMontage}
+                    annulerMontage={annulerMontage}
+                    retablirMontage={retablirMontage}
+                    annulationPossible={peutAnnuler(historique)}
+                    retablissementPossible={peutRetablir(historique)}
+                  />
+                </DockTimeline>
                 </div>
               )}
             </div>
