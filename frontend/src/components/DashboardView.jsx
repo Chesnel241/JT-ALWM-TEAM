@@ -801,7 +801,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   };
 
   /** Un rush cliqué dans le studio rejoint le déroulé, après le plan choisi. */
-  const ajouterAuDeroule = (file) => {
+  // `rang` : la place visée quand le rush est lâché sur la timeline. Sans lui,
+  // le plan va juste après le plan choisi.
+  const ajouterAuDeroule = (file, rang = null) => {
     const instanceId = nouvelIdDePlan();
     const filename = file.filename || file.name || '';
     const externe = filename.startsWith('http') || filename.startsWith('blob:');
@@ -809,7 +811,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const connue = Number(file.sourceDurationSec) > 0 ? Number(file.sourceDurationSec) : Number(file.durationSec) > 0 ? Number(file.durationSec) : 0;
     const { emplois: _emplois, ...rush } = file;
     const plan = { ...rush, url, instanceId, overlays: [], ...(connue > 0 ? { sourceDurationSec: connue, durationSec: connue } : {}) };
-    modifierMontage((m) => ({ ...m, clips: inserer(m.clips, plan, planChoisi) }));
+    modifierMontage((m) => ({
+      ...m,
+      clips: Number.isInteger(rang) && rang >= 0
+        ? [...m.clips.slice(0, rang), plan, ...m.clips.slice(rang)]
+        : inserer(m.clips, plan, planChoisi),
+    }));
     setPlanChoisi(instanceId);
     // La durée réelle du fichier, dès qu'elle est lue : sans elle le plan
     // s'afficherait « 5 s » jusqu'au rendu.
@@ -903,6 +910,15 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     } finally {
       setAssemblageEnCours(false);
     }
+  };
+
+  // Un rush ou un jingle lâché sur la timeline. Le nom de fichier vient d'un
+  // glisser-déposer : on ne l'emploie que s'il désigne un fichier de la semaine.
+  const deposerMedia = (filename, rang) => {
+    const fichier = weekVideoFiles.find((f) => f.filename === filename)
+      || jingles.find((j) => j.filename === filename);
+    if (!fichier) { addToast(t.studio.timeline.msgDepotRefuse, 'error'); return; }
+    ajouterAuDeroule(fichier, rang);
   };
 
   // Un seul inspecteur doit être visible à la fois.
@@ -2335,10 +2351,17 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   // L'inspecteur ouvert, s'il y en a un. Les deux vues du studio (simple et
   // détaillée) l'affichent dans leur colonne de droite.
+  // Le plan tel qu'il est maintenant dans le montage, et non la copie prise à
+  // l'ouverture : la timeline peut avoir déplacé un habillage entre-temps.
+  const clipInspecte = overlayTarget
+    ? (overlayTarget.isTimelineOverlays
+      ? { ...overlayTarget, overlays: timelineOverlays }
+      : timelineClips.find((c) => c.instanceId === overlayTarget.instanceId) || overlayTarget)
+    : null;
   const panneauOuvert = overlayTarget ? (
     <OverlayPanel
       inline={true}
-      clip={overlayTarget}
+      clip={clipInspecte}
       onClose={() => setOverlayTarget(null)}
       onSave={(updatedClip) => {
         appliquerInspecteur(updatedClip);
@@ -2769,6 +2792,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   playerRef={playerRef}
                   onSplitText={handleSplitTextAtPlayhead}
                   onBrowseRushes={openRushes}
+                  onDeposerMedia={deposerMedia}
                   libelleSemaine={formatWeekLabel((weeks || []).find((w) => w.id === selectedWeek) || { id: selectedWeek }, lang)}
                   modifierMontage={modifierMontage}
                   annulerMontage={annulerMontage}
@@ -2858,6 +2882,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     onSubtitleClip={openSubtitleInspector}
                     playerRef={playerRef}
                     onSplitText={handleSplitTextAtPlayhead}
+                    onDeposerMedia={deposerMedia}
                     modifierMontage={modifierMontage}
                     annulerMontage={annulerMontage}
                     retablirMontage={retablirMontage}

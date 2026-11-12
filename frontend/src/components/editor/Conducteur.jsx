@@ -16,6 +16,7 @@ import CountryAvatar from '../CountryAvatar.jsx';
 import {
   deplacer, deroule, dupliquer, dureeParlee, instant, planALInstant, rangerRushes, retirer,
 } from './conducteur.js';
+import { TYPE_MEDIA, ecrireGlisse } from './habillagesPlans.js';
 
 /**
  * Le studio simple : les rushes à gauche, l'image au centre, le déroulé du JT
@@ -199,6 +200,8 @@ export function RushesStudio({ videos, clips, countries, onAjouter, jingles = []
                     <button
                       type="button"
                       onClick={() => onAjouter(jingle)}
+                      draggable
+                      onDragStart={(event) => ecrireGlisse(event.dataTransfer, TYPE_MEDIA, { filename: jingle.filename })}
                       title={d.ajouterAide}
                       className="group flex w-full items-center gap-2.5 rounded-lg border border-transparent p-1.5 text-left hover:border-[var(--editor-accent)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
                     >
@@ -249,6 +252,8 @@ export function RushesStudio({ videos, clips, countries, onAjouter, jingles = []
                         <button
                           type="button"
                           onClick={() => onAjouter(rush)}
+                          draggable
+                          onDragStart={(event) => ecrireGlisse(event.dataTransfer, TYPE_MEDIA, { filename: rush.filename })}
                           title={d.ajouterAide}
                           className="group flex w-full items-center gap-2.5 rounded-lg border border-transparent p-1.5 text-left hover:border-[var(--editor-accent)] hover:bg-[var(--editor-panel-raised)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
                         >

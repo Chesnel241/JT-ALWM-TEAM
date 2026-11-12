@@ -40,7 +40,14 @@ import {
 import { generateThumbnails } from '../../utils/thumbnails.js';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 import { etiquetteGeste } from './historiqueMontage.js';
-import { animationRecommandee } from '../../data/overlayTemplates.js';
+import { animationRecommandee, CLIP_TEMPLATES } from '../../data/overlayTemplates.js';
+import {
+  TYPE_MEDIA, glisseDuStudio, habillagesDesPlans, instantDuRang, lireGlisse, nouvellePlace, placerHabillage,
+  planSous, rangInsertion, retirerHabillage, texteHabillage,
+} from './habillagesPlans.js';
+
+/** Les modèles qu'on peut déposer sur un plan ou sur la piste des titres. */
+const MODELES_DEPOSABLES = CLIP_TEMPLATES.map((modele) => modele.id);
 import {
   FPS,
   MIN_CLIP_DURATION,
@@ -276,6 +283,97 @@ function OverlayBlock({ overlay, index, totalSec, pxPerSec, overlays, onChange, 
         aria-orientation="vertical"
         aria-label={t.studio.timeline.titreRognerFin}
         onPointerDown={beginDrag('right')}
+        className="absolute inset-y-0 -right-2 z-20 w-5 cursor-ew-resize touch-none"
+      >
+        <span className="absolute inset-y-1 right-2 w-1 rounded bg-v-editor-text/85" />
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Un habillage posé sur un plan (nom à l'écran, lieu, chiffre…), à sa place
+ * dans le JT. On le glisse pour changer son début, on tire ses bords pour
+ * régler son entrée et sa sortie : il ne sort jamais de son plan.
+ */
+function HabillagePlanBlock({ place, pxPerSec, reperes = [], seuilAimant = 0, onPlacer, onOuvrir, onRetirer }) {
+  const { t } = useI18n();
+  const { overlay, debut, duree, debutPlan, dureePlan } = place;
+  const nomModele = t.studio.habillages?.[overlay.templateId]?.label || overlay.templateId || t.studio.timeline.titres;
+  const texte = texteHabillage(overlay);
+  const label = texte ? `${nomModele} · ${texte}` : nomModele;
+
+  const commencer = (mode) => (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const geste = etiquetteGeste(`habillage-plan-${mode}`);
+    const departX = event.clientX;
+    const origine = { debut, duree, dureePlan };
+    // Les repères sont en temps du JT ; l'habillage vit en temps du plan.
+    const accrocher = (local) => aimanter(debutPlan + local, reperes, seuilAimant) - debutPlan;
+    let bouge = false;
+    const deplacer = (e) => {
+      if (Math.abs(e.clientX - departX) > 2) bouge = true;
+      if (!bouge) return;
+      onPlacer(nouvellePlace(origine, mode, (e.clientX - departX) / pxPerSec, accrocher), geste);
+    };
+    const finir = () => {
+      window.removeEventListener('pointermove', deplacer);
+      window.removeEventListener('pointerup', finir);
+      window.removeEventListener('pointercancel', finir);
+      if (!bouge && mode === 'move') onOuvrir();
+    };
+    window.addEventListener('pointermove', deplacer);
+    window.addEventListener('pointerup', finir);
+    window.addEventListener('pointercancel', finir);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-habillage-plan
+      onPointerDown={commencer('move')}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          event.stopPropagation();
+          onOuvrir();
+        } else if (event.key === 'Delete' || event.key === 'Backspace') {
+          // Le bloc focalisé est ce qu'on vise : ni le plan, ni un titre.
+          event.preventDefault();
+          event.stopPropagation();
+          onRetirer();
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          // Une image, ou une seconde avec Maj : le réglage fin, sans souris.
+          event.preventDefault();
+          event.stopPropagation();
+          const pas = (event.shiftKey ? 1 : 1 / 30) * (event.key === 'ArrowRight' ? 1 : -1);
+          onPlacer(nouvellePlace({ debut, duree, dureePlan }, 'move', pas), etiquetteGeste('habillage-plan-clavier'));
+        }
+      }}
+      aria-label={t.studio.timeline.etiquetteHabillagePlan(label, formatTimecode(debut), formatTimecode(duree))}
+      title={t.studio.timeline.habillageGlisser}
+      className="absolute inset-y-1 rounded border border-[var(--editor-accent)] bg-v-editor-accent/20 text-[var(--editor-text)] shadow-sm cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
+      style={{ left: `${(debutPlan + debut) * pxPerSec}px`, width: `${Math.max(6, duree * pxPerSec)}px`, touchAction: 'none' }}
+    >
+      <span
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t.studio.timeline.habillageRognerDebut}
+        onPointerDown={commencer('left')}
+        className="absolute inset-y-0 -left-2 z-20 w-5 cursor-ew-resize touch-none"
+      >
+        <span className="absolute inset-y-1 left-2 w-1 rounded bg-v-editor-text/85" />
+      </span>
+      <span className="pointer-events-none block truncate px-3 py-1.5 text-[11px] font-semibold">{label}</span>
+      <span
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t.studio.timeline.habillageRognerFin}
+        onPointerDown={commencer('right')}
         className="absolute inset-y-0 -right-2 z-20 w-5 cursor-ew-resize touch-none"
       >
         <span className="absolute inset-y-1 right-2 w-1 rounded bg-v-editor-text/85" />
@@ -551,6 +649,9 @@ export default function Timeline({
   // plan choisi pour tout le studio. `undefined` : la timeline la gère seule.
   selection = undefined,
   onSelection = null,
+  // Un rush ou un jingle lâché sur la piste vidéo : (nom de fichier, rang).
+  // Le tableau de bord le retrouve parmi les fichiers de la semaine.
+  onDeposerMedia = null,
 }) {
   const { t } = useI18n();
   const rootRef = useRef(null);
@@ -591,11 +692,13 @@ export default function Timeline({
   // fixes : un titre se pose sur un bord de plan, un rognage vise un bord de
   // titre — les bords de plan, eux, suivent le rognage au lieu de l'arrêter.
   const reperesTitre = useMemo(() => pointsDAimantation(layout, playheadSec), [layout, playheadSec]);
+  const placesPlans = useMemo(() => habillagesDesPlans(layout), [layout]);
   const reperesRognage = useMemo(() => pointsDeRognage(timelineOverlays, playheadSec), [timelineOverlays, playheadSec]);
   const totalPx = Math.max(1, layout.total * pxPerSec);
   const contentWidth = Math.max(viewportWidth, totalPx);
   const videoTrackHeight = compact ? 64 : integree ? 84 : 112;
   const titleTrackHeight = compact ? 0 : integree ? 52 : 64;
+  const plansTrackHeight = compact ? 0 : integree ? 40 : 48;
 
   clipsRef.current = clips;
 
@@ -671,6 +774,95 @@ export default function Timeline({
     if (modifierMontage) modifierMontage((m) => ({ ...m, overlays: next }), etiquette, fenetre);
     else setTimelineOverlays?.(next);
   }, [modifierMontage, setTimelineOverlays]);
+
+  // Les habillages des plans, réglés à l'œil sur leur piste.
+  const placerHabillagePlan = useCallback((place, nouvelle, geste) => {
+    commitClips((courant) => placerHabillage(courant, place.planId, place.rang, nouvelle), geste, Infinity);
+  }, [commitClips]);
+  const ouvrirHabillagePlan = useCallback((place) => {
+    const plan = clipsRef.current.find((clip, index) => String(clipId(clip, index)) === String(place.planId));
+    if (plan) onOverlayClip?.(plan);
+  }, [onOverlayClip]);
+  const retirerHabillagePlan = useCallback((place) => {
+    commitClips((courant) => retirerHabillage(courant, place.planId, place.rang));
+    setStatusMessage(t.studio.timeline.msgHabillageRetire);
+  }, [commitClips, t]);
+
+  // Le glisser-déposer depuis la bibliothèque : un rush ou un jingle sur la
+  // piste vidéo, un modèle d'habillage sur un plan ou sur la piste des titres.
+  const contenuRef = useRef(null);
+  const [depot, setDepot] = useState(null);
+  const instantDuPointeur = useCallback((event) => {
+    const zone = contenuRef.current?.getBoundingClientRect();
+    const instant = zone ? (event.clientX - zone.left) / pxPerSec : 0;
+    return Number.isFinite(instant) ? clamp(instant, 0, layout.total) : 0;
+  }, [layout.total, pxPerSec]);
+  const cibleDuDepot = (event) => {
+    if (Array.from(event.dataTransfer?.types || []).includes(TYPE_MEDIA)) return 'video';
+    const piste = event.target instanceof Element ? event.target.closest('[data-piste]')?.getAttribute('data-piste') : null;
+    return piste === 'titres' ? 'titres' : 'plans';
+  };
+  const surSurvol = (event) => {
+    if (!glisseDuStudio(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    const cible = cibleDuDepot(event);
+    const instant = instantDuPointeur(event);
+    const repere = cible === 'video' ? instantDuRang(layout, rangInsertion(layout, instant)) : roundToFrame(instant);
+    setDepot((avant) => (avant && avant.cible === cible && Math.abs(avant.instant - repere) < 1e-6 ? avant : { cible, instant: repere }));
+  };
+  const surSortie = (event) => {
+    if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setDepot(null);
+  };
+  const surDepot = (event) => {
+    if (!glisseDuStudio(event.dataTransfer)) return;
+    event.preventDefault();
+    const cible = cibleDuDepot(event);
+    setDepot(null);
+    const lu = lireGlisse(event.dataTransfer, MODELES_DEPOSABLES);
+    if (!lu) { setStatusMessage(t.studio.timeline.msgDepotRefuse); return; }
+    const instant = instantDuPointeur(event);
+    if (lu.type === 'media') {
+      onDeposerMedia?.(lu.filename, rangInsertion(layout, instant));
+      return;
+    }
+    if (cible === 'titres') {
+      const debut = roundToFrame(instant);
+      const titre = {
+        id: createId('overlay'),
+        templateId: lu.templateId,
+        fields: {},
+        animation: animationRecommandee(lu.templateId),
+        startTime: debut,
+        duration: Math.max(MIN_CLIP_DURATION, Math.min(5, layout.total - debut || 5)),
+      };
+      const suivants = [...timelineOverlays, titre];
+      commitOverlays(suivants);
+      setStatusMessage(t.studio.timeline.msgTitreAjoute(formatTimecode(debut)));
+      onOverlayClip?.({ isTimelineOverlays: true, overlays: suivants });
+      return;
+    }
+    const item = planSous(layout, instant);
+    if (!item) { setStatusMessage(t.studio.timeline.msgDepotHorsPlan); return; }
+    const local = roundToFrame(Math.min(Math.max(0, instant - item.start), Math.max(0, item.duration - MIN_CLIP_DURATION)));
+    const nouveau = {
+      id: `${lu.templateId}-${Date.now()}`,
+      templateId: lu.templateId,
+      fields: {},
+      animation: animationRecommandee(lu.templateId),
+      startTime: local,
+      duration: roundToFrame(Math.max(MIN_CLIP_DURATION, Math.min(5, item.duration - local))),
+    };
+    let planModifie = null;
+    commitClips((courant) => courant.map((clip, index) => {
+      if (String(clipId(clip, index)) !== String(item.id)) return clip;
+      planModifie = { ...clip, overlays: [...(clip.overlays || []), nouveau] };
+      return planModifie;
+    }));
+    setStatusMessage(t.studio.timeline.msgHabillageDepose(formatTimecode(item.start + local)));
+    // L'inspecteur s'ouvre aussitôt : un bandeau vide n'a rien à dire à l'antenne.
+    if (planModifie) onOverlayClip?.(planModifie);
+  };
 
   const undo = useCallback(() => {
     if (!annulationPossible) return;
@@ -1132,7 +1324,25 @@ export default function Timeline({
       )}
 
       {clips.length === 0 ? (
-        <div className="flex min-h-[120px] flex-1 items-center justify-center px-6 text-center">
+        <div
+          className={`flex min-h-[120px] flex-1 items-center justify-center px-6 text-center ${depot ? 'bg-v-editor-accent/10 outline outline-2 -outline-offset-4 outline-dashed outline-[var(--editor-accent)]' : ''}`}
+          data-piste="video"
+          onDragOver={(event) => {
+            if (!Array.from(event.dataTransfer?.types || []).includes(TYPE_MEDIA)) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+            if (!depot) setDepot({ cible: 'video', instant: 0 });
+          }}
+          onDragLeave={surSortie}
+          onDrop={(event) => {
+            if (!glisseDuStudio(event.dataTransfer)) return;
+            event.preventDefault();
+            setDepot(null);
+            const lu = lireGlisse(event.dataTransfer, MODELES_DEPOSABLES);
+            if (lu?.type === 'media') onDeposerMedia?.(lu.filename, 0);
+            else setStatusMessage(t.studio.timeline.msgDepotRefuse);
+          }}
+        >
           <div>
             <Video size={28} className="mx-auto mb-2 text-[var(--editor-muted)]" />
             <p className="text-sm font-semibold text-[var(--editor-text)]">{t.studio.timeline.videTitre}</p>
@@ -1159,6 +1369,12 @@ export default function Timeline({
               </div>
             </div>
             {!compact && (
+              <div className="flex items-center border-b border-[var(--editor-border)] px-3" style={{ height: `${plansTrackHeight}px` }} title={t.studio.timeline.pistePlansAide}>
+                <strong className="text-sm text-[var(--editor-accent)]">H</strong>
+                <span className="ml-1.5 whitespace-nowrap text-[11px] font-semibold text-[var(--editor-text)]">{t.studio.timeline.pistePlansCourt}</span>
+              </div>
+            )}
+            {!compact && (
               <div className="flex items-center border-b border-[var(--editor-border)] px-3" style={{ height: `${titleTrackHeight}px` }}>
                 <strong className="text-sm text-[var(--editor-title)]">T1</strong>
                 <span className="ml-2 text-xs font-semibold text-[var(--editor-text)]">{t.studio.timeline.titres}</span>
@@ -1167,12 +1383,20 @@ export default function Timeline({
           </div>
 
           <div ref={scrollRef} className="min-w-0 overflow-x-auto overflow-y-hidden bg-[var(--editor-bg)] custom-scrollbar">
-            <div data-timeline-content className="relative" style={{ width: `${contentWidth}px`, minWidth: '100%' }}>
+            <div
+              ref={contenuRef}
+              data-timeline-content
+              className="relative"
+              style={{ width: `${contentWidth}px`, minWidth: '100%' }}
+              onDragOver={surSurvol}
+              onDragLeave={surSortie}
+              onDrop={surDepot}
+            >
               <Ruler totalSec={layout.total} pxPerSec={pxPerSec} playheadSec={playheadSec} onPointerDown={beginScrub} onNudge={nudgePlayhead} />
 
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={layout.items.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
-                  <div role="listbox" aria-label={t.studio.timeline.pisteVideo} className="relative flex border-b border-[var(--editor-border)] bg-v-editor-panel-raised/35" style={{ height: `${videoTrackHeight}px`, width: `${contentWidth}px` }}>
+                  <div role="listbox" data-piste="video" aria-label={t.studio.timeline.pisteVideo} className="relative flex border-b border-[var(--editor-border)] bg-v-editor-panel-raised/35" style={{ height: `${videoTrackHeight}px`, width: `${contentWidth}px` }}>
                     {layout.items.map((item, index) => (
                       <SortableClip
                         key={item.id}
@@ -1197,14 +1421,38 @@ export default function Timeline({
               </DndContext>
 
               {!compact && (
-                <div role="region" aria-label={t.studio.timeline.pisteTitres} className="relative border-b border-[var(--editor-border)] bg-v-editor-panel/75" style={{ height: `${titleTrackHeight}px`, width: `${contentWidth}px` }}>
+                <div role="region" data-piste="plans" aria-label={t.studio.timeline.pistePlans} className="relative border-b border-[var(--editor-border)] bg-v-editor-panel/50" style={{ height: `${plansTrackHeight}px`, width: `${contentWidth}px` }}>
+                  {placesPlans.length === 0 && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center">
+                      {/* Collé au bord gauche visible : la piste défile, l'aide reste lisible. */}
+                      <span className="sticky left-0 truncate px-3 text-xs text-[var(--editor-muted)]">{t.studio.timeline.pistePlansVide}</span>
+                    </span>
+                  )}
+                  {placesPlans.map((place) => (
+                    <HabillagePlanBlock
+                      key={place.cle}
+                      place={place}
+                      pxPerSec={pxPerSec}
+                      reperes={snapping ? reperesTitre : []}
+                      seuilAimant={SEUIL_AIMANT_PX / pxPerSec}
+                      onPlacer={(nouvelle, geste) => placerHabillagePlan(place, nouvelle, geste)}
+                      onOuvrir={() => ouvrirHabillagePlan(place)}
+                      onRetirer={() => retirerHabillagePlan(place)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {!compact && (
+                <div role="region" data-piste="titres" aria-label={t.studio.timeline.pisteTitres} className="relative border-b border-[var(--editor-border)] bg-v-editor-panel/75" style={{ height: `${titleTrackHeight}px`, width: `${contentWidth}px` }}>
                   {/* Il n'existait aucun moyen de créer un titre ici : le
                       message renvoyait vers « Habillage JT », qui écrit en
                       réalité dans `branding.overlays`, un autre tableau qui
                       n'apparaît jamais sur cette piste. La piste restait donc
                       vide à jamais pour qui n'en avait pas déjà un. */}
                   {timelineOverlays.length === 0 && (
-                    <div className="absolute inset-0 flex items-center gap-3 px-3">
+                    <div className="absolute inset-0 flex items-center">
+                    <div className="sticky left-0 flex items-center gap-3 px-3">
                       <button
                         type="button"
                         onClick={ajouterTitre}
@@ -1215,6 +1463,7 @@ export default function Timeline({
                       <span className="text-xs text-[var(--editor-muted)]">
                         {t.studio.timeline.titrePardessus}
                       </span>
+                    </div>
                     </div>
                   )}
                   {timelineOverlays.map((overlay, index) => (
@@ -1243,6 +1492,15 @@ export default function Timeline({
                     </button>
                   )}
                 </div>
+              )}
+
+              {depot && (
+                <div
+                  data-repere-depot={depot.cible}
+                  className="pointer-events-none absolute top-0 bottom-0 z-[55] w-0.5 bg-[var(--editor-accent)] shadow-[0_0_0_3px_oklch(0.79_0.1_230/0.25)]"
+                  style={{ left: `${depot.instant * pxPerSec}px` }}
+                  aria-hidden="true"
+                />
               )}
 
               <div

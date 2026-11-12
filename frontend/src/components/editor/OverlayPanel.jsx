@@ -5,6 +5,10 @@ import { useI18n } from '../../i18n/I18nContext.jsx';
 import { ApercuCombinaison, ChoixEntree } from './ChoixMouvement.jsx';
 import { OVERLAY_TEMPLATES, CLIP_TEMPLATES, MOMENTS_IDS, animationRecommandee, habillagesDuMoment, TEXT_ANIMATIONS_LOOP, TEXT_ANIMATIONS_OUT, FONT_FAMILIES, familleDe, stylesDe, changerDeStyle, sansDoublonsDeStyle, COINS, estPlacable, coinParDefaut, vignette } from '../../data/overlayTemplates.js';
 import { usePiegeFocus } from '../../hooks/usePiegeFocus.jsx';
+import { TYPE_HABILLAGE, ecrireGlisse } from './habillagesPlans.js';
+
+/** Une seule liste vide, pour qu'un plan sans habillage ne paraisse jamais « changé ». */
+const AUCUN_HABILLAGE = Object.freeze([]);
 
 function formatTime(s) {
   if (s == null || isNaN(s)) return '0s';
@@ -509,6 +513,10 @@ export function SelecteurHabillage({ modeles, onChoisir, onAnnuler }) {
                 key={modele.id}
                 type="button"
                 onClick={() => onChoisir(modele.id)}
+                // Glissée jusqu'à la timeline, la carte pose l'habillage sur le
+                // plan visé, à l'image près, ou sur la piste des titres.
+                draggable
+                onDragStart={(event) => ecrireGlisse(event.dataTransfer, TYPE_HABILLAGE, { templateId: modele.id })}
                 title={dit.apercu}
                 className="group overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--paper)] text-left hover:border-[var(--accent)] motion-tap"
               >
@@ -547,13 +555,33 @@ export default function OverlayPanel({ clip, onClose, onSave, onChangePreview, i
   // Ce qu'il y avait à l'ouverture : « Annuler » y revient.
   const initiales = useRef(clip.overlays || []);
 
+  // Ce que le panneau a lui-même écrit dans le montage, pour reconnaître un
+  // changement venu d'ailleurs.
+  const envoyes = useRef(clip.overlays || AUCUN_HABILLAGE);
+  const premierEnvoi = useRef(true);
+
   // Trigger real-time preview
   useEffect(() => {
-    if (onChangePreview) {
-      onChangePreview({ ...clip, overlays });
-    }
+    if (!onChangePreview) return;
+    // Adopté depuis la timeline : c'est déjà dans le montage. Le renvoyer
+    // créerait une étape d'annulation qui ne change rien.
+    if (!premierEnvoi.current && overlays === envoyes.current) return;
+    premierEnvoi.current = false;
+    envoyes.current = overlays;
+    onChangePreview({ ...clip, overlays });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overlays]);
+
+  // L'INCIDENT évité : le panneau gardait la copie prise à l'ouverture. Un
+  // habillage déplacé sur la timeline pendant qu'il était ouvert revenait à son
+  // ancienne place à la frappe suivante. Le panneau suit maintenant le montage.
+  useEffect(() => {
+    const recus = clip.overlays || AUCUN_HABILLAGE;
+    if (recus === envoyes.current || recus === overlays) return;
+    envoyes.current = recus;
+    setOverlays(recus);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clip.overlays]);
 
   const addOverlay = (templateId) => {
     setOverlays([
