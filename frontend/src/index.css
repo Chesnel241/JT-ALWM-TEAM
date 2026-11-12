@@ -588,7 +588,11 @@ body {
 	}
 
 	.uploader-phone-input .PhoneInputInput {
-		@apply w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] transition-all ml-3;
+		@apply w-full px-4 py-3 bg-[var(--paper-2)] border border-[var(--border)] rounded-xl text-[color:var(--ink)] focus:outline-none focus:border-[color:var(--accent)] ml-3;
+		/* Pas de `transition-all` : seule la bordure change au focus. */
+		transition-property: border-color, box-shadow;
+		transition-duration: var(--motion-tap);
+		transition-timing-function: var(--ease-out);
 	}
 
 	.uploader-phone-input .PhoneInputCountry {

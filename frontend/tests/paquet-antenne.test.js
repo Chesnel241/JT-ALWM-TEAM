@@ -45,7 +45,8 @@ describe('le paquet d’antenne', () => {
 
   it('chaque habillage passe par les calques : aucun n’invente sa propre sortie', () => {
     const composants = source.match(/^export function [A-Z][A-Za-z]+\(\{ overlay, durationInFrames/gm) || [];
-    const avecCalques = source.match(/useCalques\(durationInFrames\)/g) || [];
+    // Avec ou sans courbe de famille (« franc », « doux ») : le socle reste le même.
+    const avecCalques = source.match(/useCalques\(durationInFrames(?:, '\w+')?\)/g) || [];
     expect(composants.length).toBeGreaterThanOrEqual(22);
     // NomDeuxInvites délègue à NomBandeau : tous les autres appellent le socle.
     expect(avecCalques.length).toBeGreaterThanOrEqual(composants.length - 1);

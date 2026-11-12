@@ -613,11 +613,21 @@ export function Deroule({
 /** Hauteurs de la timeline de la vue simple, en pixels. */
 export const DOCK_MIN = 220;
 export const DOCK_MAX = 640;
-export const DOCK_DEFAUT = 300;
+export const DOCK_DEFAUT = 330;
 
-/** La hauteur permise : jamais plus de 62 % de la fenêtre, pour garder l'image. */
+/**
+ * Ce que le reste du studio occupe au-dessus de la timeline : en-tête, onglets,
+ * barre du JT, l'image (260 px au moins) et la barre du panneau.
+ */
+const RESTE_DU_STUDIO = 480;
+
+/**
+ * La hauteur permise : jamais plus que la place laissée par le reste du studio.
+ * L'ancienne borne (62 % de la fenêtre) laissait déborder la page sur un
+ * portable de 768 px, et la légende disparaissait sous le bord.
+ */
 export function borneDock(valeur, hauteurFenetre = 900) {
-  const plafond = Math.max(DOCK_MIN, Math.min(DOCK_MAX, Math.round(hauteurFenetre * 0.62)));
+  const plafond = Math.max(DOCK_MIN, Math.min(DOCK_MAX, hauteurFenetre - RESTE_DU_STUDIO));
   const v = Number(valeur);
   return Math.round(Math.min(plafond, Math.max(DOCK_MIN, Number.isFinite(v) ? v : DOCK_DEFAUT)));
 }

@@ -577,7 +577,7 @@ export default function VoixOffView({
                   key={c.id}
                   type="button"
                   onClick={() => setSelectedCountry(c)}
-                  className={`shrink-0 flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs motion-tap active:scale-95 transition-all ${
+                  className={`shrink-0 flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold text-xs motion-tap active:scale-95 ${
                     isSelected
                       ? 'bg-[var(--accent)] text-white shadow-md shadow-v-accent/30 scale-105'
                       : 'bg-[var(--paper)] text-[color:var(--ink)] border border-[var(--border)] hover:border-[color:var(--accent)]'
@@ -641,7 +641,7 @@ export default function VoixOffView({
                     type="button"
                     title={titre || undefined}
                     onClick={() => choisirReportage(num)}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border motion-tap ${
                       reportageNum === num
                         ? 'bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-300 font-extrabold'
                         : 'border-[var(--border)] text-[color:var(--muted)] hover:bg-[var(--paper-2)]'
@@ -805,7 +805,7 @@ export default function VoixOffView({
                   onDragLeave={() => setSurvolDepot(false)}
                   onDrop={surDepot}
                   data-survol={survolDepot || undefined}
-                  className="w-full py-6 px-4 rounded-2xl border-2 border-dashed border-slate-700 hover:border-purple-500 data-[survol]:border-purple-400 data-[survol]:bg-purple-950/40 bg-slate-900/50 flex flex-col items-center justify-center gap-2 text-slate-300 hover:text-white transition-all motion-tap"
+                  className="w-full py-6 px-4 rounded-2xl border-2 border-dashed border-slate-700 hover:border-purple-500 data-[survol]:border-purple-400 data-[survol]:bg-purple-950/40 bg-slate-900/50 flex flex-col items-center justify-center gap-2 text-slate-300 hover:text-white motion-tap"
                 >
                   <FileAudio size={28} className="text-purple-400" />
                   <span className="text-xs font-bold">Glissez ou sélectionnez un fichier audio</span>
@@ -846,7 +846,7 @@ export default function VoixOffView({
                       setAudioUrl(null);
                       setIsAutoScrolling(false);
                     }}
-                    className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                    className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 motion-tap disabled:opacity-50"
                   >
                     <RefreshCw size={14} /> Recommencer
                   </button>
@@ -855,7 +855,7 @@ export default function VoixOffView({
                     type="button"
                     disabled={isUploading || !selectedCountry}
                     onClick={handleUpload}
-                    className="py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-purple-600/30 disabled:opacity-50"
+                    className="py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-95 motion-tap shadow-lg shadow-purple-600/30 disabled:opacity-50"
                   >
                     <Send size={14} />
                     <span>Envoyer au montage</span>
@@ -870,7 +870,7 @@ export default function VoixOffView({
                     type="button"
                     onClick={startRecording}
                     disabled={isStarting || !selectedCountry}
-                    className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(220,38,38,0.5)] active:scale-95 motion-tap disabled:opacity-50 disabled:shadow-none transition-all"
+                    className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(220,38,38,0.5)] active:scale-95 motion-tap disabled:opacity-50 disabled:shadow-none"
                   >
                     <Mic size={20} />
                     <span>{isStarting ? 'Démarrage...' : 'Commencer l\'enregistrement'}</span>
@@ -881,7 +881,7 @@ export default function VoixOffView({
                       <button
                         type="button"
                         onClick={resumeRecording}
-                        className="py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 motion-tap transition-all shadow-lg shadow-emerald-600/30"
+                        className="py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 motion-tap shadow-lg shadow-emerald-600/30"
                       >
                         <Play size={16} /> Reprendre
                       </button>
@@ -889,7 +889,7 @@ export default function VoixOffView({
                       <button
                         type="button"
                         onClick={pauseRecording}
-                        className="py-3.5 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 motion-tap transition-all shadow-lg shadow-amber-600/30"
+                        className="py-3.5 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 motion-tap shadow-lg shadow-amber-600/30"
                       >
                         <Pause size={16} /> Pause
                       </button>
@@ -898,7 +898,7 @@ export default function VoixOffView({
                     <button
                       type="button"
                       onClick={stopRecording}
-                      className="py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center gap-1.5 border border-slate-700 active:scale-95 motion-tap transition-all"
+                      className="py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs flex items-center justify-center gap-1.5 border border-slate-700 active:scale-95 motion-tap"
                     >
                       <Square size={15} className="fill-white" /> Terminer
                     </button>

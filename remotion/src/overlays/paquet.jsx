@@ -56,19 +56,38 @@ const borne = (v) => Math.max(0, Math.min(1, v));
 export const poser = (t) => 1 - (1 - borne(t)) ** 4;
 /** La sortie accélère : elle s'efface, elle ne se pose pas. */
 export const quitter = (t) => borne(t) ** 3;
+/** Attaque franche, longue tenue : une alerte claque, sans rebondir. */
+export const franc = (t) => (borne(t) >= 1 ? 1 : 1 - 2 ** (-10 * borne(t)));
+/** Pose lente : un chiffre, une donnée se lisent pendant qu'ils arrivent. */
+export const doux = (t) => Math.sin((borne(t) * Math.PI) / 2);
+
+/**
+ * Une courbe par famille d'habillage, et sa sortie en images.
+ *
+ * LE CONSTAT : tous les calques entraient avec la même courbe. Propre, mais
+ * tout se posait de la même façon, et un JT entier finissait par paraître
+ * mécanique. Une alerte n'arrive pas comme un chiffre : elle claque et repart
+ * vite ; un chiffre se pose et laisse le temps de le lire.
+ */
+export const COURBES = Object.freeze({
+  poser: Object.freeze({ entree: poser, sortie: 10 }),
+  franc: Object.freeze({ entree: franc, sortie: 7 }),
+  doux: Object.freeze({ entree: doux, sortie: 12 }),
+});
 
 /**
  * Les calques d'un habillage. `p(delai, duree)` rend la présence d'un calque,
  * de 0 à 1 : il entre à `delai` images, met `duree` images à se poser, et
- * repart avec tous les autres dans les dix dernières images.
+ * repart avec tous les autres dans les dernières images (dix par défaut).
  */
-export function useCalques(durationInFrames) {
+export function useCalques(durationInFrames, courbe = 'poser') {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const k = fps / 30;
+  const { entree, sortie } = COURBES[courbe] || COURBES.poser;
   const fin = Number.isFinite(durationInFrames) && durationInFrames > 0 ? durationInFrames : Infinity;
-  const depart = quitter((frame - (fin - 10 * k)) / (10 * k));
-  const p = (delai = 0, duree = 14) => poser((frame - delai * k) / (duree * k)) * (1 - depart);
+  const depart = quitter((frame - (fin - sortie * k)) / (sortie * k));
+  const p = (delai = 0, duree = 14) => entree((frame - delai * k) / (duree * k)) * (1 - depart);
   return { frame, k, p, depart };
 }
 
@@ -493,7 +512,7 @@ export function TitreMassif({ overlay, durationInFrames }) {
 
 /** L'alerte en bandeau : une mention rouge dont le point bat, puis l'information. */
 export function AlerteBandeau({ overlay, durationInFrames }) {
-  const { frame, k, p } = useCalques(durationInFrames);
+  const { frame, k, p } = useCalques(durationInFrames, 'franc');
   const T = teintes(overlay);
   const tag = champ(overlay, 'tag');
   const info = champ(overlay, 'headline', 'texte');
@@ -705,7 +724,7 @@ export function Transition({ overlay, durationInFrames }) {
 
 /** Le flash : une bande sur toute la largeur, au bas de l'image, qui ne se rate pas. */
 export function Flash({ overlay, durationInFrames }) {
-  const { frame, k, p } = useCalques(durationInFrames);
+  const { frame, k, p } = useCalques(durationInFrames, 'franc');
   const T = teintes(overlay);
   const tag = champ(overlay, 'titre') || 'FLASH INFO';
   const info = champ(overlay, 'texte');
@@ -731,7 +750,7 @@ export function Flash({ overlay, durationInFrames }) {
 
 /** La dernière minute, plein écran : un bloc rouge s'ouvre, l'information suit. */
 export function DerniereMinute({ overlay, durationInFrames }) {
-  const { frame, k, p } = useCalques(durationInFrames);
+  const { frame, k, p } = useCalques(durationInFrames, 'franc');
   const T = teintes(overlay);
   const tag = champ(overlay, 'titre') || 'DERNIÈRE MINUTE';
   const info = champ(overlay, 'texte');
@@ -1003,7 +1022,7 @@ export function ecrireChiffre(chiffre, part) {
  * et sa source se posent dessous.
  */
 export function ChiffreCle({ overlay, durationInFrames }) {
-  const { frame, k, p } = useCalques(durationInFrames);
+  const { frame, k, p } = useCalques(durationInFrames, 'doux');
   const T = teintes(overlay);
   const saisi = champ(overlay, 'chiffre');
   const legende = champ(overlay, 'legende');
@@ -1071,7 +1090,7 @@ export function ASuivre({ overlay, durationInFrames }) {
  * après l'autre, chacun précédé d'un trait qui se trace.
  */
 export function Essentiel({ overlay, durationInFrames }) {
-  const { p } = useCalques(durationInFrames);
+  const { p } = useCalques(durationInFrames, 'doux');
   const T = teintes(overlay);
   const entete = champ(overlay, 'titre') || 'L’ESSENTIEL';
   const points = ['point1', 'point2', 'point3', 'point4'].map((c) => champ(overlay, c)).filter(Boolean);

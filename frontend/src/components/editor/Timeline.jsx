@@ -509,6 +509,8 @@ function SortableClip({
   onRazorSplit,
   onCommitRange,
   onOpenTrim,
+  // La hauteur du bloc suit celle de la piste (plus basse sous le lecteur).
+  hauteur = 82,
 }) {
   const { t } = useI18n();
   const {
@@ -605,8 +607,8 @@ function SortableClip({
   return (
     <div
       ref={setNodeRef}
-      style={clipStyle}
-      className="relative h-[82px] shrink-0 overflow-visible"
+      style={{ ...clipStyle, height: `${hauteur}px` }}
+      className="relative shrink-0 overflow-visible"
       data-clip-id={item.id}
     >
       <div
@@ -813,10 +815,11 @@ export default function Timeline({
   const reperesRognage = useMemo(() => pointsDeRognage(timelineOverlays, playheadSec), [timelineOverlays, playheadSec]);
   const totalPx = Math.max(1, layout.total * pxPerSec);
   const contentWidth = Math.max(viewportWidth, totalPx);
-  const videoTrackHeight = compact ? 64 : integree ? 84 : 112;
-  const titleTrackHeight = compact ? 0 : integree ? 52 : 64;
-  const plansTrackHeight = compact ? 0 : integree ? 40 : 48;
-  const sonsTrackHeight = compact ? 0 : integree ? 44 : 56;
+  // Sous le lecteur, quatre pistes doivent tenir dans ~320 px : on les resserre.
+  const videoTrackHeight = compact ? 64 : integree ? 72 : 112;
+  const titleTrackHeight = compact ? 0 : integree ? 40 : 64;
+  const plansTrackHeight = compact ? 0 : integree ? 36 : 48;
+  const sonsTrackHeight = compact ? 0 : integree ? 40 : 56;
 
   clipsRef.current = clips;
 
@@ -1420,7 +1423,7 @@ export default function Timeline({
           {/* « Générer le master » reste hors de la zone qui défile : sur un
               écran de 1440 px, la rangée d'outils débordait et le bouton
               principal du studio était coupé au bord droit. */}
-          <div className="flex min-h-[54px] items-center border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-2 py-1.5" role="toolbar" aria-label={t.studio.timeline.outils}>
+          <div className={`flex ${integree ? 'min-h-[46px] py-1' : 'min-h-[54px] py-1.5'} items-center border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-2`} role="toolbar" aria-label={t.studio.timeline.outils}>
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
             <div className="mr-1 flex shrink-0 flex-col px-1.5">
               <span className="font-mono text-sm font-semibold tabular-nums text-[var(--editor-text)]">{formatTimecode(playheadSec)}</span>
@@ -1556,7 +1559,9 @@ export default function Timeline({
           </div>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-cols-[104px_minmax(0,1fr)]">
+        // Si la timeline est basse, les pistes défilent verticalement, en-têtes
+        // compris : aucune ne reste hors d'atteinte sous le bord.
+        <div className="grid min-h-0 flex-1 grid-cols-[104px_minmax(0,1fr)] content-start overflow-y-auto">
           <div className="relative z-30 border-r border-[var(--editor-border)] bg-[var(--editor-panel)]">
             <div className="flex h-8 items-center border-b border-[var(--editor-border)] px-3 font-mono text-[10px] text-[var(--editor-muted)]">{clips.length} CLIP{clips.length > 1 ? 'S' : ''}</div>
             <div className="flex items-center justify-between border-b border-[var(--editor-border)] px-3" style={{ height: `${videoTrackHeight}px` }}>
@@ -1605,6 +1610,7 @@ export default function Timeline({
                         key={item.id}
                         clip={item.clip}
                         item={item}
+                        hauteur={integree ? videoTrackHeight - 2 : 82}
                         index={index}
                         previousTransition={index > 0 ? layout.items[index - 1].transitionDuration : 0}
                         pxPerSec={pxPerSec}

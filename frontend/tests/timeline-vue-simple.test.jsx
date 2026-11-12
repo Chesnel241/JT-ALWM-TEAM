@@ -111,8 +111,9 @@ describe('le panneau de la timeline', () => {
   it('borne sa hauteur pour garder l’image visible', () => {
     expect(borneDock(50, 900)).toBe(DOCK_MIN);
     expect(borneDock(5000, 2000)).toBe(DOCK_MAX);
-    // Jamais plus de 62 % de la fenêtre.
-    expect(borneDock(600, 800)).toBe(Math.round(800 * 0.62));
+    // Jamais plus que la place laissée par l'image et les barres (portable de 768 px).
+    expect(borneDock(600, 768)).toBe(768 - 480);
+    expect(borneDock(400, 1080)).toBe(400);
     expect(borneDock('n’importe quoi', 900)).toBe(DOCK_DEFAUT);
   });
 
@@ -135,10 +136,11 @@ describe('le panneau de la timeline', () => {
 
   it('se règle en hauteur au clavier', () => {
     const onHauteur = vi.fn();
-    render(<I18nProvider><DockTimeline ouvert hauteur={300} onBasculer={() => {}} onHauteur={onHauteur}><p>x</p></DockTimeline></I18nProvider>);
+    // jsdom : fenêtre de 768 px, donc 288 px au plus.
+    render(<I18nProvider><DockTimeline ouvert hauteur={250} onBasculer={() => {}} onHauteur={onHauteur}><p>x</p></DockTimeline></I18nProvider>);
     const poignee = screen.getByRole('separator', { name: d.dockPoignee });
     fireEvent.keyDown(poignee, { key: 'ArrowUp' });
     fireEvent.keyDown(poignee, { key: 'ArrowDown' });
-    expect(onHauteur.mock.calls.map((c) => c[0])).toEqual([324, 276]);
+    expect(onHauteur.mock.calls.map((c) => c[0])).toEqual([274, 226]);
   });
 });
