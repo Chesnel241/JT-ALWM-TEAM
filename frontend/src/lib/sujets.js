@@ -38,6 +38,8 @@ export function buildSections(sujets, uploads, { reportageName, extras = [] } = 
       badge: i + 1,
       isFirst: i === 0,
       etat: sujet.etat,
+      // Où en est ce reportage (reçu, vu, retenu, diffusé) : voir SuiviReportage.
+      suivi: sujet.suivi || null,
     }))
     : Array.from(
       { length: Math.max(1, sectionsFromUploads(uploads)) },

@@ -6,7 +6,7 @@ import { link, copyFile, stat } from 'fs/promises';
 import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
 import { buildWeeks } from '../data/constants.js';
-import { getDelivery, addDelivery, deleteDelivery } from '../data/store.js';
+import { getDelivery, addDelivery, deleteDelivery, getSujets } from '../data/store.js';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { classifyUpload } from '../lib/upload.js';
 import { nomLisible } from '../middleware/sanitizer.js';
@@ -18,7 +18,8 @@ import { deliveryUpload, uploadsDir, DELIVERY_MAX_FILE_SIZE } from '../lib/uploa
 import { broadcastNotification, AUDIENCES } from './webpush.js';
 import { getJobState } from '../services/editorProgress.js';
 import { planifierVersionLegere, annulerVersionLegere } from '../services/versionLegere.js';
-import { lireSommaireTexte } from '../lib/sommaire.js';
+import { lireSommaireTexte, minutage } from '../lib/sommaire.js';
+import { reportagesDiffuses } from '../services/suiviSujet.js';
 import { nomLeger } from '../lib/leger.js';
 import { io } from '../app.js';
 
@@ -30,16 +31,45 @@ const isValidWeek = (weekId) => buildWeeks().some((w) => w.id === weekId);
 const signaler = (weekId) => () => io?.emit('delivery_update', { weekId });
 
 /**
+ * Le message d'un pays dont un reportage passe dans ce JT : le sien, avec la
+ * minute, plutôt que l'annonce générale.
+ */
+export function messageDiffusion(reportages, numeroSemaine) {
+  const premier = reportages[0];
+  const semaine = numeroSemaine ? ` de la semaine ${numeroSemaine}` : '';
+  return reportages.length === 1
+    ? `« ${premier.titre} » passe à ${minutage(premier.t)} dans le JT${semaine}.`
+    : `Vos ${reportages.length} reportages sont dans le JT${semaine}, dès ${minutage(premier.t)}.`;
+}
+
+/**
  * Prévenir tout le monde que le JT est là. Deux envois : chaque équipe doit
  * atterrir sur SA page. Le lien unique vers la racine ouvrait le studio de
  * montage pour tout le monde, y compris pour les correspondants qui n'y ont
  * rien à faire.
+ *
+ * Un pays dont un reportage est au sommaire reçoit un message à lui (« votre
+ * reportage passe à 4:12 »), qui ouvre le JT à cette minute ; il ne reçoit
+ * pas en plus l'annonce générale.
  */
-function annoncerJT(weekId) {
+function annoncerJT(weekId, livraison = null) {
+  const diffuses = livraison ? reportagesDiffuses(livraison, getSujets(weekId)) : new Map();
+  const numero = /-w(\d{1,2})$/i.exec(String(weekId))?.[1];
+  for (const [countryId, reportages] of diffuses) {
+    reportages.sort((a, b) => a.t - b.t);
+    broadcastNotification(
+      {
+        title: 'Votre reportage est dans le JT',
+        body: messageDiffusion(reportages, numero ? Number(numero) : null),
+        url: `/journalistes/telecharger-le-jt?jt=${encodeURIComponent(livraison.id)}&a=${Math.floor(reportages[0].t)}`,
+      },
+      { audiences: [AUDIENCES.REPORTER, AUDIENCES.UNKNOWN], countryId }
+    ).catch(err => logger.error('Push notification failed', { error: err.message }));
+  }
   const announce = `Le JT de la semaine ${weekId} est prêt et disponible au téléchargement.`;
   broadcastNotification(
     { title: '🚨 NOUVEAU JT PRÊT !', body: announce, url: '/journalistes/telecharger-le-jt' },
-    { audiences: [AUDIENCES.REPORTER, AUDIENCES.UNKNOWN] }
+    { audiences: [AUDIENCES.REPORTER, AUDIENCES.UNKNOWN], saufPays: [...diffuses.keys()] }
   ).catch(err => logger.error('Push notification failed', { error: err.message }));
   broadcastNotification(
     { title: '🚨 NOUVEAU JT PRÊT !', body: announce, url: '/monteurs/jt-pret' },
@@ -147,7 +177,7 @@ router.post('/:weekId', requireAdmin, asyncHandler(async (req, res, next) => {
         logger.info('Delivery uploaded', {
           context: { weekId, fileId: fileData.id, filename: file.originalname, durationMs },
         });
-        annoncerJT(weekId);
+        annoncerJT(weekId, result);
         planifierVersionLegere(weekId, result, { dossier: uploadsDir, signaler: signaler(weekId) });
         signaler(weekId)();
 
@@ -221,7 +251,7 @@ router.post('/:weekId/depuis-export', requireAdmin, asyncHandler(async (req, res
   }
   audit('delivery.create', req, { weekId, fileId: fileData.id, source: 'studio', size });
   logger.info('Delivery published from studio export', { context: { weekId, fileId: fileData.id } });
-  annoncerJT(weekId);
+  annoncerJT(weekId, fileData);
   planifierVersionLegere(weekId, fileData, { dossier: uploadsDir, signaler: signaler(weekId) });
   signaler(weekId)();
   return res.status(201).json(getDelivery(weekId).find((d) => d.id === fileData.id) || fileData);

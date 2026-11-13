@@ -516,6 +516,21 @@ export function updateSujetEtat(weekId, sujetId, etat) {
   return { ...sujet };
 }
 
+/**
+ * La rédaction a regardé ce reportage (un de ses fichiers ouvert, validé ou
+ * refusé). Seule la première fois compte : c'est ce que le correspondant
+ * attend de savoir.
+ */
+export function marquerSujetVu(weekId, sujetId, quand = new Date()) {
+  const sujet = db[weekId]?._sujets?.[sujetId];
+  if (!sujet) return null;
+  if (!sujet.vuLe) {
+    sujet.vuLe = quand.toISOString();
+    persistDb();
+  }
+  return { ...sujet };
+}
+
 export function deleteSujet(weekId, sujetId) {
   const store = db[weekId]?._sujets;
   if (!store?.[sujetId]) return false;
@@ -860,6 +875,9 @@ export function updateFileStatus(weekId, fileId, status, feedback) {
   if (targetFile) {
     targetFile.status = status || 'pending';
     if (feedback !== undefined) targetFile.feedback = feedback;
+    // Valider ou refuser un fichier, c'est l'avoir regardé.
+    const sujet = targetFile.sujetId ? db[weekId]._sujets?.[targetFile.sujetId] : null;
+    if (sujet && !sujet.vuLe && (status === 'approved' || status === 'rejected')) sujet.vuLe = new Date().toISOString();
     persistDb();
     return targetFile;
   }

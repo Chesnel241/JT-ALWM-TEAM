@@ -32,7 +32,7 @@ const FILE_ICONS = {
 // l'outil de notification des correspondants ; côté journalistes ce bloc
 // disparaît — un correspondant n'a pas à voir les numéros WhatsApp de ses
 // confrères — et l'état vide dit d'attendre le JT plutôt que de le publier.
-export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, audience = 'editor' }) {
+export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, audience = 'editor', isActive = true }) {
   const { t, lang } = useI18n();
   const isReporterAudience = audience === 'reporter';
   const showNotifyPanel = !isReporterAudience;
@@ -84,6 +84,25 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
     }, RELEVE_MS);
     return () => clearInterval(minuteur);
   }, [enPreparation, selectedWeek]);
+
+  // « Regarder mon reportage » (suivi d'un reportage, ou notification de
+  // diffusion) : `?jt=<id>&a=<secondes>` ouvre ce JT à cette minute. Les
+  // paramètres sont retirés aussitôt : un rechargement ne rouvre pas le lecteur.
+  // La page reste montée, cachée, pendant que le correspondant est ailleurs :
+  // c'est en redevenant visible qu'elle relit l'adresse.
+  useEffect(() => {
+    if (!isActive || loading || deliveries.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('jt');
+    if (!id) return;
+    const fichier = deliveries.find((d) => d.id === id);
+    params.delete('jt');
+    const debut = Math.max(0, Number(params.get('a')) || 0);
+    params.delete('a');
+    const reste = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${reste ? `?${reste}` : ''}${window.location.hash}`);
+    if (fichier) setPreviewVideo({ fichier, debut });
+  }, [isActive, loading, deliveries]);
 
   const whatsappMessage = t.delivery.whatsappMessage;
   const week = weeks.find((w) => w.id === selectedWeek);

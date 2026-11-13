@@ -1790,7 +1790,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         audio: nettoyerPisteAudio(pisteAudio),
         // Les chapitres du JT, tels que le déroulé les place : ils suivent le
         // master jusqu'au lecteur de « JT Prêt ».
-        sommaire: sommaireDuJT({ clips: timelineClips, overlays: timelineOverlays, jingles }),
+        sommaire: sommaireDuJT({ clips: timelineClips, overlays: timelineOverlays, jingles, sujetDe }),
       }, authenticatedAdminPassword);
       // Succès : le suivi (SSE + polling) met à jour l'UI jusqu'au résultat.
     } catch (err) {
@@ -1884,12 +1884,36 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // Publier prévient tous les correspondants (notification) : un fichier
   // lâché par erreur dans la zone partait aussitôt chez tout le monde. On
   // demande d'abord, en nommant le fichier.
+  // Le reportage d'un fichier de la semaine : les chapitres du sommaire le
+  // portent, et le correspondant lit « votre reportage passe à 4:12 ».
+  const sujetDe = useCallback((filename) => {
+    if (!filename) return null;
+    for (const liste of Object.values(dashboard || {})) {
+      const fichier = Array.isArray(liste) ? liste.find((x) => x?.filename === filename) : null;
+      if (fichier?.sujetId) return fichier.sujetId;
+    }
+    return null;
+  }, [dashboard]);
+
+  // Ouvrir un fichier dans la visionneuse, c'est l'avoir vu : le suivi du
+  // correspondant passe à « Vu par la rédaction ». Une fois par reportage.
+  const sujetsVus = useRef(new Set());
+  useEffect(() => {
+    const fichier = viewingScript;
+    if (!fichier?.sujetId || !selectedWeek || !authenticatedAdminPassword) return;
+    const cle = `${selectedWeek}:${fichier.sujetId}`;
+    if (sujetsVus.current.has(cle)) return;
+    sujetsVus.current.add(cle);
+    api.marquerSujetVu(selectedWeek, fichier.countryId || selectedBin, fichier.sujetId, authenticatedAdminPassword)
+      .catch(() => sujetsVus.current.delete(cle));
+  }, [viewingScript, selectedWeek, selectedBin, authenticatedAdminPassword]);
+
   const [aPublier, setAPublier] = useState(null);
   // Un master téléchargé du studio puis redéposé ici peut garder son sommaire.
   const [joindreSommaire, setJoindreSommaire] = useState(true);
   const sommaireDuDeroule = useMemo(
-    () => sommaireDuJT({ clips: timelineClips, overlays: timelineOverlays, jingles }),
-    [timelineClips, timelineOverlays, jingles],
+    () => sommaireDuJT({ clips: timelineClips, overlays: timelineOverlays, jingles, sujetDe }),
+    [timelineClips, timelineOverlays, jingles, sujetDe],
   );
   const handleDeliveryFiles = (filesList) => {
     const fichiers = Array.from(filesList || []);

@@ -47,6 +47,7 @@ vi.mock('../src/api/index.js', () => ({
     uploadDelivery: vi.fn().mockResolvedValue({ id: 'jt', name: 'JT_S45.mp4' }),
     getWeekActiveJob: vi.fn().mockResolvedValue({ job: null }),
     getSujets: vi.fn().mockResolvedValue([{ id: 's1', countryId: 'cm', titre: 'Marché de Mokolo', etat: 'recu' }]),
+    marquerSujetVu: vi.fn().mockResolvedValue({ vuLe: '2026-11-06T10:00:00Z' }),
   },
   API_BASE: 'http://localhost:3010',
   getClientId: vi.fn().mockReturnValue('test-client-id'),
@@ -135,6 +136,19 @@ describe('la revue des rushes', () => {
     expect(await screen.findByText('2 sur 3')).toBeInTheDocument();
     fireEvent.click(within(screen.getByText('2 sur 3').closest('div').parentElement).getByRole('button', { name: 'Valider' }));
     await waitFor(() => expect(api.updateFileStatus).toHaveBeenCalledWith('2026-w45', RUSHS[0].id, 'approved', '', 'secret'));
+  });
+
+  // LE BESOIN : le correspondant voit dans son suivi « Vu par la rédaction ».
+  // Ouvrir un fichier, c'est l'avoir vu — une fois par reportage suffit.
+  it('marque le reportage « vu » à l’ouverture d’un de ses fichiers, une seule fois', async () => {
+    await ouvrir();
+    const carte = screen.getAllByText('vendeuse.mp4')[0].closest('.group');
+    fireEvent.click(carte.firstElementChild);
+    await screen.findByText('1 sur 3');
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await screen.findByText('2 sur 3');
+    await waitFor(() => expect(api.marquerSujetVu).toHaveBeenCalledWith('2026-w45', 'cm', 's1', 'secret'));
+    expect(api.marquerSujetVu).toHaveBeenCalledTimes(1);
   });
 });
 

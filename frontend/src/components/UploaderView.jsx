@@ -41,6 +41,7 @@ import OfflineBanner from './OfflineBanner.jsx';
 import EmptyState from './EmptyState.jsx';
 import EmptyInbox from './illustrations/EmptyInbox.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
+import SuiviReportage from './SuiviReportage.jsx';
 import NombreReportages from './NombreReportages.jsx';
 import ReportagesSheet from './ReportagesSheet.jsx';
 import VoyageEnvoi from './VoyageEnvoi.jsx';
@@ -508,6 +509,17 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   const voirFichiers = (ancre) => () => {
     document.getElementById(ancre)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  // « Regarder mon reportage » : le JT s'ouvre à la minute où il passe.
+  // La page « JT Prêt » lit `jt` et `a` dans l'adresse, puis les retire.
+  const voirDansLeJT = (diffusion) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('jt', diffusion.livraisonId);
+    if (Number.isFinite(diffusion.t)) params.set('a', String(Math.floor(diffusion.t)));
+    else params.delete('a');
+    window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
+    onOpenDelivery?.();
+  };
+
   const parcours = (ancre, compact = false) => (
     <ParcoursPays
       compact={compact}
@@ -561,6 +573,7 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           isOnline={isOnline}
           queuedCount={queuedCount}
           parcours={parcours('espace-fichiers-mobile', true)}
+          onVoirDansLeJT={voirDansLeJT}
         />
       </div>
 
@@ -761,6 +774,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
                 >
                   <div className="space-y-4 sm:space-y-6">
                 
+                {/* Où en est ce reportage, du dépôt à la diffusion. */}
+                {section.sujetId && <SuiviReportage suivi={section.suivi} onRegarder={voirDansLeJT} />}
+
                 {/* Pense-bête : ce que ce reportage contient déjà. */}
                 <ReportageChecklist files={repUploads} />
 

@@ -11,7 +11,11 @@ import {
   etatDeduit,
   rattacherOrphelins,
   numeroDeRepli,
+  marquerSujetVu,
+  getTimelineWorkspace,
+  getDelivery,
 } from '../data/store.js';
+import { suiviDuSujet } from '../services/suiviSujet.js';
 import { estRubrique, estHorsSujet } from '../data/rubriques.js';
 import { buildWeeks, isCountryAccepted } from '../data/constants.js';
 import { getCustomCountries } from '../data/store.js';
@@ -44,7 +48,7 @@ function cleanTitre(value) {
  * fichiers, pour qu'un sujet créé puis rempli n'ait pas à être touché à la
  * main pour cesser d'être « attendu ».
  */
-function decorate(sujet, files) {
+function decorate(sujet, files, contexte = contexteDeSuivi(sujet.weekId)) {
   const pieces = files.filter((f) => f?.sujetId === sujet.id);
   const deduit = etatDeduit(pieces);
   const fixeParUnMonteur = sujet.etat === 'valide' || sujet.etat === 'au_conducteur';
@@ -52,6 +56,17 @@ function decorate(sujet, files) {
     ...sujet,
     nbPieces: pieces.length,
     etat: fixeParUnMonteur ? sujet.etat : deduit,
+    // Où en est ce reportage, vu du correspondant (services/suiviSujet.js).
+    suivi: suiviDuSujet(sujet, pieces, contexte),
+  };
+}
+
+/** Ce que le suivi lit de la semaine : le déroulé enregistré, les JT publiés. */
+function contexteDeSuivi(weekId) {
+  const clips = getTimelineWorkspace(weekId)?.clips || [];
+  return {
+    auDeroule: new Set(clips.map((c) => c?.filename).filter(Boolean)),
+    livraisons: getDelivery(weekId),
   };
 }
 
@@ -60,8 +75,9 @@ router.get('/:weekId', porteeRedaction(), globalLimiter, asyncHandler(async (req
   const { weekId } = req.params;
   if (!isValidWeek(weekId)) return next(createErrors.badRequest('Semaine invalide.'));
 
+  const contexte = contexteDeSuivi(weekId);
   const sujets = getSujets(weekId).map((sujet) =>
-    decorate(sujet, getCountryUploads(weekId, sujet.countryId))
+    decorate(sujet, getCountryUploads(weekId, sujet.countryId), contexte)
   );
   return res.json(sujets);
 }));
@@ -73,7 +89,8 @@ router.get('/:weekId/:countryId', porteeCountry(), globalLimiter, asyncHandler(a
     return next(createErrors.badRequest('Semaine ou pays invalide.'));
   }
   const files = getCountryUploads(weekId, countryId);
-  return res.json(getSujets(weekId, countryId).map((s) => decorate(s, files)));
+  const contexte = contexteDeSuivi(weekId);
+  return res.json(getSujets(weekId, countryId).map((s) => decorate(s, files, contexte)));
 }));
 
 // POST /api/sujets/:weekId/:countryId — le correspondant ouvre un sujet
@@ -216,6 +233,21 @@ router.patch('/:weekId/:countryId/:sujetId', porteeCountry(), globalLimiter, asy
   const sujet = renameSujet(weekId, sujetId, titre);
   io?.emit('sujet_update', { weekId, countryId });
   return res.json(decorate(sujet, getCountryUploads(weekId, countryId)));
+}));
+
+// POST /api/sujets/:weekId/:countryId/:sujetId/vu — la rédaction a ouvert un
+// fichier de ce reportage. Le correspondant le voit dans son suivi.
+router.post('/:weekId/:countryId/:sujetId/vu', requireAdmin, globalLimiter, asyncHandler(async (req, res, next) => {
+  const { weekId, countryId, sujetId } = req.params;
+  if (!isValidWeek(weekId) || !isValidCountry(countryId)) {
+    return next(createErrors.badRequest('Semaine ou pays invalide.'));
+  }
+  const sujet = getSujet(weekId, sujetId);
+  if (!sujet || sujet.countryId !== countryId) return next(createErrors.notFound('Sujet'));
+  const avant = sujet.vuLe;
+  const apres = marquerSujetVu(weekId, sujetId);
+  if (!avant) io?.emit('sujet_update', { weekId, countryId });
+  return res.json({ vuLe: apres.vuLe });
 }));
 
 // PATCH /api/sujets/:weekId/:countryId/:sujetId/etat — la rédaction décide

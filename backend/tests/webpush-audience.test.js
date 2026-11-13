@@ -81,4 +81,14 @@ describe('abonnements push — ciblage par équipe', () => {
     // …et ne reçoivent plus le détail du travail de l'équipe montage.
     expect(store.getSubscriptions({ audiences: ['editor'] })).toHaveLength(0);
   });
+
+  // Le pays dont un reportage passe dans le JT reçoit son propre message :
+  // l'annonce générale ne doit pas lui arriver en double.
+  it('écarte les pays qui reçoivent déjà un message à eux', async () => {
+    const store = await freshStore();
+    await store.addSubscription(sub('e-ga'), { audience: 'reporter', countryId: 'ga' });
+    await store.addSubscription(sub('e-cm'), { audience: 'reporter', countryId: 'cm' });
+    const restants = store.getSubscriptions({ audiences: ['reporter'], saufPays: ['ga'] });
+    expect(restants.map((e) => e.countryId)).toEqual(['cm']);
+  });
 });

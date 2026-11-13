@@ -33,7 +33,7 @@ const ecrire = (nom, octets) => {
 describe('le sommaire du JT — nettoyé avant d’être montré à tous', () => {
   it('garde des instants bornés et des titres en texte simple, dans l’ordre', () => {
     const propre = nettoyerSommaire([
-      { t: 252.04, titre: '  Le marché‮ de <b>Mont-Bouët</b>  ' },
+      { t: 252.04, titre: '  Le marché\u202e de <b>Mont-Bouët</b>  ' },
       { t: 0, titre: 'Générique' },
       { t: -3, titre: 'avant le début' },
       { t: 99999, titre: 'après la fin' },

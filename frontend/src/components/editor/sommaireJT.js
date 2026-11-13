@@ -34,16 +34,23 @@ const titreDuReportage = (overlay) => {
  * @param clips     le déroulé
  * @param overlays  les titres de la piste T1 (instants absolus)
  * @param jingles   les jingles enregistrés (`filename`, `categorie`)
- * @returns [{ t, titre }] : le premier à 0, dans l'ordre, un seul par instant
+ * @param sujetDe   fichier -> identifiant de son reportage (le suivi du
+ *                  correspondant dit alors « votre reportage passe à 4:12 »)
+ * @returns [{ t, titre, sujetId? }] : le premier à 0, dans l'ordre, un seul par instant
  */
-export function sommaireDuJT({ clips = [], overlays = [], jingles = [] } = {}) {
+export function sommaireDuJT({ clips = [], overlays = [], jingles = [], sujetDe = () => null } = {}) {
   const layout = computeTimelineLayout(clips);
   if (layout.items.length === 0) return [];
   const categorieDe = new Map((jingles || []).map((j) => [j.filename, j.categorie]));
+  const reportageDe = (clip) => clip?.sujetId || sujetDe(clip?.filename) || null;
+  // Le plan qui passe à cet instant (pour un titre posé sur la piste T1).
+  const planA = (t) => layout.items.find((i) => t >= i.start - 0.05 && t < i.start + i.duration)?.clip || null;
   const parties = [];
-  const ajouter = (t, titre) => {
+  const ajouter = (t, titre, sujetId = null) => {
     const instant = Math.round(Number(t) * 10) / 10;
-    if (titre && Number.isFinite(instant) && instant >= 0 && instant < layout.total) parties.push({ t: instant, titre });
+    if (titre && Number.isFinite(instant) && instant >= 0 && instant < layout.total) {
+      parties.push({ t: instant, titre, ...(sujetId ? { sujetId } : {}) });
+    }
   };
 
   layout.items.forEach((item) => {
@@ -58,12 +65,12 @@ export function sommaireDuJT({ clips = [], overlays = [], jingles = [] } = {}) {
       return;
     }
     (clip.overlays || []).forEach((o) => {
-      if (o.templateId === 'titre_reportage') ajouter(item.start + (Number(o.startTime) || 0), titreDuReportage(o));
+      if (o.templateId === 'titre_reportage') ajouter(item.start + (Number(o.startTime) || 0), titreDuReportage(o), reportageDe(clip));
     });
   });
 
   (overlays || []).forEach((o) => {
-    if (o.templateId === 'titre_reportage') ajouter(o.startTime, titreDuReportage(o));
+    if (o.templateId === 'titre_reportage') ajouter(o.startTime, titreDuReportage(o), reportageDe(planA(Number(o.startTime) || 0)));
   });
 
   // Une rubrique posée sans son jingle s'annonce par le bandeau du premier pays.

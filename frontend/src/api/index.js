@@ -337,6 +337,11 @@ export const api = {
       body: JSON.stringify({ reportages }),
     }),
 
+  // La rédaction a ouvert un fichier de ce reportage : le correspondant le
+  // voit dans son suivi.
+  marquerSujetVu: (weekId, countryId, sujetId, adminPassword) =>
+    request(`/sujets/${weekId}/${countryId}/${sujetId}/vu`, { method: 'POST', adminPassword }),
+
   setSujetEtat: (weekId, countryId, sujetId, etat, adminPassword) =>
     request(`/sujets/${weekId}/${countryId}/${sujetId}/etat`, {
       method: 'PATCH',

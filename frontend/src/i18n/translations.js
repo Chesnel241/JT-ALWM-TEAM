@@ -646,6 +646,26 @@ export const translations = {
         telecharger: (taille) => (taille ? `Télécharger (${taille})` : 'Télécharger'),
       },
     },
+    // Le suivi d'un reportage, côté correspondant (SuiviReportage.jsx).
+    suivi: {
+      titre: 'Suivi de votre reportage',
+      recu: 'Reçu',
+      vu: 'Vu',
+      valide: 'Validé',
+      aCorriger: 'À corriger',
+      retenu: 'Retenu',
+      diffuse: 'Diffusé',
+      fait: 'fait',
+      aVenir: 'à venir',
+      detailRecu: (quand) => (quand ? `Bien reçu le ${quand}. La rédaction va le regarder.` : 'Bien reçu. La rédaction va le regarder.'),
+      detailVu: (quand) => (quand ? `Vu par la rédaction le ${quand}.` : 'Vu par la rédaction.'),
+      detailValide: 'Validé par la rédaction.',
+      detailACorriger: 'La rédaction demande une correction : son message est sous le fichier concerné.',
+      detailRetenu: 'Retenu pour le JT de la semaine.',
+      detailDiffuse: 'Diffusé dans le JT de la semaine.',
+      detailDiffuseA: (minute) => `Diffusé : il passe à ${minute} dans le JT.`,
+      regarder: 'Regarder',
+    },
     // Le studio de voix off, côté journalistes (StudioVoixJournaliste).
     voix: {
       titre: 'Enregistrer votre voix off',
@@ -2118,6 +2138,26 @@ export const translations = {
         passerLeger: 'Play the phone version',
         telecharger: (taille) => (taille ? `Download (${taille})` : 'Download'),
       },
+    },
+    // Tracking a report, correspondent side (SuiviReportage.jsx).
+    suivi: {
+      titre: 'Your report’s progress',
+      recu: 'Received',
+      vu: 'Seen',
+      valide: 'Approved',
+      aCorriger: 'To fix',
+      retenu: 'Selected',
+      diffuse: 'Aired',
+      fait: 'done',
+      aVenir: 'to come',
+      detailRecu: (quand) => (quand ? `Received on ${quand}. The newsroom will review it.` : 'Received. The newsroom will review it.'),
+      detailVu: (quand) => (quand ? `Seen by the newsroom on ${quand}.` : 'Seen by the newsroom.'),
+      detailValide: 'Approved by the newsroom.',
+      detailACorriger: 'The newsroom asks for a correction: its message is under the file concerned.',
+      detailRetenu: 'Selected for this week’s newscast.',
+      detailDiffuse: 'Aired in this week’s newscast.',
+      detailDiffuseA: (minute) => `Aired: it plays at ${minute} in the newscast.`,
+      regarder: 'Watch',
     },
     // The voice-over studio, reporter side (StudioVoixJournaliste).
     voix: {

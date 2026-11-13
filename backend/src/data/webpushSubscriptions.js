@@ -137,19 +137,24 @@ export async function removeSubscription(endpoint) {
 /**
  * Abonnements filtrés.
  *
- * @param {{audiences?: string[], countryId?: string}} [filter]
+ * @param {{audiences?: string[], countryId?: string, saufPays?: string[]}} [filter]
  *   `audiences` : équipes visées. Omis = tout le monde.
  *   `countryId` : restreint aux appareils déclarés sur ce pays.
+ *   `saufPays` : écarte les appareils de ces pays.
  */
 export function getSubscriptions(filter = {}) {
   const audiences = Array.isArray(filter.audiences) && filter.audiences.length
     ? new Set(filter.audiences.map(normalizeAudience))
     : null;
   const countryId = normalizeCountryId(filter.countryId);
+  // `saufPays` : les pays qui reçoivent déjà un message à eux (leur reportage
+  // est dans le JT) ne reçoivent pas en plus l'annonce générale.
+  const sauf = new Set((Array.isArray(filter.saufPays) ? filter.saufPays : []).map(normalizeCountryId).filter(Boolean));
 
   return Object.values(subscriptions).filter((entry) => {
     if (audiences && !audiences.has(entry.audience)) return false;
     if (countryId && entry.countryId !== countryId) return false;
+    if (sauf.size && sauf.has(entry.countryId)) return false;
     return true;
   });
 }

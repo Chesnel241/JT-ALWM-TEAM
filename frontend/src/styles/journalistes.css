@@ -2349,6 +2349,111 @@
 	opacity: 1;
 }
 
+/* Le suivi d'un reportage (SuiviReportage.jsx) : quatre jalons sur un trait.
+   Le trait se remplit jusqu'à l'étape atteinte — sa durée suit la distance
+   parcourue — et chaque jalon s'allume quand le remplissage l'atteint. Le
+   mouvement ne joue qu'une fois, à l'affichage. */
+.jr-suivi {
+	display: grid;
+	gap: 0.75rem;
+	padding: 0.875rem 1rem;
+	border-radius: 1rem;
+	border: 1px solid var(--border);
+	background: var(--paper);
+}
+
+.jr-suivi-jalons {
+	--trajet: 900ms;
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.jr-suivi-jalons::before,
+.jr-suivi-jalons::after {
+	content: '';
+	position: absolute;
+	top: calc(0.625rem - 1px);
+	left: 12.5%;
+	right: 12.5%;
+	height: 2px;
+	border-radius: 2px;
+}
+
+.jr-suivi-jalons::before {
+	background: var(--border);
+}
+
+.jr-suivi-jalons::after {
+	background: var(--accent);
+	transform-origin: left center;
+	transform: scaleX(var(--avance, 0));
+	animation: jr-suivi-trace calc(var(--avance, 0) * var(--trajet) + 1ms) var(--ease-out) both;
+}
+
+@keyframes jr-suivi-trace {
+	from {
+		transform: scaleX(0);
+	}
+}
+
+.jr-suivi-jalon {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.375rem;
+	text-align: center;
+}
+
+.jr-suivi-noeud {
+	display: grid;
+	place-items: center;
+	width: 1.25rem;
+	height: 1.25rem;
+	border-radius: 999px;
+	border: 2px solid var(--border);
+	background: var(--paper);
+	color: #fff;
+}
+
+.jr-suivi-jalon[data-atteint] .jr-suivi-noeud {
+	border-color: var(--accent);
+	background: var(--accent);
+	animation: jr-suivi-allume 360ms var(--ease-emphasis) both;
+	animation-delay: calc(var(--i, 0) * var(--trajet) / 3);
+}
+
+.jr-suivi-jalon[data-courant] .jr-suivi-noeud {
+	box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 20%, transparent);
+}
+
+.jr-suivi-jalon[data-alerte] .jr-suivi-noeud {
+	border-color: var(--cta-orange-deep);
+	background: var(--cta-orange-deep);
+	box-shadow: 0 0 0 4px color-mix(in oklch, var(--cta-orange-deep) 22%, transparent);
+}
+
+@keyframes jr-suivi-allume {
+	from {
+		transform: scale(0.6);
+		opacity: 0;
+	}
+}
+
+.jr-suivi-libelle {
+	font-size: 0.75rem;
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--muted);
+}
+
+.jr-suivi-jalon[data-courant] .jr-suivi-libelle {
+	font-weight: 800;
+	color: var(--ink);
+}
+
 /* Mode connexion faible (lib/connexion.js) : les boucles décoratives
    s'arrêtent. L'envoi en cours, le compte à rebours et les indicateurs
    d'attente gardent leur mouvement : ils disent quelque chose. */

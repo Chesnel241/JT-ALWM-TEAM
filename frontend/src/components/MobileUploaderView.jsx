@@ -26,6 +26,7 @@ import { reportageTone } from '../lib/branding.js';
 import { buildSections, filesForSection, etatNombreReportages, nomAffiche, SECTIONS_FIXES } from '../lib/sujets.js';
 import { estEnVol } from '../lib/envoi.js';
 import VoyageEnvoi from './VoyageEnvoi.jsx';
+import SuiviReportage from './SuiviReportage.jsx';
 import PrevenirRedaction from './PrevenirRedaction.jsx';
 import OutilsCorrespondant from './OutilsCorrespondant.jsx';
 
@@ -73,6 +74,7 @@ export default function MobileUploaderView({
   pendingUploads = [],
   onResumeUpload,
   onDismissPending,
+  onVoirDansLeJT = null,
   onRetryUpload,
   parcours = null,
   isOnline = true,
@@ -416,6 +418,9 @@ export default function MobileUploaderView({
               </h3>
               <p className="mt-0.5 text-xs text-[color:var(--muted)]">{currentSection.hint}</p>
             </div>
+
+            {/* Où en est ce reportage, du dépôt à la diffusion. */}
+            {currentSection.sujetId && <SuiviReportage suivi={currentSection.suivi} onRegarder={onVoirDansLeJT} />}
 
             {/* Deux actions, une seule hiérarchie : l'envoi de fichier est
                 l'action principale (bouton plein), le script la seconde
