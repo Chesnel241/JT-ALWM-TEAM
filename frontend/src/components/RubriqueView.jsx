@@ -311,12 +311,14 @@ export default function RubriqueView({ cle, selectedWeek, onBack, isActive = tru
         </button>
       )}
 
-      <header className="jr-ciel mb-6 px-4 py-6 sm:py-8 flex flex-col items-center text-center">
-        <span className="h-16 w-16 shrink-0 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shadow-lg">
-          <Icone size={30} aria-hidden="true" />
+      <header className="jr-ciel mb-6 flex items-start gap-4 px-4 py-5 sm:px-6 sm:py-6">
+        <span className="h-12 w-12 shrink-0 rounded-2xl bg-v-accent/10 text-[color:var(--accent-deep)] flex items-center justify-center">
+          <Icone size={24} aria-hidden="true" />
         </span>
-        <h1 className="mt-3 text-2xl sm:text-3xl font-extrabold text-[color:var(--ink)] leading-tight">{rubrique.nom}</h1>
-        <p className="text-sm sm:text-base text-[color:var(--muted)] mt-1.5 max-w-xl">{rubrique.description}</p>
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[color:var(--ink)] leading-tight">{rubrique.nom}</h1>
+          <p className="text-sm sm:text-base text-[color:var(--muted)] mt-1 max-w-xl">{rubrique.description}</p>
+        </div>
       </header>
 
       {/* Un brouillon plus récent que le serveur : proposé, jamais imposé. */}

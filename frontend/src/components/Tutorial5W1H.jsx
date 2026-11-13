@@ -42,14 +42,11 @@ export default function Tutorial5W1H({ isOpen, onClose }) {
 
   if (!t.tutorial || !isVisible) return null;
 
-  const items = [
-    { id: 'who', color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-200 dark:border-blue-800' },
-    { id: 'what', color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30', border: 'border-purple-200 dark:border-purple-800' },
-    { id: 'where', color: 'text-[var(--accent)]', bg: 'bg-v-accent/10 dark:bg-v-accent/30', border: 'border-v-accent/20 dark:border-v-accent/80' },
-    { id: 'when', color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30', border: 'border-amber-200 dark:border-amber-800' },
-    { id: 'why', color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30', border: 'border-rose-200 dark:border-rose-800' },
-    { id: 'how', color: 'text-cyan-500', bg: 'bg-cyan-100 dark:bg-cyan-900/30', border: 'border-cyan-200 dark:border-cyan-800' },
-  ];
+  // Six questions, une seule teinte : six couleurs (bleu, violet, ambre,
+  // rose, cyan…) ne disaient rien de plus, elles décoraient. L'icône et le
+  // titre suffisent à distinguer les cartes.
+  const teinte = { color: 'text-[color:var(--accent-deep)]', bg: 'bg-v-accent/10', border: 'border-[var(--border)]' };
+  const items = ['who', 'what', 'where', 'when', 'why', 'how'].map((id) => ({ id, ...teinte }));
 
   return (
     <div ref={boiteModale} className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true">

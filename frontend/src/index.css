@@ -195,6 +195,39 @@
 	view-transition-name: app-chrome-bottom;
 }
 
+/* Le repère de l'onglet actif, côté journalistes : un trait de la couleur
+   de la chaîne, en haut de l'onglet sur téléphone, en bas sur ordinateur.
+   Il porte un nom de transition : au changement d'écran, le navigateur le
+   fait glisser de l'ancien onglet au nouveau, pendant que la page change.
+   Un seul geste, qui dit où l'on va. */
+.onglet-repere {
+	position: absolute;
+	left: 50%;
+	width: 1.75rem;
+	height: 3px;
+	border-radius: 9999px;
+	background: var(--accent);
+	transform: translateX(-50%);
+	pointer-events: none;
+}
+
+.onglet-repere-bas {
+	top: -0.5rem;
+	view-transition-name: onglet-repere-bas;
+}
+
+.onglet-repere-haut {
+	bottom: -0.5rem;
+	width: 2.5rem;
+	view-transition-name: onglet-repere-haut;
+}
+
+::view-transition-group(onglet-repere-bas),
+::view-transition-group(onglet-repere-haut) {
+	animation-duration: var(--motion-screen);
+	animation-timing-function: var(--ease-emphasis);
+}
+
 @media (prefers-reduced-motion: reduce) {
 	::view-transition-old(root),
 	::view-transition-new(root) {

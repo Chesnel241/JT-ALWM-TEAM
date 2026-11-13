@@ -71,7 +71,7 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
   return (
     <div className="space-y-6 pb-12">
       <header className="jr-ciel px-4 py-6 sm:py-9 text-center">
-        <span className="badge bg-[var(--paper)] text-[color:var(--accent-deep)] shadow-sm inline-flex items-center gap-1.5">
+        <span className="badge bg-v-accent/10 text-[color:var(--accent-deep)] inline-flex items-center gap-1.5">
           <Sparkles size={14} /> {t.nav.delivery}
         </span>
         <h2 className="mt-3 text-2xl sm:text-4xl font-extrabold text-[color:var(--ink)] leading-tight">
@@ -153,7 +153,10 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
                     const lienLeger = leger ? `${API_BASE}/uploads/${encodeURIComponent(leger.filename)}?dl=1` : null;
                     return (
                       <div className="space-y-3">
-                        <div className={`grid gap-3 ${video ? 'sm:grid-cols-2' : ''}`}>
+                        {/* Deux colonnes seulement si la carte est large : deux JT
+                            côte à côte, la version téléphone se repliait sur
+                            trois lignes. */}
+                        <div className="jr-jt-actions grid gap-3" data-deux={video || undefined}>
                           {leger ? (
                             <a
                               href={lienLeger}

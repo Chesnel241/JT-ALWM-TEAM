@@ -87,7 +87,7 @@ export default function ReporterHomeView({
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:items-center">
           <div className="text-center lg:text-left motion-rise">
             {/* Sur téléphone, l'en-tête dit déjà « Journalistes ». */}
-            <span className="badge hidden sm:inline-flex bg-[var(--paper)] text-[color:var(--accent-deep)] shadow-sm">{r.badge}</span>
+            <span className="badge hidden sm:inline-flex bg-v-accent/10 text-[color:var(--accent-deep)]">{r.badge}</span>
             <h2 className="sm:mt-3 text-2xl sm:text-4xl font-extrabold text-[color:var(--ink)] leading-tight">{r.title}</h2>
             {week && (
               <p className="mt-2 inline-flex items-center gap-2 text-sm sm:text-base font-semibold text-[color:var(--muted)]">

@@ -1,3 +1,11 @@
+/* Les deux ombres de l'espace journalistes : douce au repos, levée au
+   survol. Les tuiles portaient chacune une ombre colorée à leur teinte : un
+   écran qui scintillait de bleu, de rouge et d'orange. */
+:root {
+	--jr-ombre-douce: 0 1px 2px oklch(0.25 0.03 250 / 0.06), 0 1px 1px oklch(0.25 0.03 250 / 0.04);
+	--jr-ombre-levee: 0 10px 26px -14px oklch(0.25 0.05 250 / 0.32);
+}
+
 /*
  * Espace journalistes — formes et mouvements.
  *
@@ -47,17 +55,11 @@
 .cr-carte {
 	position: relative;
 	overflow: hidden;
-	border-radius: 1.75rem;
-	border: 2px solid var(--border);
-	border-color: color-mix(in oklch, var(--cr-couleur) 35%, var(--border));
+	border-radius: 1.5rem;
+	border: 1px solid var(--border);
 	background: var(--paper);
-	background: linear-gradient(
-		135deg,
-		color-mix(in oklch, var(--cr-couleur) 12%, var(--paper)) 0%,
-		var(--paper) 55%,
-		color-mix(in oklch, var(--brand-sky) 10%, var(--paper)) 100%
-	);
-	box-shadow: var(--shadow-soft);
+	/* La phase se lit au filet de gauche et aux chiffres, pas à un fond teinté. */
+	box-shadow: inset 4px 0 0 var(--cr-couleur), var(--jr-ombre-douce);
 	transition: border-color 600ms var(--ease-out);
 }
 
@@ -166,7 +168,8 @@
 }
 
 .cr[data-phase='urgent'] .cr-phase svg {
-	animation: cr-secoue 1.6s ease-in-out infinite;
+	/* La couleur et les chiffres disent l'urgence : l'icône ne tremble plus. */
+	animation: none;
 }
 
 @keyframes cr-secoue {
@@ -350,7 +353,6 @@
 	font-weight: 800;
 	white-space: nowrap;
 	transform: translateX(-50%);
-	animation: cr-flotte 2.4s ease-in-out infinite;
 }
 
 @keyframes cr-flotte {
@@ -377,10 +379,10 @@
 	gap: 0.6rem;
 	padding: 0.75rem 0.85rem;
 	border-radius: 1.25rem;
-	border: 2px solid var(--border);
-	border-color: color-mix(in oklch, var(--cr-couleur) 35%, var(--border));
+	border: 1px solid var(--border);
 	background: var(--paper);
-	background: color-mix(in oklch, var(--cr-couleur) 8%, var(--paper));
+	/* Comme la grande carte : la phase en filet, le fond reste clair. */
+	box-shadow: inset 4px 0 0 var(--cr-couleur);
 }
 
 .cr-compact-temps {
@@ -403,50 +405,29 @@
 /* Accueil journalistes                                                */
 /* ------------------------------------------------------------------ */
 
-/* Le ciel de l'en-tête : deux taches de couleur qui dérivent lentement.
-   Des dégradés plutôt qu'un flou : un `filter: blur` sur une grande surface
-   coûte cher à un téléphone d'entrée de gamme. */
+/* L'en-tête d'une page : une carte claire, un filet de la couleur de la
+   chaîne en haut. Il portait deux taches de couleur qui dérivaient sans fin
+   derrière le titre — joli, mais une page de travail n'a pas à bouger
+   pendant qu'on la lit. */
 .jr-ciel {
 	position: relative;
 	isolation: isolate;
 	overflow: hidden;
-	border-radius: 2rem;
-}
-
-.jr-ciel::before,
-.jr-ciel::after {
-	content: '';
-	position: absolute;
-	z-index: -1;
-	width: 22rem;
-	height: 22rem;
-	border-radius: 9999px;
-	animation: jr-derive 16s ease-in-out infinite alternate;
-	pointer-events: none;
+	border-radius: 1.5rem;
+	border: 1px solid var(--border);
+	background: var(--paper);
+	box-shadow: var(--jr-ombre-douce);
 }
 
 .jr-ciel::before {
-	top: -9rem;
-	left: -6rem;
-	background: radial-gradient(circle closest-side, color-mix(in oklch, var(--brand-sky) 45%, transparent) 0%, transparent 100%);
+	content: '';
+	position: absolute;
+	inset: 0 0 auto;
+	height: 3px;
+	background: linear-gradient(90deg, var(--accent), var(--brand-sky));
+	pointer-events: none;
 }
 
-.jr-ciel::after {
-	top: -7rem;
-	right: -7rem;
-	background: radial-gradient(circle closest-side, color-mix(in oklch, var(--action) 28%, transparent) 0%, transparent 100%);
-	animation-delay: -8s;
-}
-
-@keyframes jr-derive {
-	from {
-		transform: translate(0, 0) scale(1);
-	}
-
-	to {
-		transform: translate(2.5rem, 1.5rem) scale(1.15);
-	}
-}
 
 @keyframes jr-onde {
 	from {
@@ -480,7 +461,6 @@
 	overflow: hidden;
 	background-image: repeating-linear-gradient(90deg, var(--border) 0 10px, transparent 10px 18px);
 	background-size: 18px 100%;
-	animation: jr-flux 1.1s linear infinite;
 }
 
 .jr-trait > i {
@@ -562,7 +542,6 @@
 }
 
 .jr-etape[data-etat='enAttente'] .jr-noeud svg {
-	animation: jr-sablier 3s ease-in-out infinite;
 }
 
 @keyframes jr-sablier {
@@ -588,7 +567,7 @@
 	inset: -7px;
 	border-radius: 9999px;
 	border: 3px solid var(--accent);
-	animation: jr-onde 2s ease-out infinite;
+	opacity: 0.35;
 }
 
 .jr-etape[data-etat='aCorriger'][data-avous] .jr-noeud::after {
@@ -605,7 +584,6 @@
 	font-size: 0.65rem;
 	font-weight: 800;
 	white-space: nowrap;
-	animation: cr-flotte 2.4s ease-in-out infinite;
 	left: 50%;
 	transform: translateX(-50%);
 }
@@ -694,7 +672,6 @@
 	color: #fff;
 	font-size: 0.75rem;
 	font-weight: 800;
-	animation: cr-flotte 2.4s ease-in-out infinite;
 }
 
 /* ------------------------------------------------------------------ */
@@ -708,11 +685,11 @@
 	gap: 0.55rem;
 	min-width: 0;
 	padding: 1.15rem 0.75rem 1rem;
-	border-radius: 1.5rem;
-	border: 2px solid var(--border);
+	border-radius: 1.25rem;
+	border: 1px solid var(--border);
 	background: var(--paper);
 	text-align: center;
-	box-shadow: 0 10px 22px -20px oklch(0.25 0.05 250 / 0.6);
+	box-shadow: var(--jr-ombre-douce);
 	transition:
 		transform var(--motion-enter) var(--ease-out),
 		border-color var(--motion-enter) var(--ease-out),
@@ -721,14 +698,14 @@
 
 @media (hover: hover) {
 	.jr-tuile:hover {
-		transform: translateY(-4px);
-		border-color: var(--accent);
-		box-shadow: 0 20px 34px -24px var(--accent);
+		transform: translateY(-2px);
+		border-color: color-mix(in oklch, var(--accent) 45%, var(--border));
+		box-shadow: var(--jr-ombre-levee);
 	}
 
-	/* Le drapeau ondule au survol, comme au vent. */
+	/* Le drapeau se redresse à peine : la tuile répond, sans jouer. */
 	.jr-tuile:hover .jr-tuile-drapeau {
-		animation: jr-vent 1.2s ease-in-out infinite;
+		transform: scale(1.04);
 	}
 }
 
@@ -738,51 +715,23 @@
 
 .jr-tuile-drapeau {
 	display: inline-flex;
-	transform-origin: 50% 90%;
-}
-
-@keyframes jr-vent {
-	0%,
-	100% {
-		transform: rotate(0);
-	}
-
-	25% {
-		transform: rotate(-5deg);
-	}
-
-	75% {
-		transform: rotate(5deg);
-	}
-}
-
-.jr-tuile-entrer {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.15rem;
-	margin-top: 0.15rem;
-	padding: 0.35rem 0.8rem;
-	border-radius: 9999px;
-	background: var(--accent);
-	color: #fff;
-	font-size: 0.85rem;
-	font-weight: 800;
+	transition: transform var(--motion-enter) var(--ease-emphasis);
 }
 
 .jr-tuile-ajout {
 	justify-content: center;
 	border-style: dashed;
-	border-color: var(--cta-orange);
-	color: var(--cta-orange-deep);
-	background: var(--paper);
-	background: color-mix(in oklch, var(--cta-orange) 6%, var(--paper));
+	color: var(--accent-deep);
+	background: transparent;
+	box-shadow: none;
 }
 
-@media (hover: hover) {
-	.jr-tuile-ajout:hover {
-		border-color: var(--cta-orange);
-		box-shadow: 0 20px 34px -24px var(--cta-orange);
-	}
+.jr-tuile-ajout-icone {
+	display: grid;
+	place-items: center;
+	border-radius: 9999px;
+	background: color-mix(in oklch, var(--accent) 10%, var(--paper));
+	color: var(--accent-deep);
 }
 
 /* ------------------------------------------------------------------ */
@@ -816,7 +765,7 @@
 	inset: 0;
 	border-radius: inherit;
 	background: var(--action);
-	animation: jr-onde 1.4s ease-out infinite;
+	opacity: 0;
 }
 
 .jr-liaison {
@@ -1032,7 +981,6 @@
 	stroke-width: 3;
 	stroke-dasharray: 12 9;
 	opacity: 0.55;
-	animation: jr-fourmis 1.6s linear infinite;
 }
 
 @keyframes jr-fourmis {
@@ -1044,6 +992,17 @@
 .jr-depot[data-glisse] {
 	transform: translateY(-4px) scale(1.01);
 	box-shadow: 0 24px 40px -26px var(--action);
+}
+
+/* Un fichier survole la zone : les pointillés défilent et le nuage monte.
+   Là, le mouvement dit quelque chose (« lâchez, ça part ») ; au repos, rien
+   ne bouge. */
+.jr-depot[data-glisse] .jr-depot-icones > .jr-depot-nuage {
+	animation: jr-monte 1.1s var(--ease-out) infinite;
+}
+
+.jr-depot[data-glisse] .jr-depot-bord rect {
+	animation: jr-fourmis 1.2s linear infinite;
 }
 
 .jr-depot[data-glisse] .jr-depot-bord rect {
@@ -1078,32 +1037,16 @@
 	color: var(--accent);
 	border: 1px solid var(--border);
 	box-shadow: 0 6px 14px -10px oklch(0.25 0.05 250 / 0.6);
-	animation: jr-flottement 2.6s ease-in-out infinite;
-}
-
-.jr-depot-icones > span:nth-child(2) {
-	animation-delay: -0.6s;
-	color: var(--cta-red);
-}
-
-.jr-depot-icones > span:nth-child(4) {
-	animation-delay: -1.2s;
-	color: var(--cta-orange);
-}
-
-.jr-depot-icones > span:nth-child(5) {
-	animation-delay: -1.8s;
 }
 
 .jr-depot-icones > .jr-depot-nuage {
 	width: 4.5rem;
 	height: 4.5rem;
-	border-radius: 1.4rem;
+	border-radius: 1.25rem;
 	background: var(--action);
 	color: #fff;
 	border: 0;
-	box-shadow: 0 14px 26px -14px var(--action);
-	animation: jr-monte 2.2s ease-in-out infinite;
+	box-shadow: 0 8px 18px -12px var(--action);
 }
 
 /* Boutons d'action de l'espace journalistes. */
@@ -1226,11 +1169,23 @@
    puis les deux boutons. */
 .jr-jt {
 	overflow: hidden;
-	border-radius: 1.75rem;
-	border: 2px solid color-mix(in oklch, var(--accent) 25%, var(--border));
+	border-radius: 1.5rem;
+	border: 1px solid var(--border);
 	background: var(--paper);
-	box-shadow: 0 18px 40px -30px color-mix(in oklch, var(--accent) 80%, transparent);
+	box-shadow: var(--jr-ombre-douce);
 	animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* La carte se mesure elle-même : ses boutons passent sur deux colonnes
+   quand elle est assez large, quelle que soit la largeur de l'écran. */
+.jr-jt {
+	container-type: inline-size;
+}
+
+@container (min-width: 36rem) {
+	.jr-jt-actions[data-deux] {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 
 .jr-jt-ecran {
@@ -1241,8 +1196,7 @@
 	aspect-ratio: 16 / 9;
 	overflow: hidden;
 	background:
-		radial-gradient(circle at 30% 20%, color-mix(in oklch, #fff 22%, transparent) 0, transparent 45%),
-		linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+		radial-gradient(120% 90% at 50% 0%, color-mix(in oklch, var(--accent) 70%, #0b1b2e) 0%, #0b1b2e 100%);
 	cursor: pointer;
 }
 
@@ -1250,19 +1204,17 @@
 	cursor: default;
 }
 
-/* Les lignes d'un vieil écran, qui défilent doucement. */
+/* Un voile qui s'éclaircit à peine au survol : l'affiche répond au geste. */
 .jr-jt-ecran::before {
 	content: '';
 	position: absolute;
 	inset: 0;
-	background: repeating-linear-gradient(0deg, color-mix(in oklch, #fff 7%, transparent) 0 2px, transparent 2px 6px);
-	animation: jr-balayage 6s linear infinite;
+	background: linear-gradient(180deg, transparent 40%, rgb(0 0 0 / 0.25));
+	transition: opacity var(--motion-enter) var(--ease-out);
 }
 
-@keyframes jr-balayage {
-	to {
-		transform: translateY(24px);
-	}
+.jr-jt-ecran:hover::before {
+	opacity: 0.6;
 }
 
 .jr-jt-ecran:focus-visible {
@@ -1287,50 +1239,22 @@
 	position: relative;
 	display: grid;
 	place-items: center;
-	width: 5.25rem;
-	height: 5.25rem;
+	width: 4rem;
+	height: 4rem;
 	border-radius: 9999px;
-	background: #fff;
+	background: rgb(255 255 255 / 0.95);
 	color: var(--accent-deep);
-	box-shadow: 0 14px 30px -12px rgb(0 0 0 / 0.55);
-	transition: transform var(--motion-enter) var(--ease-out);
-}
-
-/* Deux anneaux qui s'élargissent : « touchez ici ». */
-.jr-jt-lecture::before,
-.jr-jt-lecture::after {
-	content: '';
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-	border: 3px solid #fff;
-	animation: jr-ondes-lecture 2.4s var(--ease-out) infinite;
-}
-
-.jr-jt-lecture::after {
-	animation-delay: 1.2s;
-}
-
-@keyframes jr-ondes-lecture {
-	from {
-		transform: scale(1);
-		opacity: 0.7;
-	}
-	to {
-		transform: scale(1.75);
-		opacity: 0;
-	}
+	box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.6);
+	transition: transform var(--motion-enter) var(--ease-emphasis);
 }
 
 .jr-jt-ecran:hover .jr-jt-lecture,
 .jr-jt-ecran:focus-visible .jr-jt-lecture {
-	transform: scale(1.08);
+	transform: scale(1.06);
 }
 
-.jr-jt-ecran:disabled .jr-jt-lecture::before,
-.jr-jt-ecran:disabled .jr-jt-lecture::after {
-	animation: none;
-	opacity: 0;
+.jr-jt-ecran:active .jr-jt-lecture {
+	transform: scale(0.96);
 }
 
 /* La flèche du bouton vert descend, comme le fichier. */
@@ -1358,7 +1282,7 @@
 }
 
 .jr-jt-plateau svg {
-	animation: jr-chute 1.4s var(--ease-out) infinite;
+	animation: jr-chute 1.4s var(--ease-out) 2;
 }
 
 @keyframes jr-chute {
@@ -1419,7 +1343,7 @@
 }
 
 .jr-micro[data-etat='pret'] .jr-micro-halo {
-	animation: jr-invite 2.6s ease-in-out infinite;
+	opacity: 0.5;
 }
 
 @keyframes jr-battement {
@@ -1592,13 +1516,11 @@
 	min-height: 10rem;
 	padding: 1rem 1rem 1.15rem;
 	overflow: hidden;
-	border-radius: 1.5rem;
-	border: 2px solid var(--border);
-	border-color: color-mix(in oklch, var(--jr-c) 28%, var(--border));
+	border-radius: 1.25rem;
+	border: 1px solid var(--border);
 	background: var(--paper);
-	background: linear-gradient(160deg, color-mix(in oklch, var(--jr-c) 12%, var(--paper)) 0%, var(--paper) 62%);
 	text-align: left;
-	box-shadow: 0 14px 28px -24px var(--jr-c);
+	box-shadow: var(--jr-ombre-douce);
 	transition:
 		transform var(--motion-enter) var(--ease-out),
 		box-shadow var(--motion-enter) var(--ease-out),
@@ -1613,15 +1535,6 @@
 	--jr-c: var(--accent);
 }
 
-/* Un reflet passe une fois sur la tuile au survol. */
-.jr-acces::after {
-	content: '';
-	position: absolute;
-	inset: 0;
-	background: linear-gradient(105deg, transparent 35%, color-mix(in oklch, #fff 55%, transparent) 50%, transparent 65%);
-	transform: translateX(-120%);
-	pointer-events: none;
-}
 
 .jr-acces-icone {
 	position: relative;
@@ -1630,10 +1543,9 @@
 	width: 3.25rem;
 	height: 3.25rem;
 	margin-bottom: 0.4rem;
-	border-radius: 1rem;
-	background: var(--jr-c);
-	color: #fff;
-	box-shadow: 0 10px 20px -12px var(--jr-c);
+	border-radius: 0.875rem;
+	background: color-mix(in oklch, var(--jr-c) 11%, var(--paper));
+	color: var(--jr-c);
 	transition: transform var(--motion-enter) var(--ease-emphasis);
 }
 
@@ -1677,18 +1589,9 @@
 
 @media (hover: hover) {
 	.jr-acces:hover {
-		transform: translateY(-4px);
-		border-color: var(--jr-c);
-		box-shadow: 0 22px 38px -26px var(--jr-c);
-	}
-
-	.jr-acces:hover::after {
-		transform: translateX(120%);
-		transition: transform 900ms var(--ease-out);
-	}
-
-	.jr-acces:hover .jr-acces-icone {
-		transform: translateY(-2px) rotate(-4deg);
+		transform: translateY(-2px);
+		border-color: color-mix(in oklch, var(--jr-c) 45%, var(--border));
+		box-shadow: var(--jr-ombre-levee);
 	}
 
 	.jr-acces:hover .jr-acces-fleche {
@@ -1697,8 +1600,9 @@
 		color: #fff;
 	}
 
+	/* Une seule descente de la flèche, pas une boucle. */
 	.jr-acces[data-anim='descend']:hover .jr-acces-icone svg {
-		animation: jr-descend 1s ease-in-out infinite;
+		animation: jr-descend 700ms var(--ease-out) 1;
 	}
 
 	.jr-acces:hover .jr-egaliseur i {
@@ -1807,7 +1711,6 @@
 
 .jr-redaction[data-etat='partiel'] .jr-redaction-voyant,
 .jr-redaction[data-etat='vide'] .jr-redaction-voyant {
-	animation: jr-voyant 2.4s ease-in-out infinite;
 }
 
 @keyframes jr-voyant {

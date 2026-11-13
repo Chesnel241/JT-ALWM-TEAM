@@ -40,9 +40,15 @@ export default function Nav({
       : isEditorWorkspace
         ? 'text-xs sm:px-2.5 sm:py-2 sm:rounded-md'
         : 'text-xs sm:text-sm px-1 sm:px-4 py-2 sm:py-2.5 rounded-xl';
-    return `flex min-w-0 flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-[transform,background-color,color,box-shadow] duration-150 font-medium flex-1 sm:flex-none ${size} ${
+    // Côté journalistes, l'onglet actif n'est plus un gros bloc bleu : une
+    // teinte légère, le texte de la couleur de la chaîne, et un repère qui
+    // glisse d'un onglet à l'autre (voir `.onglet-repere`, index.css).
+    const actif = isReporter
+      ? 'jr-onglet-actif bg-v-accent/10 text-[color:var(--accent-deep)] font-bold'
+      : 'bg-[var(--accent)] text-white shadow-md scale-105 sm:scale-100';
+    return `relative flex min-w-0 flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-[transform,background-color,color,box-shadow] duration-150 font-medium flex-1 sm:flex-none ${size} ${
       isActive
-        ? 'bg-[var(--accent)] text-white shadow-md scale-105 sm:scale-100'
+        ? actif
         : 'text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-[var(--paper-2)]'
     }`;
   };
@@ -142,6 +148,9 @@ export default function Nav({
       className={getNavClass(item.match.includes(currentView))}
       aria-current={item.match.includes(currentView) ? 'page' : undefined}
     >
+      {isReporter && item.match.includes(currentView) && (
+        <span aria-hidden="true" className={`onglet-repere ${keyPrefix === 'mobile' ? 'onglet-repere-bas' : 'onglet-repere-haut'}`} />
+      )}
       <div className={keyPrefix === 'mobile' ? 'relative mb-1 shrink-0' : 'relative shrink-0'}>
         {item.icon}
         {item.badge && item.match.includes('dashboard') && currentView !== 'dashboard' && (

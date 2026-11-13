@@ -22,7 +22,7 @@ export default function HomeView({ countries, onSelectCountry, onCountryAdded })
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-10 space-y-6 sm:space-y-8">
       <header className="jr-ciel px-4 py-6 sm:py-10 text-center">
-        <span className="badge bg-[var(--paper)] text-[color:var(--accent-deep)] shadow-sm">
+        <span className="badge bg-v-accent/10 text-[color:var(--accent-deep)]">
           {t.home.badge}
         </span>
         <h2 className="mt-3 text-2xl sm:text-4xl font-extrabold text-[color:var(--ink)] leading-tight">

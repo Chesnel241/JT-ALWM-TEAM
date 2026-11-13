@@ -117,21 +117,12 @@ export default function GrillePays({
               <span className={`font-extrabold text-[color:var(--ink)] leading-tight break-words ${compacte ? 'jr-tuile-nom text-base' : 'block w-full text-base sm:text-lg'}`}>
                 {pays.name}
               </span>
-              {compacte ? (
-                <span className="jr-tuile-fleche" aria-hidden="true">
-                  <ChevronRight size={16} strokeWidth={3} />
-                </span>
-              ) : (
-                <>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--muted)]">
-                    {t.home.countryRole}
-                  </span>
-                  <span className="jr-tuile-entrer">
-                    {t.home.enter}
-                    <ChevronRight size={15} />
-                  </span>
-                </>
-              )}
+              {/* Une flèche discrète, partout : la tuile entière se touche.
+                  « JOURNALISTE » et un bouton « Entrer » dans chaque tuile
+                  répétaient sept fois ce que la page dit déjà. */}
+              <span className="jr-tuile-fleche" aria-hidden="true">
+                <ChevronRight size={16} strokeWidth={3} />
+              </span>
             </button>
           ))}
 
@@ -142,10 +133,10 @@ export default function GrillePays({
             onClick={() => setAjoutOuvert(true)}
             aria-label={t.home.addCountryAria}
             data-variante={variante}
-            className="jr-tuile jr-tuile-ajout focus:outline-none focus-visible:ring-4 focus-visible:ring-v-cta-orange/40"
+            className="jr-tuile jr-tuile-ajout focus:outline-none focus-visible:ring-4 focus-visible:ring-v-accent/40"
           >
-            <span className={`${taille} rounded-full flex items-center justify-center bg-[var(--cta-orange)] text-white shadow-md`}>
-              <Plus size={compacte ? 24 : 32} />
+            <span className={`${taille} jr-tuile-ajout-icone`}>
+              <Plus size={compacte ? 22 : 28} aria-hidden="true" />
             </span>
             <span className={`font-extrabold leading-tight ${compacte ? 'jr-tuile-nom text-base' : 'text-base sm:text-lg'}`}>
               {t.home.addCountry}
@@ -159,7 +150,7 @@ export default function GrillePays({
             type="button"
             onClick={() => setAjoutOuvert(true)}
             aria-label={t.home.addCountryAria}
-            className="mt-4 inline-flex items-center gap-2 min-h-[52px] px-5 rounded-2xl bg-[var(--cta-orange)] text-white font-extrabold shadow-md active:scale-95 motion-tap"
+            className="mt-4 jr-bouton jr-bouton-contour min-h-[52px] px-5 text-base"
           >
             <Plus size={20} />
             <span>{t.home.addThis}</span>
