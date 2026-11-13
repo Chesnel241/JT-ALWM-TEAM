@@ -79,8 +79,9 @@ describe('routing — périmètre des espaces', () => {
   it('inclut reportage, voixoff, les deux rubriques et le JT prêt', () => {
     // Le conducteur et le Mot du JT ont leur propre adresse : ce ne sont pas
     // des pays, donc pas un segment de pays.
+    // Et le guide en images, « Comment ça marche ».
     expect(viewsForWorkspace(WORKSPACES.REPORTER))
-      .toEqual(['hub', 'home', 'uploader', 'voixoff', 'conducteur', 'motDuJt', 'delivery']);
+      .toEqual(['hub', 'home', 'uploader', 'voixoff', 'conducteur', 'motDuJt', 'delivery', 'guide']);
     expect(isViewAllowed(WORKSPACES.REPORTER, 'voixoff')).toBe(true);
     for (const view of ['dashboard', 'stats', 'editor', 'planning']) {
       expect(isViewAllowed(WORKSPACES.REPORTER, view)).toBe(false);

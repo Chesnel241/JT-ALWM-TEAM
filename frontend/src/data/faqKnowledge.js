@@ -1,8 +1,10 @@
 import { phraseProchaineCloture } from '../lib/echeance.js';
 
 /**
- * Base de connaissances pour l'assistant IA (FAQ Dynamique)
- * Ce système analyse les mots-clés de l'utilisateur pour trouver la meilleure réponse.
+ * Les réponses de l'aide, par mots-clés.
+ *
+ * Ce n'est pas une intelligence artificielle : la phrase est comparée à des
+ * mots-clés (sans accents), et la réponse qui en partage le plus gagne.
  */
 
 export const getSuggestedQuestions = (t) => [
@@ -14,123 +16,153 @@ export const getSuggestedQuestions = (t) => [
 ];
 
 const faqKnowledge = {
+  // L'aide ne s'affiche que dans l'espace montage (voir App.jsx) : elle répond
+  // aux questions d'un monteur. Les correspondants ont le guide en images.
   fr: [
     {
       keywords: ['bonjour', 'salut', 'coucou', 'hello', 'hey'],
-      answer: "Bonjour ! Je suis l'assistant IA de la plateforme JT ALWM. Je suis là pour vous guider. Que puis-je faire pour vous ?"
+      answer: "Bonjour ! Posez votre question sur la plateforme : la revue des rushes, le JT en un clic, la publication, les délais, les statistiques… Le guide en images est aussi accessible ici."
     },
     {
-      keywords: ['comment', 'uploader', 'envoyer', 'déposer', 'ajouter', 'fichier', 'vidéo', 'rush', 'script'],
-      answer: "Pour envoyer vos fichiers (vidéos, audios, scripts) :\n1. Sur la page d'accueil, cliquez sur le bouton de votre pays.\n2. Vous arriverez dans votre Espace Reportages.\n3. Glissez et déposez simplement vos fichiers dans la grande zone prévue à cet effet.\n4. Assurez-vous d'avoir sélectionné la bonne semaine (en haut à gauche) !"
+      keywords: ['un clic', 'monter le jt', 'gabarit', 'charpente', 'automatique', 'deroule', 'construire'],
+      answer: "Dans le studio, colonne « Rushes de la semaine », **« Monter le JT en un clic »** pose tout le journal dans l'ordre des jingles : générique, carton « Les titres » écrit à partir des sujets, chaque reportage avec son titre, la virgule entre deux, les annonces et séminaires par pays avec leur bandeau et leurs voix off, le mot du JT, puis la fin. Le déroulé actuel est remplacé après confirmation, et le geste reste annulable (bouton « Annuler »)."
     },
     {
-      keywords: ['pays', 'trouve pas', 'ajouter pays', 'mon pays', 'nouveau pays'],
-      answer: "Si votre pays n'apparaît pas sur la page d'accueil, vous pouvez l'ajouter manuellement en cliquant sur le gros bouton '+' (Ajouter un pays). Entrez son nom et son code (ex: SN pour Sénégal)."
+      keywords: ['controle', 'generer', 'rendu', 'master', 'exporter', 'verifier'],
+      answer: "« Générer le JT » passe d'abord par un **contrôle** : rush refusé ou introuvable, plan de moins d'une seconde, habillage sans texte, titres l'un sur l'autre, durée visée dépassée, générique absent. Rien n'est bloquant : « Voir » mène au plan, « Générer quand même » lance le rendu. Le son du master est mis à la norme de diffusion (EBU R 128)."
     },
     {
-      keywords: ['heure', 'limite', 'deadline', 'clôture', 'fin', 'tard', 'dimanche'],
+      keywords: ['publier', 'publication', 'jt pret', 'livraison', 'diffuser', 'envoyer le jt'],
+      answer: "Une fois le master rendu, **« Publier dans JT Prêt »** sur sa bannière le publie sans le re-télécharger, avec son sommaire. Les correspondants sont prévenus ; ceux dont un reportage passe reçoivent la minute exacte. Vous pouvez aussi déposer un fichier dans l'onglet « Livraison »."
+    },
+    {
+      keywords: ['telephone', 'version legere', 'leger', 'donnees mobiles', '480', 'poids du jt'],
+      answer: "À chaque publication, le serveur prépare une **version téléphone** (480p, quatre à six fois plus légère) pour les correspondants en données mobiles. Elle apparaît en quelques minutes ; le master reste proposé en qualité TV. Si le master est déjà léger, aucune copie n'est faite."
+    },
+    {
+      keywords: ['sommaire', 'chapitre', 'youtube', 'facebook', 'minute'],
+      answer: "Le **sommaire** est calculé depuis le déroulé au lancement du rendu (jingles de rubrique, « Les titres », titre de chaque reportage). Dans « Livraison », **« Copier pour YouTube / Facebook »** donne le texte à coller dans la description : il devient des chapitres (0:00 en tête, parties de 10 s au moins)."
+    },
+    {
+      keywords: ['valider', 'refuser', 'rush', 'revue', 'motif', 'a revoir'],
+      answer: "Dans un chutier, **« Valider »** se fait en un geste ; **« Refuser »** ouvre la fenêtre du motif, envoyé au correspondant sur WhatsApp. Dans la visionneuse, les flèches passent au fichier suivant. « Tout valider » valide un reportage entier, annulable 8 s."
+    },
+    {
+      keywords: ['delai', 'prolonger', 'retard', 'extension', 'plus de temps'],
+      answer: "Dans « Stats & Délais », section **« Délais de la semaine »** : accordez +1 h, +3 h ou +12 h à un pays qui l'a demandé, ou à tous. L'heure obtenue est écrite sur le bouton ; un délai ne raccourcit jamais celui déjà accordé."
+    },
+    {
+      keywords: ['heure', 'limite', 'deadline', 'cloture', 'dimanche'],
       // L'heure dite dans le fuseau de l'appareil : « dimanche 10h30 (GMT+2) »
-      // obligeait chaque correspondant à faire la conversion de tête.
-      answer: ({ echeance }) => `La date limite stricte pour envoyer vos reportages est **${echeance}**. Passé ce délai, l'envoi est bloqué pour que l'équipe de montage puisse finaliser le JT. Le compte à rebours de votre espace vous indique le temps restant.`
+      // obligeait chaque lecteur à faire la conversion de tête.
+      answer: ({ echeance }) => `La clôture des envois est **${echeance}**. Après, l'espace d'envoi des correspondants se ferme, sauf délai accordé depuis « Stats & Délais » ; un fichier arrivé après la clôture est marqué « en retard ».`
     },
     {
-      keywords: ['montage', 'télécharger', 'récupérer', 'jt prêt', 'final', 'voir le jt', 'visionner'],
-      answer: "Pour voir ou télécharger le JT finalisé, rendez-vous dans l'onglet **'JT Prêt'** en haut de la page. Les monteurs y déposent la version finale qui est accessible à tous."
+      keywords: ['statistique', 'stats', 'csv', 'tableur', 'participation', 'vues'],
+      answer: "**« Stats & Délais »** montre les douze dernières semaines : participation, envois à l'heure, délais, refus, poids reçu, publication et durée du JT, vues du JT par pays (anonymes). Touchez un pays pour sa fiche ; **« Exporter (CSV) »** ouvre le tout dans un tableur."
     },
     {
-      keywords: ['script', 'texte', 'notes', 'écrire'],
-      answer: "Dans votre Espace Reportages, vous avez un champ texte 'Saisir un script rapidement'. Vous pouvez y coller directement votre texte de voix off ou vos notes pour le monteur, puis cliquer sur 'Ajouter le script'."
+      keywords: ['suivi', 'correspondant', 'retenu', 'diffuse', 'vu par'],
+      answer: "Chaque correspondant voit le **suivi** de son reportage : reçu, vu par la rédaction (dès qu'un fichier est ouvert, validé ou refusé), retenu (posé au déroulé), diffusé (avec la minute). Rien à faire de plus de votre côté."
     },
     {
-      keywords: ['studio', 'voix off', 'enregistrer', 'enregistrement', 'micro', 'microphone', 'parler', 'studio voix'],
-      answer: "L'onglet **Studio Voix Off** vous permet d'enregistrer votre voix off directement dans le navigateur :\n1. Choisissez la semaine puis votre pays.\n2. Renseignez le titre du reportage (obligatoire).\n3. Préparez votre texte dans la zone de script si besoin.\n4. Cliquez sur le micro pour démarrer l'enregistrement — un visualiseur affiche votre voix en direct.\n5. Réécoutez, puis envoyez : une compression de studio professionnelle est appliquée automatiquement avant l'envoi aux monteurs."
+      keywords: ['voix off', 'enregistrer', 'micro', 'studio voix'],
+      answer: "L'onglet **Voix Off** permet d'enregistrer une voix dans le navigateur, ou de retrouver celles envoyées par les correspondants. Sur la timeline, la piste A1 « Son » reçoit voix off et musiques par glisser-déposer ; la musique baisse sous la voix."
     },
     {
-      keywords: ['supprimer', 'effacer', 'erreur', 'trompé', 'mauvais fichier'],
-      answer: "Si vous vous êtes trompé de fichier, allez dans votre Espace Reportages (en cliquant sur votre pays). À côté du fichier uploadé, vous verrez une icône de corbeille rouge. Cliquez dessus pour le supprimer."
+      keywords: ['supprimer', 'effacer', 'retirer'],
+      answer: "Un rush se supprime depuis sa carte (corbeille), un JT publié depuis « Livraison ». Supprimer un JT retire aussi sa version téléphone."
     },
     {
-      keywords: ['conservation', 'rétention', 'suppression automatique', 'combien de temps', 'gardé'],
-      answer: "Pour ne pas saturer les serveurs, les fichiers envoyés sont supprimés automatiquement 48h après la fin de la semaine de diffusion correspondante."
+      keywords: ['conservation', 'retention', 'combien de temps', 'garde'],
+      answer: "Les fichiers sont supprimés automatiquement 48 h après la fin de la semaine de diffusion. Le bilan de chaque semaine (des nombres seulement) est conservé pour les statistiques."
     },
     {
-      keywords: ['mot de passe', 'bloqué', 'accès', 'password'],
-      answer: "La plateforme est protégée par un mot de passe global. Si vous l'avez perdu ou si vous ne le connaissez pas, merci de contacter le support."
+      keywords: ['mot de passe', 'bloque', 'acces', 'password'],
+      answer: "L'espace montage demande le mot de passe de l'équipe. Il ne s'écrit jamais dans une adresse ; s'il est perdu, demandez-le à la personne qui gère le serveur."
     },
     {
-      keywords: ['notification', 'whatsapp', 'alerte', 'prévenu', 'avertir'],
-      answer: "Lorsque vous envoyez un fichier, vous pouvez choisir de renseigner votre numéro de téléphone. Le système vous enverra automatiquement un message WhatsApp dès que le JT final (JT Prêt) sera publié !"
+      keywords: ['merci', 'super', 'genial', 'parfait', 'thanks'],
+      answer: "Avec plaisir. Bon montage !"
     },
     {
-      keywords: ['merci', 'super', 'génial', 'top', 'parfait', 'thanks'],
-      answer: "Avec grand plaisir ! N'hésitez pas si vous avez d'autres questions. Bon reportage ! 🎤"
-    },
-    {
-      keywords: ['page', 'endroit', 'lieu', 'suis-je', 'ici', 'où on est', 'quelle page'],
-      answer: "Pour savoir où vous êtes et à quoi sert cet écran, le plus simple est de cliquer sur 'Lancer la visite guidée de cette page' juste au-dessus du champ texte ! Je vous ferai faire le tour du propriétaire. 😉"
+      keywords: ['page', 'ou suis', 'ici', 'quelle page', 'guide', 'aide'],
+      answer: "Pour savoir à quoi sert cet écran, lancez **« Visite de cette page »** ; pour tout l'espace, ouvrez **« Le guide en images »**."
     }
   ],
   en: [
     {
-      keywords: ['bonjour', 'salut', 'coucou', 'hello', 'hey', 'hi'],
-      answer: "Hello! I'm the AI assistant for the ALWM Newscast platform. I'm here to guide you. How can I help?"
+      keywords: ['hello', 'hi', 'hey', 'bonjour'],
+      answer: "Hello! Ask your question about the platform: reviewing footage, the one-click newscast, publishing, extensions, statistics… The picture guide is available here too."
     },
     {
-      keywords: ['how', 'upload', 'send', 'drop', 'add', 'file', 'video', 'rush', 'script'],
-      answer: "To send your files (videos, audios, scripts):\n1. On the home page, click on your country's button.\n2. You will enter your Reports Space.\n3. Simply drag and drop your files into the large dropzone area.\n4. Make sure you have the correct week selected (top left)!"
+      keywords: ['one click', 'build the newscast', 'template', 'automatic', 'rundown', 'build'],
+      answer: "In the studio, “This week’s footage” column, **“Build the newscast in one click”** lays out the whole newscast in jingle order: opening titles, a “Headlines” card written from the stories, each report with its title, the bumper between two, announcements and seminars by country with their lower third and voice-overs, the Word of the newscast, then the ending. The current rundown is replaced after confirmation, and the change can be undone (“Undo” button)."
     },
     {
-      keywords: ['country', 'cannot find', 'add country', 'my country', 'new country'],
-      answer: "If your country is not listed on the home page, you can easily add it by clicking the big '+' button (Add a country). Enter its name and code (e.g. SN for Senegal)."
+      keywords: ['check', 'render', 'generate', 'master', 'export', 'verify'],
+      answer: "“Generate” first runs a **check**: rejected or missing footage, shots under one second, graphics without text, overlapping titles, target length exceeded, missing opening titles. Nothing blocks: “View” leads to the shot, “Generate anyway” starts the render. The master’s sound is brought to the broadcast standard (EBU R 128)."
     },
     {
-      keywords: ['time', 'limit', 'deadline', 'closing', 'end', 'late', 'sunday'],
+      keywords: ['publish', 'publication', 'final cut', 'delivery', 'air'],
+      answer: "Once the master is rendered, **“Publish to Final Cut”** on its banner publishes it without downloading it again, with its contents. Correspondents are notified; those whose report airs get the exact minute. You can also drop a file in the “Delivery” tab."
+    },
+    {
+      keywords: ['phone', 'light version', 'lighter', 'mobile data', '480'],
+      answer: "Each time a newscast is published, the server prepares a **phone version** (480p, four to six times lighter) for correspondents on mobile data. It appears within minutes; the master stays available in TV quality. If the master is already light, no copy is made."
+    },
+    {
+      keywords: ['contents', 'chapter', 'youtube', 'facebook', 'minute'],
+      answer: "The **contents** are computed from the rundown when the render starts (section jingles, “Headlines”, each report’s title). In “Delivery”, **“Copy for YouTube / Facebook”** gives the text to paste into the description: it becomes chapters (0:00 first, parts of at least 10 s)."
+    },
+    {
+      keywords: ['approve', 'reject', 'footage', 'review', 'reason'],
+      answer: "In a bin, **“Approve”** takes one gesture; **“Reject”** opens the reason window, sent to the correspondent on WhatsApp. In the viewer, the arrows move to the next file. “Approve all” approves a whole report, undoable for 8 s."
+    },
+    {
+      keywords: ['extension', 'extend', 'late', 'more time'],
+      answer: "In “Stats & Delays”, section **“This week’s extensions”**: grant +1 h, +3 h or +12 h to a country that asked, or to all. The resulting time is written on the button; an extension never shortens one already granted."
+    },
+    {
+      keywords: ['time', 'limit', 'deadline', 'closing', 'sunday'],
       // Annonçait « Sunday at 5:30 PM » : sept heures après la vraie clôture.
-      answer: ({ echeance }) => `The strict deadline to send your reports is **${echeance}**. After this time, uploads are blocked so the editing team can finalize the broadcast. The countdown in your space shows the time left.`
+      answer: ({ echeance }) => `The sending deadline is **${echeance}**. After it, the correspondents’ sending space closes unless an extension is granted from “Stats & Delays”; a file that arrives after the deadline is marked “late”.`
     },
     {
-      keywords: ['edit', 'download', 'retrieve', 'final cut', 'final', 'watch', 'view'],
-      answer: "To view or download the final newscast, go to the **'Final Cut'** tab at the top of the page. The editors upload the final version there, accessible to everyone."
+      keywords: ['statistics', 'stats', 'csv', 'spreadsheet', 'participation', 'views'],
+      answer: "**“Stats & Delays”** shows the last twelve weeks: participation, on-time sending, extensions, rejections, data received, newscast publication and length, newscast views by country (anonymous). Tap a country for its sheet; **“Export (CSV)”** opens it all in a spreadsheet."
     },
     {
-      keywords: ['script', 'text', 'notes', 'write'],
-      answer: "In your Reports Space, there is a 'Quick script entry' text box. You can paste your voice-over text or notes for the editor directly there, then click 'Add script'."
+      keywords: ['tracking', 'correspondent', 'selected', 'aired', 'seen by'],
+      answer: "Each correspondent sees the **tracking** of their report: received, seen by the newsroom (as soon as a file is opened, approved or rejected), selected (placed in the rundown), aired (with the minute). Nothing more to do on your side."
     },
     {
-      keywords: ['studio', 'voice over', 'voiceover', 'record', 'recording', 'mic', 'microphone', 'speak', 'voice studio'],
-      answer: "The **Voice-Over Studio** tab lets you record your voice-over right in the browser:\n1. Pick the week, then your country.\n2. Enter the report title (required).\n3. Prepare your text in the script area if needed.\n4. Click the mic to start recording — a live visualizer shows your voice.\n5. Play it back, then send: professional studio compression is applied automatically before delivery to the editors."
+      keywords: ['voice over', 'voiceover', 'record', 'mic', 'voice studio'],
+      answer: "The **Voice Over** tab lets you record a voice in the browser, or find those sent by correspondents. On the timeline, the A1 “Sound” track takes voice-overs and music by drag and drop; music ducks under the voice."
     },
     {
-      keywords: ['delete', 'erase', 'error', 'mistake', 'wrong file'],
-      answer: "If you uploaded the wrong file, go to your Reports Space. Next to the uploaded file, you'll see a red trash can icon. Click it to delete the file."
+      keywords: ['delete', 'erase', 'remove'],
+      answer: "Footage is deleted from its card (bin icon), a published newscast from “Delivery”. Deleting a newscast also removes its phone version."
     },
     {
       keywords: ['retention', 'auto delete', 'how long', 'kept'],
-      answer: "To prevent server overload, uploaded files are automatically deleted 48h after the end of their broadcast week."
+      answer: "Files are deleted automatically 48 h after the end of the broadcast week. Each week’s summary (numbers only) is kept for the statistics."
     },
     {
-      keywords: ['password', 'blocked', 'access', 'pwd'],
-      answer: "The platform is protected by a global password. If you lost it or don't know it, please contact support."
+      keywords: ['password', 'blocked', 'access'],
+      answer: "The editing space asks for the team password. It is never written in an address; if it is lost, ask the person who runs the server."
     },
     {
-      keywords: ['notification', 'whatsapp', 'alert', 'warn', 'ping'],
-      answer: "When uploading a file, you can optionally provide your phone number. The system will automatically send you a WhatsApp message as soon as the final newscast (Final Cut) is published!"
+      keywords: ['thanks', 'thank you', 'great', 'perfect', 'merci'],
+      answer: "You’re welcome. Happy editing!"
     },
     {
-      keywords: ['merci', 'super', 'génial', 'top', 'parfait', 'thanks', 'thank you', 'awesome'],
-      answer: "You're very welcome! Let me know if you have any other questions. Happy reporting! 🎤"
-    },
-    {
-      keywords: ['page', 'place', 'where', 'am i', 'here'],
-      answer: "To know where you are and what this screen is for, the easiest way is to click 'Start the visual guide for this page' just above the text input! I'll give you a full tour. 😉"
+      keywords: ['page', 'where am i', 'here', 'which page', 'guide', 'help'],
+      answer: "To learn what this screen is for, start **“Tour of this page”**; for the whole space, open **“The picture guide”**."
     }
   ]
 };
 
-/**
- * Fonction très basique pour simuler une IA.
- * Vérifie si la phrase de l'utilisateur contient les mots clés.
- */
 export function getAIResponse(userInput, t, lang = 'fr') {
   const normalizedInput = userInput.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   

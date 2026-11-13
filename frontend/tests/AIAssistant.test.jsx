@@ -24,16 +24,15 @@ describe('getTourSteps', () => {
     const t = translations.fr;
     const steps = getTourSteps(t);
     
-    expect(steps).toHaveProperty('home');
-    expect(steps).toHaveProperty('uploader');
-    expect(steps).toHaveProperty('dashboard');
-    expect(steps).toHaveProperty('delivery');
-    expect(steps).toHaveProperty('voixoff');
-    
-    expect(Array.isArray(steps.home)).toBe(true);
-    expect(steps.home.length).toBeGreaterThan(0);
-    expect(steps.home[0]).toHaveProperty('target');
-    expect(steps.home[0]).toHaveProperty('content');
+    // L'aide ne s'affiche que dans l'espace montage : ses visites couvrent
+    // les écrans du montage. Les journalistes ont le guide en images.
+    for (const page of ['dashboard', 'delivery', 'voixoff', 'planning', 'stats']) {
+      expect(steps).toHaveProperty(page);
+      expect(steps[page].length).toBeGreaterThan(0);
+      expect(steps[page][0]).toHaveProperty('target');
+      expect(steps[page][0]).toHaveProperty('content');
+    }
+    expect(steps).not.toHaveProperty('home');
   });
 });
 
@@ -41,7 +40,7 @@ describe('AIAssistant UI component', () => {
   const renderComponent = () => {
     return render(
       <I18nProvider>
-        <AIAssistant currentPage="home" />
+        <AIAssistant currentPage="delivery" />
       </I18nProvider>
     );
   };

@@ -55,6 +55,8 @@ const ROUTES = {
     ['conducteur', 'conducteur'],
     ['motDuJt', 'mot-du-jt'],
     ['delivery', 'telecharger-le-jt'],
+    // Le guide en images (GuideView).
+    ['guide', 'comment-ca-marche'],
   ],
   // L'équipe montage ouvre directement sur son studio : c'est là qu'elle
   // travaille, et c'est l'écran sur lequel elle atterrissait déjà avant que
@@ -68,6 +70,7 @@ const ROUTES = {
     ['planning', 'planning'],
     ['stats', 'stats'],
     ['editor', 'editeur'],
+    ['guide', 'comment-ca-marche'],
   ],
 };
 

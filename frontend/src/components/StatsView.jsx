@@ -295,7 +295,7 @@ export default function StatsView({ weeks, selectedWeek, countries = [] }) {
         <p className="panel p-6 text-sm text-[color:var(--muted)]">{isLoading ? s.chargement : s.aucuneDonnee}</p>
       ) : (
         <>
-          <section aria-labelledby="stats-indicateurs">
+          <section id="tour-stats-indicateurs" aria-labelledby="stats-indicateurs">
             <h2 id="stats-indicateurs" className="sr-only">{s.indicateurs}</h2>
             <div className="motion-stagger grid grid-cols-2 gap-3 md:grid-cols-4">
               {tuiles.map((tuile, i) => <Tuile key={tuile.cle} {...tuile} serie={ind[tuile.cle].serie} i={i} />)}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Joyride, STATUS } from 'react-joyride';
 import { useI18n } from '../i18n/I18nContext';
-import { MessageSquare, X, Send, Bot, User, HelpCircle } from 'lucide-react';
+import { MessageSquare, X, Send, LifeBuoy, User, HelpCircle, BookOpen } from 'lucide-react';
 import { getTourSteps } from '../data/tourSteps';
 import { getAIResponse, getSuggestedQuestions } from '../data/faqKnowledge';
 
@@ -15,7 +15,7 @@ const BUBBLE_HIDDEN_KEY = 'jt-ai-bubble-hidden-until';
 // montage — parce qu'elle y recouvrait cartes et premières lignes sur petit
 // écran. Le bouton de chat, lui, reste toujours accessible : c'est
 // l'invitation qui gêne, pas l'accès à l'aide.
-export default function AIAssistant({ currentPage, showBubble = true }) {
+export default function AIAssistant({ currentPage, showBubble = true, onOuvrirGuide = null }) {
   const { t, lang } = useI18n();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [bubbleHidden, setBubbleHidden] = useState(() => {
@@ -30,7 +30,7 @@ export default function AIAssistant({ currentPage, showBubble = true }) {
   const [runTour, setRunTour] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [steps, setSteps] = useState([]);
-  const allTourSteps = getTourSteps(t, lang);
+  const allTourSteps = getTourSteps(t);
   const messagesEndRef = useRef(null);
 
   // Démarre le tour en ne gardant que les étapes dont la cible existe
@@ -178,7 +178,7 @@ export default function AIAssistant({ currentPage, showBubble = true }) {
             {/* Header */}
             <div className="p-4 border-b border-[var(--border)] bg-[var(--paper-2)] flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2 text-[color:var(--ink)] font-semibold">
-                <Bot className="w-5 h-5" />
+                <LifeBuoy className="w-5 h-5" />
                 {t.aiAssistant.botName}
               </div>
               <button
@@ -195,7 +195,7 @@ export default function AIAssistant({ currentPage, showBubble = true }) {
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-[var(--ink)] text-[var(--paper)]' : 'bg-[var(--accent)] text-white'}`}>
-                    {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                    {msg.role === 'user' ? <User size={16} /> : <LifeBuoy size={16} />}
                   </div>
                   <div className={`px-4 py-2 rounded-2xl max-w-[80%] text-sm ${msg.role === 'user' ? 'bg-[var(--ink)] text-[var(--paper)] rounded-tr-none' : 'bg-[var(--paper)] text-[var(--ink)] border border-[var(--border)] rounded-tl-none shadow-sm'}`}>
                     {msg.content}
@@ -204,16 +204,29 @@ export default function AIAssistant({ currentPage, showBubble = true }) {
               ))}
               <div ref={messagesEndRef} />
               
-              {/* Visual Guide Trigger */}
-              {hasTour && (
-                <div className="p-3 bg-[var(--paper-2)] rounded-lg text-center mx-4 mt-2 shrink-0">
-                  <button
-                    onClick={startTour}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-[var(--ink)] text-[color:var(--paper)] rounded-lg font-medium hover:opacity-90 transition-opacity"
-                  >
-                    <HelpCircle className="w-4 h-4" />
-                    {t.aiAssistant.startTour}
-                  </button>
+              {/* La visite de cette page, et le guide en images de tout l'espace. */}
+              {(hasTour || onOuvrirGuide) && (
+                <div className="p-3 bg-[var(--paper-2)] rounded-lg text-center mx-4 mt-2 shrink-0 space-y-2">
+                  {hasTour && (
+                    <button
+                      type="button"
+                      onClick={startTour}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 bg-[var(--ink)] text-[color:var(--paper)] rounded-lg font-medium hover:opacity-90 transition-opacity"
+                    >
+                      <HelpCircle className="w-4 h-4" aria-hidden="true" />
+                      {t.aiAssistant.startTour}
+                    </button>
+                  )}
+                  {onOuvrirGuide && (
+                    <button
+                      type="button"
+                      onClick={() => { setIsChatOpen(false); onOuvrirGuide(); }}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 border border-[var(--border)] bg-[var(--paper)] text-[color:var(--ink)] rounded-lg font-medium hover:border-[var(--ink)] transition-colors"
+                    >
+                      <BookOpen className="w-4 h-4" aria-hidden="true" />
+                      {t.guide.ouvrir}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -259,11 +272,16 @@ export default function AIAssistant({ currentPage, showBubble = true }) {
 
         {/* Floating Main Button */}
         {!isChatOpen && (
-          <button 
+          <button
+            type="button"
             onClick={() => setIsChatOpen(true)}
+            // Le bouton n'avait que son icône : un lecteur d'écran annonçait
+            // « bouton », sans dire lequel.
+            aria-label={t.aiAssistant.botName}
+            title={t.aiAssistant.botName}
             className="w-14 h-14 bg-[var(--ink)] text-[color:var(--paper)] rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform focus:outline-none focus:ring-4 focus:ring-v-ink/30"
           >
-            <MessageSquare size={24} />
+            <MessageSquare size={24} aria-hidden="true" />
           </button>
         )}
       </div>

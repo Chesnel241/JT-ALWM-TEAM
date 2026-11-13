@@ -627,6 +627,17 @@ body {
 		animation: rise var(--motion-enter) var(--ease-out) both;
 	}
 
+	/* Les captures du guide (GuideView.jsx) apparaissent en fondu une fois
+	   chargées ; leur place est réservée, rien ne saute. */
+	.guide-capture {
+		opacity: 0;
+		transition: opacity 420ms var(--ease-out);
+	}
+
+	.guide-capture[data-chargee] {
+		opacity: 1;
+	}
+
 	/* Le lecteur du JT publié (LecteurJT.jsx). La jauge de la partie en cours
 	   suit la lecture : les positions arrivent environ quatre fois par
 	   seconde, une transition linéaire de même durée les relie en un

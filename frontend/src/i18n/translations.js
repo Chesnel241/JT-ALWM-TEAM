@@ -805,60 +805,120 @@ export const translations = {
       whatsappRequired: 'Un contact WhatsApp est requis pour vous avertir rapidement en cas de problème technique sur vos envois, ou quand le JT est disponible.',
     },
     aiAssistant: {
-      botName: 'Assistant IA',
-      greeting: "Veux-tu savoir comment faire ? 👋",
-      chatGreeting: "Bonjour ! Je suis l'assistant IA. Posez-moi vos questions ou cliquez sur le bouton 'Guide Visuel' pour une visite guidée de cette page.",
-      inputPlaceholder: "Posez votre question...",
-      startTour: "Lancer la visite guidée de cette page",
-      suggestedTitle: "Questions fréquentes",
-      defaultAnswer: "Je ne suis pas sûr de bien comprendre votre question. Si je ne peux pas vous aider, **vous pouvez contacter directement le support sur WhatsApp au +33778669907**.",
+      // « Assistant IA » promettait une intelligence qu'il n'a pas : il répond
+      // par mots-clés. « Aide » dit ce qu'il est.
+      botName: 'Aide',
+      greeting: 'Besoin d’un coup de main ?',
+      chatGreeting: 'Bonjour ! Posez votre question, lancez la visite de cette page, ou ouvrez le guide en images.',
+      inputPlaceholder: 'Posez votre question…',
+      startTour: 'Visite de cette page',
+      suggestedTitle: 'Questions fréquentes',
+      defaultAnswer: "Je ne trouve pas de réponse à cette question. Le guide en images couvre l'essentiel ; sinon, **contactez le support sur WhatsApp au +33778669907**.",
       joyride: {
         back: 'Précédent',
         close: 'Fermer',
         last: 'Terminer',
         next: 'Suivant',
-        skip: 'Passer le guide'
-      },
-      tourHome: {
-        welcome: "Bienvenue sur le JT ALWM ! Je suis votre guide. Je vais vous montrer comment utiliser la plateforme en quelques secondes.",
-        countryList: "C'est ici que vous devez sélectionner votre pays pour accéder à votre Espace Reportages.",
-        addCountry: "Si votre pays n'est pas dans la liste, vous pouvez l'ajouter facilement avec ce bouton.",
-        navEditing: "L'équipe de montage utilise cet onglet pour récupérer vos rushs et scripts. Vous n'avez normalement pas besoin d'y aller.",
-        navDelivery: "C'est ici que vous pourrez voir et télécharger le JT une fois qu'il sera monté et prêt !",
-        continueToUploader: "Maintenant, cliquez sur votre pays (ou ajoutez-en un) pour entrer dans l'Espace Reportages. Je vous y retrouverai pour continuer la visite !"
-      },
-      tourUploader: {
-        welcome: "Vous êtes dans votre Espace Reportages. C'est ici que vous envoyez vos fichiers à l'équipe de montage.",
-        countdown: (echeance) => `Ici, vous voyez le temps qu'il vous reste avant la clôture des envois de la semaine : ${echeance}.`,
-        weekSelector: "Assurez-vous toujours que la bonne semaine de diffusion est sélectionnée ici. Par défaut, c'est la semaine en cours.",
-        dropzone: "Glissez et déposez simplement vos vidéos, images ou audios dans ce gros cadre ! Vous pouvez envoyer plusieurs fichiers en même temps.",
-        scriptBox: "Vous n'avez pas le temps de faire un fichier Word ? Tapez ou collez directement le texte de votre voix off ou vos instructions pour le monteur ici.",
-        uploadList: "Tous les fichiers que vous avez envoyés pour cette semaine apparaîtront ici. Vous pouvez les supprimer si vous avez fait une erreur."
+        skip: 'Passer la visite'
       },
       tourDashboard: {
-        welcome: "Si vous êtes ici, c'est que vous êtes monteur du JT ! Si ce n'est pas le cas, pas nécessaire de continuer. Cet espace vous permet de récupérer les rushs des journalistes.",
-        header: "Utilisez la barre du haut pour changer de semaine ou de pays. Sur mobile, cliquez sur l'icône de dossier pour afficher les chutiers.",
-        grid: "Ici, vous pouvez prévisualiser, lire les scripts, et télécharger les vidéos/audios d'un simple clic."
+        welcome: 'Les rushes reçus de la semaine, pays par pays : c’est ici qu’on les regarde, les valide ou les refuse.',
+        header: 'La semaine, et le pays ouvert. Changez de semaine ici.',
+        sidebar: 'Les chutiers : un par pays, plus le conducteur, le Mot du JT, les jingles et la livraison. Le chiffre dit ce qui reste à revoir.',
+        grid: 'Les fichiers du pays. Touchez une carte pour la regarder ; « Valider » en un geste, « Refuser » ouvre le message au correspondant.',
       },
       tourDelivery: {
-        welcome: "L'espace 'JT Prêt' est l'endroit où le JT final est déposé, pour que tout le monde puisse le récupérer.",
-        weekSelector: "Choisissez la semaine de diffusion correspondante.",
-        dropzone: "Monteurs, c'est ici que vous déposez le rendu vidéo final (ou audio/zip) de l'émission !",
-        list: "Les journaux publiés seront listés ici, prêts à être téléchargés.",
-        whatsapp: "Une fois envoyé, un simple clic ici permet de prévenir toute l'équipe sur WhatsApp !"
+        welcome: 'JT Prêt : les JT publiés pour les correspondants, avec leur version téléphone et leur sommaire.',
+        weekSelector: 'La semaine de diffusion.',
+        list: 'Chaque JT publié : sa version téléphone (prête ou en préparation) et son sommaire, à copier pour YouTube ou Facebook.',
+        whatsapp: 'Prévenez un correspondant sur WhatsApp, d’un geste, une fois le JT publié.',
       },
       tourVoixOff: {
-        welcome: "Bienvenue dans le Studio Voix Off ! Cet espace vous permet d'enregistrer votre voix en qualité studio directement depuis le navigateur.",
-        country: "Commencez par sélectionner le pays pour lequel vous enregistrez.",
-        studio: "Écrivez votre texte à gauche pour activer le téléprompteur, puis cliquez sur 'Commencer l'enregistrement' ! Votre voix sera compressée et optimisée automatiquement."
+        welcome: 'Les voix off de la semaine : enregistrez une voix depuis le navigateur, ou retrouvez celles des correspondants.',
+        semaine: 'La semaine de diffusion des voix off.',
+        studio: 'Le studio : écrivez le texte pour le faire défiler pendant la lecture, puis enregistrez. Le son est nettoyé et mis au niveau automatiquement.',
+      },
+      tourPlanning: {
+        welcome: 'Le planning : les sujets prévus par pays, semaine par semaine.',
+        titre: 'Ouvert sur la semaine en cours ; les semaines passées sont repliées plus bas.',
+      },
+      tourStats: {
+        welcome: 'Les douze dernières semaines, en un coup d’œil.',
+        indicateurs: 'La dernière semaine terminée, et sa tendance : participation, retards, délais, refus, poids, publication, durée et vues du JT.',
+        participation: 'Semaine par semaine : les pays à l’heure, en retard, et ceux dont rien n’est arrivé. Survolez une colonne pour le détail.',
+        pays: 'Chaque pays, une case par semaine. Touchez un pays pour ouvrir sa fiche.',
+        delais: 'Les délais de la semaine : accordez-en à un pays ou à tous, l’heure obtenue est écrite sur le bouton.',
       },
       suggestedQuestions: {
-        q1: "Comment uploader un fichier ?",
-        q2: "Quelle est l'heure limite d'envoi ?",
-        q3: "Comment ajouter un pays ?",
-        q4: "Où voir le JT finalisé ?",
-        q5: "Comment ajouter un script texte ?"
+        q1: 'Comment monter le JT en un clic ?',
+        q2: 'Comment publier le JT ?',
+        q3: 'C’est quoi la version téléphone ?',
+        q4: 'Comment valider ou refuser un rush ?',
+        q5: 'Comment accorder un délai ?'
       }
+    },
+    // Le guide en images (GuideView.jsx).
+    guide: {
+      titre: 'Comment ça marche',
+      ouvrir: 'Le guide en images',
+      retour: 'Retour',
+      reporter: {
+        intro: 'Votre semaine en cinq gestes, du choix de votre pays jusqu’au JT.',
+        fin: 'Une question qui n’est pas ici ? Écrivez-nous sur WhatsApp depuis l’accueil.',
+        etapes: {
+          pays: {
+            titre: 'Choisissez votre pays',
+            points: ['Touchez le drapeau de votre pays, sur l’accueil.', 'Le compte à rebours dit le temps qui reste avant la clôture, à votre heure.'],
+            alt: 'L’accueil de l’espace journalistes : le compte à rebours, les accès rapides et les drapeaux des pays.',
+          },
+          envoi: {
+            titre: 'Envoyez vos fichiers',
+            points: ['« Envoyer un fichier » : vidéo, photo ou son, depuis la galerie ou la caméra.', 'Chaque fichier montre son avancée ; vous pouvez fermer la page une fois « bien reçu ».', '« Prévenir la rédaction » prépare un message WhatsApp.'],
+            alt: 'L’espace d’un pays : le reportage de la semaine, le bouton d’envoi et la liste des fichiers reçus.',
+          },
+          suivi: {
+            titre: 'Suivez votre reportage',
+            points: ['Reçu, vu par la rédaction, retenu, diffusé : le suivi avance tout seul.', 'Une fois diffusé, « Regarder » ouvre le JT à la minute de votre reportage.'],
+            alt: 'Le suivi d’un reportage : quatre étapes, la dernière atteinte écrite en clair.',
+          },
+          voixoff: {
+            titre: 'Enregistrez votre voix off',
+            points: ['Choisissez le reportage, collez votre texte : il défile pendant que vous lisez.', 'Appuyez sur le micro, réécoutez, puis envoyez.'],
+            alt: 'Le studio de voix off : le choix du reportage, le texte et le bouton d’enregistrement.',
+          },
+          jt: {
+            titre: 'Regardez le JT',
+            points: ['La version téléphone est plus légère : idéale en données mobiles.', 'La qualité TV reste là pour diffuser.', 'Le sommaire mène droit à chaque partie.'],
+            alt: 'Le JT de la semaine : l’affiche, les boutons de téléchargement et le sommaire.',
+          },
+        },
+      },
+      editor: {
+        intro: 'La semaine du montage en quatre temps, de la revue des rushes à la publication.',
+        fin: 'La visite de chaque écran est dans l’aide, en bas à droite.',
+        etapes: {
+          revue: {
+            titre: 'Revoyez les rushes',
+            points: ['Un chutier par pays ; le chiffre dit ce qui reste à revoir.', '« Valider » en un geste, « Refuser » envoie le motif au correspondant.', 'Dans la visionneuse, les flèches passent au fichier suivant.'],
+            alt: 'L’espace montage : les chutiers des pays et les rushes reçus.',
+          },
+          unClic: {
+            titre: 'Montez le JT en un clic',
+            points: ['Le générique, « Les titres », les reportages, les rubriques et la fin, dans l’ordre des jingles.', 'Avant de générer, le contrôle relève ce qu’il faut revoir : rush refusé, habillage vide, durée.'],
+            alt: 'Le studio : le déroulé du JT posé d’un clic, la timeline et l’aperçu.',
+          },
+          publier: {
+            titre: 'Publiez dans JT Prêt',
+            points: ['« Publier dans JT Prêt » depuis la bannière du master, sans re-télécharger.', 'Les correspondants sont prévenus ; ceux dont le reportage passe reçoivent la minute.', 'La version téléphone se prépare toute seule ; le sommaire se copie pour YouTube.'],
+            alt: 'La livraison : le JT publié, sa version téléphone et son sommaire.',
+          },
+          stats: {
+            titre: 'Suivez la semaine',
+            points: ['Douze semaines : participation, retards, délais, refus, vues du JT par pays.', 'Une fiche par pays, et l’export CSV pour un tableur.'],
+            alt: 'Les statistiques : les indicateurs avec leur tendance et la participation semaine par semaine.',
+          },
+        },
+      },
     },
     // Le studio de montage était intégralement en français codé en dur :
     // un monteur anglophone disposait d’une station entièrement française.
@@ -2365,60 +2425,118 @@ export const translations = {
       whatsappRequired: 'A WhatsApp contact is required so we can warn you quickly about a technical problem with your uploads, or tell you when the JT is ready.',
     },
     aiAssistant: {
-      botName: 'AI Assistant',
-      greeting: "Need help figuring this out? 👋",
-      chatGreeting: "Hello! I am the AI assistant. Ask me your questions or click the 'Visual Guide' button for a guided tour of this page.",
-      inputPlaceholder: "Ask your question...",
-      startTour: "Start the visual guide for this page",
-      suggestedTitle: "Frequent questions",
-      defaultAnswer: "I'm not sure I understand your question. If I can't help you, **you can contact the support directly on WhatsApp at +33778669907**.",
+      botName: 'Help',
+      greeting: 'Need a hand?',
+      chatGreeting: 'Hello! Ask your question, start the tour of this page, or open the picture guide.',
+      inputPlaceholder: 'Ask your question…',
+      startTour: 'Tour of this page',
+      suggestedTitle: 'Frequent questions',
+      defaultAnswer: "I can't find an answer to that question. The picture guide covers the essentials; otherwise, **contact support on WhatsApp at +33778669907**.",
       joyride: {
         back: 'Back',
         close: 'Close',
         last: 'Finish',
         next: 'Next',
-        skip: 'Skip tour'
-      },
-      tourHome: {
-        welcome: "Welcome to the ALWM Newscast! I'm your guide. I'll show you how to use the platform in a few seconds.",
-        countryList: "This is where you must select your country to access your Reports Space.",
-        addCountry: "If your country is not in the list, you can easily add it with this button.",
-        navEditing: "The editing team uses this tab to retrieve your rushes and scripts. You usually don't need to go there.",
-        navDelivery: "This is where you can see and download the newscast once it's edited and ready!",
-        continueToUploader: "Now, click on your country (or add one) to enter the Reports Space. I'll meet you there to continue the tour!"
-      },
-      tourUploader: {
-        welcome: "You are in your Reports Space. This is where you send your files to the editing team.",
-        countdown: (echeance) => `Here, you see the time you have left before submissions close this week: ${echeance}.`,
-        weekSelector: "Always make sure the correct broadcast week is selected here. By default, it's the current week.",
-        dropzone: "Simply drag and drop your videos, images, or audios in this big frame! You can send multiple files at the same time.",
-        scriptBox: "No time to make a Word file? Type or paste the text for your voice-over or your instructions for the editor directly here.",
-        uploadList: "All the files you sent for this week will appear here. You can delete them if you made a mistake."
+        skip: 'Skip the tour'
       },
       tourDashboard: {
-        welcome: "If you are here, it means you are a newscast editor! If not, there is no need to continue. This space allows you to retrieve journalists' rushes.",
-        header: "Use the top bar to change weeks or countries. On mobile, click the folder icon to show the bins.",
-        grid: "Here, you can preview, read scripts, and download videos/audios with a single click."
+        welcome: 'This week’s footage, country by country: this is where you watch it, approve it or reject it.',
+        header: 'The week, and the open country. Change the week here.',
+        sidebar: 'The bins: one per country, plus the rundown, the Word of the newscast, jingles and delivery. The number shows what is left to review.',
+        grid: 'The country’s files. Tap a card to watch it; “Approve” in one gesture, “Reject” opens the message to the correspondent.',
       },
       tourDelivery: {
-        welcome: "The 'Final Cut' space is where the finished newscast is deposited, so everyone can get it.",
-        weekSelector: "Choose the corresponding broadcast week.",
-        dropzone: "Editors, this is where you drop the final video render (or audio/zip) of the show!",
-        list: "The published newscasts will be listed here, ready to be downloaded.",
-        whatsapp: "Once uploaded, a single click here allows you to instantly notify the whole team on WhatsApp!"
+        welcome: 'Final Cut: the newscasts published for correspondents, with their phone version and contents.',
+        weekSelector: 'The broadcast week.',
+        list: 'Each published newscast: its phone version (ready or being prepared) and its contents, to copy for YouTube or Facebook.',
+        whatsapp: 'Notify a correspondent on WhatsApp in one gesture once the newscast is published.',
       },
       tourVoixOff: {
-        welcome: "Welcome to the Voice-Over Studio! This space allows you to record your voice in studio quality directly from the browser.",
-        country: "Start by selecting the country you are recording for.",
-        studio: "Write your text on the left to activate the teleprompter, then click 'Start Recording'! Your voice will be compressed and optimized automatically."
+        welcome: 'This week’s voice-overs: record a voice in the browser, or find the correspondents’ ones.',
+        semaine: 'The broadcast week of the voice-overs.',
+        studio: 'The studio: write the text so it scrolls while you read, then record. The sound is cleaned and levelled automatically.',
+      },
+      tourPlanning: {
+        welcome: 'The planning: the stories expected from each country, week by week.',
+        titre: 'Opened on the current week; past weeks are folded further down.',
+      },
+      tourStats: {
+        welcome: 'The last twelve weeks at a glance.',
+        indicateurs: 'The last completed week and its trend: participation, lateness, extensions, rejections, size, publication, length and views of the newscast.',
+        participation: 'Week by week: countries on time, late, and those that sent nothing. Hover a column for details.',
+        pays: 'Each country, one square per week. Tap a country to open its sheet.',
+        delais: 'This week’s extensions: grant one to a country or to all; the resulting time is written on the button.',
       },
       suggestedQuestions: {
-        q1: "How to upload a file?",
-        q2: "What is the submission deadline?",
-        q3: "How to add a country?",
-        q4: "Where to see the final newscast?",
-        q5: "How to add a text script?"
+        q1: 'How do I build the newscast in one click?',
+        q2: 'How do I publish the newscast?',
+        q3: 'What is the phone version?',
+        q4: 'How do I approve or reject footage?',
+        q5: 'How do I grant an extension?'
       }
+    },
+    // The picture guide (GuideView.jsx).
+    guide: {
+      titre: 'How it works',
+      ouvrir: 'The picture guide',
+      retour: 'Back',
+      reporter: {
+        intro: 'Your week in five gestures, from choosing your country to the newscast.',
+        fin: 'A question that is not here? Write to us on WhatsApp from the home page.',
+        etapes: {
+          pays: {
+            titre: 'Choose your country',
+            points: ['Tap your country’s flag on the home page.', 'The countdown shows the time left before the deadline, in your time zone.'],
+            alt: 'The reporters’ home page: the countdown, quick access and the country flags.',
+          },
+          envoi: {
+            titre: 'Send your files',
+            points: ['“Send a file”: video, photo or sound, from the gallery or the camera.', 'Each file shows its progress; you can close the page once it is “received”.', '“Notify the newsroom” prepares a WhatsApp message.'],
+            alt: 'A country’s space: this week’s report, the send button and the list of received files.',
+          },
+          suivi: {
+            titre: 'Follow your report',
+            points: ['Received, seen by the newsroom, selected, aired: the tracking moves on by itself.', 'Once aired, “Watch” opens the newscast at the minute of your report.'],
+            alt: 'A report’s tracking: four steps, the last one reached written in full.',
+          },
+          voixoff: {
+            titre: 'Record your voice-over',
+            points: ['Choose the report, paste your text: it scrolls while you read.', 'Press the mic, listen back, then send.'],
+            alt: 'The voice-over studio: choosing the report, the text and the record button.',
+          },
+          jt: {
+            titre: 'Watch the newscast',
+            points: ['The phone version is lighter: ideal on mobile data.', 'TV quality remains available to air it.', 'The contents lead straight to each part.'],
+            alt: 'This week’s newscast: the poster, the download buttons and the contents.',
+          },
+        },
+      },
+      editor: {
+        intro: 'The editing week in four steps, from reviewing footage to publishing.',
+        fin: 'The tour of each screen is in the help, bottom right.',
+        etapes: {
+          revue: {
+            titre: 'Review the footage',
+            points: ['One bin per country; the number shows what is left to review.', '“Approve” in one gesture, “Reject” sends the reason to the correspondent.', 'In the viewer, the arrows move to the next file.'],
+            alt: 'The editing space: the country bins and the received footage.',
+          },
+          unClic: {
+            titre: 'Build the newscast in one click',
+            points: ['Opening titles, the headlines, the reports, the sections and the ending, in jingle order.', 'Before rendering, the check lists what to look at: rejected footage, empty graphics, length.'],
+            alt: 'The studio: the rundown built in one click, the timeline and the preview.',
+          },
+          publier: {
+            titre: 'Publish to Final Cut',
+            points: ['“Publish to Final Cut” from the master banner, without downloading it again.', 'Correspondents are notified; those whose report airs get the minute.', 'The phone version is prepared on its own; the contents can be copied for YouTube.'],
+            alt: 'Delivery: the published newscast, its phone version and contents.',
+          },
+          stats: {
+            titre: 'Follow the week',
+            points: ['Twelve weeks: participation, lateness, extensions, rejections, newscast views by country.', 'A sheet per country, and CSV export for a spreadsheet.'],
+            alt: 'Statistics: the indicators with their trend and participation week by week.',
+          },
+        },
+      },
     },
     // Le studio de montage était intégralement en français codé en dur :
     // un monteur anglophone disposait d’une station entièrement française.

@@ -29,6 +29,7 @@ const DeliveryView = lazy(() => import('./components/DeliveryView.jsx'));
 const VoixOffView = lazy(() => import('./components/VoixOffView.jsx'));
 const EditorView = lazy(() => import('./components/EditorView.jsx'));
 const StatsView = lazy(() => import('./components/StatsView.jsx'));
+const GuideView = lazy(() => import('./components/GuideView.jsx'));
 const PlanningView = lazy(() => import('./components/PlanningView.jsx'));
 const RubriqueView = lazy(() => import('./components/RubriqueView.jsx'));
 const ReporterHomeView = lazy(() => import('./components/ReporterHomeView.jsx'));
@@ -380,6 +381,7 @@ function AppShell() {
                   onOpenConducteur={() => navigate('conducteur')}
                   onOpenMotDuJt={() => navigate('motDuJt')}
                   onOpenDelivery={() => navigate('delivery')}
+                  onOpenGuide={() => navigate('guide')}
                   isActive={currentView === 'hub'}
                   weeks={weeks}
                   selectedWeek={selectedWeek}
@@ -475,6 +477,12 @@ function AppShell() {
                 />
               </div>
             )}
+            {canRender('guide') && currentView === 'guide' && (
+              <GuideView
+                workspace={isReporter ? 'reporter' : 'editor'}
+                onBack={() => navigate(isReporter ? 'hub' : 'dashboard')}
+              />
+            )}
             {canRender('stats') && (
               <div className={currentView === 'stats' ? 'block' : 'hidden'}>
                 <StatsView
@@ -513,7 +521,7 @@ function AppShell() {
           encart WhatsApp de l'accueil et bouton « Guide » de l'écran d'envoi. */}
       {!isEditorWorkspace && !isReporter && <HelpButton />}
       {!isEditorWorkspace && !isReporter && (
-        <AIAssistant currentPage={currentView} showBubble={!isEditorWorklist} />
+        <AIAssistant currentPage={currentView} showBubble={!isEditorWorklist} onOuvrirGuide={() => navigate('guide')} />
       )}
     </div>
   );

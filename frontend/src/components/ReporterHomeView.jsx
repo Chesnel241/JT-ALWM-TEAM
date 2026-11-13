@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mic, Download, ArrowRight, MessageCircle, Bell, Type, CalendarDays } from 'lucide-react';
+import { Mic, Download, ArrowRight, BookOpen, MessageCircle, Bell, Type, CalendarDays } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { whatsappSupportLink } from '../lib/support.js';
 import { formatWeekFull } from '../lib/dates.js';
@@ -67,6 +67,7 @@ export default function ReporterHomeView({
   onOpenDelivery,
   onOpenConducteur,
   onOpenMotDuJt,
+  onOpenGuide,
   weeks = [],
   selectedWeek = '',
   textSize,
@@ -202,6 +203,13 @@ export default function ReporterHomeView({
             <MessageCircle size={18} aria-hidden="true" />
             {r.helpCta}
           </a>
+          {/* Avant d'écrire : le guide en images répond souvent plus vite. */}
+          {onOpenGuide && (
+            <button type="button" onClick={onOpenGuide} className="jr-bouton jr-bouton-contour w-full sm:w-auto">
+              <BookOpen size={18} aria-hidden="true" />
+              {t.guide.ouvrir}
+            </button>
+          )}
         </div>
       </section>
     </div>

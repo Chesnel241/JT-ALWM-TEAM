@@ -212,7 +212,7 @@ export default function PlanningView({ selectedWeek, isActive = true }) {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[color:var(--ink)] flex items-center gap-2.5">
+          <h1 id="tour-planning-titre" className="text-2xl sm:text-3xl font-bold text-[color:var(--ink)] flex items-center gap-2.5">
             <CalendarDays size={26} className="text-[color:var(--accent-deep)]" aria-hidden="true" />
             {pl.titre}
           </h1>

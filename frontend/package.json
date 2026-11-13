@@ -7,6 +7,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "captures:guide": "node scripts/captures-guide.mjs",
     "copy-icons": "node -e \"const fs = require('fs'); fs.mkdirSync('public/icons', { recursive: true }); fs.copyFileSync('public/logo-lwm.png', 'public/icons/icon-192x192.png'); fs.copyFileSync('public/logo-lwm.png', 'public/icons/icon-512x512.png');\""
   },
   "dependencies": {

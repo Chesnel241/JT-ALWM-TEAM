@@ -520,6 +520,7 @@ export default function VoixOffView({
             Semaine :
           </span>
           <select
+            id="tour-voixoff-semaine"
             value={selectedWeek}
             onChange={(e) => setSelectedWeek?.(e.target.value)}
             className="bg-[var(--paper-2)] border border-[var(--border)] text-[color:var(--ink)] text-xs sm:text-sm font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--accent)]"

@@ -44,10 +44,12 @@ describe('l’heure limite n’est plus écrite en dur', () => {
     expect(reponse).not.toMatch(/5:30 PM/);
   });
 
-  it('dans la visite guidée de l’espace d’envoi', () => {
-    const t = translations.fr;
-    const etape = getTourSteps(t, 'fr').uploader.find((e) => e.target === '#tour-countdown');
-    expect(etape.content).toContain(phraseProchaineCloture(t, 'fr'));
+  // La visite de l'espace d'envoi n'existe plus (l'aide flottante ne
+  // s'affiche que côté montage ; le guide en images la remplace). Aucune
+  // visite ne doit pour autant écrire l'heure en dur.
+  it.each(['fr', 'en'])('dans aucune visite guidée (%s)', (lang) => {
+    const etapes = Object.values(getTourSteps(translations[lang])).flat();
+    expect(etapes.filter((e) => HEURE_EN_DUR.test(String(e.content)))).toEqual([]);
   });
 });
 

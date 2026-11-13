@@ -1,165 +1,50 @@
 /**
- * Étapes de la visite guidée (Product Tour) pour react-joyride.
- * Divisé par "pages" (home, uploader, etc.)
+ * Les visites guidées (react-joyride), écran par écran.
+ *
+ * L'aide flottante ne s'affiche que dans l'espace montage, hors du studio
+ * (voir App.jsx) : les visites couvrent donc ses écrans — la revue des rushes
+ * sur tablette, JT Prêt, la voix off, le planning, les statistiques. Côté
+ * journalistes, c'est le guide en images (GuideView) qui fait ce travail.
+ *
+ * L'INCIDENT : la visite pointait trois éléments qui n'existaient plus
+ * (`#tour-nav-editing`, `#tour-delivery-dropzone`, `#tour-voixoff-country`)
+ * et décrivait des écrans d'avant les refontes. Chaque cible est maintenant
+ * vérifiée par un test (tests/guide.test.jsx) : un identifiant retiré du code
+ * fait échouer la suite au lieu de laisser une visite muette.
  */
 
-import { phraseProchaineCloture } from '../lib/echeance.js';
+const etape = (target, content, placement = 'auto') => ({ target, content, placement, disableBeacon: true });
 
-export const getTourSteps = (t, lang = 'fr') => ({
-  home: [
-    {
-      target: 'body',
-      content: t.aiAssistant.tourHome.welcome,
-      placement: 'center',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-nav-dashboard',
-      content: t.aiAssistant.tourHome.navDashboard || "L'onglet 'Tableau de bord' vous permet d'avoir une vue globale de l'activité.",
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-nav-editing',
-      content: t.aiAssistant.tourHome.navEditing,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-nav-delivery',
-      content: t.aiAssistant.tourHome.navDelivery,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-nav-voixoff',
-      content: t.aiAssistant.tourHome.navVoixOff || "L'onglet 'Voix-Off' sert à gérer l'enregistrement des voix.",
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-country-list',
-      content: t.aiAssistant.tourHome.countryList,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-add-country',
-      content: t.aiAssistant.tourHome.addCountry,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: 'body',
-      content: t.aiAssistant.tourHome.continueToUploader,
-      placement: 'center',
-      disableBeacon: true,
-    }
-  ],
-  uploader: [
-    {
-      target: 'body',
-      content: t.aiAssistant.tourUploader.welcome,
-      placement: 'center',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-countdown',
-      content: t.aiAssistant.tourUploader.countdown(phraseProchaineCloture(t, lang)),
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-week-selector',
-      content: t.aiAssistant.tourUploader.weekSelector,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-uploader-accordion',
-      content: t.aiAssistant.tourUploader.accordion || "Pour plus de clarté, tout est rangé dans ces menus déroulants. Cliquez sur un thème (ex: Reportage 1) pour l'ouvrir et déposer vos fichiers et scripts !",
-      placement: 'auto',
-      disableBeacon: true,
-    }
-  ],
-  dashboard: [
-    {
-      target: 'body',
-      content: t.aiAssistant.tourDashboard.welcome,
-      placement: 'center',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-dashboard-header',
-      content: t.aiAssistant.tourDashboard.header,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-editing-grid',
-      content: t.aiAssistant.tourDashboard.grid,
-      placement: 'auto',
-      disableBeacon: true,
-    }
-  ],
-  delivery: [
-    {
-      target: 'body',
-      content: t.aiAssistant.tourDelivery.welcome,
-      placement: 'center',
-      disableBeacon: true,
-    },
-    {
-      target: '#delivery-week',
-      content: t.aiAssistant.tourDelivery.weekSelector,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-delivery-dropzone',
-      content: t.aiAssistant.tourDelivery.dropzone,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-delivery-list',
-      content: t.aiAssistant.tourDelivery.list,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-delivery-whatsapp',
-      content: t.aiAssistant.tourDelivery.whatsapp,
-      placement: 'auto',
-      disableBeacon: true,
-    }
-  ],
-  voixoff: [
-    {
-      target: 'body',
-      content: t.aiAssistant.tourVoixOff.welcome,
-      placement: 'center',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-voixoff-country',
-      content: t.aiAssistant.tourVoixOff.country,
-      placement: 'auto',
-      disableBeacon: true,
-    },
-    {
-      target: '#tour-voixoff-studio',
-      content: t.aiAssistant.tourVoixOff.studio,
-      placement: 'auto',
-      disableBeacon: true,
-    }
-  ],
-  editor: [
-    {
-      target: 'body',
-      content: t.aiAssistant.tourEditor?.welcome || "Bienvenue dans l'éditeur vidéo ! Ici vous pouvez ajuster et créer vos contenus.",
-      placement: 'center',
-      disableBeacon: true,
-    }
-  ]
-});
+export const getTourSteps = (t) => {
+  const v = t.aiAssistant;
+  return {
+    dashboard: [
+      etape('body', v.tourDashboard.welcome, 'center'),
+      etape('#tour-dashboard-header', v.tourDashboard.header),
+      etape('#tour-editing-sidebar', v.tourDashboard.sidebar),
+      etape('#tour-editing-grid', v.tourDashboard.grid),
+    ],
+    delivery: [
+      etape('body', v.tourDelivery.welcome, 'center'),
+      etape('#delivery-week', v.tourDelivery.weekSelector),
+      etape('#tour-delivery-list', v.tourDelivery.list),
+      etape('#tour-delivery-whatsapp', v.tourDelivery.whatsapp),
+    ],
+    voixoff: [
+      etape('body', v.tourVoixOff.welcome, 'center'),
+      etape('#tour-voixoff-semaine', v.tourVoixOff.semaine),
+      etape('#tour-voixoff-studio', v.tourVoixOff.studio),
+    ],
+    planning: [
+      etape('body', v.tourPlanning.welcome, 'center'),
+      etape('#tour-planning-titre', v.tourPlanning.titre),
+    ],
+    stats: [
+      etape('body', v.tourStats.welcome, 'center'),
+      etape('#tour-stats-indicateurs', v.tourStats.indicateurs),
+      etape('#stats-participation', v.tourStats.participation),
+      etape('#stats-pays', v.tourStats.pays),
+      etape('#stats-delais', v.tourStats.delais),
+    ],
+  };
+};
