@@ -48,6 +48,8 @@ COPY remotion/src/identite.js /remotion/src/identite.js
 # La piste son, lue aussi par le studio et le moteur : nettoyage et règles
 # communes. Ne dépend de rien.
 COPY remotion/src/pisteAudio.js /remotion/src/pisteAudio.js
+# Les cartons (plans sans vidéo : « Les titres », la fin du JT). Ne dépend de rien.
+COPY remotion/src/plans.js /remotion/src/plans.js
 # La norme sonore du master, partagée avec le moteur de rendu : sonMaster.js
 # importe ../../../worker/src/sonorite.js, soit /worker/src/sonorite.js.
 # Ce fichier ne dépend de rien non plus.

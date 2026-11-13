@@ -33,6 +33,10 @@ import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
 import { BandeauJT, BarreStudio, Deroule, DockTimeline, RushesStudio, borneDock, DOCK_DEFAUT } from './editor/Conducteur.jsx';
 import { assemblerRubriques } from './editor/rubriquesAuto.js';
+import { composerJT } from './editor/gabaritJT.js';
+import { controlerJT } from './editor/controleJT.js';
+import ControleGeneration from './editor/ControleGeneration.jsx';
+import { estCarton } from '../../../remotion/src/plans.js';
 import PanneauSon from './editor/PanneauSon.jsx';
 import { ecrireSon, nouveauSon, retirerSon } from './editor/pisteSon.js';
 import { nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
@@ -841,61 +845,69 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // Les rubriques répétitives (séminaires, annonces, mot du JT) assemblées d'un
   // clic. Les durées réelles sont lues avant : sans elles, le déroulé ment.
   // Une vidéo déjà au déroulé n'est jamais reprise.
+  // La préparation commune au JT en un clic et aux rubriques : la durée réelle
+  // de chaque fichier (sans elle, le déroulé ment), puis de quoi en faire un
+  // plan ou un son de la piste.
+  const urlDeFichier = (filename) => (filename.startsWith('http') || filename.startsWith('blob:')
+    ? filename
+    : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`);
+  const preparerFichiers = async (fichiers) => {
+    const aMesurer = fichiers.filter((f) => f?.filename && !(Number(f.durationSec) > 0) && !(Number(f.sourceDurationSec) > 0));
+    const durees = new Map();
+    // Quatre sondes à la fois : assez pour ne pas attendre, pas assez pour
+    // saturer le navigateur sur une semaine de plusieurs centaines de fichiers.
+    for (let i = 0; i < aMesurer.length; i += 4) {
+      const lot = aMesurer.slice(i, i + 4);
+      const mesures = await Promise.all(lot.map((f) => probeVideoDuration(urlDeFichier(f.filename || f.name || ''))));
+      lot.forEach((f, k) => { if (mesures[k] > 0) durees.set(f.filename, mesures[k]); });
+    }
+    const versClip = (file) => {
+      const filename = file.filename || file.name || '';
+      const connue = Number(file.sourceDurationSec) > 0
+        ? Number(file.sourceDurationSec)
+        : (durees.get(file.filename) || Number(file.durationSec) || 0);
+      const { emplois: _emplois, ...rush } = file;
+      return {
+        ...rush,
+        url: urlDeFichier(filename),
+        instanceId: nouvelIdDePlan(),
+        overlays: [],
+        ...(connue > 0 ? { sourceDurationSec: connue, durationSec: connue } : {}),
+      };
+    };
+    const versSon = (fichier, instant) => nouveauSon(fichier, {
+      id: `son-${nouvelIdDePlan()}`.replace(/[^\w-]/g, '').slice(0, 64),
+      instant,
+      duree: durees.get(fichier.filename) || Number(fichier.durationSec) || null,
+      role: 'voix',
+    });
+    return { versClip, versSon };
+  };
+  // Le mot du JT porte le nom et le thème saisis par le journaliste.
+  const lireMotDuJt = async () => {
+    try {
+      const reponse = await api.getRubrique(selectedWeek, 'motDuJt');
+      return { orateur: reponse?.champs?.orateur || '', theme: reponse?.champs?.theme || '' };
+    } catch {
+      return null;
+    }
+  };
+  const nomDePays = (id) => countries.find((c) => c.id === id)?.name || id;
+  const SECTIONS_AVEC_VOIX = new Set(['Séminaires de la semaine', 'Annonces']);
+
   const [assemblageEnCours, setAssemblageEnCours] = useState(false);
   const assemblerRubriquesAuDeroule = async () => {
     if (assemblageEnCours) return;
     setAssemblageEnCours(true);
     try {
-      const urlDe = (filename) => (filename.startsWith('http') || filename.startsWith('blob:')
-        ? filename
-        : `${API_BASE}/uploads/${encodeURIComponent(filename)}?cors=2`);
       const dejaAuMontage = new Set((montageRef.current.clips || []).map((c) => c.filename));
       const dejaSurLaPiste = new Set((montageRef.current.audio || []).map((son) => son.filename));
-      const sectionsFixes = new Set(['Séminaires de la semaine', 'Annonces']);
-      const aMesurer = [
+      const { versClip, versSon } = await preparerFichiers([
         ...weekVideoFiles.filter((f) => f.status !== 'rejected' && !dejaAuMontage.has(f.filename)),
         // Les voix off envoyées avec les annonces et les séminaires.
-        ...weekAudioFiles.filter((f) => f.status !== 'rejected' && sectionsFixes.has(f.reportage) && !dejaSurLaPiste.has(f.filename)),
-      ].filter((f) => !(Number(f.durationSec) > 0));
-      const durees = new Map();
-      // Quatre sondes à la fois : assez pour ne pas attendre, pas assez pour
-      // saturer le navigateur sur une semaine de plusieurs centaines de fichiers.
-      for (let i = 0; i < aMesurer.length; i += 4) {
-        const lot = aMesurer.slice(i, i + 4);
-        const mesures = await Promise.all(lot.map((f) => probeVideoDuration(urlDe(f.filename || f.name || ''))));
-        lot.forEach((f, k) => { if (mesures[k] > 0) durees.set(f.filename, mesures[k]); });
-      }
-
-      const versClip = (file) => {
-        const filename = file.filename || file.name || '';
-        const connue = Number(file.sourceDurationSec) > 0
-          ? Number(file.sourceDurationSec)
-          : (durees.get(file.filename) || Number(file.durationSec) || 0);
-        const { emplois: _emplois, ...rush } = file;
-        return {
-          ...rush,
-          url: urlDe(filename),
-          instanceId: nouvelIdDePlan(),
-          overlays: [],
-          ...(connue > 0 ? { sourceDurationSec: connue, durationSec: connue } : {}),
-        };
-      };
-
-      // Le mot du JT porte le nom et le thème saisis par le journaliste.
-      let motDuJt = null;
-      try {
-        const reponse = await api.getRubrique(selectedWeek, 'motDuJt');
-        motDuJt = { orateur: reponse?.champs?.orateur || '', theme: reponse?.champs?.theme || '' };
-      } catch {
-        motDuJt = null;
-      }
-
-      const versSon = (fichier, instant) => nouveauSon(fichier, {
-        id: `son-${nouvelIdDePlan()}`.replace(/[^\w-]/g, '').slice(0, 64),
-        instant,
-        duree: durees.get(fichier.filename) || Number(fichier.durationSec) || null,
-        role: 'voix',
-      });
+        ...weekAudioFiles.filter((f) => f.status !== 'rejected' && SECTIONS_AVEC_VOIX.has(f.reportage) && !dejaSurLaPiste.has(f.filename)),
+      ]);
+      const motDuJt = await lireMotDuJt();
 
       let bilan = { seminaires: { fichiers: 0, sons: 0 }, annonces: { fichiers: 0, sons: 0 }, motDuJt: { fichiers: 0 }, deja: 0 };
       modifierMontage((m) => {
@@ -903,7 +915,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           videos: weekVideoFiles,
           clips: m.clips || [],
           overlays: m.overlays || [],
-          nomPays: (id) => countries.find((c) => c.id === id)?.name || id,
+          nomPays: nomDePays,
           versClip,
           motDuJt,
           creerId: () => nouvelIdDePlan(),
@@ -930,6 +942,65 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     } finally {
       setAssemblageEnCours(false);
     }
+  };
+
+  // Le JT en un clic : tout le journal dans l'ordre du gabarit. Il remplace le
+  // déroulé, les titres et la piste son ; « Annuler » rend l'état d'avant.
+  const [jtEnCours, setJtEnCours] = useState(false);
+  const [confirmerJT, setConfirmerJT] = useState(false);
+  const monterJTEnUnClic = async () => {
+    setConfirmerJT(false);
+    if (jtEnCours) return;
+    setJtEnCours(true);
+    try {
+      const { versClip, versSon } = await preparerFichiers([
+        ...weekVideoFiles.filter((f) => f.status !== 'rejected'),
+        ...weekAudioFiles.filter((f) => f.status !== 'rejected' && SECTIONS_AVEC_VOIX.has(f.reportage)),
+        ...jingles,
+      ]);
+      const motDuJt = await lireMotDuJt();
+      const r = composerJT({
+        videos: weekVideoFiles,
+        sons: weekAudioFiles,
+        sujets,
+        jingles,
+        nomPays: nomDePays,
+        versClip,
+        versSon,
+        creerId: () => nouvelIdDePlan(),
+        motDuJt,
+      });
+      if (r.clips.length === 0) { addToast(t.studio.gabarit.rien, 'info'); return; }
+      modifierMontage((m) => ({ ...m, clips: r.clips, overlays: r.overlays, audio: r.audio }), t.studio.gabarit.bouton);
+      setPlanChoisi(null);
+      const absents = r.bilan.sansJingle.map((c) => t.jingles.categories[c]?.titre || c);
+      addToast(t.studio.gabarit.bilan(r.bilan, absents), 'success', 9000);
+    } finally {
+      setJtEnCours(false);
+    }
+  };
+  const demanderJTEnUnClic = () => {
+    if ((montageRef.current.clips || []).length > 0) setConfirmerJT(true);
+    else monterJTEnUnClic();
+  };
+
+  // Le contrôle avant génération : il ne bloque rien, il montre.
+  const [controleOuvert, setControleOuvert] = useState(false);
+  const remarquesDuMontage = () => controlerJT({
+    clips: timelineClips,
+    overlays: timelineOverlays,
+    fichiers: [...weekVideoFiles, ...weekImageFiles, ...jingles],
+    jingles,
+    dureeCible: branding.dureeCible,
+  });
+  const demanderGeneration = () => {
+    if (remarquesDuMontage().length === 0) { handleGenerateVideo(); return; }
+    setControleOuvert(true);
+  };
+  const allerARemarque = (remarque) => {
+    setControleOuvert(false);
+    if (remarque.planId) setPlanChoisi(remarque.planId);
+    if (Number.isFinite(remarque.instant)) playerRef.current?.seekTo?.(Math.round(remarque.instant * 30));
   };
 
   // Un rush ou un jingle lâché sur la timeline. Le nom de fichier vient d'un
@@ -996,6 +1067,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
 
   // Un seul inspecteur doit être visible à la fois.
   const openTrimInspector = (clip) => {
+    // Un carton n'a pas de vidéo : sa durée se tire sur la timeline.
+    if (estCarton(clip)) { addToast(t.studio.gabarit.cartonDuree, 'info'); return; }
     setSonCibleId(null);
     setOverlayTarget(null);
     setSubtitleTarget(null);
@@ -2769,7 +2842,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 peutRetablir={peutRetablir(historique)}
                 onHabillage={openGlobalInspector}
                 habillageActif={branding.ticker.enabled || branding.live.enabled || branding.logo}
-                onGenerer={handleGenerateVideo}
+                onGenerer={demanderGeneration}
                 enCours={isGeneratingVideo}
                 presence={editorPresenceCount}
               />
@@ -2870,7 +2943,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                   setClips={setTimelineClips}
                   timelineOverlays={timelineOverlays}
                   setTimelineOverlays={setTimelineOverlays}
-                  onGenerate={handleGenerateVideo}
+                  onGenerate={demanderGeneration}
                   isGenerating={isGeneratingVideo}
                   onTrimClip={openTrimInspector}
                   onOverlayClip={openOverlayInspector}
@@ -2909,6 +2982,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     assemblageEnCours={assemblageEnCours}
                     sons={weekAudioFiles}
                     onAjouterSon={ajouterSon}
+                    onJTEnUnClic={demanderJTEnUnClic}
+                    jtEnCours={jtEnCours}
                   />
                   <div className="relative flex min-w-0 flex-1 items-center justify-center bg-[oklch(0.11_0.018_245)] p-3">
                   <RemotionLivePreview 
@@ -3574,6 +3649,25 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     </main>
   </div>
 
+      <ConfirmDialog
+        isOpen={confirmerJT}
+        title={t.studio.gabarit.confirmerTitre}
+        message={t.studio.gabarit.confirmerTexte(timelineClips.length)}
+        confirmText={t.studio.gabarit.confirmer}
+        cancelText={t.studio.panneaux.annuler}
+        onConfirm={monterJTEnUnClic}
+        onCancel={() => setConfirmerJT(false)}
+      />
+      {controleOuvert && (
+        <ControleGeneration
+          remarques={remarquesDuMontage()}
+          dureeCible={branding.dureeCible ?? null}
+          onDureeCible={(minutes) => modifierMontage((m) => ({ ...m, branding: { ...m.branding, dureeCible: minutes } }), 'duree-cible')}
+          onAller={allerARemarque}
+          onGenerer={() => { setControleOuvert(false); handleGenerateVideo(); }}
+          onFermer={() => setControleOuvert(false)}
+        />
+      )}
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title={t.uploader.deleteTitle}

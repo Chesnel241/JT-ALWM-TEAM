@@ -9,8 +9,10 @@ import logger from '../logger/index.js';
 import { generateAssFile } from '../data/overlayTemplates.js';
 import { setProgress } from './editorProgress.js';
 import { uploadsDir } from '../lib/paths.js';
-import { normaliserSonMaster } from './sonMaster.js';
+import { lancerFfmpeg, normaliserSonMaster } from './sonMaster.js';
 import { nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
+import { DUREE_MAX_CARTON, estCarton } from '../../../remotion/src/plans.js';
+import { COULEURS } from '../../../remotion/src/identite.js';
 
 let isRendering = false;
 
@@ -199,6 +201,16 @@ function safeFilename(filename) {
   return base;
 }
 
+/** L'image d'un carton pour le moteur de secours : une seule par rendu. */
+async function imageDeCarton(workDir) {
+  const chemin = path.join(workDir, 'carton.png');
+  if (fs.existsSync(chemin)) return chemin;
+  const couleur = COULEURS.fond.replace('#', '0x');
+  const { code } = await lancerFfmpeg(['-hide_banner', '-nostats', '-y', '-f', 'lavfi', '-i', `color=c=${couleur}:s=1920x1080`, '-frames:v', '1', chemin]);
+  if (code !== 0 || !fs.existsSync(chemin)) throw new Error('Impossible de préparer le fond d’un carton (« Les titres », fin du JT).');
+  return chemin;
+}
+
 /**
  * Résout le chemin local d'un clip.
  * dans workDir et retourne ce chemin temporaire. Sinon, retourne le
@@ -278,7 +290,8 @@ export function buildRemotionPayload(clips, opts) {
   return {
     clips: clips.map((c) => ({
       filename: c.filename,
-      url: resolve(c.filename),
+      // Un carton n'a pas de fichier : le moteur dessine son fond lui-même.
+      url: estCarton(c) ? '' : resolve(c.filename),
       inPoint: c.inPoint,
       outPoint: c.outPoint,
       // Durée du segment (sec) : fournie par le frontend (probe metadata).
@@ -364,7 +377,8 @@ export function verifierSons(audio, { dossier = uploadsDir() } = {}) {
  */
 export async function verifierPlans(clips, { mesurer = getDuration, dossier = uploadsDir() } = {}) {
   const durees = new Map(); // un même rush sert souvent à plusieurs plans
-  const noms = [...new Set(clips.map((c) => safeFilename(c.filename)))];
+  // Un carton n'a pas de fichier : rien à mesurer.
+  const noms = [...new Set(clips.filter((c) => !estCarton(c)).map((c) => safeFilename(c.filename)))];
   let curseur = 0;
   const ouvrier = async () => {
     while (curseur < noms.length) {
@@ -377,6 +391,11 @@ export async function verifierPlans(clips, { mesurer = getDuration, dossier = up
   await Promise.all(Array.from({ length: Math.min(4, noms.length) }, ouvrier));
 
   return clips.map((c, i) => {
+    if (estCarton(c)) {
+      const voulue = c.outPoint != null ? Number(c.outPoint) - Math.max(0, Number(c.inPoint) || 0) : Number(c.durationSec);
+      const duree = Math.min(DUREE_MAX_CARTON, Math.max(0.3, Number.isFinite(voulue) ? voulue : 5));
+      return { ...c, inPoint: 0, outPoint: duree, durationSec: duree };
+    }
     const nom = safeFilename(c.filename);
     const source = durees.get(nom);
     const titre = `Le plan n° ${i + 1} (${String(c.name || nom).slice(0, 80)})`;
@@ -504,6 +523,15 @@ export async function concatenateVideos(clips, jobId = null, opts = {}) {
     // Phase 1 (0→20%) : téléchargement/résolution des clips.
     const localPaths = [];
     for (let i = 0; i < normalizedClips.length; i++) {
+      // Un carton devient une image unie aux couleurs de l'antenne, tenue le
+      // temps du plan : le moteur de secours sait déjà monter une image fixe.
+      if (estCarton(normalizedClips[i])) {
+        const c = normalizedClips[i];
+        const duree = Math.min(DUREE_MAX_CARTON, Math.max(0.3, Number(c.outPoint ?? c.durationSec) || 5));
+        localPaths.push(await imageDeCarton(workDir));
+        normalizedClips[i] = { ...c, filename: 'carton.png', inPoint: null, outPoint: duree, duration: duree };
+        continue;
+      }
       localPaths.push(await resolveClipPath(normalizedClips[i].filename, workDir));
       setProgress(jobId, ((i + 1) / normalizedClips.length) * 20, 'downloading');
     }

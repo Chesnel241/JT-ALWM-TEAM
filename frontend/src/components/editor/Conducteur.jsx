@@ -17,6 +17,7 @@ import {
   deplacer, deroule, dupliquer, dureeParlee, instant, planALInstant, rangerRushes, retirer,
 } from './conducteur.js';
 import { TYPE_MEDIA, TYPE_SON, ecrireGlisse } from './habillagesPlans.js';
+import { CARTON } from '../../../../remotion/src/plans.js';
 
 /**
  * Le studio simple : les rushes à gauche, l'image au centre, le déroulé du JT
@@ -31,8 +32,9 @@ const ENCHAINEMENTS = ['none', 'volet_antenne', 'zoom_rapide', 'lames', 'rideau'
 function Vignette({ filename, instantSec = 0.1, className = '' }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
+  const carton = filename === CARTON;
   useEffect(() => {
-    if (visible) return undefined;
+    if (visible || carton) return undefined;
     const noeud = ref.current;
     if (!noeud) return undefined;
     if (typeof IntersectionObserver !== 'function') { setVisible(true); return undefined; }
@@ -41,7 +43,15 @@ function Vignette({ filename, instantSec = 0.1, className = '' }) {
     }, { rootMargin: '300px' });
     observateur.observe(noeud);
     return () => observateur.disconnect();
-  }, [visible]);
+  }, [visible, carton]);
+  // Un carton n'a pas d'image : son fond d'antenne, et ce qu'il porte.
+  if (carton) {
+    return (
+      <span className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-[var(--editor-panel-raised)] to-[var(--editor-bg)] text-[color:var(--editor-accent)] ${className}`} aria-hidden="true">
+        <LayoutList size={18} />
+      </span>
+    );
+  }
   const externe = filename?.startsWith('http') || filename?.startsWith('blob:');
   const src = externe ? filename : `${API_BASE}/uploads/${encodeURIComponent(filename || '')}`;
   return (
@@ -130,7 +140,7 @@ export function BarreStudio({
 }
 
 /** Les rushes de la semaine, à portée de main dans le studio. */
-export function RushesStudio({ videos, clips, countries, onAjouter, jingles = [], onAssembler = null, assemblageEnCours = false, sons = [], onAjouterSon = null }) {
+export function RushesStudio({ videos, clips, countries, onAjouter, jingles = [], onAssembler = null, assemblageEnCours = false, sons = [], onAjouterSon = null, onJTEnUnClic = null, jtEnCours = false }) {
   const { t } = useI18n();
   const d = t.studio.deroule;
   const [recherche, setRecherche] = useState('');
@@ -173,6 +183,21 @@ export function RushesStudio({ videos, clips, countries, onAjouter, jingles = []
             className="min-w-0 flex-1 bg-transparent text-base text-[color:var(--editor-text)] placeholder:text-[color:var(--editor-muted)] focus:outline-none"
           />
         </label>
+        {/* Le JT entier d'abord ; les rubriques seules restent à portée pour
+            compléter un déroulé déjà commencé. */}
+        {onJTEnUnClic && (
+          <button
+            type="button"
+            onClick={onJTEnUnClic}
+            disabled={jtEnCours || videos.length === 0}
+            aria-busy={jtEnCours}
+            title={t.studio.gabarit.aide}
+            className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[var(--editor-accent-strong)] px-3 text-sm font-bold text-[color:var(--editor-bg)] disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
+          >
+            <Rows3 size={16} aria-hidden="true" />
+            {jtEnCours ? t.studio.gabarit.enCours : t.studio.gabarit.bouton}
+          </button>
+        )}
         {onAssembler && (
           <button
             type="button"
@@ -180,9 +205,9 @@ export function RushesStudio({ videos, clips, countries, onAjouter, jingles = []
             disabled={assemblageEnCours || videos.length === 0}
             aria-busy={assemblageEnCours}
             title={d.rubriquesAutoAide}
-            className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[var(--editor-accent-strong)] px-3 text-sm font-bold text-[color:var(--editor-bg)] disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-text)]"
+            className="mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-[var(--editor-border)] px-3 text-sm font-semibold text-[color:var(--editor-text)] hover:border-[var(--editor-accent)] disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--editor-accent)]"
           >
-            <Newspaper size={16} aria-hidden="true" />
+            <Newspaper size={15} aria-hidden="true" />
             {assemblageEnCours ? d.rubriquesAutoEnCours : d.rubriquesAuto}
           </button>
         )}
@@ -433,7 +458,8 @@ function Plan({
 
       {choisi && (
         <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--editor-border)] px-3 py-2">
-          <button type="button" className={boutonPlan} onClick={onRaccourcir}><Scissors size={14} aria-hidden="true" />{d.raccourcir}</button>
+          {/* Un carton n'a pas de vidéo à rogner : sa durée se tire sur la timeline. */}
+          {clip.filename !== CARTON && <button type="button" className={boutonPlan} onClick={onRaccourcir}><Scissors size={14} aria-hidden="true" />{d.raccourcir}</button>}
           <button type="button" className={boutonPlan} onClick={onNom}><Type size={14} aria-hidden="true" />{d.nomALEcran}</button>
           <button type="button" className={boutonPlan} onClick={onSousTitres}><Captions size={14} aria-hidden="true" />{d.sousTitres}</button>
           <span className="ml-auto flex items-center gap-1.5">

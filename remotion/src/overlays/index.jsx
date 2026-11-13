@@ -50,7 +50,7 @@ export const REGISTRY = {
  * sans aucun texte ne s'affiche pas du tout. Les exemples précis sont dans le
  * test `textes-de-demonstration`.
  */
-const EXIGENT_UN_TEXTE = new Set([
+export const EXIGENT_UN_TEXTE = new Set([
   'nom_interview', 'lower_third', 'titre_reportage', 'flash_info',
   'envato_presenter', 'envato_news', 'envato_big_title', 'envato_split_screen',
   'envato_rep_minimal', 'envato_rep_skew', 'envato_rep_swipe', 'envato_rep_glass',

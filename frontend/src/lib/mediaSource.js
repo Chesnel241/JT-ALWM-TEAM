@@ -1,4 +1,5 @@
 import { API_BASE } from '../api/index.js';
+import { estCarton } from '../../../remotion/src/plans.js';
 
 /**
  * Fichier que l'APERÇU doit lire : la copie légère quand elle existe, le
@@ -15,6 +16,8 @@ export function previewFilename(item) {
 
 /** URL de lecture d'un média du chutier, proxy compris. */
 export function previewUrl(item) {
+  // Un carton n'a pas de fichier : le lecteur dessine son fond.
+  if (estCarton(item)) return '';
   const name = previewFilename(item);
   if (!name) return '';
   if (name.startsWith('http') || name.startsWith('blob:')) return name;

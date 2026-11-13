@@ -9,7 +9,9 @@ const COUNTRIES = [{ id: 'sn', name: 'Sénégal', code: 'SN' }];
 // cachée, a les siens).
 // L'application se charge en différé : sous la charge de la suite complète, la
 // première vue dépassait parfois la seconde d'attente par défaut (1 063 ms
-// relevés). Même attente que App.assistant.test.jsx.
+// relevés). Même attente que App.assistant.test.jsx, pour chaque vue chargée
+// en différé (l'espace du pays aussi : « Retour » manquait deux fois sur trois
+// quand l'espace tardait).
 const CHARGEMENT = { timeout: 5000 };
 const drapeauxAccueil = async () => within(await screen.findByRole('region', { name: 'Envoyer votre reportage' }, CHARGEMENT));
 const WEEKS = [{ id: '2026-W34', status: 'active', startDate: '2026-08-18', cutoffAt: '2026-08-23T08:30:00.000Z' }];
@@ -61,10 +63,10 @@ describe('App — URL /journalistes', () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Enregistrer une voix-off/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Enregistrer une voix-off/ }, CHARGEMENT));
 
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/voix-off'));
-    expect(await screen.findByRole('heading', { name: 'Enregistrer votre voix off' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Enregistrer votre voix off' }, CHARGEMENT)).toBeInTheDocument();
   });
 
   it('toucher son drapeau sur l\'accueil ouvre l\'espace du pays', async () => {
@@ -82,24 +84,24 @@ describe('App — URL /journalistes', () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Télécharger le JT/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Télécharger le JT/ }, CHARGEMENT));
 
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/telecharger-le-jt'));
-    expect(await screen.findByRole('heading', { name: /Votre JT est prêt|Le JT de la semaine/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Votre JT est prêt|Le JT de la semaine/ }, CHARGEMENT)).toBeInTheDocument();
   });
 
   it('ouvre directement le JT prêt sur un lien profond', async () => {
     window.history.replaceState(null, '', '/journalistes/telecharger-le-jt');
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /Votre JT est prêt|Le JT de la semaine/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Votre JT est prêt|Le JT de la semaine/ }, CHARGEMENT)).toBeInTheDocument();
   });
 
   it('renvoie une URL de montage forgée vers l\'accueil journalistes', async () => {
     window.history.replaceState(null, '', '/journalistes/montage');
     render(<App />);
 
-    expect(await screen.findByText('Que souhaitez-vous faire ?')).toBeInTheDocument();
+    expect(await screen.findByText('Que souhaitez-vous faire ?', {}, CHARGEMENT)).toBeInTheDocument();
     expect(window.location.pathname).toBe('/journalistes');
   });
 
@@ -107,7 +109,7 @@ describe('App — URL /journalistes', () => {
     window.history.replaceState(null, '', '/journaliste');
     render(<App />);
 
-    expect(await screen.findByText('Que souhaitez-vous faire ?')).toBeInTheDocument();
+    expect(await screen.findByText('Que souhaitez-vous faire ?', {}, CHARGEMENT)).toBeInTheDocument();
     expect(window.location.pathname).toBe('/journalistes');
   });
 
@@ -115,12 +117,12 @@ describe('App — URL /journalistes', () => {
     window.history.replaceState(null, '', '/journalistes');
     render(<App />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Télécharger le JT/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Télécharger le JT/ }, CHARGEMENT));
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/telecharger-le-jt'));
 
     window.history.back();
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes'));
-    expect(await screen.findByText('Que souhaitez-vous faire ?')).toBeInTheDocument();
+    expect(await screen.findByText('Que souhaitez-vous faire ?', {}, CHARGEMENT)).toBeInTheDocument();
   });
 });
 
@@ -164,7 +166,7 @@ describe('App — le lien personnel d\'un correspondant', () => {
     render(<App />);
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes/sn'));
 
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Retour' }))[0]);
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Retour' }, CHARGEMENT))[0]);
 
     await waitFor(() => expect(window.location.pathname).toBe('/journalistes'));
     expect((await drapeauxAccueil()).getByRole('button', { name: /Sénégal/ })).toBeInTheDocument();

@@ -65,16 +65,17 @@ describe('les rubriques automatiques — séminaires', () => {
 });
 
 describe('les rubriques automatiques — annonces, mot du JT, reprise', () => {
-  it('place les annonces après les séminaires, avec leur propre bandeau', () => {
+  // L'ordre du journal, celui des jingles : les annonces, puis les séminaires.
+  it('place les séminaires après les annonces, chacun avec son bandeau', () => {
     const videos = [
       video('gab1.mp4', 'gab', LIBELLE_SEMINAIRES),
       video('cmr1.mp4', 'cmr', LIBELLE_ANNONCES),
     ];
     const { clips, overlays, bilan } = lancer({ videos, clips: [] });
-    expect(clips.map((c) => c.filename)).toEqual(['gab1.mp4', 'cmr1.mp4']);
+    expect(clips.map((c) => c.filename)).toEqual(['cmr1.mp4', 'gab1.mp4']);
     expect(overlays.map((o) => o.fields.texte)).toEqual([
-      `Gabon · ${LIBELLE_SEMINAIRES}`,
       `Cameroun · ${LIBELLE_ANNONCES}`,
+      `Gabon · ${LIBELLE_SEMINAIRES}`,
     ]);
     expect(bilan.annonces).toEqual({ pays: 1, fichiers: 1, sons: 0 });
   });

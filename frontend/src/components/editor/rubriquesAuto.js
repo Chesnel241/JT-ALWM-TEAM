@@ -32,16 +32,17 @@ const TIROIRS_DU_JT = new Set(['tj', 'mj']);
 /** La transition entre deux blocs de pays : celle de la chaîne. */
 export const TRANSITION_ENTRE_PAYS = Object.freeze({ type: 'volet_antenne', duration: 0.6 });
 
-/** Un nom de rubrique ou de pays n'est jamais plus long que le bandeau. */
+/** Un nom à l'écran ou un titre de reportage reste le temps d'être lu, pas plus. */
 const DUREE_NOM_ORATEUR = 8;
+const DUREE_TITRE_REPORTAGE = 5;
 
-const parDateEnvoi = (a, b) => (
+export const parDateEnvoi = (a, b) => (
   String(a.uploadedAt || '').localeCompare(String(b.uploadedAt || ''))
   || String(a.filename || '').localeCompare(String(b.filename || ''))
 );
 
 /** Les vidéos d'une section fixe, regroupées par pays, dans l'ordre du JT. */
-function blocsParPays(videos, libelle, nomPays) {
+export function blocsParPays(videos, libelle, nomPays) {
   const parPays = new Map();
   for (const video of videos) {
     if (video.reportage !== libelle) continue;
@@ -114,8 +115,9 @@ export function assemblerRubriques({
       });
     }
   };
-  ajouterRubrique(LIBELLE_SEMINAIRES, 'seminaires');
+  // L'ordre du journal, celui des jingles : les annonces, puis les séminaires.
   ajouterRubrique(LIBELLE_ANNONCES, 'annonces');
+  ajouterRubrique(LIBELLE_SEMINAIRES, 'seminaires');
 
   // Le mot du JT : chaque intervention a son propre bloc, avec le nom et le thème.
   const motsDuJt = videos.filter((v) => v.countryId === TIROIR_MOT_DU_JT).sort(parDateEnvoi);
@@ -131,19 +133,41 @@ export function assemblerRubriques({
   }
 
   if (blocs.length === 0) return { clips, overlays, audio, bilan };
+  return { ...poserBlocs({ clips, overlays, audio, blocs, creerId, versSon }), bilan };
+}
 
-  // Les plans à ajouter : le dernier plan de chaque bloc (sauf le tout dernier
-  // du JT) porte la transition qui mène au bloc suivant.
+/** Pas de transition contre un jingle ou un carton : ils sont montés pour couper. */
+const transitionEntre = (a, b) => (
+  a.genre === 'jingle' || b.genre === 'jingle' || a.genre === 'carton' || b.genre === 'carton'
+    ? null
+    : TRANSITION_ENTRE_PAYS
+);
+
+/**
+ * Pose des blocs à la suite d'un déroulé, et cale sur leurs débuts réels les
+ * bandeaux, les titres, les noms et les voix off.
+ *
+ * Un bloc : `{ plans, genre?, bandeau?, titre?, nomOrateur?, voix? }`.
+ *   - `genre` : `jingle`, `carton` ou contenu (par défaut) ;
+ *   - `bandeau` : la mention qui identifie le pays pendant tout le bloc ;
+ *   - `titre` : le titre de reportage, au début du bloc ;
+ *   - `nomOrateur` : le nom et la fonction, au début du bloc ;
+ *   - `voix` : les fichiers de voix off, posés l'un après l'autre.
+ */
+export function poserBlocs({ clips = [], overlays = [], audio = [], blocs = [], creerId, versSon = null }) {
+  if (blocs.length === 0) return { clips, overlays, audio };
+  // Le dernier plan de chaque bloc porte la transition qui mène au suivant.
   const base = clips.length;
   const suite = [...clips];
   blocs.forEach((bloc, i) => {
+    const suivant = blocs[i + 1];
     bloc.plans.forEach((plan, k) => {
       const dernierDuBloc = k === bloc.plans.length - 1;
-      const dernierDeTout = i === blocs.length - 1 && dernierDuBloc;
+      const transition = dernierDuBloc && suivant ? transitionEntre(bloc, suivant) : null;
       suite.push({
         ...plan,
         overlays: plan.overlays || [],
-        ...(dernierDuBloc && !dernierDeTout ? { transition: { ...TRANSITION_ENTRE_PAYS } } : {}),
+        ...(transition ? { transition: { ...transition } } : {}),
       });
     });
   });
@@ -160,34 +184,26 @@ export function assemblerRubriques({
     if (premier && dernier) {
       const debut = premier.start;
       const fin = dernier.start + dernier.duration;
-      if (bloc.bandeau) {
-        titres.push({
-          id: creerId('overlay'),
-          templateId: 'mention_image',
-          fields: { texte: bloc.bandeau.texte },
-          animation: animationRecommandee('mention_image'),
-          startTime: debut,
-          duration: Math.max(0.3, fin - debut),
-        });
-      }
+      const titre = (templateId, fields, duree) => titres.push({
+        id: creerId('overlay'),
+        templateId,
+        fields,
+        animation: animationRecommandee(templateId),
+        startTime: debut,
+        duration: duree,
+      });
+      if (bloc.bandeau) titre('mention_image', { texte: bloc.bandeau.texte }, Math.max(0.3, fin - debut));
+      if (bloc.titre) titre('titre_reportage', { titre: bloc.titre.titre, sous_titre: bloc.titre.sous_titre || '' }, Math.min(DUREE_TITRE_REPORTAGE, Math.max(0.3, fin - debut)));
       // Les voix off du pays, l'une après l'autre depuis le début de son bloc.
       let instant = debut;
       for (const fichier of bloc.voix || []) {
-        const son = versSon(fichier, instant);
+        const son = versSon?.(fichier, instant);
         if (!son) continue;
         nouveauxSons.push(son);
-        const duree = Number(son.sourceDurationSec) || 0;
-        instant += duree;
+        instant += Number(son.sourceDurationSec) || 0;
       }
       if (bloc.nomOrateur) {
-        titres.push({
-          id: creerId('overlay'),
-          templateId: 'nom_interview',
-          fields: { nom: bloc.nomOrateur.nom, fonction: bloc.nomOrateur.fonction },
-          animation: animationRecommandee('nom_interview'),
-          startTime: debut,
-          duration: Math.min(DUREE_NOM_ORATEUR, Math.max(0.3, fin - debut)),
-        });
+        titre('nom_interview', { nom: bloc.nomOrateur.nom, fonction: bloc.nomOrateur.fonction }, Math.min(DUREE_NOM_ORATEUR, Math.max(0.3, fin - debut)));
       }
     }
     indexBloc += bloc.plans.length;
@@ -197,6 +213,5 @@ export function assemblerRubriques({
     clips: suite,
     overlays: [...overlays, ...titres],
     audio: nouveauxSons.length > 0 ? [...(audio || []), ...nouveauxSons] : audio,
-    bilan,
   };
 }

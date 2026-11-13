@@ -13,6 +13,8 @@ import { Vignette, Grain, LightSweep } from './atmosphere.jsx';
 import { Stage } from './Stage.jsx';
 import { dureeHabillage } from './mouvement.js';
 import { dureeSon, gainSousVoix, plagesSousVoix } from './pisteAudio.js';
+import { estCarton } from './plans.js';
+import { COULEURS } from './identite.js';
 
 loadFonts();
 
@@ -169,8 +171,9 @@ function ClipVideo({ clip, debut = 0, plages = [] }) {
   const videoStyle = { width: '100%', height: '100%', objectFit: 'contain', transform: `scale(${kbScale})` };
   
   if (!clip.url) {
+    // Un carton (« Les titres », la fin) : le fond de l'antenne, pas du noir.
     return (
-      <AbsoluteFill style={{ backgroundColor: '#000' }}>
+      <AbsoluteFill style={{ backgroundColor: estCarton(clip) ? COULEURS.fond : '#000' }}>
         <ClipLayer clip={clip} />
       </AbsoluteFill>
     );
