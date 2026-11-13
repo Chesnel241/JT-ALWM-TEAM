@@ -224,7 +224,7 @@ describe('aucun panneau ne repart sans piège', () => {
     expect(detaches, 'le piège est déclaré mais posé sur rien').toEqual([]);
   });
 
-  it('en couvre bien quatorze', () => {
+  it('en couvre bien quinze', () => {
     // Un balayage qui ne voit rien passe toujours. Si ce compte tombe, c'est
     // qu'un panneau a disparu — ou que le balayage ne le trouve plus.
     // `= usePiegeFocus(` plutôt que le simple nom : sinon le fichier du hook
@@ -235,8 +235,11 @@ describe('aucun panneau ne repart sans piège', () => {
     // l'annoncer ni retenir le focus — et que ce balayage ne voyait donc pas.
     // Douze avec la fenêtre du numéro WhatsApp d'un pays (`ContactPaysDialog`),
     // treize avec la feuille « Garder mon accès » (`OutilsCorrespondant`),
-    // quatorze avec le contrôle avant génération (`ControleGeneration`).
+    // quatorze avec le contrôle avant génération (`ControleGeneration`),
+    // quinze avec le lecteur du JT publié (`LecteurJT`), qui remplace la
+    // fenêtre d'aperçu de « JT Prêt » — elle aussi une boîte modale sans
+    // piège de focus ni Échap.
     const avec = fichiers(RACINE).filter((f) => readFileSync(f, 'utf8').includes('= usePiegeFocus(')).length;
-    expect(avec).toBe(14);
+    expect(avec).toBe(15);
   });
 });

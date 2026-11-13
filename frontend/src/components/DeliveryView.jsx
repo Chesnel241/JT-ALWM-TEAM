@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
-  UploadCloud, Download, Trash2, Sparkles, Video, FileText, Music,
-  CheckCircle, AlertCircle, MessageCircle, Play, X, ExternalLink
+  Download, Sparkles, Video, FileText, Music,
+  MessageCircle, Play
 } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -13,6 +13,11 @@ import EmptyState from './EmptyState.jsx';
 import WaitingBroadcast from './illustrations/WaitingBroadcast.jsx';
 import { readAdminPassword } from '../lib/adminSession.js';
 import JTPretJournaliste from './JTPretJournaliste.jsx';
+import LecteurJT from './LecteurJT.jsx';
+import EtatLivraison from './EtatLivraison.jsx';
+
+/** Une version légère en préparation : on regarde de temps en temps où elle en est. */
+const RELEVE_MS = 20000;
 
 // Charte : bleus du logo et neutres, avec un texte à fort contraste sur
 // chaque aplat (le bleu 500 sur bleu 100 précédent était illisible).
@@ -38,6 +43,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState([]);
+  // `{ fichier, debut }` : le JT à lire, et l'instant où commencer.
   const [previewVideo, setPreviewVideo] = useState(null);
 
   useEffect(() => {
@@ -65,6 +71,20 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
       .catch(() => setSubscriptions([]));
   }, [selectedWeek, addToast, t.uploader.errorPrefix, showNotifyPanel]);
 
+  // La version légère se fabrique en quelques minutes après la publication :
+  // l'écran se met à jour seul, sans demander de recharger la page.
+  const enPreparation = deliveries.some((d) => d.leger?.statut === 'en_cours');
+  useEffect(() => {
+    if (!enPreparation || !selectedWeek) return undefined;
+    const minuteur = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      api.getDeliveries(selectedWeek)
+        .then((d) => { if (Array.isArray(d)) setDeliveries(d); })
+        .catch(() => {});
+    }, RELEVE_MS);
+    return () => clearInterval(minuteur);
+  }, [enPreparation, selectedWeek]);
+
   const whatsappMessage = t.delivery.whatsappMessage;
   const week = weeks.find((w) => w.id === selectedWeek);
 
@@ -75,46 +95,12 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
       {/* VIDEO PREVIEW MODAL (Streaming)                                  */}
       {/* ================================================================ */}
       {previewVideo && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-[var(--paper)] rounded-3xl border border-[var(--border)] max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col">
-            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
-              <div className="flex items-center gap-2 truncate pr-2">
-                <Video size={18} className="text-[var(--accent)] shrink-0" />
-                <span className="font-bold text-sm text-[color:var(--ink)] truncate">{previewVideo.name}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewVideo(null)}
-                aria-label={t.common.close}
-                title={t.common.close}
-                className="h-11 w-11 flex items-center justify-center rounded-full bg-[var(--paper-2)] text-[color:var(--muted)] hover:text-[color:var(--ink)] active:scale-95"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="bg-black aspect-video flex items-center justify-center">
-              <video
-                src={`${API_BASE}/uploads/${encodeURIComponent(previewVideo.filename)}`}
-                controls
-                autoPlay
-                playsInline
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div className="p-3 bg-[var(--paper-2)] flex items-center justify-between gap-2">
-              <span className="text-xs text-[color:var(--muted)] font-medium">{previewVideo.size}</span>
-              <a
-                href={`${API_BASE}/uploads/${encodeURIComponent(previewVideo.filename)}?dl=1`}
-                download={previewVideo.name}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-1.5 rounded-xl bg-[var(--action)] text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 shadow-sm"
-              >
-                <Download size={13} /> {t.delivery.download}
-              </a>
-            </div>
-          </div>
-        </div>
+        <LecteurJT
+          fichier={previewVideo.fichier}
+          debut={previewVideo.debut}
+          prefererLeger={isReporterAudience}
+          onFermer={() => setPreviewVideo(null)}
+        />
       )}
 
       {/* Côté journalistes : un seul écran, qui s'adapte — de grandes cartes
@@ -126,7 +112,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
           setSelectedWeek={setSelectedWeek}
           livraisons={deliveries}
           chargement={loading}
-          onRegarder={setPreviewVideo}
+          onRegarder={(fichier, debut = 0) => setPreviewVideo({ fichier, debut })}
         />
       ) : (
       <>
@@ -211,6 +197,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                           </>
                         )}
                       </p>
+                      <EtatLivraison fichier={file} />
                     </div>
                   </div>
 
@@ -218,7 +205,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                   <div className="grid grid-cols-2 gap-2">
                     {isVideo && (
                       <button
-                        onClick={() => setPreviewVideo(file)}
+                        onClick={() => setPreviewVideo({ fichier: file, debut: 0 })}
                         className="py-2.5 px-3 rounded-2xl bg-v-accent/10 text-[color:var(--accent-deep)] font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                       >
                         <Play size={14} className="fill-current" />
@@ -366,8 +353,20 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
                             </>
                           )}
                         </p>
+                        <EtatLivraison fichier={file} />
                       </div>
                       <div className="flex gap-1 shrink-0">
+                        {(file.type === 'video' || /\.(mp4|mov|m4v|webm)$/i.test(file.name || '')) && (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewVideo({ fichier: file, debut: 0 })}
+                            className="text-[color:var(--accent-deep)] hover:bg-v-accent/10 p-1.5 rounded-lg"
+                            title={t.delivery.watch}
+                            aria-label={`${t.delivery.watch} : ${file.name}`}
+                          >
+                            <Play size={16} aria-hidden="true" />
+                          </button>
+                        )}
                         <a
                           href={`${API_BASE}/uploads/${encodeURIComponent(file.filename)}?dl=1`}
                           download={file.name}

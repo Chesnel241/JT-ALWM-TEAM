@@ -15,6 +15,9 @@ export function setProgressIo(io) {
 const jobs = new Map(); // jobId -> { percent, status, url, listeners:Set<res>, timeout, stall, doneAt, weekId }
 const jobWeekMap = new Map(); // jobId -> weekId
 const weekActiveJobs = new Map(); // weekId -> { jobId, weekId, startedAt }
+// Le sommaire du JT calculé au lancement du rendu : il suit le master jusqu'à
+// sa publication dans « JT Prêt », où il devient les chapitres du lecteur.
+const jobSommaires = new Map(); // jobId -> [{ t, titre }]
 // Tombstones : IDs de jobs déjà terminés puis purgés. Empêche qu'un callback
 // worker rejoué (réseau lent, retry) tardif ressuscite un job fantôme
 // (nouveau pending + re-émission d'un 2e 'done'/'error'). Borné en taille.
@@ -54,6 +57,11 @@ export function registerJobWeek(jobId, weekId) {
     const job = jobs.get(jobId);
     if (job) job.weekId = weekId;
   }
+}
+
+/** Le sommaire (déjà nettoyé) du master que ce rendu produira. */
+export function registerJobSommaire(jobId, sommaire) {
+  if (jobId && Array.isArray(sommaire)) jobSommaires.set(jobId, sommaire);
 }
 
 export function getWeekActiveJob(weekId) {
@@ -178,6 +186,7 @@ export function finishJob(jobId, status = 'done', url = null, message = null, so
   job.timeout = setTimeout(() => {
     jobs.delete(jobId);
     jobWeekMap.delete(jobId);
+    jobSommaires.delete(jobId);
     if (weekId && weekActiveJobs.get(weekId)?.jobId === jobId) {
       weekActiveJobs.delete(weekId);
     }
@@ -191,7 +200,15 @@ export function finishJob(jobId, status = 'done', url = null, message = null, so
 export function getJobState(jobId) {
   const job = jobs.get(jobId);
   if (!job) return null;
-  return { percent: job.percent, status: job.status, url: job.url, message: job.message || null, son: job.son || null };
+  return {
+    percent: job.percent,
+    status: job.status,
+    url: job.url,
+    message: job.message || null,
+    son: job.son || null,
+    weekId: job.weekId || jobWeekMap.get(jobId) || null,
+    sommaire: jobSommaires.get(jobId) || [],
+  };
 }
 
 export function addListener(jobId, res) {

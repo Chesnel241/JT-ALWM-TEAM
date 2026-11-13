@@ -31,6 +31,8 @@ import OverlayPanel from './editor/OverlayPanel.jsx';
 import GlobalLayerPanel from './editor/GlobalLayerPanel.jsx';
 import RemotionLivePreview from './editor/RemotionLivePreview.jsx';
 import ExportStatus from './editor/ExportStatus.jsx';
+import EtatLivraison from './EtatLivraison.jsx';
+import { sommaireDuJT } from './editor/sommaireJT.js';
 import { BandeauJT, BarreStudio, Deroule, DockTimeline, RushesStudio, borneDock, DOCK_DEFAUT } from './editor/Conducteur.jsx';
 import { assemblerRubriques } from './editor/rubriquesAuto.js';
 import { composerJT } from './editor/gabaritJT.js';
@@ -508,6 +510,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const [exportError, setExportError] = useState(null);
   // Le niveau du son mesuré sur le master fini (EBU R 128), quand le moteur le donne.
   const [exportSon, setExportSon] = useState(null);
+  // Le rendu dont vient le master affiché : c'est lui qu'on publie dans
+  // « JT Prêt », sans re-télécharger le fichier.
+  const [exportJobId, setExportJobId] = useState(null);
+  const [masterAPublier, setMasterAPublier] = useState(false);
+  const [publicationMaster, setPublicationMaster] = useState(false);
   const [exportStartedAt, setExportStartedAt] = useState(null);
   const [exportElapsed, setExportElapsed] = useState(0);
   const [trimTarget, setTrimTarget] = useState(null); // file being trimmed
@@ -1466,6 +1473,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           if (res?.job && renduEnCours(res.job.status)) {
             trackJob(res.job.jobId, { resume: true });
           } else if (res?.job && res.job.status === 'done' && res.job.url) {
+            setExportJobId(res.job.jobId || null);
             setGeneratedVideoUrl(/^https?:\/\//.test(res.job.url) ? res.job.url : `${API_BASE}${res.job.url}`);
           }
         })
@@ -1548,6 +1556,11 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // recharger : le monteur travaille avec cet écran ouvert des heures.
     socket.on('jingles_update', chargerJingles);
 
+    // Un JT publié, retiré, ou sa version légère prête.
+    socket.on('delivery_update', (data) => {
+      if (data?.weekId === selectedWeek) api.getDeliveries(selectedWeek).then(setDeliveries).catch(() => {});
+    });
+
     socket.on('sujet_update', (data) => {
       if (data.weekId === selectedWeek) {
         api.getSujets(selectedWeek, null, adminPasswordRef.current).then((l) => setSujets(Array.isArray(l) ? l : [])).catch(() => {});
@@ -1583,6 +1596,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           trackJob(data.jobId, { resume: true });
         } else if (data.status === 'done' && data.url) {
           setExportSon(data.son || null);
+          setExportJobId(data.jobId || null);
           setGeneratedVideoUrl(/^https?:\/\//.test(data.url) ? data.url : `${API_BASE}${data.url}`);
           setIsGeneratingVideo(false);
           setExportProgress(100);
@@ -1648,6 +1662,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     setIsGeneratingVideo(true);
     setExportError(null);
     setExportSon(null);
+    setExportJobId(jobId);
     setExportStartedAt(Date.now());
     localStorage.setItem(JOB_STORE_KEY, jobId);
     if (!resume) {
@@ -1773,6 +1788,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         imageOverlays,
         atmosphere: branding.atmosphere,
         audio: nettoyerPisteAudio(pisteAudio),
+        // Les chapitres du JT, tels que le déroulé les place : ils suivent le
+        // master jusqu'au lecteur de « JT Prêt ».
+        sommaire: sommaireDuJT({ clips: timelineClips, overlays: timelineOverlays, jingles }),
       }, authenticatedAdminPassword);
       // Succès : le suivi (SSE + polling) met à jour l'UI jusqu'au résultat.
     } catch (err) {
@@ -1867,12 +1885,39 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   // lâché par erreur dans la zone partait aussitôt chez tout le monde. On
   // demande d'abord, en nommant le fichier.
   const [aPublier, setAPublier] = useState(null);
+  // Un master téléchargé du studio puis redéposé ici peut garder son sommaire.
+  const [joindreSommaire, setJoindreSommaire] = useState(true);
+  const sommaireDuDeroule = useMemo(
+    () => sommaireDuJT({ clips: timelineClips, overlays: timelineOverlays, jingles }),
+    [timelineClips, timelineOverlays, jingles],
+  );
   const handleDeliveryFiles = (filesList) => {
     const fichiers = Array.from(filesList || []);
-    if (fichiers.length) setAPublier(fichiers);
+    if (fichiers.length) {
+      setJoindreSommaire(true);
+      setAPublier(fichiers);
+    }
   };
 
-  const publierFichiers = (filesList) => {
+  // Le master du studio part directement dans « JT Prêt » : pas d'aller-retour
+  // de plusieurs centaines de Mo entre le serveur et le poste du monteur.
+  const publierMaster = async () => {
+    setMasterAPublier(false);
+    if (!exportJobId || publicationMaster) return;
+    setPublicationMaster(true);
+    try {
+      const livraison = await api.publierDepuisExport(selectedWeek, exportJobId, authenticatedAdminPassword);
+      setDeliveries((avant) => [...avant.filter((d) => d.id !== livraison.id), livraison]);
+      addToast(t.delivery.publieDepuisStudio, 'success', 6000);
+    } catch (err) {
+      addToast(err.message || t.uploader.errorPrefix, 'error', 8000);
+    } finally {
+      setPublicationMaster(false);
+    }
+  };
+  const masterPublie = Boolean(exportJobId) && deliveries.some((d) => d.jobId === exportJobId);
+
+  const publierFichiers = (filesList, sommaire = []) => {
     Array.from(filesList).forEach((file) => {
       const tempId = Math.random().toString(36).slice(2);
       setDeliveryUploading((prev) => [
@@ -1881,6 +1926,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       ]);
 
       api.uploadDelivery(selectedWeek, file, authenticatedAdminPassword, {
+        sommaire,
         onProgress: (pct) =>
           setDeliveryUploading((prev) =>
             prev.map((f) => (f.id === tempId ? { ...f, progress: Math.min(pct, 99) } : f))
@@ -2878,6 +2924,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     son={exportSon}
                     semaine={selectedWeek}
                     onReessayer={() => { setExportError(null); handleGenerateVideo(); }}
+                    onPublier={exportJobId ? () => setMasterAPublier(true) : null}
+                    publication={publicationMaster}
+                    publie={masterPublie}
                   />
                 </div>
 
@@ -3008,6 +3057,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                     son={exportSon}
                     semaine={selectedWeek}
                     onReessayer={() => { setExportError(null); handleGenerateVideo(); }}
+                    onPublier={exportJobId ? () => setMasterAPublier(true) : null}
+                    publication={publicationMaster}
+                    publie={masterPublie}
                   />
                   </div>
                   <div className="relative z-10 flex w-[clamp(380px,31vw,520px)] shrink-0 flex-col overflow-y-auto border-l border-[var(--editor-border)] bg-[var(--editor-panel)]">
@@ -3311,13 +3363,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                 )}
                 {deliveries.length > 0 && (
                   <div className="panel p-6">
-                    <h3 className="font-semibold text-[color:var(--ink)] mb-4">Fichiers uploadés</h3>
+                    <h3 className="font-semibold text-[color:var(--ink)] mb-4">{t.delivery.publies}</h3>
                     <ul className="space-y-3">
                       {deliveries.map((file) => (
                         <li key={file.id} className="group bg-[var(--paper-2)] border border-[var(--border)] hover:border-[var(--accent)] rounded-xl p-3 sm:p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 motion-tap">
                           <div className="flex items-center gap-3 w-full md:w-auto">
-                            <div className={`p-2 rounded-lg bg-blue-100 text-blue-500 shrink-0`}>
-                              <Video size={20} />
+                            <div className="p-2 rounded-lg bg-v-accent/10 text-[color:var(--accent-deep)] shrink-0">
+                              <Video size={20} aria-hidden="true" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <h4 className="font-semibold text-[color:var(--ink)] text-sm md:text-base truncate flex items-center gap-2" title={file.name}>
@@ -3333,6 +3385,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
                                 {tailleLisible(file.size) && <span aria-hidden="true">•</span>}
                                 <span>{tailleLisible(file.size)}</span>
                               </p>
+                              <EtatLivraison fichier={file} />
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -3701,11 +3754,43 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       <ConfirmDialog
         isOpen={Boolean(aPublier)}
         title={t.publication.titre}
-        message={aPublier ? t.publication.message(aPublier.map((f) => f.name).join(', ')) : ''}
+        message={aPublier ? (
+          <span className="block">
+            <span className="block">{t.publication.message(aPublier.map((f) => f.name).join(', '))}</span>
+            {sommaireDuDeroule.length > 0 && (
+              <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-[var(--border)] px-3 py-2.5 text-left text-sm">
+                <input
+                  type="checkbox"
+                  checked={joindreSommaire}
+                  onChange={(e) => setJoindreSommaire(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
+                />
+                <span>
+                  <span className="block font-semibold text-[color:var(--ink)]">{t.publication.joindreSommaire(sommaireDuDeroule.length)}</span>
+                  <span className="block text-xs text-[color:var(--muted)]">{t.publication.joindreSommaireAide}</span>
+                </span>
+              </label>
+            )}
+          </span>
+        ) : ''}
         confirmText={t.publication.confirmer}
         cancelText={t.uploader.cancel}
-        onConfirm={() => { const fichiers = aPublier; setAPublier(null); publierFichiers(fichiers); }}
+        onConfirm={() => {
+          const fichiers = aPublier;
+          setAPublier(null);
+          publierFichiers(fichiers, joindreSommaire ? sommaireDuDeroule : []);
+        }}
         onCancel={() => setAPublier(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={masterAPublier}
+        title={t.publication.titre}
+        message={t.publication.messageMaster(selectedWeek)}
+        confirmText={t.publication.confirmer}
+        cancelText={t.uploader.cancel}
+        onConfirm={publierMaster}
+        onCancel={() => setMasterAPublier(false)}
       />
 
       <ConfirmDialog

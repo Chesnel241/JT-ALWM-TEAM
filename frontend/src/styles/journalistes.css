@@ -2317,6 +2317,38 @@
 	font-size: 0.72rem;
 }
 
+/* JT Prêt : la version légère se prépare (le point, `.motion-attente`, est
+   dans index.css : le montage l'affiche aussi). */
+.jr-jt-prepare {
+	animation: rise var(--motion-enter) var(--ease-out) both;
+}
+
+/* Le sommaire de la carte : chaque partie est un geste vers le lecteur. La
+   petite flèche de lecture glisse à peine au survol, pas plus. */
+.jr-jt-partie {
+	transition: background-color var(--motion-screen) var(--ease-out);
+}
+
+.jr-jt-partie-play {
+	opacity: 0.45;
+	transition: opacity var(--motion-screen) var(--ease-out), transform var(--motion-screen) var(--ease-out);
+}
+
+@media (hover: hover) {
+	.jr-jt-partie:hover {
+		background: var(--paper-2);
+	}
+
+	.jr-jt-partie:hover .jr-jt-partie-play {
+		opacity: 1;
+		transform: translateX(2px);
+	}
+}
+
+.jr-jt-partie:focus-visible .jr-jt-partie-play {
+	opacity: 1;
+}
+
 /* Mode connexion faible (lib/connexion.js) : les boucles décoratives
    s'arrêtent. L'envoi en cours, le compte à rebours et les indicateurs
    d'attente gardent leur mouvement : ils disent quelque chose. */

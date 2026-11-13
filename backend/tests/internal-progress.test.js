@@ -81,7 +81,7 @@ describe('POST /api/editor/internal/progress (callback worker Cloud Run)', () =>
       .set('X-Worker-Key', 'test-secret-key')
       .send({ jobId, status: 'done', url });
     expect(res.status).toBe(200);
-    expect(getJobState(jobId)).toEqual({ percent: 100, status: 'done', url, message: null, son: null });
+    expect(getJobState(jobId)).toEqual({ percent: 100, status: 'done', url, message: null, son: null, weekId: null, sommaire: [] });
   });
 
   // LE BESOIN : le moteur mesure le son du master après correction (EBU R 128).

@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { Download, Play, Sparkles, CheckCircle, FileVideo, FileAudio, FileText } from 'lucide-react';
+import { Download, Play, Sparkles, CheckCircle, FileVideo, FileAudio, FileText, Smartphone, Tv } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { tailleLisible } from '../lib/taille.js';
 import { API_BASE } from '../api/index.js';
@@ -7,6 +7,11 @@ import { formatRelative, formatAbsolute, formatWeekFull } from '../lib/dates.js'
 import SkeletonCard from './SkeletonCard.jsx';
 import WaitingBroadcast from './illustrations/WaitingBroadcast.jsx';
 import { lireVus, ecrireVus } from '../lib/jtVus.js';
+import { minutage } from '../lib/sommaire.js';
+import { legerPret } from './LecteurJT.jsx';
+
+/** Au-delà, le sommaire se replie : la carte reste lisible d'un coup d'œil. */
+const PARTIES_VISIBLES = 5;
 
 /**
  * Le JT de la semaine, côté journalistes.
@@ -40,6 +45,7 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
   const idSemaine = useId();
   const [vus, setVus] = useState(lireVus);
   const [lances, setLances] = useState(() => new Set());
+  const [deplies, setDeplies] = useState(() => new Set());
   const pret = livraisons.length > 0;
 
   const marquerVu = (id) => {
@@ -51,9 +57,9 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
     });
   };
 
-  const regarder = (fichier) => {
+  const regarder = (fichier, debut = 0) => {
     marquerVu(fichier.id);
-    onRegarder?.(fichier);
+    onRegarder?.(fichier, debut);
   };
 
   const telecharger = (fichier) => {
@@ -140,37 +146,126 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
                     </p>
                   </div>
 
-                  <div className={`grid gap-3 ${video ? 'sm:grid-cols-2' : ''}`}>
-                    <a
-                      href={lien}
-                      download={fichier.name}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => telecharger(fichier)}
-                      aria-label={j.telechargerNom(fichier.name)}
-                      className="jr-bouton jr-bouton-vert w-full min-h-[56px] text-base"
-                    >
-                      <Download size={20} className="jr-jt-fleche" aria-hidden="true" />
-                      {/* La taille sur le bouton : 450 Mo sur une 4G payée au
-                          mégaoctet, c'est une décision qu'on prend avant de
-                          toucher, pas après. */}
-                      <span className="flex flex-col items-start leading-tight text-left">
-                        <span>{tailleLisible(fichier.size) ? j.telechargerTaille(tailleLisible(fichier.size)) : j.telecharger}</span>
-                        {tailleLisible(fichier.size) && <span className="text-xs font-semibold opacity-90">{j.wifiConseil}</span>}
-                      </span>
-                    </a>
-                    {video && (
-                      <button
-                        type="button"
-                        onClick={() => regarder(fichier)}
-                        aria-label={j.regarderNom(fichier.name)}
-                        className="jr-bouton jr-bouton-bleu w-full min-h-[56px] text-base"
-                      >
-                        <Play size={18} className="fill-current" aria-hidden="true" />
-                        <span>{j.regarder}</span>
-                      </button>
-                    )}
-                  </div>
+                  {(() => {
+                    const leger = legerPret(fichier);
+                    const tailleTV = tailleLisible(fichier.size);
+                    const lienLeger = leger ? `${API_BASE}/uploads/${encodeURIComponent(leger.filename)}?dl=1` : null;
+                    return (
+                      <div className="space-y-3">
+                        <div className={`grid gap-3 ${video ? 'sm:grid-cols-2' : ''}`}>
+                          {leger ? (
+                            <a
+                              href={lienLeger}
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => telecharger(fichier)}
+                              aria-label={j.telechargerLegerNom(fichier.name, tailleLisible(leger.size))}
+                              className="jr-bouton jr-bouton-vert w-full min-h-[56px] text-base"
+                            >
+                              <Smartphone size={20} className="jr-jt-fleche" aria-hidden="true" />
+                              <span className="flex flex-col items-start leading-tight text-left">
+                                <span>{j.telechargerLeger(tailleLisible(leger.size))}</span>
+                                <span className="text-xs font-semibold opacity-90">{j.legerConseil}</span>
+                              </span>
+                            </a>
+                          ) : (
+                            <a
+                              href={lien}
+                              download={fichier.name}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => telecharger(fichier)}
+                              aria-label={j.telechargerNom(fichier.name)}
+                              className="jr-bouton jr-bouton-vert w-full min-h-[56px] text-base"
+                            >
+                              <Download size={20} className="jr-jt-fleche" aria-hidden="true" />
+                              {/* La taille sur le bouton : 450 Mo sur une 4G payée au
+                                  mégaoctet, c'est une décision qu'on prend avant de
+                                  toucher, pas après. */}
+                              <span className="flex flex-col items-start leading-tight text-left">
+                                <span>{tailleTV ? j.telechargerTaille(tailleTV) : j.telecharger}</span>
+                                {tailleTV && <span className="text-xs font-semibold opacity-90">{j.wifiConseil}</span>}
+                              </span>
+                            </a>
+                          )}
+                          {video && (
+                            <button
+                              type="button"
+                              onClick={() => regarder(fichier)}
+                              aria-label={j.regarderNom(fichier.name)}
+                              className="jr-bouton jr-bouton-bleu w-full min-h-[56px] text-base"
+                            >
+                              <Play size={18} className="fill-current" aria-hidden="true" />
+                              <span>{j.regarder}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Le master en qualité TV reste là, en second : pour qui
+                            diffuse le JT, ou télécharge en Wi-Fi. */}
+                        {leger && (
+                          <a
+                            href={lien}
+                            download={fichier.name}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => telecharger(fichier)}
+                            aria-label={j.telechargerTVNom(fichier.name, tailleTV)}
+                            className="jr-bouton jr-bouton-contour w-full min-h-[48px] text-sm"
+                          >
+                            <Tv size={18} aria-hidden="true" />
+                            <span className="flex flex-col items-start leading-tight text-left">
+                              <span>{j.telechargerTV(tailleTV)}</span>
+                              <span className="text-xs font-semibold opacity-80">{j.tvConseil}</span>
+                            </span>
+                          </a>
+                        )}
+
+                        {fichier.leger?.statut === 'en_cours' && (
+                          <p className="jr-jt-prepare flex items-start gap-2.5 rounded-2xl bg-[var(--paper-2)] px-3 py-2.5 text-sm text-[color:var(--ink)]">
+                            <span className="motion-attente mt-1.5 shrink-0" aria-hidden="true" />
+                            <span>{j.legerEnPreparation}</span>
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {video && Array.isArray(fichier.sommaire) && fichier.sommaire.length > 0 && (() => {
+                    const tout = deplies.has(fichier.id) || fichier.sommaire.length <= PARTIES_VISIBLES + 1;
+                    const parties = tout ? fichier.sommaire : fichier.sommaire.slice(0, PARTIES_VISIBLES);
+                    return (
+                      <div className="jr-jt-sommaire border-t border-[var(--border)] pt-3">
+                        <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)]">{j.auSommaire}</h3>
+                        <ol className="-mx-2">
+                          {parties.map((c, k) => (
+                            <li key={`${c.t}-${k}`}>
+                              <button
+                                type="button"
+                                onClick={() => regarder(fichier, c.t)}
+                                aria-label={j.regarderA(minutage(c.t), c.titre)}
+                                className="jr-jt-partie flex min-h-[44px] w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left"
+                              >
+                                <span className="w-12 shrink-0 font-mono text-xs tabular-nums text-[color:var(--muted)]">{minutage(c.t)}</span>
+                                <span className="min-w-0 flex-1 text-sm leading-snug text-[color:var(--ink)]">{c.titre}</span>
+                                <Play size={14} className="jr-jt-partie-play shrink-0 text-[color:var(--accent-deep)]" aria-hidden="true" />
+                              </button>
+                            </li>
+                          ))}
+                        </ol>
+                        {!tout && (
+                          <button
+                            type="button"
+                            onClick={() => setDeplies((avant) => new Set(avant).add(fichier.id))}
+                            className="mt-1 min-h-[44px] text-sm font-bold text-[color:var(--accent-deep)] underline-offset-2 hover:underline"
+                          >
+                            {j.voirTout(fichier.sommaire.length)}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {lances.has(fichier.id) && (
                     <div role="status" className="jr-jt-lance flex items-start gap-3 rounded-2xl bg-v-action/10 border border-v-action/30 p-3">

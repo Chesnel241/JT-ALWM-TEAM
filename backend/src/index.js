@@ -46,6 +46,12 @@ async function runCleanup() {
 runCleanup();
 setInterval(runCleanup, 60 * 60 * 1000);
 
+// Une version légère de JT interrompue par un redémarrage repart d'elle-même.
+{
+  const { reprendreVersionsLegeres } = await import('./services/versionLegere.js');
+  reprendreVersionsLegeres({ dossier: uploadsDir });
+}
+
 // Relance automatique des pays dont il manque encore la vidéo, la veille de
 // la clôture. Se faisait jusqu'ici à la main, pays par pays.
 startDeadlineReminders();

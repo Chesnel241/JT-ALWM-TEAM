@@ -9,6 +9,7 @@ import { estRubrique, estHorsSujet } from './rubriques.js';
 import { storePath } from '../lib/paths.js';
 import { Redis } from '@upstash/redis';
 import { nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
+import { nomTelechargementLeger } from '../lib/leger.js';
 
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -589,6 +590,28 @@ export function addDelivery(weekId, fileData) {
   db[weekId]._delivery.push(fileData);
   persistDb();
   return fileData;
+}
+
+/**
+ * Complète une livraison (version légère prête, par exemple). Rend la
+ * livraison à jour, ou `null` si elle a été retirée entre-temps.
+ */
+export function majLivraison(weekId, fileId, patch) {
+  const livraison = db[weekId]?._delivery?.find((f) => f.id === fileId);
+  if (!livraison) return null;
+  Object.assign(livraison, patch);
+  persistDb();
+  return { ...livraison };
+}
+
+/** Toutes les livraisons, semaine par semaine (reprise au démarrage). */
+export function toutesLesLivraisons() {
+  const liste = [];
+  for (const weekId of Object.keys(db)) {
+    if (META_KEYS.has(weekId)) continue;
+    for (const livraison of db[weekId]?._delivery || []) liste.push({ weekId, livraison: { ...livraison } });
+  }
+  return liste;
 }
 
 export function deleteDelivery(weekId, fileId) {
@@ -1242,6 +1265,9 @@ export function getFileMetadata(filename) {
     if (weekData._delivery) {
       const found = weekData._delivery.find(f => f.filename === filename);
       if (found) return { ...found, weekId, countryId: '_delivery' };
+      // La version légère se télécharge sous un nom qui la distingue du master.
+      const leger = weekData._delivery.find(f => f.leger?.filename === filename);
+      if (leger) return { ...leger, name: nomTelechargementLeger(leger.name), weekId, countryId: '_delivery' };
     }
     
     // Check countries
@@ -1379,8 +1405,9 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
             // `filename` : sans ce test, la balayeuse la prendrait pour un
             // orphelin et supprimerait le proxy d'un master bien vivant,
             // 24 h après sa fabrication.
+            // Même chose pour la version légère d'un JT publié (`leger.filename`).
             if (Array.isArray(uploads)
-              && uploads.some((u) => u.filename === file || u.proxyFilename === file)) {
+              && uploads.some((u) => u.filename === file || u.proxyFilename === file || u.leger?.filename === file)) {
               found = true;
               break;
             }

@@ -484,6 +484,48 @@ body {
 		animation: fadeIn var(--motion-enter) var(--ease-out) both;
 	}
 
+	/* Une attente réelle (la version légère du JT se prépare) : un point qui
+	   respire doucement. Il dit que le serveur y travaille ; il ne décore pas,
+	   c'est pourquoi le mode connexion faible le garde. */
+	.motion-attente {
+		display: inline-block;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 999px;
+		background: var(--accent);
+		animation: respire 1.6s var(--ease-in-out) infinite;
+	}
+
+	@keyframes respire {
+		0%,
+		100% {
+			transform: scale(0.7);
+			opacity: 0.55;
+		}
+		50% {
+			transform: none;
+			opacity: 1;
+		}
+	}
+
+	/* Le lecteur du JT publié (LecteurJT.jsx). La jauge de la partie en cours
+	   suit la lecture : les positions arrivent environ quatre fois par
+	   seconde, une transition linéaire de même durée les relie en un
+	   mouvement continu. Le repère de la partie en cours se déplie. */
+	.lecteur-jauge {
+		transform-origin: left center;
+		transition: transform 280ms linear;
+	}
+
+	.lecteur-repere {
+		transform: scaleY(0.55);
+		transition: transform var(--motion-screen) var(--ease-emphasis), background-color var(--motion-screen) var(--ease-out);
+	}
+
+	.lecteur-chapitre[aria-current] .lecteur-repere {
+		transform: none;
+	}
+
 	@keyframes rise {
 		from {
 			opacity: 0;

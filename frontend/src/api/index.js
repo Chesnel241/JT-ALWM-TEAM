@@ -538,9 +538,11 @@ export const api = {
   // === JT Prêt (deliveries) ===
   getDeliveries: (weekId) => request(`/deliveries/${weekId}`),
 
-  uploadDelivery: async (weekId, file, adminPassword, { onProgress, onPhase, signal } = {}) => {
+  uploadDelivery: async (weekId, file, adminPassword, { onProgress, onPhase, signal, sommaire } = {}) => {
     if (typeof onPhase === 'function') onPhase('processing');
     const formData = new FormData();
+    // Avant le fichier : le sommaire est lu avec lui, à la fin de l'envoi.
+    if (Array.isArray(sommaire) && sommaire.length) formData.append('sommaire', JSON.stringify(sommaire));
     formData.append('file', file);
 
     const headers = {};
@@ -563,6 +565,15 @@ export const api = {
       throw new Error(err.response?.data?.message || messageErreur(err.response?.status || 0, tStatic().errors));
     }
   },
+
+  // Publie le master que le studio vient de rendre, sans le re-télécharger.
+  publierDepuisExport: (weekId, jobId, adminPassword) =>
+    request(`/deliveries/${weekId}/depuis-export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      adminPassword,
+      body: JSON.stringify({ jobId }),
+    }),
 
   deleteDelivery: (weekId, fileId, adminPassword) =>
     request(`/deliveries/${weekId}/${fileId}`, { method: 'DELETE', adminPassword }),

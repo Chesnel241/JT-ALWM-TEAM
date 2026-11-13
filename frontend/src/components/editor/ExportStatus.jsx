@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { AlertCircle, CheckCircle, ChevronDown, Download, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, ChevronDown, Download, Loader2, Send } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext.jsx';
 import { chronometre, dureeRestante, resteRendu } from '../../lib/envoi.js';
 
@@ -52,6 +52,10 @@ export default function ExportStatus({
   semaine = '',
   son = null,
   onReessayer,
+  // Publier le master dans « JT Prêt » ; absent quand le rendu n'est pas connu.
+  onPublier = null,
+  publication = false,
+  publie = false,
 }) {
   const { t } = useI18n();
   // Repliable : posée en bas du lecteur, la bannière couvrait ses commandes
@@ -133,10 +137,26 @@ export default function ExportStatus({
             download={`Assemblage_JT_${semaine}.mp4`}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-primary flex shrink-0 items-center gap-2 px-3 py-1.5 text-xs"
+            className={`${onPublier ? 'border border-[var(--editor-border)] text-[color:var(--editor-text)] hover:border-[var(--editor-accent)]' : 'btn btn-primary'} flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold`}
           >
-            <Download size={15} /> {t.studio.panneaux.exportTelecharger}
+            <Download size={15} aria-hidden="true" /> {t.studio.panneaux.exportTelecharger}
           </a>
+          {/* Publier sans re-télécharger : le master est déjà sur le serveur. */}
+          {onPublier && (publie ? (
+            <span className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-[color:var(--editor-accent)]">
+              <CheckCircle size={15} aria-hidden="true" /> {t.studio.panneaux.exportPublie}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onPublier}
+              disabled={publication}
+              className="btn btn-primary flex shrink-0 items-center gap-2 px-3 py-1.5 text-xs disabled:opacity-60"
+            >
+              {publication ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Send size={15} aria-hidden="true" />}
+              {publication ? t.studio.panneaux.exportPublication : t.studio.panneaux.exportPublier}
+            </button>
+          ))}
           {boutonReplier}
         </div>
         {/* Le niveau du son tel que le master le porte, mesuré après correction. */}

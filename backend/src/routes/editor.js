@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { concatenateVideos, XFADE_TRANSITIONS } from '../services/editorService.js';
-import { addListener, removeListener, finishJob, getJobState, registerJobWeek, getWeekActiveJob } from '../services/editorProgress.js';
+import { addListener, removeListener, finishJob, getJobState, registerJobWeek, registerJobSommaire, getWeekActiveJob } from '../services/editorProgress.js';
 import { TEXT_ANIMATIONS_IDS, OVERLAY_TEMPLATES } from '../data/overlayTemplates.js';
 import { buildWeeks } from '../data/constants.js';
 import { getTimelineWorkspace, saveTimelineWorkspace } from '../data/store.js';
@@ -13,6 +13,7 @@ import { io } from '../app.js';
 const TEMPLATE_IDS = OVERLAY_TEMPLATES.map((t) => t.id);
 import logger from '../logger/index.js';
 import { MAX_SONS, nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
+import { MAX_CHAPITRES, nettoyerSommaire } from '../lib/sommaire.js';
 
 const router = express.Router();
 const isValidWeek = (weekId) => buildWeeks().some((week) => week.id === weekId);
@@ -278,6 +279,8 @@ router.post(
     body('atmosphere.grain').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
     body('atmosphere.sweep').optional({ values: 'null' }).isFloat({ min: 0, max: 1 }),
     body('weekId').optional({ values: 'null' }).isString().isLength({ max: 64 }),
+    // Le sommaire du JT (chapitres) : borné ici, nettoyé titre par titre ensuite.
+    body('sommaire').optional({ values: 'null' }).isArray({ max: MAX_CHAPITRES * 2 }),
   ],
   async (req, res, next) => {
     try {
@@ -314,6 +317,7 @@ router.post(
         });
       }
       if (weekId) registerJobWeek(jobId, weekId);
+      registerJobSommaire(jobId, nettoyerSommaire(req.body.sommaire));
 
       logger.info('Demande de concaténation reçue', { clipsCount: clips.length, jobId, weekId, globalCount: Array.isArray(globalOverlays) ? globalOverlays.length : 0, logo: !!logo, music: !!(music && music.filename), voiceover: !!(voiceover && voiceover.filename), images: Array.isArray(imageOverlays) ? imageOverlays.length : 0, sons: audio.length });
 
