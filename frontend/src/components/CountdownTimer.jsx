@@ -9,6 +9,7 @@ import {
   decompte,
   rubanSemaine,
 } from '../lib/echeance.js';
+import Sablier from './Sablier.jsx';
 
 /**
  * Le compte à rebours de la semaine, en mouvement.
@@ -16,11 +17,11 @@ import {
  * Ce qu'il doit faire comprendre d'un coup d'œil, à quelqu'un qui n'est pas à
  * l'aise avec les écrans :
  *
- * - **combien de temps il reste**, en chiffres qui basculent et en arc qui
- *   raccourcit ;
- * - **si c'est grave**, par la couleur : vert au-delà de 48 h, orange
- *   jusqu'à 12 h, rouge en dessous — le halo bat de plus en plus vite dans
- *   la dernière heure (lib/echeance.js) ;
+ * - **combien de temps il reste**, en chiffres qui basculent et en sable
+ *   qui passe d'une ampoule à l'autre (Sablier.jsx) ;
+ * - **si c'est grave**, par la couleur du sable : vert au-delà de 48 h,
+ *   orange jusqu'à 12 h, rouge en dessous — le halo bat de plus en plus vite
+ *   dans la dernière heure (lib/echeance.js) ;
  * - **quand exactement**, dans SON heure : « dimanche 05h30, votre heure
  *   (GMT-3) ». Le serveur donne un instant (`week.cutoffAt`) ; on le lit
  *   dans le fuseau du navigateur. La référence de la rédaction suit, en
@@ -40,8 +41,6 @@ export default function CountdownTimer({ week, compact = false, ligne = false, a
   // toucher. La carte, même compacte, repoussait le bouton d'envoi sous la
   // ligne de flottaison d'un téléphone.
   const [deplie, setDeplie] = useState(false);
-  // La trotteuse est calée une fois, à l'affichage, sur les secondes réelles.
-  const [departTrotteuse] = useState(() => -(new Date().getSeconds()));
 
   if (!week?.cutoffAt) return null;
   const fin = Date.parse(week.cutoffAt);
@@ -57,7 +56,8 @@ export default function CountdownTimer({ week, compact = false, ligne = false, a
   const fuseau = fuseauNavigateur();
   const e = echeanceLocale(week.cutoffAt, { lang, timeZone: fuseau });
   const ruban = rubanSemaine(week.cutoffAt, maintenant, { lang, timeZone: fuseau });
-  // Avant le début de la semaine, l'arc est plein ; après la clôture, vide.
+  // Avant le début de la semaine, le sable est tout en haut ; après la
+  // clôture, tout en bas.
   const fraction = restant <= 0 ? 0 : Math.min(1, restant / Math.max(1, fin - debut));
 
   const reference = e.memeHeureQueRedaction ? c.memeHeure : c.heureRedaction(e.reference);
@@ -92,8 +92,10 @@ export default function CountdownTimer({ week, compact = false, ligne = false, a
   }
 
   if (compact || ligne) {
+    // Une fois clos, l'étiquette de phase dit déjà « Clôturé » : pas de
+    // seconde ligne qui le répète.
     const temps = phase === 'clos'
-      ? c.finished
+      ? null
       : jours > 0
         ? `${jours}${c.days} ${deux(heures)}${c.hours}`
         : `${deux(heures)}:${deux(minutes)}:${deux(secondes)}`;
@@ -108,14 +110,12 @@ export default function CountdownTimer({ week, compact = false, ligne = false, a
         aria-label={ariaLabel}
       >
         <div className="flex items-center gap-3" aria-hidden="true">
-          <Cadran fraction={fraction} taille={52} epaisseur={6} departTrotteuse={departTrotteuse}>
-            <IconePhase size={18} className="text-[color:var(--cr-plein)]" />
-          </Cadran>
+          <Sablier fraction={fraction} mini className="cr-sablier-mini" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold text-[color:var(--cr-plein)] leading-tight">
               {c.phases[phase]}
             </p>
-            <p className="cr-compact-temps mt-0.5">{temps}</p>
+            {temps && <p className="cr-compact-temps mt-0.5">{temps}</p>}
           </div>
         </div>
         <p className="text-xs font-semibold text-[color:var(--ink)] leading-snug" aria-hidden="true">
@@ -138,24 +138,9 @@ export default function CountdownTimer({ week, compact = false, ligne = false, a
       aria-label={ariaLabel}
     >
       <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-8" aria-hidden="true">
-        <Cadran fraction={fraction} taille={148} epaisseur={12} departTrotteuse={departTrotteuse}>
-          {phase === 'clos' ? (
-            <>
-              <Lock size={28} className="text-[color:var(--cr-plein)]" />
-              <span className="mt-1.5 text-sm font-black text-[color:var(--cr-plein)]">{c.finished}</span>
-            </>
-          ) : jours > 0 ? (
-            <>
-              <span className="text-5xl font-black tabular-nums text-[color:var(--ink)]">{jours}</span>
-              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-[color:var(--muted)]">{c.unites.jours}</span>
-            </>
-          ) : (
-            <>
-              <span className="text-3xl font-black tabular-nums text-[color:var(--ink)]">{deux(heures)}:{deux(minutes)}</span>
-              <span className="mt-1 text-xs font-bold tracking-wider text-[color:var(--muted)]">{c.unites.heuresMinutes}</span>
-            </>
-          )}
-        </Cadran>
+        <Sablier fraction={fraction} className="cr-sablier-grand">
+          {phase === 'clos' && <Lock size={22} strokeWidth={2.4} />}
+        </Sablier>
 
         <div className="flex-1 min-w-0 w-full text-center sm:text-left space-y-3">
           <span className="cr-phase">
@@ -207,34 +192,6 @@ function useHorloge() {
     return () => clearInterval(id);
   }, []);
   return maintenant;
-}
-
-/** L'anneau : piste, arc du temps restant, trotteuse, halo qui respire. */
-function Cadran({ fraction, taille, epaisseur, departTrotteuse, children }) {
-  const r = 50 - epaisseur / 2 - 2;
-  const circonference = 2 * Math.PI * r;
-  return (
-    <div className="cr-cadran" style={{ width: taille, height: taille }}>
-      <span className="cr-halo" />
-      <svg viewBox="0 0 100 100" focusable="false">
-        <circle className="cr-piste" cx="50" cy="50" r={r} fill="none" strokeWidth={epaisseur} />
-        <circle
-          className="cr-arc"
-          cx="50"
-          cy="50"
-          r={r}
-          fill="none"
-          strokeWidth={epaisseur}
-          strokeDasharray={circonference}
-          strokeDashoffset={circonference * (1 - fraction)}
-        />
-        <g className="cr-trotteuse" style={{ animationDelay: `${departTrotteuse}s` }}>
-          <circle cx="50" cy={50 - r} r={epaisseur / 3.2} />
-        </g>
-      </svg>
-      <div className="cr-centre">{children}</div>
-    </div>
-  );
 }
 
 /** Deux chiffres qui basculent, et leur unité en toutes lettres. */

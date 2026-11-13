@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { render, screen, act } from '@testing-library/react';
 import { I18nProvider } from '../src/i18n/I18nContext.jsx';
 
@@ -81,6 +84,12 @@ describe('CountdownTimer', () => {
     expect(container.textContent).toContain('Clôture : dimanche 05h30 · votre heure (GMT-3)');
   });
 
+  it('en version compacte, une fois clos, ne répète pas « Clôturé »', () => {
+    vi.setSystemTime(new Date('2026-11-01T09:00:00Z'));
+    monter({ compact: true });
+    expect(screen.getAllByText('Clôturé')).toHaveLength(1);
+  });
+
   it('se lit d’une phrase par un lecteur d’écran, sans égrener les secondes', () => {
     vi.setSystemTime(new Date('2026-10-28T12:00:00Z'));
     monter({}, 'en');
@@ -108,5 +117,101 @@ describe('CountdownTimer en une ligne (page d’envoi sur téléphone)', () => {
     vi.setSystemTime(new Date('2026-11-01T07:30:00Z'));
     const { container } = monter({ ligne: true });
     expect(container.querySelector('.cr-compact')).not.toBeNull();
+  });
+});
+
+describe('CountdownTimer en sablier', () => {
+  // LE BESOIN (le propriétaire) : « au lieu d'une jauge, un grand sablier
+  // dynamique, réaliste ; le sable garde les couleurs actuelles selon la
+  // progression du temps ; ça doit être vivant ».
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../src/styles/journalistes.css'), 'utf8');
+  const regle = (selecteur) => {
+    const i = css.indexOf(`${selecteur} {`);
+    expect(i, selecteur).toBeGreaterThan(-1);
+    return css.slice(i, css.indexOf('}', i));
+  };
+  const surface = (c) => Number(c.querySelector('.cr-sablier-surface').getAttribute('cy'));
+
+  it('remplace l’anneau par un sablier, grand sur la carte et petit en version compacte', () => {
+    vi.setSystemTime(new Date('2026-10-28T12:00:00Z'));
+    const { container } = monter();
+    expect(container.querySelector('.cr-sablier.cr-sablier-grand svg')).not.toBeNull();
+    expect(container.querySelector('.cr-arc')).toBeNull();
+
+    const compacte = monter({ compact: true }).container;
+    expect(compacte.querySelector('.cr-sablier.cr-sablier-mini')).not.toBeNull();
+    // À 48 px, les grains qui tombent ne se verraient pas : on ne les dessine pas.
+    expect(compacte.querySelector('.cr-sablier-grain')).toBeNull();
+    expect(compacte.querySelector('.cr-sablier-filet')).not.toBeNull();
+  });
+
+  it('vide l’ampoule du haut à mesure que la clôture approche', () => {
+    vi.setSystemTime(new Date('2026-10-28T12:00:00Z'));
+    const tot = monter().container;
+    const hautTot = surface(tot);
+    const tasTot = tot.querySelector('.cr-sablier-tas').getAttribute('d');
+
+    vi.setSystemTime(new Date('2026-11-01T02:00:00Z'));
+    const tard = monter().container;
+    // L'axe des y descend : une surface plus basse a un cy plus grand.
+    expect(surface(tard)).toBeGreaterThan(hautTot + 10);
+    expect(tard.querySelector('.cr-sablier-tas').getAttribute('d')).not.toBe(tasTot);
+  });
+
+  it('une fois clos : tout le sable en bas, plus de filet, un cadenas', () => {
+    vi.setSystemTime(new Date('2026-11-01T09:00:00Z'));
+    const { container } = monter();
+    const sablier = container.querySelector('.cr-sablier');
+    expect(sablier.dataset.coule).toBe('0');
+    expect(container.querySelector('.cr-sablier-surface')).toBeNull();
+    expect(container.querySelector('.cr-sablier-filet')).toBeNull();
+    expect(container.querySelector('.cr-sablier-reflet')).toBeNull();
+    expect(container.querySelector('.cr-sablier-tas')).not.toBeNull();
+    expect(sablier.querySelector('.cr-sablier-badge svg')).not.toBeNull();
+  });
+
+  it('colore le sable de la couleur de la phase, comme l’ancienne jauge', () => {
+    for (const teinte of ['coeur', 'bord', 'lumiere']) {
+      expect(regle(`.cr-sablier-sable-${teinte}`)).toMatch(/stop-color:[^;]*var\(--cr-couleur\)/);
+    }
+    expect(regle('.cr')).toMatch(/--cr-couleur: var\(--jauge-serein\)/);
+    expect(regle(".cr[data-phase='proche']")).toMatch(/--cr-couleur: var\(--jauge-proche\)/);
+    expect(regle(".cr[data-phase='urgent']")).toMatch(/--cr-couleur: var\(--jauge-urgent\)/);
+  });
+
+  it('fait couler le sable plus vite à l’approche de la clôture', () => {
+    const duree = (r) => Number(r.match(/--cr-filet: ([\d.]+)s/)[1]);
+    const serein = duree(regle('.cr-sablier'));
+    const proche = duree(regle(".cr[data-phase='proche'] .cr-sablier"));
+    const urgent = duree(regle(".cr[data-phase='urgent'] .cr-sablier"));
+    expect(serein).toBeGreaterThan(proche);
+    expect(proche).toBeGreaterThan(urgent);
+  });
+
+  it('coupe grains, bouffée et reflet en mode économe, mais laisse couler le filet', () => {
+    const econome = css.slice(css.indexOf('html[data-econome] .jr-ciel::after'));
+    const bloc = econome.slice(0, econome.indexOf('}'));
+    for (const c of ['cr-sablier-grain', 'cr-sablier-impact', 'cr-sablier-reflet']) expect(bloc).toContain(c);
+    expect(bloc).not.toContain('cr-sablier-filet');
+  });
+
+  it('donne à chaque sablier ses propres dégradés, même à deux sur la page', () => {
+    vi.setSystemTime(new Date('2026-10-28T12:00:00Z'));
+    const { container } = render(
+      <I18nProvider>
+        <CountdownTimer week={SEMAINE} />
+        <CountdownTimer week={SEMAINE} compact ancre={null} />
+      </I18nProvider>,
+    );
+    const ids = [...container.querySelectorAll('.cr-sablier [id]')].map((e) => e.id);
+    expect(ids.length).toBeGreaterThan(10);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Chaque remplissage vise un dégradé de son propre sablier.
+    for (const sablier of container.querySelectorAll('.cr-sablier')) {
+      const propres = new Set([...sablier.querySelectorAll('[id]')].map((e) => e.id));
+      const vises = [...sablier.querySelectorAll('[fill^="url(#"], [clip-path^="url(#"]')]
+        .map((e) => (e.getAttribute('fill') || e.getAttribute('clip-path')).slice(5, -1));
+      expect(vises.filter((v) => !propres.has(v))).toEqual([]);
+    }
   });
 });

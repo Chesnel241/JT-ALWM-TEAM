@@ -32,6 +32,7 @@ const ECRANS = [
   'ConfirmDialog.jsx',
   'ReporterHomeView.jsx',
   'CountdownTimer.jsx',
+  'Sablier.jsx',
   'VoyageEnvoi.jsx',
   'ChampScript.jsx',
   'ChampWhatsApp.jsx',

@@ -33,7 +33,13 @@ function bouclesInfinies(texte) {
 // enregistrement, un fichier qu'on survole pour le lâcher.
 const AUTORISEES = new Set([
   '.cr-halo', // le compte à rebours respire plus vite à l'approche de la clôture
-  '.cr-trotteuse', // l'aiguille des secondes
+  // Le sablier : le sable coule tant que le temps passe (plus vite à
+  // l'approche de la clôture), et s'arrête une fois clos. Grains et
+  // bouffée sont coupés en mode économe.
+  '.cr-sablier-filet',
+  '.cr-sablier-grain',
+  '.cr-sablier-impact',
+  '.cr-sablier-reflet', // un reflet par minute, calé sur l'horloge : l'ancienne trotteuse
   '.jr-egaliseur i', // l'égaliseur du micro, au survol seulement
   '.jr-liaison-piste[data-actif]::before', // un envoi en cours
   '.jr-paquet', // le fichier en route

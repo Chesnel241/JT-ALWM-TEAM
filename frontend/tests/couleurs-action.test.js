@@ -63,6 +63,7 @@ const ECRANS_JOURNALISTES = [
   'ReporterHomeView.jsx',
   'HomeView.jsx',
   'CountdownTimer.jsx',
+  'Sablier.jsx',
   'MobileUploaderView.jsx',
   'UploaderView.jsx',
   'VoyageEnvoi.jsx',

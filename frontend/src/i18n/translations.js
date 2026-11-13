@@ -592,8 +592,7 @@ export const translations = {
       seconds: 's',
       // Sous les chiffres qui basculent : en toutes lettres, pour qu'on ne
       // confonde pas « m » minutes et « m » mois.
-      unites: { jours: 'jours', heures: 'heures', minutes: 'minutes', secondes: 'secondes', heuresMinutes: 'h : min' },
-      finished: 'Clôturé',
+      unites: { jours: 'jours', heures: 'heures', minutes: 'minutes', secondes: 'secondes' },
       lateTitle: 'Les envois de la semaine sont clôturés',
       lateDesc: 'Vos envois seront tout de même traités si nécessaire. En cas de besoin, demandez un délai à l’équipe montage.',
       phases: {
@@ -2212,8 +2211,7 @@ export const translations = {
       hours: 'h',
       minutes: 'm',
       seconds: 's',
-      unites: { jours: 'days', heures: 'hours', minutes: 'minutes', secondes: 'seconds', heuresMinutes: 'h : min' },
-      finished: 'Closed',
+      unites: { jours: 'days', heures: 'hours', minutes: 'minutes', secondes: 'seconds' },
       lateTitle: 'This week’s uploads are closed',
       lateDesc: 'Your uploads will still be processed if necessary. If you need to, ask the editing team for more time.',
       phases: {

@@ -63,27 +63,58 @@
 	transition: border-color 600ms var(--ease-out);
 }
 
-/* Le cadran : une piste, un arc qui raccourcit, une comète au bout, et un
-   halo qui respire. Plus la clôture approche, plus il respire vite. */
-.cr-cadran {
+/* Le sablier (Sablier.jsx) : du verre, du noyer, du laiton, et un sable de
+   la couleur de la phase. Le halo respire derrière lui, plus vite à
+   l'approche de la clôture ; le filet coule, lui aussi plus vite. */
+.cr-sablier {
+	--cr-filet: 0.9s;
 	position: relative;
 	flex-shrink: 0;
-	display: grid;
-	place-items: center;
+	aspect-ratio: 160 / 246;
+	animation: cr-sablier-entre 700ms var(--ease-out) both;
 }
 
-.cr-cadran > svg {
+.cr[data-phase='proche'] .cr-sablier {
+	--cr-filet: 0.72s;
+}
+
+.cr[data-phase='urgent'] .cr-sablier {
+	--cr-filet: 0.52s;
+}
+
+.cr-sablier-grand {
+	width: 9rem;
+}
+
+@media (min-width: 640px) {
+	.cr-sablier-grand {
+		width: 11rem;
+	}
+}
+
+.cr-sablier-mini {
+	width: 3rem;
+}
+
+.cr-sablier > svg {
 	position: relative;
+	display: block;
 	width: 100%;
 	height: 100%;
-	transform: rotate(-90deg);
+	overflow: visible;
+}
+
+@keyframes cr-sablier-entre {
+	from {
+		opacity: 0;
+		transform: translateY(8px) scale(0.96);
+	}
 }
 
 .cr-halo {
 	position: absolute;
-	inset: -12%;
-	border-radius: 9999px;
-	background: radial-gradient(circle, color-mix(in oklch, var(--cr-couleur) 40%, transparent) 0%, transparent 68%);
+	inset: 0 -30% 6%;
+	background: radial-gradient(closest-side, color-mix(in oklch, var(--cr-couleur) 34%, transparent) 0%, transparent 100%);
 	animation: cr-respire var(--cr-pouls) ease-in-out infinite;
 	pointer-events: none;
 }
@@ -101,54 +132,188 @@
 	}
 
 	50% {
-		transform: scale(1.08);
+		transform: scale(1.06);
 		opacity: 0.95;
 	}
 }
 
-.cr-piste {
-	stroke: var(--border);
-	stroke: color-mix(in oklch, var(--cr-couleur) 16%, var(--border));
+/* Le sable : trois teintes tirées de la couleur de la phase — l'ombre des
+   bords, la lumière, le cœur. Un navigateur sans color-mix garde l'aplat. */
+.cr-sablier stop[class] {
+	transition: stop-color 800ms var(--ease-out);
 }
 
-.cr-arc {
-	stroke: var(--cr-couleur);
-	stroke-linecap: round;
-	transition:
-		stroke-dashoffset 1s var(--ease-out),
-		stroke 600ms var(--ease-out);
+.cr-sablier-sable-coeur {
+	stop-color: var(--cr-couleur);
 }
 
-/* La trotteuse : un point qui fait le tour en une minute, calé sur les
-   secondes réelles à l'affichage. C'est elle qui dit « le temps passe ». */
-.cr-trotteuse {
-	transform-origin: 50% 50%;
-	animation: cr-tour 60s linear infinite;
+.cr-sablier-sable-bord {
+	stop-color: var(--cr-couleur);
+	stop-color: color-mix(in oklch, var(--cr-couleur) 60%, black);
 }
 
-.cr-trotteuse circle {
+.cr-sablier-sable-lumiere {
+	stop-color: var(--cr-couleur);
+	stop-color: color-mix(in oklch, var(--cr-couleur) 76%, white);
+}
+
+.cr-sablier-surface-claire {
+	stop-color: var(--cr-couleur);
+	stop-color: color-mix(in oklch, var(--cr-couleur) 62%, white);
+}
+
+.cr-sablier-surface-fond {
+	stop-color: var(--cr-couleur);
+	stop-color: color-mix(in oklch, var(--cr-couleur) 88%, white);
+}
+
+.cr-sablier-creux-centre {
+	stop-color: var(--cr-couleur);
+	stop-color: color-mix(in oklch, var(--cr-couleur) 50%, black);
+	stop-opacity: 0.7;
+}
+
+.cr-sablier-creux-bord {
+	stop-color: var(--cr-couleur);
+	stop-opacity: 0;
+}
+
+/* Le filet qui tombe du goulot : un trait, et des grains qui y défilent. */
+.cr-sablier-goulot,
+.cr-sablier-filet-fond {
 	fill: var(--cr-couleur);
+	fill: color-mix(in oklch, var(--cr-couleur) 78%, black);
+	stroke: var(--cr-couleur);
+	stroke: color-mix(in oklch, var(--cr-couleur) 78%, black);
 }
 
-.cr[data-phase='clos'] .cr-trotteuse {
-	display: none;
+.cr-sablier-goulot {
+	stroke: none;
 }
 
-@keyframes cr-tour {
+.cr-sablier-filet-fond,
+.cr-sablier-filet {
+	stroke-width: 1.3;
+	stroke-linecap: round;
+}
+
+.cr-sablier-mini .cr-sablier-filet-fond,
+.cr-sablier-mini .cr-sablier-filet {
+	stroke-width: 3;
+}
+
+.cr-sablier-filet {
+	stroke: #fff;
+	stroke: color-mix(in oklch, var(--cr-couleur) 45%, white);
+	stroke-dasharray: 1.4 2.8;
+	animation: cr-sablier-coule var(--cr-filet) linear infinite;
+}
+
+/* Huit motifs de 4,2 par tour : le défilement boucle sans à-coup. */
+@keyframes cr-sablier-coule {
 	to {
-		transform: rotate(360deg);
+		stroke-dashoffset: -33.6;
 	}
 }
 
-.cr-centre {
+/* Les grains qui tombent, accélérés comme par la pesanteur, jusqu'au sommet
+   du tas (`--chute`, posé par le composant). */
+.cr-sablier-grain {
+	fill: var(--cr-couleur);
+	fill: color-mix(in oklch, var(--cr-couleur) 70%, black);
+	opacity: 0;
+	animation: cr-sablier-tombe calc(var(--cr-filet) * 1.3) cubic-bezier(0.5, 0, 1, 0.6) infinite;
+}
+
+@keyframes cr-sablier-tombe {
+	0% {
+		transform: translateY(0);
+		opacity: 0;
+	}
+
+	12%,
+	90% {
+		opacity: 1;
+	}
+
+	100% {
+		transform: translateY(var(--chute));
+		opacity: 0;
+	}
+}
+
+/* Leur arrivée sur le tas : une petite bouffée qui s'étale. */
+.cr-sablier-impact {
+	fill: var(--cr-couleur);
+	fill: color-mix(in oklch, var(--cr-couleur) 55%, white);
+	opacity: 0;
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: cr-sablier-impact calc(var(--cr-filet) * 1.3) var(--ease-out) infinite;
+}
+
+@keyframes cr-sablier-impact {
+	0% {
+		transform: scale(0.3);
+		opacity: 0.85;
+	}
+
+	100% {
+		transform: scale(1.7);
+		opacity: 0;
+	}
+}
+
+/* Un reflet traverse le verre à chaque minute pile — l'ancienne trotteuse. */
+.cr-sablier-reflet {
+	opacity: 0;
+	animation: cr-sablier-reflet 60s linear infinite;
+}
+
+@keyframes cr-sablier-reflet {
+	0% {
+		transform: translateX(-10px);
+		opacity: 0;
+	}
+
+	0.6% {
+		opacity: 1;
+	}
+
+	3.6% {
+		transform: translateX(200px);
+		opacity: 1;
+	}
+
+	4%,
+	100% {
+		transform: translateX(200px);
+		opacity: 0;
+	}
+}
+
+/* Une fois clos : un cadenas posé sur l'ampoule vide. */
+.cr-sablier-badge {
 	position: absolute;
-	inset: 0;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-	line-height: 1;
+	left: 50%;
+	top: 31%;
+	display: grid;
+	place-items: center;
+	width: 2.6rem;
+	height: 2.6rem;
+	border-radius: 9999px;
+	background: var(--paper);
+	color: var(--cr-plein);
+	box-shadow: 0 6px 18px -6px oklch(0.25 0.03 250 / 0.35), 0 0 0 1px var(--border);
+	transform: translate(-50%, -50%);
+	animation: cr-sablier-badge 500ms var(--ease-out) 200ms both;
+}
+
+@keyframes cr-sablier-badge {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.6);
+	}
 }
 
 /* Pastille de phase : texte blanc sur la couleur sombre de la phase. */
@@ -2366,6 +2531,9 @@ html[data-econome] .jr-depot-icones > span,
 html[data-econome] .jr-depot-icones > .jr-depot-nuage,
 html[data-econome] .jr-jt-ecran::before,
 html[data-econome] .jr-jt-lecture::after,
-html[data-econome] .jr-micro[data-etat='pret'] .jr-micro-halo {
+html[data-econome] .jr-micro[data-etat='pret'] .jr-micro-halo,
+html[data-econome] .cr-sablier-grain,
+html[data-econome] .cr-sablier-impact,
+html[data-econome] .cr-sablier-reflet {
 	animation: none !important;
 }
