@@ -5,8 +5,8 @@ import { existsSync, unlinkSync } from 'fs';
 import { link, copyFile, stat } from 'fs/promises';
 import logger from '../logger/index.js';
 import { recordUpload } from '../monitoring/metrics.js';
-import { buildWeeks } from '../data/constants.js';
-import { getDelivery, addDelivery, deleteDelivery, getSujets } from '../data/store.js';
+import { buildWeeks, isCountryAccepted, SPECIAL_BUCKETS } from '../data/constants.js';
+import { getDelivery, addDelivery, deleteDelivery, getSujets, compterVueJT, getCustomCountries } from '../data/store.js';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
 import { classifyUpload } from '../lib/upload.js';
 import { nomLisible } from '../middleware/sanitizer.js';
@@ -255,6 +255,22 @@ router.post('/:weekId/depuis-export', requireAdmin, asyncHandler(async (req, res
   planifierVersionLegere(weekId, fileData, { dossier: uploadsDir, signaler: signaler(weekId) });
   signaler(weekId)();
   return res.status(201).json(getDelivery(weekId).find((d) => d.id === fileData.id) || fileData);
+}));
+
+// POST /api/deliveries/:weekId/:fileId/vue — un accusé de lecture du JT.
+// Anonyme : seul le pays est compté, et chaque appareil ne l'envoie qu'une
+// fois par JT (le navigateur s'en souvient). Le pays vient du lien personnel
+// quand il y en a un, sinon de l'appareil.
+router.post('/:weekId/:fileId/vue', asyncHandler(async (req, res, next) => {
+  const { weekId, fileId } = req.params;
+  if (!isValidWeek(weekId)) return next(createErrors.notFound('Week'));
+  if (!isValidUUID(fileId)) return next(createErrors.badRequest('fileId doit être un UUID valide'));
+  const type = req.body?.type === 'telechargement' ? 'telechargement' : 'lecture';
+  const declare = String(req.correspondant?.pays || req.body?.countryId || '').trim().toLowerCase();
+  const countryId = isCountryAccepted(declare, getCustomCountries()) && !SPECIAL_BUCKETS.has(declare) ? declare : 'inconnu';
+  const compte = compterVueJT(weekId, fileId, countryId, type);
+  if (!compte) return next(createErrors.notFound('Fichier'));
+  return res.status(204).end();
 }));
 
 router.delete('/:weekId/:fileId', requireAdmin, asyncHandler(async (req, res, next) => {

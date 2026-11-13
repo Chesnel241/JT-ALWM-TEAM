@@ -22,7 +22,7 @@ export const legerPret = (fichier) => fichier?.leger?.statut === 'pret' && fichi
  * Sur un téléphone, la version légère est lue d'abord ; on peut passer en
  * qualité TV sans perdre l'endroit où on en était.
  */
-export default function LecteurJT({ fichier, debut = 0, prefererLeger = false, onFermer }) {
+export default function LecteurJT({ fichier, debut = 0, prefererLeger = false, onFermer, onTelecharger }) {
   const { t } = useI18n();
   const l = t.jtPret.lecteur;
   const boite = usePiegeFocus(true, onFermer);
@@ -144,6 +144,7 @@ export default function LecteurJT({ fichier, debut = 0, prefererLeger = false, o
             download
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => onTelecharger?.(fichier)}
             className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-[var(--action)] px-4 text-xs font-bold text-white shadow-sm"
           >
             <Download size={14} aria-hidden="true" />

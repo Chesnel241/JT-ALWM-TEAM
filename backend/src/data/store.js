@@ -4,7 +4,8 @@ import { readFile, writeFile, unlink, readdir, rename, mkdir, stat } from 'fs/pr
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../logger/index.js';
-import { weekExpiryDate, weekUploadCutoff } from './constants.js';
+import { weekExpiryDate, weekUploadCutoff, COUNTRIES, SPECIAL_BUCKETS } from './constants.js';
+import { bilanDeSemaine, historique, BILANS_CONSERVES, SEMAINES_HISTORIQUE } from '../services/bilanSemaine.js';
 import { estRubrique, estHorsSujet } from './rubriques.js';
 import { storePath } from '../lib/paths.js';
 import { Redis } from '@upstash/redis';
@@ -1271,7 +1272,9 @@ export function marquerSujetMonte(weekId, sujetId, monte) {
 // registre des liens comme s'il s'agissait d'une semaine de reportages.
 // `_contacts` aussi, pour la même raison : le carnet d'adresses survit aux
 // semaines, c'est tout son intérêt.
-const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens', '_planning', '_contacts', '_jingles']);
+// `_bilans` : le bilan de chaque semaine, mis de côté avant son effacement
+// (services/bilanSemaine.js) — l'historique des statistiques.
+const META_KEYS = new Set(['_countries', '_themes', '_reminders', '_liens', '_planning', '_contacts', '_jingles', '_bilans']);
 
 export function getFileMetadata(filename) {
   for (const weekId of Object.keys(db)) {
@@ -1364,8 +1367,10 @@ export async function cleanupExpiredUploads(_unused, uploadsDir) {
     weeksToDelete.push(weekId);
   }
 
-  // 3. Delete local files and DB entries.
+  // 3. Delete local files and DB entries. Le bilan de la semaine est mis de
+  // côté d'abord : c'est tout ce qui en restera pour les statistiques.
   for (const weekId of weeksToDelete) {
+    try { archiverBilan(weekId); } catch (err) { logger.warn(`Bilan non conservé: ${weekId}`, { error: err.message }); }
     const weekUploads = db[weekId];
     if (weekUploads) {
       for (const countryId of Object.keys(weekUploads)) {
@@ -1620,6 +1625,67 @@ export function setGlobalExtension(weekId, minutes, maintenant = new Date()) {
  * même quand un pays avait bien demandé un délai. Les monteurs ne
  * recevaient donc jamais les demandes à valider.
  */
+/** Les pays qui envoient d'habitude : la liste de base et ceux ajoutés. */
+function paysAttendus() {
+  const ids = [...COUNTRIES.map((c) => c.id), ...(Array.isArray(db._countries) ? db._countries.map((c) => c.id) : [])];
+  return [...new Set(ids)].filter((id) => id && !SPECIAL_BUCKETS.has(id));
+}
+
+/** Le bilan d'une semaine encore présente, calculé à neuf. */
+export function calculerBilan(weekId) {
+  const semaine = db[weekId];
+  if (!semaine || typeof semaine !== 'object') return null;
+  const fichiersParPays = {};
+  for (const [k, v] of Object.entries(semaine)) {
+    if (!isInternalKey(k) && !SPECIAL_BUCKETS.has(k) && Array.isArray(v)) fichiersParPays[k] = v;
+  }
+  const cutoff = weekUploadCutoff(weekId);
+  return bilanDeSemaine({
+    weekId,
+    cutoffAt: cutoff ? cutoff.toISOString() : null,
+    fichiersParPays,
+    extensions: db._extensions?.[weekId] || {},
+    livraisons: semaine._delivery || [],
+    sujets: Object.values(semaine._sujets || {}),
+    paysAttendus: paysAttendus(),
+  });
+}
+
+/** Met de côté le bilan d'une semaine (avant son effacement). */
+export function archiverBilan(weekId) {
+  const bilan = calculerBilan(weekId);
+  if (!bilan) return null;
+  if (!db._bilans || typeof db._bilans !== 'object') db._bilans = {};
+  db._bilans[weekId] = bilan;
+  const anciens = Object.keys(db._bilans).sort().slice(0, -BILANS_CONSERVES);
+  for (const k of anciens) delete db._bilans[k];
+  persistDb();
+  return bilan;
+}
+
+/** Les douze dernières semaines, de la plus récente à la plus ancienne. */
+export function bilansDesSemaines(n = SEMAINES_HISTORIQUE) {
+  const vivants = Object.keys(db)
+    .filter((k) => /^\d{4}-w\d{1,2}$/i.test(k))
+    .map(calculerBilan)
+    .filter(Boolean);
+  return historique(vivants, db._bilans || {}, n);
+}
+
+/** Un accusé de lecture du JT, sans rien d'autre que le pays : un nombre. */
+const VUES_MAX = 9999;
+export function compterVueJT(weekId, fileId, countryId, type) {
+  const livraison = db[weekId]?._delivery?.find((f) => f.id === fileId);
+  if (!livraison) return null;
+  const cle = type === 'telechargement' ? 'telechargements' : 'lectures';
+  if (!livraison.vues || typeof livraison.vues !== 'object') livraison.vues = {};
+  const compte = livraison.vues[countryId] || { lectures: 0, telechargements: 0 };
+  compte[cle] = Math.min(VUES_MAX, (Number(compte[cle]) || 0) + 1);
+  livraison.vues[countryId] = compte;
+  persistDb();
+  return { ...compte };
+}
+
 export function getStats() {
   const lateUploadsByCountry = {};
   const totalByCountry = {};
@@ -1651,5 +1717,13 @@ export function getStats() {
   // Copie profonde pour ne jamais exposer une référence mutable du store.
   const delaysByWeek = db._extensions ? JSON.parse(JSON.stringify(db._extensions)) : {};
 
-  return { delaysByWeek, lateUploadsByCountry, extensionsByCountry, totalByCountry };
+  return {
+    delaysByWeek,
+    lateUploadsByCountry,
+    extensionsByCountry,
+    totalByCountry,
+    // L'historique semaine par semaine (services/bilanSemaine.js).
+    semaines: bilansDesSemaines(),
+    paysAttendus: paysAttendus(),
+  };
 }

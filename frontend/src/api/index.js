@@ -580,6 +580,14 @@ export const api = {
       body: JSON.stringify({ jobId }),
     }),
 
+  // Un accusé de lecture du JT : le pays seul (voir lib/accuseJT.js).
+  signalerVueJT: (weekId, fileId, countryId, type) =>
+    request(`/deliveries/${weekId}/${fileId}/vue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ countryId, type }),
+    }),
+
   deleteDelivery: (weekId, fileId, adminPassword) =>
     request(`/deliveries/${weekId}/${fileId}`, { method: 'DELETE', adminPassword }),
 

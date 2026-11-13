@@ -15,6 +15,7 @@ import { readAdminPassword } from '../lib/adminSession.js';
 import JTPretJournaliste from './JTPretJournaliste.jsx';
 import LecteurJT from './LecteurJT.jsx';
 import EtatLivraison from './EtatLivraison.jsx';
+import { accuserJT } from '../lib/accuseJT.js';
 
 /** Une version légère en préparation : on regarde de temps en temps où elle en est. */
 const RELEVE_MS = 20000;
@@ -101,7 +102,11 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
     params.delete('a');
     const reste = params.toString();
     window.history.replaceState(null, '', `${window.location.pathname}${reste ? `?${reste}` : ''}${window.location.hash}`);
-    if (fichier) setPreviewVideo({ fichier, debut });
+    if (fichier) {
+      if (isReporterAudience) accuserJT(selectedWeek, fichier, 'lecture');
+      setPreviewVideo({ fichier, debut });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, loading, deliveries]);
 
   const whatsappMessage = t.delivery.whatsappMessage;
@@ -118,6 +123,7 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
           fichier={previewVideo.fichier}
           debut={previewVideo.debut}
           prefererLeger={isReporterAudience}
+          onTelecharger={isReporterAudience ? (f) => accuserJT(selectedWeek, f, 'telechargement') : undefined}
           onFermer={() => setPreviewVideo(null)}
         />
       )}
@@ -131,7 +137,11 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
           setSelectedWeek={setSelectedWeek}
           livraisons={deliveries}
           chargement={loading}
-          onRegarder={(fichier, debut = 0) => setPreviewVideo({ fichier, debut })}
+          onRegarder={(fichier, debut = 0) => {
+            accuserJT(selectedWeek, fichier, 'lecture');
+            setPreviewVideo({ fichier, debut });
+          }}
+          onTelecharger={(fichier) => accuserJT(selectedWeek, fichier, 'telechargement')}
         />
       ) : (
       <>

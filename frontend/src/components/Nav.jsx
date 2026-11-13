@@ -233,9 +233,12 @@ export default function Nav({
             <LanguageSwitcher compact={compactActions} />
           </div>
 
-          {/* Desktop nav (hidden on mobile) */}
+          {/* Desktop nav (hidden on mobile). Hors du studio, les onglets ont
+              leur propre rangée : coincés à côté du logo, de la cloche et de
+              la taille du texte, ils se repliaient l'un sous l'autre en
+              colonne (Statistiques, Programmation, JT Prêt). */}
           {showTabs && !isReporter && (
-            <div className={`hidden min-w-0 items-center sm:flex ${isEditorWorkspace ? 'order-2 flex-1 flex-nowrap justify-center gap-1' : 'basis-full flex-wrap justify-center gap-2 lg:basis-0 lg:flex-1 lg:justify-start'}`}>
+            <div className={`hidden min-w-0 items-center sm:flex ${isEditorWorkspace ? 'order-2 flex-1 flex-nowrap justify-center gap-1' : 'order-last basis-full flex-wrap justify-center gap-2'}`}>
               {visibleNavItems.map((item) => renderTab(item, 'desktop', !isMobile))}
             </div>
           )}

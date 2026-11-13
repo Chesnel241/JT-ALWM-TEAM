@@ -99,7 +99,7 @@ describe("App — la bulle d'invitation dans l'espace montage", () => {
     window.history.replaceState(null, '', '/monteurs/stats');
     render(<App />);
 
-    expect(await screen.findByText(/Espace Statistiques/, undefined, CHARGEMENT)).toBeInTheDocument();
+    expect(await screen.findByText(/Espace statistiques et délais/, undefined, CHARGEMENT)).toBeInTheDocument();
     expect(screen.queryByText(INVITATION)).not.toBeInTheDocument();
     expect(boutonDeChat()).toBeInTheDocument();
   }, 15000);

@@ -43,6 +43,20 @@ export const FILTRE_LEGER = `scale=-2:'min(${HAUTEUR_LEGERE},ih)'`;
 
 const encodages = new Map(); // id de livraison -> commande ffmpeg en cours
 
+/** La durée du JT, pour les statistiques (« durée du JT » semaine par semaine). */
+export function dureeDe(chemin) {
+  return new Promise((resolve) => {
+    try {
+      ffmpeg.ffprobe(chemin, (err, m) => {
+        const d = Number(m?.format?.duration);
+        resolve(!err && Number.isFinite(d) && d > 0 ? Math.round(d * 10) / 10 : null);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 /**
  * Fabrique la copie à côté du master.
  *
@@ -107,13 +121,15 @@ export function planifierVersionLegere(weekId, livraison, { dossier, signaler = 
     // Retirée entre-temps : rien à fabriquer.
     if (!getDelivery(weekId).some((d) => d.id === livraison.id)) return;
     const chemin = path.join(dossier, livraison.filename);
-    const resultat = fs.existsSync(chemin)
+    const existe = fs.existsSync(chemin);
+    const dureeSec = existe ? await dureeDe(chemin) : null;
+    const resultat = existe
       ? await fabriquerVersionLegere(chemin, { id: livraison.id, encoder })
       : { statut: 'echec' };
     const leger = resultat.statut === 'pret'
       ? { statut: 'pret', filename: resultat.filename, size: tailleAffichee(resultat.octets), octets: resultat.octets }
       : { statut: resultat.statut };
-    const encore = majLivraison(weekId, livraison.id, { leger });
+    const encore = majLivraison(weekId, livraison.id, { leger, ...(dureeSec ? { dureeSec } : {}) });
     // Le JT a été retiré pendant l'encodage : la copie part avec lui.
     if (!encore && resultat.filename) {
       try { fs.unlinkSync(path.join(dossier, resultat.filename)); } catch { /* ignore */ }

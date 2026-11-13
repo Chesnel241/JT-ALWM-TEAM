@@ -65,6 +65,10 @@
 	   l'ivoire). Un test relit ces valeurs et refuse un contraste trop bas. */
 	--cta-orange: #c2410c;
 	--cta-orange-deep: #9a3412;
+	/* Graphiques des statistiques (voir StatsView.jsx). */
+	--graphe-1: #2f6fb3;
+	--graphe-2: #c2410c;
+	--graphe-vide: oklch(0.92 0.012 85);
 	--cta-red: #c62828;
 	--cta-red-deep: #a61b1b;
 
@@ -506,6 +510,88 @@ body {
 			transform: none;
 			opacity: 1;
 		}
+	}
+
+	/* Les statistiques (StatsView.jsx). Couleurs du graphique de participation
+	   validées (scripts du guide de visualisation) contre le fond clair : écart
+	   suffisant pour les daltonismes, contraste ≥ 3:1. Le bleu est un cran plus
+	   clair que le bleu de la marque, trop sombre pour un aplat de données.
+	   Le mouvement : les colonnes montent de leur base, l'une après l'autre ;
+	   les courbes de tendance se tracent ; les barres des motifs s'allongent.
+	   Une fois, à l'affichage. */
+	.stats-pile {
+		transform-origin: bottom center;
+		animation: stats-monte 520ms var(--ease-emphasis) both;
+		animation-delay: calc(min(var(--i, 0), 11) * 35ms);
+	}
+
+	.stats-pile > :last-child {
+		border-radius: 4px 4px 0 0;
+	}
+
+	.stats-colonne:focus-visible .stats-pile {
+		outline: 2px solid var(--accent);
+		outline-offset: 3px;
+	}
+
+	@keyframes stats-monte {
+		from {
+			transform: scaleY(0);
+		}
+	}
+
+	/* La courbe se découvre de gauche à droite (une découpe qui s'ouvre : le
+	   tracé en pointillés ne suit pas un trait d'épaisseur constante). */
+	.stats-tendance {
+		animation: stats-trace 700ms var(--ease-out) both;
+		animation-delay: calc(var(--i, 0) * 40ms + 120ms);
+	}
+
+	.stats-tendance-trait {
+		stroke: var(--muted);
+		stroke-width: 2;
+		stroke-linejoin: round;
+		stroke-linecap: round;
+		opacity: 0.55;
+	}
+
+	.stats-tendance-point {
+		position: absolute;
+		width: 8px;
+		height: 8px;
+		border-radius: 999px;
+		background: var(--accent);
+		box-shadow: 0 0 0 2px var(--paper);
+		transform: translate(-50%, -50%);
+	}
+
+	@keyframes stats-trace {
+		from {
+			clip-path: inset(0 100% 0 0);
+		}
+		to {
+			clip-path: inset(0 0 0 0);
+		}
+	}
+
+	.stats-motif {
+		transform-origin: left center;
+		animation: stats-allonge 600ms var(--ease-out) both;
+		animation-delay: calc(var(--i, 0) * 60ms);
+	}
+
+	@keyframes stats-allonge {
+		from {
+			transform: scaleX(0);
+		}
+	}
+
+	.stats-chevron {
+		transition: transform var(--motion-screen) var(--ease-out);
+	}
+
+	.stats-fiche {
+		animation: rise var(--motion-enter) var(--ease-out) both;
 	}
 
 	/* Le lecteur du JT publié (LecteurJT.jsx). La jauge de la partie en cours

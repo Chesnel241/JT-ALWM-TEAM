@@ -42,6 +42,7 @@ import EmptyState from './EmptyState.jsx';
 import EmptyInbox from './illustrations/EmptyInbox.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 import SuiviReportage from './SuiviReportage.jsx';
+import { memoriserPaysSession } from '../lib/accuseJT.js';
 import NombreReportages from './NombreReportages.jsx';
 import ReportagesSheet from './ReportagesSheet.jsx';
 import VoyageEnvoi from './VoyageEnvoi.jsx';
@@ -99,6 +100,9 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   // le rend tel quel.
   const [modifPhone, setModifPhone] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
+
+  // Le pays ouvert dans cet onglet : seul renseignement des vues du JT.
+  useEffect(() => { memoriserPaysSession(country.id); }, [country.id]);
 
   useEffect(() => {
     // Strictement le numéro de CE pays : chaque bureau renseigne le sien.

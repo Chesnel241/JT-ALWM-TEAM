@@ -39,7 +39,7 @@ function Icone({ fichier, size }) {
   return <FileText size={size} />;
 }
 
-export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek, livraisons, chargement, onRegarder }) {
+export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek, livraisons, chargement, onRegarder, onTelecharger }) {
   const { t, lang } = useI18n();
   const j = t.jtPret;
   const idSemaine = useId();
@@ -64,6 +64,7 @@ export default function JTPretJournaliste({ weeks, selectedWeek, setSelectedWeek
 
   const telecharger = (fichier) => {
     marquerVu(fichier.id);
+    onTelecharger?.(fichier);
     setLances((avant) => new Set(avant).add(fichier.id));
   };
 
