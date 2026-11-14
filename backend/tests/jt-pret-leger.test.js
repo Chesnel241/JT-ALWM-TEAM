@@ -12,6 +12,7 @@ import { fabriquerVersionLegere, planifierVersionLegere } from '../src/services/
 import { addDelivery, deleteDelivery, getDelivery, getFileMetadata, cleanupExpiredUploads } from '../src/data/store.js';
 import { finishJob, registerJobWeek, registerJobSommaire, setProgress } from '../src/services/editorProgress.js';
 import { nomDuMaster } from '../src/routes/deliveries.js';
+import { FFMPEG_PATH, FFPROBE_PATH } from '../src/lib/ffmpeg.js';
 
 // LE BESOIN : le master du JT pèse plusieurs centaines de Mo, et beaucoup de
 // correspondants le regardent sur un téléphone, en données mobiles. Une
@@ -89,11 +90,18 @@ describe('la version légère — fabrication', () => {
 
   it('encode réellement en 480p avec ffmpeg, sans agrandir', async () => {
     const master = join(TEST_UPLOADS_DIR, 'leger-reel.mp4');
-    execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=size=1920x1080:rate=30:duration=2',
+    // Le ffmpeg que le serveur utilise lui-même (lib/ffmpeg.js), jamais
+    // « ffmpeg » tout court.
+    //
+    // L'INCIDENT : ce test appelait le programme du système par son nom. Les
+    // machines de vérification de GitHub n'en ont pas : la suite y échouait
+    // (« spawnSync ffmpeg ENOENT ») et les images de déploiement n'étaient
+    // plus construites, alors que tout passait sur un poste de développement.
+    execFileSync(FFMPEG_PATH, ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=size=1920x1080:rate=30:duration=2',
       '-f', 'lavfi', '-i', 'sine=frequency=440:duration=2', '-c:v', 'libx264', '-b:v', '12M', '-c:a', 'aac', '-shortest', master]);
     const r = await fabriquerVersionLegere(master);
     expect(r.statut).toBe('pret');
-    const sonde = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', join(TEST_UPLOADS_DIR, r.filename)]).toString());
+    const sonde = JSON.parse(execFileSync(FFPROBE_PATH, ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', join(TEST_UPLOADS_DIR, r.filename)]).toString());
     expect(sonde.streams[0]).toEqual({ width: 854, height: 480 });
     expect(r.octets).toBeLessThan(statSync(master).size * 0.8);
   }, 30_000);

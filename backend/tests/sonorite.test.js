@@ -8,6 +8,7 @@ import {
 } from '../../worker/src/sonorite.js';
 import { nettoyerSon, finishJob, getJobState } from '../src/services/editorProgress.js';
 import { normaliserSonMaster, lancerFfmpeg } from '../src/services/sonMaster.js';
+import { FFMPEG_PATH } from '../src/lib/ffmpeg.js';
 
 // LE CONSTAT : aucune étape ne réglait le niveau du JT. Chaque reportage sortait
 // au niveau que lui avait donné le correspondant, et la voix off était poussée
@@ -157,14 +158,17 @@ describe('le master du moteur de secours — correction en place', () => {
   });
 });
 
-const ffmpegDispo = spawnSync('ffmpeg', ['-hide_banner', '-filters'], { encoding: 'utf8' }).stdout?.includes('loudnorm');
+// Le ffmpeg du serveur (lib/ffmpeg.js) : celui du système s'il existe, sinon
+// celui que le serveur embarque. Appelé par son seul nom, il manquait sur les
+// machines de vérification, et ce test y était sauté sans que rien le dise.
+const ffmpegDispo = spawnSync(FFMPEG_PATH, ['-hide_banner', '-filters'], { encoding: 'utf8' }).stdout?.includes('loudnorm');
 
 describe('le master du moteur de secours — avec le vrai ffmpeg', () => {
   it.skipIf(!ffmpegDispo)('ramène un programme trop fort à −23 LUFS, à ±1 LU', async () => {
     const d = fs.mkdtempSync(path.join(os.tmpdir(), 'son-reel-'));
     const master = path.join(d, 'm.mp4');
     // Un programme qui varie (fort, puis faible), comme un vrai JT.
-    const fabrication = spawnSync('ffmpeg', [
+    const fabrication = spawnSync(FFMPEG_PATH, [
       '-hide_banner', '-loglevel', 'error', '-y',
       '-f', 'lavfi', '-i', 'color=c=blue:s=160x120:d=12',
       '-f', 'lavfi', '-i', 'sine=frequency=300:duration=12',
