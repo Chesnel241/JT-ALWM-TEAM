@@ -5,7 +5,7 @@ import {
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
 import { useI18n } from '../i18n/I18nContext.jsx';
-import { readAdminPassword } from '../lib/adminSession.js';
+import { readAdminPassword, surSessionMontage } from '../lib/adminSession.js';
 import { formaterDuree, totaliserDurees } from '../lib/duree.js';
 import EmptyState from './EmptyState.jsx';
 import AdminGate from './AdminGate.jsx';
@@ -93,6 +93,8 @@ export default function PlanningView({ selectedWeek, isActive = true }) {
   // Relu après déverrouillage : `AdminGate` l'écrit pour la session, et c'est
   // ce changement d'état qui relance le chargement.
   const [motDePasse, setMotDePasse] = useState(() => readAdminPassword());
+  // Déverrouillé ailleurs (espace montage, statistiques) : on suit.
+  useEffect(() => surSessionMontage((reconnu) => { setMotDePasse(reconnu); setRefusee(false); }), []);
 
   const [planning, setPlanning] = useState({ monteurs: [], semaines: {} });
   const [chargement, setChargement] = useState(true);

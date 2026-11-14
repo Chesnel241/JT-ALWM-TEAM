@@ -203,6 +203,22 @@ describe('ce qui doit encore être refusé', () => {
     }
   });
 
+  // L'INCIDENT (tests de bout en bout, frontend/e2e/formats.spec.js) : le
+  // contrôle du balisage n'existait que sur l'envoi classique. Par tus, une
+  // page web nommée « reportage.mp4 » entrait et se rangeait parmi les vidéos.
+  it.each([
+    ['une page web', 'reportage.mp4', 'video/mp4', '<!doctype html><html><script>alert(1)</script></html>'],
+    ['un SVG', 'photo.jpg', 'image/jpeg', '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'],
+    ['du XML', 'son.mp3', 'audio/mpeg', '<?xml version="1.0"?><x/>'],
+  ])('refuse %s déguisé en média, et n’en garde rien', async (_titre, nom, type, contenu) => {
+    const avant = new Set(readdirSync(TEST_UPLOADS_DIR));
+    const { statut, id, fiche } = await televerser({ nom, type, octets: Buffer.from(contenu) });
+    expect(statut).toBe(415);
+    expect(fiche).toBeUndefined();
+    const restes = readdirSync(TEST_UPLOADS_DIR).filter((f) => !avant.has(f) || f.startsWith(id));
+    expect(restes).toEqual([]);
+  });
+
   it('garde sans extension ce qu’il ne reconnaît pas, plutôt que de le refuser', async () => {
     // Un script de reportage en texte brut : aucune signature binaire. Il ne
     // doit pas être perdu pour autant. Sans extension, le serveur statique le

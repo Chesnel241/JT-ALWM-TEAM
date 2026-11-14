@@ -42,6 +42,7 @@ import EmptyState from './EmptyState.jsx';
 import EmptyInbox from './illustrations/EmptyInbox.jsx';
 import ReportageChecklist from './ReportageChecklist.jsx';
 import SuiviReportage from './SuiviReportage.jsx';
+import { useRafraichissement } from '../hooks/useRafraichissement.js';
 import { memoriserPaysSession } from '../lib/accuseJT.js';
 import NombreReportages from './NombreReportages.jsx';
 import ReportagesSheet from './ReportagesSheet.jsx';
@@ -49,7 +50,7 @@ import VoyageEnvoi from './VoyageEnvoi.jsx';
 import PrevenirRedaction from './PrevenirRedaction.jsx';
 import OutilsCorrespondant from './OutilsCorrespondant.jsx';
 
-export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack, onOpenVoixOff, onOpenDelivery }) {
+export default function UploaderView({ country, weeks, selectedWeek, setSelectedWeek, onBack, onOpenVoixOff, onOpenDelivery, isActive = true }) {
   const { t, lang } = useI18n();
   const defaultPhoneCountry = phoneCountryFor(country.id);
   const { addToast } = useToast();
@@ -171,6 +172,29 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   useEffect(() => {
     vueCourante.current = { semaine: selectedWeek, pays: country.id };
   }, [selectedWeek, country.id]);
+
+  // Ce que le montage décide pendant que la page est ouverte — un fichier
+  // validé ou refusé, un délai accordé, un reportage retenu dans le JT —
+  // doit s'afficher sans recharger (hooks/useRafraichissement.js). La page
+  // reste montée, cachée, quand on est ailleurs : `isActive` l'arrête alors.
+  useRafraichissement(() => {
+    const { semaine, pays } = vueCourante.current;
+    if (!semaine || !pays) return;
+    Promise.all([
+      api.getUploads(semaine, pays),
+      api.getSujets(semaine, pays).catch(() => null),
+      api.getDelays(semaine).catch(() => null),
+    ])
+      .then(([envois, sujetsLus, delais]) => {
+        // Entre-temps, la personne a pu changer de semaine ou de pays.
+        const vue = vueCourante.current;
+        if (vue.semaine !== semaine || vue.pays !== pays) return;
+        if (Array.isArray(envois)) setUploads(envois);
+        if (Array.isArray(sujetsLus)) setSujets(sujetsLus);
+        if (delais) setDelaysData(delais);
+      })
+      .catch(() => { /* hors ligne ou serveur occupé : la prochaine relecture rattrapera */ });
+  }, { actif: Boolean(selectedWeek) && isActive });
 
   const viderLaFile = useCallback(() => {
     const queued = offlineQueueRef.current.splice(0);
@@ -376,14 +400,22 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
           }
           // L'entrée reste mémorisée : c'est précisément le cas où il faudra
           // pouvoir reprendre, y compris après avoir fermé l'application.
+          // Sauf pour un format refusé (415) : il ne passera jamais, et
+          // « Reprendre l'envoi » promettait l'inverse (e2e/formats.spec.js).
+          if (err.statut === 415) {
+            forgetUpload(fileKey(uploadFile));
+            setPendingUploads(listPendingUploads(semaine, pays));
+          }
           setUploading((prev) =>
             prev.map((f) =>
               f.id === tempId
-                ? { ...f, progress: 0, status: 'error', error: err.message }
+                ? { ...f, progress: 0, status: 'error', error: err.message, formatRefuse: err.statut === 415 }
                 : f
             )
           );
-          addToast(`${t.uploader.errorPrefix} : ${err.message}`, 'error', 4000);
+          // Le nom du fichier : quand plusieurs partent ensemble, « Ce type de
+          // fichier n'est pas accepté » seul ne disait pas lequel.
+          addToast(`${t.uploader.errorPrefix} — ${file.name} : ${err.message}`, 'error', 8000);
         });
   };
 

@@ -4,6 +4,7 @@ import {
   Phone, Send, Clock, FileText, Video, Mic
 } from 'lucide-react';
 import PhoneInput from 'react-phone-number-input';
+import PhoneCountryBadge from './PhoneCountryBadge.jsx';
 import 'react-phone-number-input/style.css';
 import { api } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
@@ -246,6 +247,9 @@ export default function FeedbackModal({
             <PhoneInput
               international
               defaultCountry="FR"
+              // Le drapeau servi par l'application, comme dans les autres
+              // champs : celui par défaut vient d'un service externe.
+              flagComponent={PhoneCountryBadge}
               value={phone}
               onChange={setPhone}
               className="w-full feedback-phone-input"

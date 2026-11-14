@@ -10,6 +10,7 @@ import { generateAssFile } from '../data/overlayTemplates.js';
 import { setProgress } from './editorProgress.js';
 import { uploadsDir } from '../lib/paths.js';
 import { lancerFfmpeg, normaliserSonMaster } from './sonMaster.js';
+import { sorteApercu, nomApercu } from './apercus.js';
 import { nettoyerPisteAudio } from '../../../remotion/src/pisteAudio.js';
 import { DUREE_MAX_CARTON, estCarton } from '../../../remotion/src/plans.js';
 import { COULEURS } from '../../../remotion/src/identite.js';
@@ -216,8 +217,23 @@ async function imageDeCarton(workDir) {
  * dans workDir et retourne ce chemin temporaire. Sinon, retourne le
  * chemin local sous uploadsDir.
  */
+/**
+ * Le fichier que le moteur peut lire : l'aperçu d'un son ou d'une photo que
+ * Chromium refuse (WMA, AMR, HEIC, TIFF… — services/apercus.js) quand il
+ * existe, l'original sinon. Sans lui, une photo HEIC placée dans le JT
+ * faisait échouer le rendu Remotion, qui passe par Chromium.
+ */
+export function sourceLisible(filename, { dossier = uploadsDir() } = {}) {
+  const nom = String(filename || '');
+  if (!nom || /^https?:/i.test(nom)) return filename;
+  const sorte = sorteApercu(path.extname(nom));
+  if (!sorte) return filename;
+  const apercu = nomApercu(nom, sorte);
+  return fs.existsSync(path.join(dossier, apercu)) ? apercu : filename;
+}
+
 async function resolveClipPath(filename, workDir) {
-  const base = safeFilename(filename);
+  const base = safeFilename(sourceLisible(filename));
   const local = path.join(uploadsDir(), base);
   if (!fs.existsSync(local)) {
     throw new Error(`Le fichier "${base}" n'existe pas sur le serveur.`);
@@ -283,7 +299,7 @@ export function buildRemotionPayload(clips, opts) {
   // encodeURIComponent : un `?` ou `#` dans le filename casserait l'URL en
   // injectant query/fragment, et Caddy/Express rejetteraient ou serviraient
   // un autre fichier. Empêche aussi le path traversal `..%2F`.
-  const resolve = (f) => (f ? `${apiUrl}/uploads/${encodeURIComponent(f)}` : undefined);
+  const resolve = (f) => (f ? `${apiUrl}/uploads/${encodeURIComponent(sourceLisible(f))}` : undefined);
 
   const timelineOverlays = (opts.globalOverlays || []).filter(g => g.templateId !== 'ticker' && g.templateId !== 'live_badge');
 

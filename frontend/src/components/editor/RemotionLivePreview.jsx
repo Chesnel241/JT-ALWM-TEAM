@@ -66,7 +66,8 @@ export default function RemotionLivePreview({ clips, branding, timelineOverlays,
         volume: branding.voiceover.volume
       } : null,
       // La piste son, nettoyée comme au serveur, lue depuis le même dossier.
-      audio: nettoyerPisteAudio(audio).map((son) => ({ ...son, url: `${API_BASE}/uploads/${encodeURIComponent(son.filename)}?cors=2` })),
+      // Un son illisible par le navigateur (WMA, AMR…) se joue par sa copie.
+      audio: nettoyerPisteAudio(audio).map((son) => ({ ...son, url: `${API_BASE}/uploads/${encodeURIComponent(son.proxyFilename || son.filename)}?cors=2` })),
     };
   }, [clips, branding, timelineOverlays, audio]);
 

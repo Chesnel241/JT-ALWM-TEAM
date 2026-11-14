@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Download, Sparkles, Video, FileText, Music,
   MessageCircle, Play
 } from 'lucide-react';
 import { api, API_BASE } from '../api/index.js';
 import { useToast } from '../hooks/useToast.jsx';
+import { useRafraichissement } from '../hooks/useRafraichissement.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatRelative, formatAbsolute, formatWeekLabel, formatWeekFull } from '../lib/dates.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
@@ -42,6 +43,8 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
     : t.delivery.emptyHint;
   const { addToast } = useToast();
   const [deliveries, setDeliveries] = useState([]);
+  const semaineAffichee = useRef(selectedWeek);
+  semaineAffichee.current = selectedWeek;
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState([]);
   // `{ fichier, debut }` : le JT à lire, et l'instant où commencer.
@@ -71,6 +74,17 @@ export default function DeliveryView({ weeks, selectedWeek, setSelectedWeek, aud
       .then((s) => setSubscriptions(Array.isArray(s) ? s : []))
       .catch(() => setSubscriptions([]));
   }, [selectedWeek, addToast, t.uploader.errorPrefix, showNotifyPanel]);
+
+  // Le JT est publié pendant que la page est ouverte (le correspondant
+  // attend, dimanche après-midi) : il doit apparaître sans recharger —
+  // « En préparation » restait affiché indéfiniment (e2e/montage.spec.js).
+  // Pareil côté montage, publié depuis un autre poste.
+  useRafraichissement(() => {
+    const semaine = selectedWeek;
+    api.getDeliveries(semaine)
+      .then((d) => { if (Array.isArray(d) && semaineAffichee.current === semaine) setDeliveries(d); })
+      .catch(() => { /* la prochaine relecture rattrapera */ });
+  }, { actif: Boolean(selectedWeek) && isActive });
 
   // La version légère se fabrique en quelques minutes après la publication :
   // l'écran se met à jour seul, sans demander de recharger la page.

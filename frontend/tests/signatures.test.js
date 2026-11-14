@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
 import { extensionDepuisOctets, extensionDepuisType, extensionDuBlob } from '../src/lib/signatures.js';
-import { UPLOAD_ACCEPT } from '../src/lib/mediaTypes.js';
+import { UPLOAD_ACCEPT, AUDIO_ACCEPT } from '../src/lib/mediaTypes.js';
 
 /** En-tête ISO-BMFF avec la marque voulue en position 8. */
 function iso(marque) {
@@ -72,5 +72,18 @@ describe('le sélecteur propose exactement ce que le serveur accepte', () => {
 
     expect(acceptees.filter((e) => !proposees.includes(e))).toEqual([]);
     expect(proposees.filter((e) => !acceptees.includes(e))).toEqual([]);
+  });
+
+  // LE CONSTAT (tests de bout en bout) : le champ « fichier audio » de la
+  // voix off ne proposait que cinq extensions. Un mémo vocal .amr ou une
+  // note WhatsApp .opus apparaissait grisé sur certains Android.
+  it.skipIf(!existsSync(CHEMIN_SERVEUR))('la voix off propose tous les sons que le serveur accepte', () => {
+    const proposees = AUDIO_ACCEPT.split(',');
+    const sons = (readFileSync(CHEMIN_SERVEUR, 'utf-8')
+      .match(/export const AUDIO_EXTENSIONS = \[([\s\S]*?)\];/)[1].match(/'\.[a-z0-9]+'/g) || [])
+      .map((x) => x.replaceAll("'", ''));
+    expect(sons.length).toBeGreaterThan(10);
+    expect(sons.filter((e) => !proposees.includes(e))).toEqual([]);
+    expect(proposees).toContain('audio/*');
   });
 });

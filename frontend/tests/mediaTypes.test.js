@@ -169,6 +169,22 @@ describe('la visionneuse du montage', () => {
     expect(estTexte({ name: 'rushs.zip', type: 'document' })).toBe(false);
   });
 
+  // L'INCIDENT, suite : le serveur envoie « script » pour TOUT document
+  // (backend/src/lib/upload.js, classifyExtension). Le test ci-dessus, avec
+  // un type « document » qui n'arrive jamais, laissait passer le PDF.
+  it.each(['conducteur.pdf', 'script.docx', 'ancien.doc', 'script.odt', 'lettre.rtf', 'rushes.zip'])(
+    'ne lit pas %s comme du texte, ni ne le laisse modifier, tel que le serveur le décrit',
+    (name) => {
+      expect(estTexte({ name, type: 'script' })).toBe(false);
+      expect(estTexteModifiable({ name, type: 'script' })).toBe(false);
+    },
+  );
+
+  it('lit encore comme du texte un script saisi dans la plateforme, même sans extension', () => {
+    expect(estTexte({ name: 'Script du reportage', type: 'script' })).toBe(true);
+    expect(estTexte({ name: 'notes.md', type: 'script' })).toBe(true);
+  });
+
   it('lit comme du texte les scripts et les sous-titres', () => {
     expect(estTexte({ name: 'Script_1.txt', type: 'script' })).toBe(true);
     expect(estTexte({ name: 'sous-titres.srt' })).toBe(true);

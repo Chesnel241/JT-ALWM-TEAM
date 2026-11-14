@@ -66,6 +66,9 @@ export function nettoyerPisteAudio(liste) {
       volume: nombre(brut.volume, 0, 2) ?? 1,
       // Une voix off baisse le son des plans qu'elle recouvre, sauf avis contraire.
       attenuer: typeof brut.attenuer === 'boolean' ? brut.attenuer : role === 'voix',
+      // La copie lisible d'un son que le navigateur ne lit pas (WMA, AMR…),
+      // pour l'aperçu du studio. Le rendu la retrouve seul (sourceLisible).
+      ...(nomDeFichierSur(brut.proxyFilename) ? { proxyFilename: brut.proxyFilename } : {}),
     });
   }
   return propres;

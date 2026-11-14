@@ -5,7 +5,7 @@ import { useOptionalToast } from '../hooks/useToast.jsx';
 import { BarChart2, CheckCircle, ChevronDown, Clock, Download, Lock, RefreshCw } from 'lucide-react';
 import { formatAbsolute } from '../lib/dates.js';
 import { echeanceApresDelai, heureCourte } from '../lib/delais.js';
-import { readAdminPassword, saveAdminPassword } from '../lib/adminSession.js';
+import { readAdminPassword, saveAdminPassword, surSessionMontage } from '../lib/adminSession.js';
 import { indicateurs, motifsDeLaPeriode, parPays, participation, versCSV, numeroSemaine } from '../lib/statsHebdo.js';
 
 /**
@@ -137,6 +137,9 @@ export default function StatsView({ weeks, selectedWeek, countries = [] }) {
       setIsAuthenticating(false);
     }
   };
+
+  // Déverrouillé ailleurs (espace montage, programmation) : on suit.
+  useEffect(() => surSessionMontage((reconnu) => { setAdminPassword(reconnu); setIsAuthenticatedAdmin(true); }), []);
 
   useEffect(() => {
     const enSession = readAdminPassword();

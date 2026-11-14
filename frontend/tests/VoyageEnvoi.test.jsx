@@ -60,6 +60,31 @@ describe('VoyageEnvoi', () => {
     expect(onReessayer).toHaveBeenCalledWith('a');
   });
 
+  // L'INCIDENT (tests de bout en bout, e2e/formats.spec.js) : deux fichiers
+  // refusés s'affichaient sous « Terminé ! », chacun avec un gros
+  // « Réessayer » qui ne pouvait pas réussir.
+  it('un format refusé : pas de « Terminé », pas de « Réessayer », mais quoi envoyer à la place', () => {
+    const onReessayer = vi.fn();
+    monter([
+      { id: 'a', name: 'lecteur.exe', status: 'error', error: 'Ce type de fichier n’est pas accepté.', formatRefuse: true },
+      { id: 'b', name: 'page.mp4', status: 'error', error: 'Ce type de fichier n’est pas accepté.', formatRefuse: true },
+    ], { onReessayer });
+    expect(screen.queryByText('Terminé !')).toBeNull();
+    expect(screen.getByText('Rien n’est parti')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Réessayer/ })).toBeNull();
+    expect(screen.getAllByText(/Envoyez une vidéo, un son, une photo ou un texte/)).toHaveLength(2);
+  });
+
+  it('un envoi réussi et un échec : l’en-tête compte ce qui reste à revoir', () => {
+    monter([
+      { id: 'a', name: 'rush.mp4', status: 'completed', phase: 'done', progress: 100 },
+      { id: 'b', name: 'son.mp3', status: 'error', error: 'Connexion perdue.' },
+    ], { onReessayer: vi.fn() });
+    expect(screen.getByText('1 fichier à revoir')).toBeInTheDocument();
+    // Une coupure, elle, se reprend.
+    expect(screen.getByRole('button', { name: /Réessayer/ })).toBeInTheDocument();
+  });
+
   it('n’affiche rien sans envoi', () => {
     const { container } = monter([]);
     expect(container.firstChild).toBeNull();

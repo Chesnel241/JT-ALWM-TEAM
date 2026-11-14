@@ -61,11 +61,24 @@ export function classifyFile(file) {
  */
 const TEXTE_EXT = /\.(txt|md|srt|vtt|csv)$/i;
 
+/**
+ * L'INCIDENT, suite (tests de bout en bout, e2e/formats.spec.js) : le serveur
+ * range TOUT document sous le type « script » — PDF, Word, ZIP compris. Un
+ * PDF s'ouvrait donc encore en caractères illisibles, avec « Éditer le
+ * texte » : l'enregistrer aurait remplacé le PDF par ce charabia. Le test
+ * unitaire supposait un type « document » que le serveur n'envoie jamais.
+ * L'extension tranche désormais ; le type ne compte que pour un nom qui n'en
+ * dit rien (un script saisi dans la plateforme).
+ */
+const DOCUMENT_NON_TEXTE_EXT = /\.(pdf|docx?|odt|rtf|zip)$/i;
+
 export function estTexte(file) {
   if (!file) return false;
   const name = String(file.name || file.filename || '');
+  if (TEXTE_EXT.test(name)) return true;
+  if (DOCUMENT_NON_TEXTE_EXT.test(name)) return false;
   const declared = String(file.type || '').toLowerCase();
-  return TEXTE_EXT.test(name) || declared === 'script' || declared.startsWith('text/');
+  return declared === 'script' || declared.startsWith('text/');
 }
 
 /** Seuls les `.txt` (et les scripts saisis dans la plateforme) se modifient. */
@@ -193,6 +206,24 @@ export function groupByReportage(files, { untitledLabel = 'Sans section', sujets
  * .jfif — étaient acceptées à l'arrivée mais invisibles au départ, si bien
  * que le fichier apparaissait grisé sur le téléphone du correspondant.
  */
+/**
+ * Ce que propose le sélecteur d'une voix off : tous les formats de son que le
+ * serveur accepte (il les convertit en MP3 à l'arrivée).
+ *
+ * LE CONSTAT (tests de bout en bout) : ce champ ne listait que cinq
+ * extensions. Sur les Android qui ne rattachent pas une extension à la
+ * famille « audio », le mémo vocal d'un dictaphone (.amr, .3ga) ou une note
+ * WhatsApp (.opus) apparaissait grisé, alors que le serveur l'aurait pris.
+ */
+export const AUDIO_ACCEPT = [
+  'audio/*',
+  '.mp3', '.wav', '.wave', '.ogg', '.oga', '.m4a', '.m4b', '.aac', '.flac',
+  '.opus', '.wma', '.amr', '.3ga', '.aif', '.aiff', '.caf', '.ac3',
+  // Un enregistrement du navigateur (WebM) ou d'un téléphone (MP4, 3GP)
+  // peut ne contenir que du son.
+  '.webm', '.mp4', '.3gp',
+].join(',');
+
 export const UPLOAD_ACCEPT = [
   'video/*', 'audio/*', 'image/*',
   '.mp4', '.m4v', '.mov', '.avi', '.mkv', '.webm', '.mpg', '.mpeg', '.mpe',

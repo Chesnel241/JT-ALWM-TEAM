@@ -9,6 +9,7 @@ import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constan
 import { getCustomCountries } from '../data/store.js';
 import { getWeekUploads, getCountryUploads, addUpload, deleteUpload, updateFileStatus, getExtensions, findUploadCountry, updateUploadSize, setUploadProxy, setUploadAllege } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
+import { planifierApercu } from '../services/apercus.js';
 import { planifierMesure } from '../services/mediaDuration.js';
 import { body, validationResult } from 'express-validator';
 import { validateFile, validateMagicNumber } from '../middleware/fileValidator.js';
@@ -458,6 +459,15 @@ router.post('/:weekId/:countryId', porteeCountry(), uploadMiddleware, asyncHandl
           // Un rush de plus de 200 Mo au débit démesuré a été ramené à une
           // qualité de diffusion : le poids affiché suit.
           if (setUploadAllege(weekId, countryId, fileData.id, apres, avant)) {
+            io?.emit('upload_update', { weekId, countryId });
+          }
+        });
+      }
+
+      // Son ou photo illisible par le navigateur : sa copie lisible (cf. tus.js).
+      if (fileData.type === 'audio' || fileData.type === 'image') {
+        planifierApercu(file.path, path.extname(file.filename).toLowerCase(), ({ nom }) => {
+          if (setUploadProxy(weekId, countryId, fileData.id, nom)) {
             io?.emit('upload_update', { weekId, countryId });
           }
         });

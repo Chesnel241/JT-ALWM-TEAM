@@ -63,6 +63,8 @@ import { tailleLisible } from '../lib/taille.js';
 import { fusionnerInspecteur } from './editor/fusionInspecteur.js';
 import { statutDe, estARevoir, compterARevoir, recentsDabord, ordreAffichage } from '../lib/revue.js';
 import { previewUrl } from '../lib/mediaSource.js';
+import { saveAdminPassword, surSessionMontage } from '../lib/adminSession.js';
+import { estChutier, chutierARouvrir, doitRestaurer } from '../lib/chutiers.js';
 import ReporterLinkDialog from './ReporterLinkDialog.jsx';
 import { usePiegeFocus } from '../hooks/usePiegeFocus.jsx';
 
@@ -182,6 +184,40 @@ function HoverPreviewVideo({ src, className }) {
       onError={(e) => { e.target.style.display = 'none'; }}
     />
   );
+}
+
+/** Le téléchargement d'un fichier qu'on ne peut pas montrer ici. */
+function Telechargement({ file, url, message }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-col items-center gap-4 text-center" data-lecture="impossible">
+      <FileText size={40} className="text-[color:var(--muted)]" aria-hidden="true" />
+      <p className="max-w-sm text-[color:var(--muted)]">{message}</p>
+      <a
+        href={url}
+        download={file?.name || true}
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--action)] px-5 font-semibold text-white hover:bg-[var(--action-deep)]"
+      >
+        <Download size={18} aria-hidden="true" />
+        {t.revue.telecharger(file?.size ? tailleLisible(file.size) : '')}
+      </a>
+    </div>
+  );
+}
+
+/**
+ * Un son ou une photo dans la visionneuse : l'aperçu lisible s'il existe,
+ * l'original sinon — et, si le navigateur n'en lit aucun, le téléchargement.
+ */
+function ApercuOuTelechargement({ file, famille, urlOriginal }) {
+  const { t } = useI18n();
+  const [illisible, setIllisible] = useState(false);
+  const src = previewUrl(file) || urlOriginal;
+  if (illisible) return <Telechargement file={file} url={urlOriginal} message={t.revue.lectureImpossible} />;
+  if (famille === MEDIA_TYPES.AUDIO) {
+    return <audio src={src} controls autoPlay className="w-full mt-4" onError={() => setIllisible(true)} />;
+  }
+  return <img src={src} alt={file?.name || ''} className="max-w-full max-h-[60vh] rounded object-contain shadow-lg" onError={() => setIllisible(true)} />;
 }
 
 function ScriptViewerContent({ file, selectedWeek, selectedBin, adminPassword, onContentChange, modifiable = false }) {
@@ -347,11 +383,12 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
               // monteur en déplacement, le master de 2 Go ne démarrait pas.
               return <video key={file.id} src={previewUrl(file) || url} controls autoPlay className="max-w-full max-h-[60vh] rounded shadow-lg" playsInline />;
             }
-            if (famille === MEDIA_TYPES.AUDIO) {
-              return <audio src={url} controls autoPlay className="w-full mt-4" />;
-            }
-            if (famille === MEDIA_TYPES.IMAGE) {
-              return <img src={url} alt={file?.name || ''} className="max-w-full max-h-[60vh] rounded object-contain shadow-lg" />;
+            // Un son ou une photo que le navigateur ne lit pas (WMA, AMR,
+            // HEIC, TIFF…) passe par la copie lisible du serveur
+            // (backend/src/services/apercus.js). Sans elle, on propose le
+            // téléchargement plutôt qu'un lecteur muet ou une image cassée.
+            if (famille === MEDIA_TYPES.AUDIO || famille === MEDIA_TYPES.IMAGE) {
+              return <ApercuOuTelechargement key={file.id} file={file} famille={famille} urlOriginal={url} />;
             }
             if (estTexte(file)) {
               return (
@@ -367,20 +404,7 @@ function ScriptViewerModal({ file, onClose, selectedWeek, selectedBin, adminPass
             }
             // PDF, Word, ZIP… : pas d'aperçu dans le navigateur, on les
             // télécharge plutôt que de les lire comme du texte.
-            return (
-              <div className="flex flex-col items-center gap-4 text-center">
-                <FileText size={40} className="text-[color:var(--muted)]" aria-hidden="true" />
-                <p className="text-[color:var(--muted)]">Pas d’aperçu pour ce type de fichier.</p>
-                <a
-                  href={url}
-                  download={file?.name || true}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--action)] px-5 font-semibold text-white hover:bg-[var(--action-deep)]"
-                >
-                  <Download size={18} aria-hidden="true" />
-                  Télécharger {file?.size ? `(${tailleLisible(file.size)})` : ''}
-                </a>
-              </div>
-            );
+            return <Telechargement file={file} url={url} message="Pas d’aperçu pour ce type de fichier." />;
           })()}
         </div>
         {(fichiers.length > 1 || onValider) && (
@@ -736,10 +760,13 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   const openRushes = () => {
     let savedBin = null;
     try { savedBin = selectedWeek ? localStorage.getItem(`jt-bin-${selectedWeek}`) : null; } catch { /* ignore */ }
-    const candidates = [lastRushBinRef.current, savedBin, ...countriesWithUploads];
-    const target = candidates.find((bin) => (
-      bin && bin !== 'studio' && bin !== 'delivery' && binIsValid(bin)
-    )) || countries[0]?.id || 'tj';
+    const target = chutierARouvrir({
+      dernier: lastRushBinRef.current,
+      memorise: savedBin,
+      avecEnvois: countriesWithUploads,
+      estValide: binIsValid,
+      defaut: countries[0]?.id || 'tj',
+    });
     lastRushBinRef.current = target;
     setSelectedBin(target);
   };
@@ -1160,9 +1187,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
   };
 
   useEffect(() => {
-    if (selectedBin && selectedBin !== 'studio' && selectedBin !== 'delivery') {
-      lastRushBinRef.current = selectedBin;
-    }
+    if (estChutier(selectedBin)) lastRushBinRef.current = selectedBin;
   }, [selectedBin]);
 
   const updateStudioTimelineHeight = (nextHeight) => {
@@ -2293,7 +2318,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     // Restaure le dernier chutier choisi (survit refresh/onglet) s'il est
     // encore valide, sinon premier pays disponible.
     const saved = selectedWeek ? localStorage.getItem(`jt-bin-${selectedWeek}`) : null;
-    if (binIsValid(saved)) setSelectedBin(saved);
+    // On vient d'ouvrir « Rushes reçus » sur un pays qui n'a encore rien
+    // envoyé : rester là, et ne pas repartir vers les jingles ou la
+    // livraison sous prétexte que c'est le dernier écran mémorisé.
+    if (doitRestaurer({ courant: selectedBin, memorise: saved, estValide: binIsValid })) setSelectedBin(saved);
     else if (countriesWithUploads.length > 0) setSelectedBin(countriesWithUploads[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBin, countriesWithUploads, selectedWeek]);
@@ -2331,9 +2359,10 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     const isImage = kind === MEDIA_TYPES.IMAGE;
     
     return (
-      <div key={file.id} className="group flex flex-col gap-2 shrink-0 w-64 md:w-auto snap-start relative">
+      <div key={file.id} data-fichier={file.name || file.filename} className="group flex flex-col gap-2 shrink-0 w-64 md:w-auto snap-start relative">
         {/* Thumbnail Box */}
         <div 
+          data-vignette=""
           onClick={() => setViewingScript(file)}
           onMouseEnter={(e) => {
             if (isVideo) {
@@ -2358,21 +2387,31 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
               <div className="absolute inset-0 flex items-center justify-center text-v-ink/10 z-0">
                 <Video size={48} />
               </div>
+              {/* L'aperçu léger quand il existe : un rush WMV, AVI, MTS ou 3GP
+                  ne se lit pas dans le navigateur, sa copie MP4 si — et elle
+                  pèse bien moins que le master sur une connexion faible. */}
               <LazyVideoThumbnail
-                src={`${API_BASE}/uploads/${file.filename}#t=0.1`}
+                src={`${previewUrl(file) || `${API_BASE}/uploads/${file.filename}`}#t=0.1`}
                 className="w-full h-full object-cover relative z-10 bg-transparent"
               />
             </>
           ) : isImage ? (
             /* Une photo mérite son aperçu : elle tombait dans la branche
                « document » et s'affichait comme une feuille de papier. */
-            <img
-              src={`${API_BASE}/uploads/${file.filename}`}
-              alt={file.name || file.filename}
-              loading="lazy"
-              className="w-full h-full object-cover relative z-10"
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
+            <>
+              {/* Sous la photo, son icône : c'est elle qui reste si la photo
+                  ne s'affiche pas (HEIC dont l'aperçu n'est pas encore prêt). */}
+              <div className="absolute inset-0 flex items-center justify-center text-v-ink/10 z-0">
+                <ImageIcon size={48} aria-hidden="true" />
+              </div>
+              <img
+                src={previewUrl(file) || `${API_BASE}/uploads/${file.filename}`}
+                alt={file.name || file.filename}
+                loading="lazy"
+                className="w-full h-full object-cover relative z-10"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </>
           ) : isAudio ? (
             <div className="absolute inset-0 flex items-center justify-center z-0 bg-v-accent-soft/15">
                <Mic className="w-12 h-12 transition-transform duration-500 group-hover:scale-110 relative z-10 text-[color:var(--accent-deep)]" />
@@ -2525,6 +2564,12 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
     );
   };
 
+  // Déverrouillé ailleurs (programmation, statistiques) : on suit.
+  useEffect(() => surSessionMontage((reconnu) => {
+    setAuthenticatedAdminPassword(reconnu);
+    setIsAuthenticatedAdmin(true);
+  }), []);
+
   useEffect(() => {
     const saved = sessionStorage.getItem('jt-admin-pass');
     if (saved) {
@@ -2555,7 +2600,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
       const ok = await api.checkAdminPassword(authenticatedAdminPassword);
       if (ok) {
         setIsAuthenticatedAdmin(true);
-        sessionStorage.setItem('jt-admin-pass', authenticatedAdminPassword);
+        // Prévient aussi la programmation et les statistiques (adminSession.js).
+        saveAdminPassword(authenticatedAdminPassword);
         api.getSubscriptions(selectedWeek, authenticatedAdminPassword)
           .then((subs) => {
             if (Array.isArray(subs)) setSubscriptions(subs);
@@ -2695,8 +2741,8 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         <nav aria-label={t.studio.deroule.etapes} className="flex h-11 shrink-0 overflow-x-auto border-b border-[var(--border)] bg-[var(--paper)]">
           <button
             onClick={openRushes}
-            aria-current={selectedBin !== 'studio' && selectedBin !== 'delivery' && selectedBin !== 'jingles' ? 'page' : undefined}
-            className={`flex items-center gap-2 border-b-2 px-5 text-sm font-semibold transition-colors whitespace-nowrap ${selectedBin !== 'studio' && selectedBin !== 'delivery' && selectedBin !== 'jingles' ? 'border-[var(--accent)] text-[color:var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
+            aria-current={estChutier(selectedBin) ? 'page' : undefined}
+            className={`flex items-center gap-2 border-b-2 px-5 text-sm font-semibold transition-colors whitespace-nowrap ${estChutier(selectedBin) ? 'border-[var(--accent)] text-[color:var(--accent)]' : 'border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)]'}`}
           >
             <Folder size={18} aria-hidden="true" /> {t.studio.deroule.ongletRushes}
           </button>
@@ -2861,7 +2907,9 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
         )}
 
         {/* Main Content Area */}
-        <main id="tour-editing-grid" className={`flex min-w-0 flex-1 flex-col bg-[var(--paper)] ${!isStudioActive ? 'overflow-y-auto' : ''}`}>
+        {/* Pas un second <main> : la page en a déjà un (App.jsx), et un lecteur
+            d'écran n'en attend qu'un. */}
+        <div id="tour-editing-grid" className={`flex min-w-0 flex-1 flex-col bg-[var(--paper)] ${!isStudioActive ? 'overflow-y-auto' : ''}`}>
           
           {selectedBin === 'jingles' ? (
             <JinglesView
@@ -3723,7 +3771,7 @@ export default function DashboardView({ weeks, selectedWeek, setSelectedWeek, co
           )}
         </>
       )}
-    </main>
+    </div>
   </div>
 
       <ConfirmDialog

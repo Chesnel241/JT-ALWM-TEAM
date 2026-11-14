@@ -13,6 +13,10 @@ export default function LanguageSwitcher({ compact = false }) {
         type="button"
         onClick={() => setLang('fr')}
         aria-pressed={lang === 'fr'}
+        // En version compacte (téléphone), le bouton ne montre qu'un drapeau,
+        // caché aux lecteurs d'écran : sans ce nom, il n'annonçait rien.
+        aria-label={compact ? t.langSwitcher.fr : undefined}
+        title={compact ? t.langSwitcher.fr : undefined}
         className={`${compact ? 'h-8 px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded-full transition-[transform,background-color,color,opacity,box-shadow] duration-150 active:scale-[0.97] font-bold flex items-center gap-1.5 ${
           lang === 'fr'
             ? 'bg-[var(--paper)] text-[color:var(--ink)] shadow-sm'
@@ -26,6 +30,8 @@ export default function LanguageSwitcher({ compact = false }) {
         type="button"
         onClick={() => setLang('en')}
         aria-pressed={lang === 'en'}
+        aria-label={compact ? t.langSwitcher.en : undefined}
+        title={compact ? t.langSwitcher.en : undefined}
         className={`${compact ? 'h-8 px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded-full transition-[transform,background-color,color,opacity,box-shadow] duration-150 active:scale-[0.97] font-bold flex items-center gap-1.5 ${
           lang === 'en'
             ? 'bg-[var(--paper)] text-[color:var(--ink)] shadow-sm'

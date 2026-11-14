@@ -114,6 +114,36 @@ describe('DeliveryView — journalistes', () => {
     expect(screen.getAllByRole('button', { name: /Regarder JT_ALWM_2026_W34/ })[0].className).toMatch(/jr-jt-ecran|jr-bouton-bleu/);
   });
 
+  // L'INCIDENT (tests de bout en bout, e2e/montage.spec.js) : un
+  // correspondant qui attendait le JT, page ouverte, ne le voyait jamais
+  // arriver — il fallait recharger. La page relit quand on y revient.
+  it('le JT publié pendant que la page est ouverte apparaît sans recharger', async () => {
+    api.getDeliveries.mockResolvedValueOnce([]);
+    const maintenant = vi.spyOn(Date, 'now');
+    const depart = Date.now();
+    renderDelivery({ audience: 'reporter' });
+    await waitFor(() => expect(api.getDeliveries).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('heading', { name: 'Votre JT est prêt' })).toBeNull();
+
+    // Le correspondant revient de WhatsApp une minute plus tard.
+    maintenant.mockReturnValue(depart + 60_000);
+    fireEvent(window, new Event('focus'));
+    expect(await screen.findByRole('heading', { name: 'Votre JT est prêt' })).toBeInTheDocument();
+    maintenant.mockRestore();
+  });
+
+  it('une page cachée ne relit rien', async () => {
+    const maintenant = vi.spyOn(Date, 'now');
+    const depart = Date.now();
+    renderDelivery({ audience: 'reporter', isActive: false });
+    await waitFor(() => expect(api.getDeliveries).toHaveBeenCalledTimes(1));
+    maintenant.mockReturnValue(depart + 60_000);
+    fireEvent(window, new Event('focus'));
+    await Promise.resolve();
+    expect(api.getDeliveries).toHaveBeenCalledTimes(1);
+    maintenant.mockRestore();
+  });
+
   it('la pastille « Nouveau » disparaît une fois le JT téléchargé, et ne revient pas', async () => {
     const { unmount } = renderDelivery({ audience: 'reporter' });
     expect(await screen.findByText('Nouveau')).toBeInTheDocument();

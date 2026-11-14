@@ -198,6 +198,11 @@ export const translations = {
       joindreSommaireAide: 'Seulement si ce fichier est bien le master de ce déroulé : les repères doivent tomber juste.',
     },
     revue: {
+      // Un format que le navigateur ne lit pas, et dont l'aperçu n'est pas
+      // (encore) prêt : on le dit, au lieu d'une image cassée ou d'un
+      // lecteur muet.
+      lectureImpossible: 'Ce format ne se lit pas dans le navigateur. Téléchargez-le pour l’ouvrir.',
+      telecharger: (taille) => (taille ? `Télécharger (${taille})` : 'Télécharger'),
       valider: 'Valider',
       refuser: 'Refuser',
       remettreEnAttente: 'Remettre à revoir',
@@ -414,6 +419,11 @@ export const translations = {
       phaseCompressing: 'Nous compressons votre vidéo…',
       phaseProcessing: 'Traitement du fichier…',
       phaseDone: 'Terminé !',
+      // L'en-tête du suivi quand des envois ont échoué : « Terminé ! » au-dessus
+      // de deux fichiers refusés disait le contraire de ce qui s'était passé.
+      rienEnvoye: 'Rien n’est parti',
+      envoisIncomplets: (n) => (n > 1 ? `${n} fichiers à revoir` : '1 fichier à revoir'),
+      formatAutre: 'Ce fichier ne peut pas partir. Envoyez une vidéo, un son, une photo ou un texte.',
       errorPrefix: 'Erreur',
       deleteTitle: 'Supprimer ce fichier ?',
       deleteMsg: (name) => `Êtes-vous sûr de vouloir supprimer « ${name} » ? Cette action est irréversible.`,
@@ -1837,6 +1847,8 @@ export const translations = {
       joindreSommaireAide: 'Only if this file really is the master of this rundown: the timestamps must match.',
     },
     revue: {
+      lectureImpossible: 'This format does not play in the browser. Download it to open it.',
+      telecharger: (taille) => (taille ? `Download (${taille})` : 'Download'),
       valider: 'Approve',
       refuser: 'Reject',
       remettreEnAttente: 'Back to review',
@@ -2046,6 +2058,9 @@ export const translations = {
       phaseCompressing: 'Compressing your video…',
       phaseProcessing: 'Processing file…',
       phaseDone: 'Done!',
+      rienEnvoye: 'Nothing was sent',
+      envoisIncomplets: (n) => (n > 1 ? `${n} files to check` : '1 file to check'),
+      formatAutre: 'This file cannot be sent. Send a video, audio, photo or text file.',
       errorPrefix: 'Error',
       deleteTitle: 'Delete this file?',
       deleteMsg: (name) => `Are you sure you want to delete "${name}"? This cannot be undone.`,

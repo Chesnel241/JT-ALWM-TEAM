@@ -82,6 +82,7 @@ export function nouveauSon(fichier, { id, instant = 0, duree = null, role = null
   const [son] = nettoyerPisteAudio([{
     id,
     filename: fichier.filename,
+    proxyFilename: fichier.proxyFilename,
     name: fichier.name || fichier.filename,
     role: role || roleDevine(fichier),
     startTime: roundToFrame(Math.max(0, Number(instant) || 0)),

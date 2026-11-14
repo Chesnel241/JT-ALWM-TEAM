@@ -12,6 +12,7 @@ import { api } from '../api/index.js';
 import { readAdminPassword } from '../lib/adminSession.js';
 import { extensionDuBlob, extensionDepuisType } from '../lib/signatures.js';
 import StudioVoixJournaliste from './StudioVoixJournaliste.jsx';
+import { AUDIO_ACCEPT } from '../lib/mediaTypes.js';
 
 const getSupportedMimeType = () => {
   if (typeof MediaRecorder === 'undefined') return '';
@@ -795,7 +796,7 @@ export default function VoixOffView({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg"
+                  accept={AUDIO_ACCEPT}
                   onChange={handleFileSelect}
                   className="hidden"
                 />

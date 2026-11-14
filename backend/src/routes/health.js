@@ -6,6 +6,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { uploadsDir as resolveUploadsDir } from '../lib/paths.js';
 import { etatFileCompression } from '../services/videoCompress.js';
 import { etatFileMesure } from '../services/mediaDuration.js';
+import { etatFileApercus } from '../services/apercus.js';
 
 const router = Router();
 
@@ -61,6 +62,8 @@ router.get('/', asyncHandler(async (req, res) => {
         // Sondes de durée. Elles ne bloquent aucun envoi, mais une file qui
         // ne se vide plus signale un ffprobe en peine.
         mesureDurees,
+        // Aperçus des sons et photos illisibles par le navigateur.
+        apercus: etatFileApercus(),
       },
     };
 

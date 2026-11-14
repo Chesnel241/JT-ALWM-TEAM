@@ -79,3 +79,21 @@ describe('urlDrapeauIso — le champ téléphone', () => {
     expect(urlDrapeauIso('CMR')).toBeNull();
   });
 });
+
+describe('les champs téléphone', () => {
+  // L'INCIDENT (tests de bout en bout, e2e/montage.spec.js) : la fenêtre
+  // « Refuser / commenter » du montage était le seul champ téléphone resté
+  // sur le drapeau par défaut, demandé à un service externe à chaque
+  // ouverture — une image cassée dès que ce service ne répond pas.
+  it('montrent tous le drapeau servi par l’application', () => {
+    const composants = join(dirname(fileURLToPath(import.meta.url)), '../src/components');
+    const sansDrapeauLocal = readdirSync(composants)
+      .filter((f) => f.endsWith('.jsx'))
+      .filter((f) => {
+        const source = readFileSync(join(composants, f), 'utf8');
+        const champs = source.match(/<PhoneInput\b[\s\S]*?\/>/g) || [];
+        return champs.some((champ) => !/flagComponent=\{PhoneCountryBadge\}/.test(champ));
+      });
+    expect(sansDrapeauLocal).toEqual([]);
+  });
+});

@@ -5,6 +5,7 @@ import {
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { formatWeekLabel, formatWeekDates } from '../lib/dates.js';
 import CountryAvatar from './CountryAvatar.jsx';
+import { AUDIO_ACCEPT } from '../lib/mediaTypes.js';
 
 /**
  * Le studio de voix off, côté journalistes.
@@ -363,7 +364,7 @@ export default function StudioVoixJournaliste({
                 <input
                   ref={fichierRef}
                   type="file"
-                  accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg"
+                  accept={AUDIO_ACCEPT}
                   onChange={onFichier}
                   className="hidden"
                 />

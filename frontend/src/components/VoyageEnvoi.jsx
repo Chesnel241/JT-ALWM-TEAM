@@ -30,6 +30,12 @@ export default function VoyageEnvoi({ pays, envois = [], onReessayer }) {
   const u = t.uploader;
   if (!envois.length) return null;
   const enVol = envois.filter(estEnVol);
+  const enErreur = envois.filter((e) => e.status === 'error');
+  const entete = enVol.length > 0
+    ? u.sendingNow
+    : enErreur.length === envois.length
+      ? u.rienEnvoye
+      : enErreur.length > 0 ? u.envoisIncomplets(enErreur.length) : u.phaseDone;
 
   return (
     <section className="jr-voyage" aria-label={u.liaison(pays?.name || '')}>
@@ -37,8 +43,10 @@ export default function VoyageEnvoi({ pays, envois = [], onReessayer }) {
         <span className="flex items-center gap-2 text-sm font-extrabold text-[color:var(--ink)]">
           {enVol.length > 0
             ? <span className="jr-radar" aria-hidden="true" />
-            : <CheckCircle size={18} className="motion-check text-[color:var(--action)]" aria-hidden="true" />}
-          {enVol.length > 0 ? u.sendingNow : u.phaseDone}
+            : enErreur.length > 0
+              ? <AlertTriangle size={18} className="text-[color:var(--cta-orange-deep)]" aria-hidden="true" />
+              : <CheckCircle size={18} className="motion-check text-[color:var(--action)]" aria-hidden="true" />}
+          {entete}
         </span>
         <span className="text-xs font-semibold text-[color:var(--muted)]">{u.checklistCount(envois.length)}</span>
       </div>
@@ -150,7 +158,12 @@ function LigneEnvoi({ envoi, u, onReessayer }) {
         ))}
       </ol>
 
-      {envoiEtape.etat === 'erreur' && onReessayer && (
+      {envoiEtape.etat === 'erreur' && envoi.formatRefuse && (
+        // Un format refusé ne passera jamais : dire quoi envoyer à la place,
+        // plutôt que « Réessayer ».
+        <p className="text-xs font-semibold text-[color:var(--ink)]">{u.formatAutre}</p>
+      )}
+      {envoiEtape.etat === 'erreur' && onReessayer && !envoi.formatRefuse && (
         // Le fichier est encore en mémoire : un geste suffit, sans repasser
         // par le sélecteur. Orange : c'est une reprise, pas un nouvel envoi.
         <button

@@ -5,9 +5,10 @@ import path from 'path';
 import { existsSync, unlinkSync, openSync, readSync, closeSync, renameSync } from 'fs';
 import logger from '../logger/index.js';
 import { uploadsDir, MAX_FILE_SIZE, ALLOWED_EXTENSIONS, classifyExtension, extensionEffective } from '../lib/upload.js';
-import { extensionDepuisOctets, TAILLE_ENTETE } from '../lib/signatures.js';
+import { extensionDepuisOctets, contenuEstBalisage, TAILLE_ENTETE } from '../lib/signatures.js';
 import { addUpload, getCustomCountries, getExtensions, updateUploadSize, setUploadProxy, setUploadAllege } from '../data/store.js';
 import { queueCompression } from '../services/videoCompress.js';
+import { planifierApercu } from '../services/apercus.js';
 import { planifierMesure } from '../services/mediaDuration.js';
 import { buildWeeks, weekUploadCutoff, isCountryAccepted } from '../data/constants.js';
 import { recordUpload } from '../monitoring/metrics.js';
@@ -189,6 +190,32 @@ function reconnaitreEtRenommer(id, meta) {
   }
 }
 
+/** Les premiers octets du fichier reçu sont-ils du balisage ? */
+function contenuBalise(filename) {
+  let fd;
+  try {
+    fd = openSync(path.join(uploadsDir, filename), 'r');
+    const buf = Buffer.alloc(TAILLE_ENTETE);
+    const lus = readSync(fd, buf, 0, TAILLE_ENTETE, 0);
+    return contenuEstBalisage(buf.subarray(0, lus));
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) { try { closeSync(fd); } catch { /* ignore */ } }
+  }
+}
+
+/** Efface un envoi refusé : le binaire et la fiche que tus garde à côté. */
+async function effacerEnvoi(id, filename) {
+  try { await tusServer.datastore.remove(id); } catch { /* déjà parti, ou renommé */ }
+  for (const nom of [filename, `${id}.json`]) {
+    try {
+      const chemin = path.join(uploadsDir, nom);
+      if (existsSync(chemin)) unlinkSync(chemin);
+    } catch { /* rien à faire de plus */ }
+  }
+}
+
 export const tusServer = new Server({
   path: '/api/tus',
   datastore: new FileStore({ directory: uploadsDir }),
@@ -270,6 +297,21 @@ export const tusServer = new Server({
     // ment par omission, et le type annoncé vaut très souvent
     // « application/octet-stream ».
     let filename = reconnaitreEtRenommer(upload.id, meta);
+
+    // Du balisage (HTML, SVG, XML) sous un nom de média : le seul désaccord
+    // entre nom et contenu qui reste un refus (lib/signatures.js).
+    //
+    // L'INCIDENT (tests de bout en bout, e2e/formats.spec.js) : ce contrôle
+    // n'existait que sur l'envoi classique (fileValidator.js). Par tus — le
+    // chemin de TOUS les correspondants — une page web nommée
+    // « reportage.mp4 » entrait, rangée parmi les vidéos du montage.
+    if (contenuBalise(filename)) {
+      logger.warn('Envoi refusé : balisage sous un nom de média', {
+        context: { weekId, countryId, nom: nomLisible(meta.name || meta.filename || '') },
+      });
+      await effacerEnvoi(upload.id, filename);
+      throw { status_code: 415, body: 'Ce fichier n’est pas un média : son contenu est une page web.' };
+    }
     const originalName = nomLisible(meta.name || meta.filename || 'envoi');
     const reportage = meta.reportage || null;
     // `sujetId` est la nouvelle attache. `reportage` reste écrit pour que les
@@ -355,6 +397,16 @@ export const tusServer = new Server({
           // Un rush de plus de 200 Mo au débit démesuré a été ramené à une
           // qualité de diffusion : le poids affiché suit.
           if (setUploadAllege(weekId, countryId, fileData.id, apres, avant)) {
+            io?.emit('upload_update', { weekId, countryId });
+          }
+        });
+      }
+
+      // Un son ou une photo que le navigateur ne sait pas lire (WMA, AMR,
+      // HEIC, TIFF…) reçoit lui aussi sa copie lisible (services/apercus.js).
+      if (fileData.type === 'audio' || fileData.type === 'image') {
+        planifierApercu(path.join(uploadsDir, filename), extRetenue, ({ nom }) => {
+          if (setUploadProxy(weekId, countryId, fileData.id, nom)) {
             io?.emit('upload_update', { weekId, countryId });
           }
         });

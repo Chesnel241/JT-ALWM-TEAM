@@ -184,6 +184,16 @@ describe('Nav — téléphone', () => {
     expect(screen.queryByText('Activer Notifications')).not.toBeInTheDocument();
   });
 
+  // L'INCIDENT (tests de bout en bout, e2e/journalistes.spec.js) : réduits à
+  // un drapeau — caché aux lecteurs d'écran —, les deux boutons de langue
+  // n'avaient plus aucun nom sur téléphone.
+  it('garde un nom aux boutons de langue réduits à un drapeau', () => {
+    renderMobile();
+    expect(screen.getByRole('button', { name: 'Français' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('garde le titre court côté journalistes', () => {
     renderMobile({ workspace: WORKSPACES.REPORTER, currentView: 'delivery' });
     expect(screen.getByText('Journalistes')).toBeInTheDocument();
