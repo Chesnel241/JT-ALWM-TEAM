@@ -105,18 +105,29 @@ export default function UploaderView({ country, weeks, selectedWeek, setSelected
   // Le pays ouvert dans cet onglet : seul renseignement des vues du JT.
   useEffect(() => { memoriserPaysSession(country.id); }, [country.id]);
 
+  // Le numéro enregistré de CE pays (chaque bureau renseigne le sien) : relu
+  // quand le pays change, et seulement alors.
+  //
+  // L'INCIDENT (tests de bout en bout, e2e/journalistes.spec.js) : cet effet
+  // dépendait aussi de la semaine. Sur une connexion lente, la liste des
+  // semaines arrivait pendant que le correspondant tapait son numéro, et le
+  // champ était vidé sous ses doigts.
   useEffect(() => {
-    // Strictement le numéro de CE pays : chaque bureau renseigne le sien.
     const savedPhone = readCountryPhone(country.id);
     if (isUsablePhone(savedPhone)) {
       setHasPhoneNumber(true);
       setPhone(savedPhone);
-      if (selectedWeek) {
-        api.subscribeToNotifications(selectedWeek, country.id, savedPhone).catch(() => {});
-      }
     } else {
       setHasPhoneNumber(false);
       setPhone('');
+    }
+  }, [country.id]);
+
+  // L'abonnement aux nouvelles de la semaine, lui, suit la semaine.
+  useEffect(() => {
+    const savedPhone = readCountryPhone(country.id);
+    if (selectedWeek && isUsablePhone(savedPhone)) {
+      api.subscribeToNotifications(selectedWeek, country.id, savedPhone).catch(() => {});
     }
   }, [country.id, selectedWeek]);
 

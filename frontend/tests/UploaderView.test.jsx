@@ -142,3 +142,36 @@ describe('supprimer un fichier', () => {
     expect(within(boite).getByRole('button', { name: 'Supprimer' }).className).toContain('min-h-[52px]');
   });
 });
+
+describe('UploaderView — le numéro WhatsApp', () => {
+  // L'INCIDENT (tests de bout en bout, e2e/journalistes.spec.js) : sur une
+  // connexion lente, la liste des semaines arrivait pendant que le
+  // correspondant tapait son numéro, et le champ était vidé sous ses doigts.
+  it('garde ce qui est tapé quand la semaine arrive pendant la saisie', async () => {
+    localStorage.setItem('jt-alwm-lang', 'fr');
+    vi.spyOn(api, 'getDeliveries').mockResolvedValue([]);
+    const ecran = (semaine) => (
+      <I18nProvider>
+        <ToastProvider>
+          <UploaderView country={PAYS} weeks={semaine ? SEMAINES : []} selectedWeek={semaine} setSelectedWeek={vi.fn()} onBack={vi.fn()} />
+        </ToastProvider>
+      </I18nProvider>
+    );
+    // La page s'ouvre avant que les semaines soient arrivées.
+    const { rerender, container } = render(ecran(null));
+    const champ = container.querySelector('input[type=tel]');
+    fireEvent.change(champ, { target: { value: '+241 77 12 34' } });
+    expect(container.querySelector('input[type=tel]').value.replace(/\s/g, '')).toBe('+241771234');
+
+    // Les semaines arrivent : la saisie doit rester.
+    rerender(ecran('2026-W34'));
+    await waitFor(() => expect(api.getUploads).toHaveBeenCalled());
+    expect(container.querySelector('input[type=tel]').value.replace(/\s/g, '')).toBe('+241771234');
+  });
+
+  it('s’abonne aux nouvelles de la semaine quand le numéro est déjà connu', async () => {
+    vi.spyOn(api, 'getDeliveries').mockResolvedValue([]);
+    monter('fr');
+    await waitFor(() => expect(api.subscribeToNotifications).toHaveBeenCalledWith('2026-W34', 'ga', '+24177000000'));
+  });
+});

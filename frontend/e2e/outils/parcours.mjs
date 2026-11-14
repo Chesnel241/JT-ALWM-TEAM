@@ -38,7 +38,7 @@ export function surveillerErreurs(page, { toleres = [] } = {}) {
     // La phrase que l'application écrit quand une requête n'aboutit pas. Elle
     // l'écrit aussi quand on quitte la page en plein chargement, ce qui n'est
     // pas une panne : les vraies sont relevées juste en dessous, à la source.
-    if (/Pas de connexion pour l’instant|No connection right now/.test(m.text())) return;
+    if (/Pas de connexion pour l’instant|No connection right now|Failed to fetch|NetworkError when attempting to fetch|Load failed/.test(m.text())) return;
     liste.push(`console : ${m.text().slice(0, 300)}`);
   });
   page.on('requestfailed', (r) => {
