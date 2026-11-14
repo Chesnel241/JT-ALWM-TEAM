@@ -4,6 +4,8 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
 
+const API_CIBLE = process.env.JT_API_CIBLE || 'http://localhost:3010';
+
 // Plugin personnalisé pour forcer la mise à jour des clients
 const GenerateVersionJson = () => {
   return {
@@ -115,9 +117,14 @@ export default defineConfig({
     fs: {
       allow: ['..']
     },
+    // Le serveur visé se règle par JT_API_CIBLE (les tests de bout en bout
+    // lancent le leur sur un autre port). `/socket.io` suit le même chemin
+    // qu'en production (Caddyfile) : sans lui, le tableau de bord du montage
+    // ne recevait aucune mise à jour en direct pendant le développement.
     proxy: {
-      '/api': 'http://localhost:3010',
-      '/uploads': 'http://localhost:3010',
+      '/api': API_CIBLE,
+      '/uploads': API_CIBLE,
+      '/socket.io': { target: API_CIBLE, ws: true },
     },
     watch: {
       usePolling: false,

@@ -114,9 +114,32 @@ docker compose up --build
 ## Tests
 
 ```bash
-cd backend  && npm test    # vitest + supertest (38 tests)
-cd frontend && npm test    # vitest + RTL (8 tests)
+cd backend  && npm test          # tests unitaires du serveur (vitest + supertest)
+cd frontend && npm test          # tests unitaires de l'interface (vitest + Testing Library)
+cd frontend && npm run test:e2e  # tests de bout en bout (Playwright)
 ```
+
+### Tests de bout en bout
+
+`npm run test:e2e` lance lui-même un serveur neuf (données vides, mot de passe
+propre aux tests) et l'application, puis joue les parcours réels dans
+Chromium — rien n'est simulé :
+
+- **`e2e/formats.spec.js`** — un vrai fichier de chaque format accepté (vidéo,
+  son, image, texte : une soixantaine) part par l'espace d'envoi ; le serveur
+  le range, le mesure et en fabrique l'aperçu ; le montage le voit et l'ouvre.
+  Une page web déguisée en vidéo est refusée.
+- **`e2e/journalistes.spec.js`** — un correspondant sur téléphone : accueil,
+  onglets, envoi, voix off au micro, langue, gros caractères, guide, et
+  l'écran qui se met à jour quand le montage valide un fichier.
+- **`e2e/montage.spec.js`** — l'équipe montage sur ordinateur : mot de passe,
+  onglets, arrivée des fichiers en direct, valider / refuser, ZIP, studio,
+  publication du JT vue depuis le téléphone d'un correspondant.
+
+Il faut `ffmpeg` (celui du système ou celui que le serveur embarque) et
+Python 3 pour fabriquer les fichiers d'essai, et le Chromium de Playwright
+(`npx playwright install chromium`, ou `E2E_CHROMIUM=/chemin/vers/chromium`).
+Les ports se changent par `E2E_PORT_API` et `E2E_PORT_APP`.
 
 ## API
 

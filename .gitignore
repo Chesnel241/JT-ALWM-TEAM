@@ -15,6 +15,9 @@ test_live.js
 test_req.js
 test-flags.html
 frontend/test-results/
+frontend/playwright-report/
+# Données et fichiers d'essai des tests de bout en bout, refaits à chaque passage.
+frontend/e2e/.banc/
 JT-ALWM-TEAM-master/
 
 
